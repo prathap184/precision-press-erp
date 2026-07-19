@@ -82,13 +82,11 @@ async function main() {
     id: user.id,
     email,
     name: 'Super Admin',
-    display_name: 'Super Admin',
+    displayName: 'Super Admin',
     role: 'SUPER_ADMIN',
-    metadata: {
-      roles: ['SUPER_ADMIN'],
-    },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
+    roles: ['SUPER_ADMIN'],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   const { error } = await client.from('profiles').upsert(profile, { onConflict: 'id' });
