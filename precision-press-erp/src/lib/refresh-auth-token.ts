@@ -7,7 +7,7 @@ const COOKIE_OPTS = {
   path: '/',
   expires: 7,
   sameSite: 'lax' as const,
-  secure: process.env.NODE_ENV === 'production',
+  secure: process.env.NEXT_PUBLIC_COOKIE_SECURE === 'true',
 };
 
 export async function refreshAuthTokenCookie() {

@@ -45,7 +45,9 @@ const COOKIE_OPTS = {
   path: '/',
   expires: 7,
   sameSite: 'lax' as const,
-  secure: process.env.NODE_ENV === 'production',
+  // Only use secure cookies if explicitly enabled via env var.
+  // Default is false because the server runs on HTTP (not HTTPS).
+  secure: process.env.NEXT_PUBLIC_COOKIE_SECURE === 'true',
 };
 
 function mapSessionUser(user: SupabaseUser | null): AppUser | null {
