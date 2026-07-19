@@ -1,0 +1,9 @@
+{
+  "name": "hindustan-enterprices",
+  "private": true,
+  "workspaces": [
+    "shared",
+    "precision-press-erp",
+    "customer_precision-press-erp"
+  ]
+}

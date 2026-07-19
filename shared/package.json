@@ -1,0 +1,38 @@
+{
+  "name": "@hindustan/shared",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    "./types/auth":          "./types/auth.ts",
+    "./types/roles":         "./types/roles.ts",
+    "./lib/supabase-browser":"./lib/supabase-browser.ts",
+    "./lib/pricing-engine":  "./lib/pricing-engine.ts",
+    "./lib/pricing":         "./lib/pricing.ts",
+    "./lib/company-config":  "./lib/company-config.ts",
+    "./lib/constants":       "./lib/constants.ts",
+    "./services/hsnService": "./services/hsnService.ts",
+    "./utils/formatters":    "./utils/formatters.ts",
+    "./logging/logger":      "./logging/logger.ts",
+    "./logging/audit":       "./logging/audit.ts",
+    "./logging/performance": "./logging/performance.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "date-fns": "^4.1.0",
+    "decimal.js": "^10.6.0",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.1",
+    "lucide-react": "^0.331.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.19",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "typescript": "^5.3.3"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  }
+}

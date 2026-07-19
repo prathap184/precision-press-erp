@@ -1,0 +1,58 @@
+{
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noImplicitAny": false,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "firebase/firestore": [
+        "./src/lib/supabase-firestore-shim"
+      ],
+      "@/*": ["./src/*"],
+      "@hindustan/shared/types/auth":           ["../shared/types/auth.ts"],
+      "@hindustan/shared/types/roles":          ["../shared/types/roles.ts"],
+      "@hindustan/shared/lib/supabase-browser": ["../shared/lib/supabase-browser.ts"],
+      "@hindustan/shared/lib/pricing-engine":   ["../shared/lib/pricing-engine.ts"],
+      "@hindustan/shared/lib/pricing":          ["../shared/lib/pricing.ts"],
+      "@hindustan/shared/lib/company-config":   ["../shared/lib/company-config.ts"],
+      "@hindustan/shared/lib/constants":        ["../shared/lib/constants.ts"],
+      "@hindustan/shared/services/hsnService":  ["../shared/services/hsnService.ts"],
+      "@hindustan/shared/utils/formatters":     ["../shared/utils/formatters.ts"],
+      "@hindustan/shared/logging/logger":       ["../shared/logging/logger.ts"],
+      "@hindustan/shared/logging/audit":        ["../shared/logging/audit.ts"],
+      "@hindustan/shared/logging/performance":  ["../shared/logging/performance.ts"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "src/lib/actions/acdema.ts",
+    "src/lib/actions/staff.ts",
+    "src/lib/actions/tally-sync.ts",
+    "src/lib/actions/stats.ts",
+    "src/lib/actions/reports.ts",
+    "src/components/acdema",
+    "src/components/admin",
+    "src/components/designer",
+    "src/components/manager",
+    "src/components/printer",
+    "src/components/accountant",
+    "src/components/dispatch",
+    "src/components/delivarypartner",
+    "src/components/staff"
+  ]
+}

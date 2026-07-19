@@ -1,0 +1,1 @@
+ALTER TABLE public.quotations ADD COLUMN IF NOT EXISTS status text DEFAULT 'PENDING'; ALTER TABLE public.quotations ADD COLUMN IF NOT EXISTS customer_snapshot jsonb; ALTER TABLE public.quotations ADD COLUMN IF NOT EXISTS logistics_details jsonb;

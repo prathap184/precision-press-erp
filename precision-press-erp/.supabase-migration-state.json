@@ -1,0 +1,53 @@
+{
+  "completed": [],
+  "results": {
+    "profiles": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "categories": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "products": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "orders": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "order_items": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "payments": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "transactions": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "cart": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "wishlist": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "tally_sync_queue": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "audit_logs": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "audit_stats": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "activity_logs": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "jobs": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "backup_designs": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    },
+    "designs": {
+      "error": "8 RESOURCE_EXHAUSTED: Quota exceeded."
+    }
+  }
+}

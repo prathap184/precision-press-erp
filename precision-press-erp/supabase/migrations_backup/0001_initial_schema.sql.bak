@@ -1,0 +1,347 @@
+-- Supabase migration schema for Precision Press ERP.
+-- This file creates the core tables used by the app's Firestore model.
+
+create table if not exists profiles (
+  id text primary key,
+  email text,
+  name text,
+  display_name text,
+  phone text,
+  address text,
+  role text,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists categories (
+  id text primary key,
+  name text not null,
+  description text,
+  status text,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists products (
+  id text primary key,
+  name text not null,
+  category text,
+  base_rate numeric,
+  eyelet_pricing jsonb,
+  delivery_pricing jsonb,
+  media jsonb,
+  specs jsonb,
+  status text,
+  workflow_steps jsonb,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists orders (
+  id text primary key,
+  customer_id text,
+  status text,
+  payment_status text,
+  payment_method text,
+  order_type text,
+  order_source text,
+  created_by text,
+  created_by_role text,
+  amounts jsonb,
+  customer_snapshot jsonb,
+  workflow jsonb,
+  print_workflow jsonb,
+  workflow_snapshot jsonb,
+  current_workflow_role text,
+  current_workflow_label text,
+  verified_by text,
+  production_notes text,
+  invoice_number text,
+  thumbnail_url text,
+  delivery jsonb,
+  dispatch_info jsonb,
+  delivery_proof jsonb,
+  proxy_executor jsonb,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists order_items (
+  id text primary key,
+  order_id text not null,
+  product_name text,
+  product_id text,
+  category text,
+  project_name text,
+  specs jsonb,
+  material_metadata jsonb,
+  pricing_snapshot jsonb,
+  file_url text,
+  design_url text,
+  design_status text,
+  design_upload_stats jsonb,
+  tiff_path text,
+  assigned_printer_id text,
+  assigned_printer_name text,
+  tiff_assigned_at timestamptz,
+  tiff_assigned_by text,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists payments (
+  id text primary key,
+  user_id text,
+  order_id text,
+  amount numeric,
+  method text,
+  proof_url text,
+  status text,
+  verified_by text,
+  verified_at timestamptz,
+  metadata jsonb,
+  created_at timestamptz
+);
+
+create table if not exists transactions (
+  id text primary key,
+  user_id text,
+  total_before numeric,
+  total_after numeric,
+  type text,
+  ledger_type text,
+  ref_id text,
+  debit numeric,
+  credit numeric,
+  balance_after numeric,
+  remarks text,
+  created_by text,
+  timestamp timestamptz,
+  metadata jsonb
+);
+
+create table if not exists cart (
+  id text primary key,
+  user_id text not null,
+  product_id text not null,
+  quantity integer,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists wishlist (
+  id text primary key,
+  user_id text not null,
+  product_id text not null,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists tally_sync_queue (
+  id text primary key,
+  order_id text,
+  status text,
+  payload jsonb,
+  idempotency_key text,
+  _server_created_at timestamptz,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz,
+  error text
+);
+
+create table if not exists audit_logs (
+  id text primary key,
+  action_type text,
+  actor_id text,
+  actor_name text,
+  target_id text,
+  target_type text,
+  payload jsonb,
+  timestamp timestamptz,
+  metadata jsonb
+);
+
+create table if not exists audit_stats (
+  id text primary key,
+  total bigint,
+  actions jsonb,
+  updated_at timestamptz
+);
+
+create table if not exists stats (
+  id text primary key,
+  financial jsonb,
+  operational jsonb,
+  workflow jsonb,
+  updated_at timestamptz
+);
+
+create table if not exists activity_logs (
+  id text primary key,
+  action text,
+  actor_id text,
+  actor_name text,
+  details jsonb,
+  timestamp timestamptz
+);
+
+create table if not exists jobs (
+  id text primary key,
+  order_id text,
+  product_name text,
+  category text,
+  sqft numeric,
+  status text,
+  priority text,
+  printer_id text,
+  notes text,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz,
+  updated_at timestamptz,
+  metadata jsonb
+);
+
+create table if not exists staff_users (
+  id text primary key,
+  uid text,
+  name text,
+  email text,
+  roles jsonb,
+  status text,
+  assigned_by text,
+  assigned_at timestamptz,
+  updated_at timestamptz,
+  suspended_at timestamptz,
+  last_login_at timestamptz,
+  metadata jsonb
+);
+
+create table if not exists role_history (
+  id text primary key,
+  user_id text,
+  user_name text,
+  old_roles jsonb,
+  new_roles jsonb,
+  changed_by text,
+  changed_by_name text,
+  changed_at timestamptz,
+  reason text,
+  action text,
+  metadata jsonb
+);
+
+create table if not exists settings (
+  id text primary key,
+  data jsonb,
+  metadata jsonb,
+  updated_at timestamptz
+);
+
+create table if not exists anomalies (
+  id text primary key,
+  order_id text,
+  status text,
+  title text,
+  details jsonb,
+  created_at timestamptz,
+  updated_at timestamptz,
+  metadata jsonb
+);
+
+create table if not exists dispatches (
+  id text primary key,
+  order_id text,
+  status text,
+  dispatched_by text,
+  dispatched_at timestamptz,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists notifications (
+  id text primary key,
+  user_id text,
+  type text,
+  title text,
+  body text,
+  read boolean,
+  payload jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists bank_accounts (
+  id text primary key,
+  label text,
+  account_number text,
+  ifsc text,
+  description text,
+  qr_url text,
+  payee_name text,
+  upi_id text,
+  payment_type text,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists users (
+  id text primary key,
+  email text,
+  name text,
+  role text,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists backup_designs (
+  id text primary key,
+  data jsonb,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create table if not exists designs (
+  id text primary key,
+  data jsonb,
+  metadata jsonb,
+  created_at timestamptz,
+  updated_at timestamptz
+);
+
+create index if not exists idx_orders_created_at on orders (created_at desc);
+create index if not exists idx_orders_status_created_at on orders (status, created_at desc);
+create index if not exists idx_orders_customer_id_created_at on orders (customer_id, created_at desc);
+create index if not exists idx_orders_payment_status_created_at on orders (payment_status, created_at desc);
+create index if not exists idx_orders_assigned_to_status on orders ((workflow ->> 'assignedTo'), status);
+create index if not exists idx_products_category_status_created_at on products ((category), status, created_at desc);
+create index if not exists idx_tally_sync_queue_status_server_created_at on tally_sync_queue (status, _server_created_at asc);
+create index if not exists idx_tally_sync_queue_order_id_server_created_at on tally_sync_queue (order_id, _server_created_at desc);
+create index if not exists idx_payments_order_id_created_at on payments (order_id, created_at desc);
+create index if not exists idx_payments_user_id_created_at on payments (user_id, created_at desc);
+create index if not exists idx_transactions_user_id_timestamp on transactions (user_id, timestamp desc);
+create index if not exists idx_cart_user_id_created_at on cart (user_id, created_at desc);
+create index if not exists idx_wishlist_user_id_created_at on wishlist (user_id, created_at desc);
+create index if not exists idx_profiles_role_created_at on profiles (role, created_at desc);
+create index if not exists idx_jobs_status_created_at on jobs (status, created_at desc);
+create index if not exists idx_audit_stats_updated_at on audit_stats (updated_at desc);
+create index if not exists idx_stats_updated_at on stats (updated_at desc);
+create index if not exists idx_staff_users_status_updated_at on staff_users (status, updated_at desc);
+create index if not exists idx_role_history_user_id_changed_at on role_history (user_id, changed_at desc);
+create index if not exists idx_settings_updated_at on settings (updated_at desc);
+create index if not exists idx_anomalies_order_id_created_at on anomalies (order_id, created_at desc);
+create index if not exists idx_dispatches_order_id_created_at on dispatches (order_id, created_at desc);
+create index if not exists idx_notifications_user_id_created_at on notifications (user_id, created_at desc);
+create index if not exists idx_bank_accounts_label on bank_accounts (label);

@@ -1,0 +1,9 @@
+.vercel
+.env.local
+.env
+node_modules/
+tally-connector/.env
+tally-connector/node_modules/
+tally-connector/logs/
+.next/
+public/uploads/

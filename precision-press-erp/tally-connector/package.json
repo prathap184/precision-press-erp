@@ -1,0 +1,19 @@
+{
+  "name": "tally-connector",
+  "version": "1.0.0",
+  "description": "Precision Press ERP → TallyPrime Local Connector Service (Accounting PC only)",
+  "main": "connector.js",
+  "scripts": {
+    "start": "node connector.js",
+    "dev": "nodemon connector.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "xml2js": "^0.6.2",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
+}

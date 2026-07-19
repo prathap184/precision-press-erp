@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── CSS Variable Bridge ────────────────────────────────────────────────────── */
+:root {
+  --font-body:    var(--font-inter, 'Inter', system-ui, sans-serif);
+  --font-display: var(--font-inter, 'Inter', system-ui, sans-serif);
+  
+  /* Google M3 Colors */
+  --google-text: #202124;
+  --google-text-secondary: #5f6368;
+  --google-border: #dadce0;
+  --google-bg: #f8f9fa;
+  --google-card: #ffffff;
+  --google-primary: #1a73e8;
+  --google-hover: #f1f3f4;
+  --google-selected: #d2e3fc;
+}
+
+/* ─── Base Typography ─────────────────────────────────────────────────────────── */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  background-color: var(--google-bg);
+  color: var(--google-text);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+}
+
+/* ─── Selection ───────────────────────────────────────────────────────────────── */
+::selection {
+  background-color: #1e3a8a;
+  color: #ffffff;
+}
+
+/* ─── Minimum readable contrast — prevent ghost text ─────────────────────────── */
+/* Any text using opacity tricks that falls below readable threshold gets a floor */
+[class*="text-"][class*="/10"],
+[class*="text-"][class*="/15"],
+[class*="text-"][class*="/20"] {
+  opacity: 1 !important;
+}
+
+/* ─── Headings ────────────────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-body);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #0f172a;
+}
+
+/* ─── Labels & Small Text — enforce minimum size ─────────────────────────────── */
+label, caption, small {
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* ─── Inputs ─────────────────────────────────────────────────────────────────── */
+input, textarea, select {
+  font-family: var(--font-body);
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.5;
+  color: #0f172a;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+/* ─── Tables ─────────────────────────────────────────────────────────────────── */
+table {
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.5;
+}
+
+th {
+  font-weight: 500;
+  color: #374151;
+  letter-spacing: 0.05em;
+  font-size: 0.75rem; /* 12px */
+}
+
+td {
+  color: #1e293b;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Utility Classes ─────────────────────────────────────────────────────────── */
+@layer components {
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+  }
+
+  .litho-gradient {
+    background: linear-gradient(135deg, #00236f 0%, #1e3a8a 100%);
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+  }
+
+  .no-border-separation {
+    border: none !important;
+  }
+
+  .tonal-shift {
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
+  }
+
+  /* Readable micro-labels — the [10px] / tracking-widest pattern used throughout */
+  .text-micro {
+    font-size: 0.6875rem;   /* 11px */
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: #475569;
+    text-transform: uppercase;
+  }
+
+  /* Card readability helper */
+  .editorial-card {
+    border-radius: 2rem;
+    background: #ffffff;
+    box-shadow: 0px 4px 24px rgba(0, 35, 111, 0.06);
+  }
+
+  /* ─── Google Material 3 Design System ───────────────────────────────────────── */
+  .page-title {
+    font-size: 36px;
+    font-weight: 400;
+    line-height: 44px;
+    color: var(--google-text);
+  }
+
+  .section-title {
+    font-size: 24px;
+    font-weight: 400;
+    line-height: 32px;
+  }
+
+  .sidebar-item {
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    color: #3c4043;
+  }
+
+  .table-header {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--google-text-secondary);
+  }
+
+  .body {
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+  }
+
+  .caption {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--google-text-secondary);
+  }
+
+  .btn {
+    height: 40px;
+    padding: 0 24px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card {
+    background: var(--google-card);
+    border: 1px solid var(--google-border);
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: 0 1px 2px rgba(60,64,67,.15), 0 1px 3px rgba(60,64,67,.08);
+  }
+
+  .search {
+    height: 48px;
+    border-radius: 24px;
+    background: var(--google-hover);
+    border: none;
+    padding: 0 20px;
+    font-size: 16px;
+  }
+
+  .sidebar {
+    background: var(--google-card);
+    width: 280px;
+    border-right: 1px solid #e0e0e0;
+  }
+
+  .selected {
+    background: var(--google-selected);
+    color: #174ea6;
+    border-radius: 24px;
+  }
+
+  .item:hover {
+    background: var(--google-hover);
+    border-radius: 24px;
+  }
+}
+
+/* ─── Ambient shadow ─────────────────────────────────────────────────────────── */
+.shadow-ambient {
+  box-shadow: 0px 20px 40px rgba(0, 35, 111, 0.06);
+}
+
+/* ─── Financial Numerics ─────────────────────────────────────────────────────── */
+.tabular-financials {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ─── Tracking widest override for tiny labels ───────────────────────────────── */
+/* The app uses .tracking-widest on very small text — enforce minimum contrast */
+.tracking-widest,
+.tracking-\[0\.2em\],
+.tracking-\[0\.3em\],
+.tracking-\[0\.4em\] {
+  -webkit-font-smoothing: antialiased;
+}
