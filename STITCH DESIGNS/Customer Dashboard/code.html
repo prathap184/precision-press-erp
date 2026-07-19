@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Precision Press | Command Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#89f5e7",
+                    "on-secondary-fixed": "#00201d",
+                    "surface-dim": "#d9dadb",
+                    "outline": "#757682",
+                    "on-error-container": "#93000a",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary": "#006a61",
+                    "primary-fixed": "#dce1ff",
+                    "surface-container-low": "#f3f4f5",
+                    "on-secondary-container": "#006f66",
+                    "tertiary-fixed-dim": "#d2bbff",
+                    "error-container": "#ffdad6",
+                    "on-background": "#191c1d",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#264191",
+                    "inverse-surface": "#2e3132",
+                    "surface-container-high": "#e7e8e9",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-tertiary-container": "#bc9bff",
+                    "on-surface": "#191c1d",
+                    "tertiary": "#37007e",
+                    "primary": "#00236f",
+                    "inverse-primary": "#b6c4ff",
+                    "on-surface-variant": "#444651",
+                    "tertiary-fixed": "#eaddff",
+                    "surface-tint": "#4059aa",
+                    "outline-variant": "#c5c5d3",
+                    "on-tertiary-fixed": "#25005a",
+                    "on-primary-fixed": "#00164e",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-primary-container": "#90a8ff",
+                    "primary-container": "#1e3a8a",
+                    "surface-bright": "#f8f9fa",
+                    "on-error": "#ffffff",
+                    "background": "#f8f9fa",
+                    "surface-container": "#edeeef",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed-variant": "#005049",
+                    "surface-variant": "#e1e3e4",
+                    "secondary-fixed-dim": "#6bd8cb",
+                    "surface": "#f8f9fa",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "on-tertiary-fixed-variant": "#5a00c6",
+                    "tertiary-container": "#5200b5",
+                    "secondary-container": "#86f2e4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tonal-shift {
+            transition: background-color 0.2s ease;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+        h1, h2, h3, .font-manrope {
+            font-family: 'Manrope', sans-serif;
+        }
+        .custom-gradient-primary {
+            background: linear-gradient(135deg, #00236f 0%, #1e3a8a 100%);
+        }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-slate-50 border-r border-slate-200/15 flex flex-col p-4 z-20">
+<div class="mb-8 px-4">
+<h1 class="text-lg font-black text-indigo-900 uppercase tracking-tighter">The Precision Press</h1>
+<p class="text-[10px] text-slate-500 font-semibold tracking-[0.2em] uppercase">Industrial Precision</p>
+</div>
+<div class="px-4 mb-6">
+<button class="w-full custom-gradient-primary text-white rounded-lg py-3 px-4 flex items-center justify-center gap-2 font-bold text-sm shadow-lg shadow-indigo-900/10 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-lg">add</span>
+                New Print Job
+            </button>
+</div>
+<nav class="flex-grow space-y-1">
+<a class="flex items-center gap-3 bg-white text-indigo-700 rounded-lg px-4 py-3 shadow-sm font-semibold text-xs tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 px-4 py-3 rounded-lg transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+                Active Orders
+            </a>
+<a class="flex items-center gap-3 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 px-4 py-3 rounded-lg transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">folder_open</span>
+                File Library
+            </a>
+<a class="flex items-center gap-3 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 px-4 py-3 rounded-lg transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">print</span>
+                Print Queue
+            </a>
+<a class="flex items-center gap-3 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 px-4 py-3 rounded-lg transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">payments</span>
+                Billing
+            </a>
+<a class="flex items-center gap-3 text-slate-500 hover:bg-slate-100 hover:text-indigo-600 px-4 py-3 rounded-lg transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">settings</span>
+                Settings
+            </a>
+</nav>
+<div class="mt-auto pt-4 border-t border-slate-200/50 space-y-1">
+<a class="flex items-center gap-3 text-slate-500 hover:text-indigo-600 px-4 py-2 text-xs font-semibold tracking-wider uppercase" href="#">
+<span class="material-symbols-outlined">help</span>
+                Support
+            </a>
+<a class="flex items-center gap-3 text-slate-500 hover:text-error px-4 py-2 text-xs font-semibold tracking-wider uppercase" href="#">
+<span class="material-symbols-outlined">logout</span>
+                Sign Out
+            </a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar -->
+<header class="w-full sticky top-0 z-10 bg-white border-b border-slate-100 flex justify-between items-center px-8 py-6">
+<div class="flex items-center gap-4">
+<button class="hover:bg-slate-50 rounded-full p-2 transition-colors">
+<span class="material-symbols-outlined text-slate-400">arrow_back</span>
+</button>
+<h2 class="text-2xl font-manrope font-bold text-indigo-950">Order Management</h2>
+</div>
+<div class="flex items-center gap-2">
+<button class="hover:bg-slate-50 rounded-full p-2 transition-colors relative">
+<span class="material-symbols-outlined text-slate-600">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+</button>
+<button class="hover:bg-slate-50 rounded-full p-2 transition-colors">
+<span class="material-symbols-outlined text-slate-600">history</span>
+</button>
+<button class="hover:bg-slate-50 rounded-full p-2 transition-colors">
+<span class="material-symbols-outlined text-slate-600">print</span>
+</button>
+<div class="ml-4 h-10 w-10 rounded-full overflow-hidden border-2 border-indigo-50">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Close-up portrait of a professional male manager in a clean modern office setting, soft professional lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDIdsZJmMIcfuo3EcXr6pT7aNYYnoNb4dKD9ME5x-hfF2XXJdBtxdLrV_fjg8OFL5MSNj4oYMa0-N3ikxBMuQrbC5uXM0ltnvuW47cMIjdZgTE--pwqGcI0jtEvrQGWFArYQfOzqTNoNYmOwp1S4MrvT3FGs-kDIWSdYj3AzWAFWVYGRYdQgcUJJZHR0UuyCmK3YFeqi-YWTlc3Sr3RrB-1glgiyTDYJVZT4pXdLQWYnEQe4r9mYmg3587f2Twzabb33BwHJhP4xZ4"/>
+</div>
+</div>
+</header>
+<section class="p-8 space-y-10">
+<!-- Summary Stats: Bento Grid Style -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<!-- Total Orders -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_20px_40px_rgba(0,35,111,0.03)] border-b-2 border-transparent hover:border-indigo-500 transition-all group">
+<div class="flex justify-between items-start mb-4">
+<div class="bg-primary-fixed w-12 h-12 rounded-lg flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">shopping_cart</span>
+</div>
+<span class="text-secondary font-bold text-xs bg-secondary-container px-2 py-1 rounded-full">+12%</span>
+</div>
+<p class="text-slate-500 text-xs font-semibold tracking-wider uppercase mb-1">Total Orders</p>
+<h3 class="text-4xl font-manrope font-extrabold text-indigo-950">1,284</h3>
+</div>
+<!-- Pending Orders -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_20px_40px_rgba(0,35,111,0.03)] border-b-2 border-transparent hover:border-indigo-500 transition-all group">
+<div class="flex justify-between items-start mb-4">
+<div class="bg-tertiary-fixed w-12 h-12 rounded-lg flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined">pending_actions</span>
+</div>
+<span class="text-slate-400 font-bold text-xs bg-slate-100 px-2 py-1 rounded-full">Active</span>
+</div>
+<p class="text-slate-500 text-xs font-semibold tracking-wider uppercase mb-1">Pending Orders</p>
+<h3 class="text-4xl font-manrope font-extrabold text-indigo-950">18</h3>
+</div>
+<!-- Account Balance -->
+<div class="bg-surface-container-lowest p-8 rounded-xl shadow-[0px_20px_40px_rgba(0,35,111,0.03)] border-b-2 border-transparent hover:border-indigo-500 transition-all group">
+<div class="flex justify-between items-start mb-4">
+<div class="bg-secondary-container w-12 h-12 rounded-lg flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+</div>
+<button class="text-indigo-600 hover:underline text-xs font-bold">Add Funds</button>
+</div>
+<p class="text-slate-500 text-xs font-semibold tracking-wider uppercase mb-1">Account Balance</p>
+<h3 class="text-4xl font-manrope font-extrabold text-indigo-950">$12,450.00</h3>
+</div>
+</div>
+<!-- Main Data Table Container -->
+<div class="bg-surface-container-lowest rounded-xl shadow-[0px_20px_40px_rgba(0,35,111,0.03)] overflow-hidden">
+<div class="p-6 flex justify-between items-center bg-white">
+<div>
+<h4 class="text-lg font-manrope font-bold text-indigo-950">Recent Orders</h4>
+<p class="text-xs text-slate-400 font-medium">Real-time status of your last 10 print jobs</p>
+</div>
+<div class="flex gap-2">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="pl-10 pr-4 py-2 text-sm bg-slate-50 border-none rounded-lg focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all w-64" placeholder="Search orders..." type="text"/>
+</div>
+<button class="bg-slate-50 text-slate-600 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100 transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+                            Filter
+                        </button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead class="bg-slate-50/50">
+<tr>
+<th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Order ID</th>
+<th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Product / Service</th>
+<th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date Submitted</th>
+<th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Cost</th>
+<th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+<th class="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-50">
+<!-- Row 1: Completed -->
+<tr class="hover:bg-slate-50/30 transition-colors">
+<td class="px-6 py-5">
+<span class="text-sm font-manrope font-bold text-indigo-900">#PX-88210</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-indigo-50 flex items-center justify-center">
+<span class="material-symbols-outlined text-indigo-400 text-lg">auto_stories</span>
+</div>
+<span class="text-sm font-medium text-slate-700">Hardcover Catalog (500 units)</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-slate-500 font-medium">Oct 24, 2023</td>
+<td class="px-6 py-5 text-sm font-bold text-indigo-950">$3,420.00</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-[10px] font-bold bg-secondary-container text-secondary-fixed-dim uppercase tracking-wider bg-opacity-20 border border-secondary-container">Completed</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 2: In Progress -->
+<tr class="hover:bg-slate-50/30 transition-colors">
+<td class="px-6 py-5">
+<span class="text-sm font-manrope font-bold text-indigo-900">#PX-88211</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-tertiary-fixed/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary text-lg">ad_group</span>
+</div>
+<span class="text-sm font-medium text-slate-700">Glossy Brochures (2,000 units)</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-slate-500 font-medium">Oct 26, 2023</td>
+<td class="px-6 py-5 text-sm font-bold text-indigo-950">$1,150.00</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-[10px] font-bold bg-tertiary-container text-tertiary-fixed-dim uppercase tracking-wider bg-opacity-20 border border-tertiary-container">In Production</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: Pending -->
+<tr class="hover:bg-slate-50/30 transition-colors">
+<td class="px-6 py-5">
+<span class="text-sm font-manrope font-bold text-indigo-900">#PX-88212</span>
+</td>
+<td class="px-6 py-5">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-fixed/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-lg">branding_watermark</span>
+</div>
+<span class="text-sm font-medium text-slate-700">Custom Mailers (100 units)</span>
+</div>
+</td>
+<td class="px-6 py-5 text-sm text-slate-500 font-medium">Oct 27, 2023</td>
+<td class="px-6 py-5 text-sm font-bold text-indigo-950">$450.00</td>
+<td class="px-6 py-5">
+<span class="px-3 py-1 rounded-full text-[10px] font-bold bg-slate-200 text-slate-600 uppercase tracking-wider border border-slate-300">Pending</span>
+</td>
+<td class="px-6 py-5 text-right">
+<button class="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-6 py-4 bg-slate-50/30 border-t border-slate-100 flex justify-between items-center">
+<p class="text-xs text-slate-500 font-medium">Showing 1-10 of 1,284 entries</p>
+<div class="flex gap-1">
+<button class="w-8 h-8 rounded flex items-center justify-center text-slate-400 hover:bg-white hover:shadow-sm">
+<span class="material-symbols-outlined text-sm">chevron_left</span>
+</button>
+<button class="w-8 h-8 rounded flex items-center justify-center bg-primary text-white font-bold text-xs">1</button>
+<button class="w-8 h-8 rounded flex items-center justify-center text-slate-600 hover:bg-white hover:shadow-sm font-bold text-xs">2</button>
+<button class="w-8 h-8 rounded flex items-center justify-center text-slate-600 hover:bg-white hover:shadow-sm font-bold text-xs">3</button>
+<button class="w-8 h-8 rounded flex items-center justify-center text-slate-400 hover:bg-white hover:shadow-sm">
+<span class="material-symbols-outlined text-sm">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Layout: Featured Print Tech & Active Queue -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Specialized Component: Print Queue Strip -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h4 class="text-lg font-manrope font-bold text-indigo-950">Real-time Queue</h4>
+<span class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest px-2 py-1 bg-indigo-50 rounded">Live Update</span>
+</div>
+<div class="space-y-1">
+<!-- Queue Item 1 -->
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-lg border-l-4 border-secondary transition-all hover:bg-white hover:shadow-lg">
+<div class="flex-shrink-0 w-12 h-12 bg-white rounded-md flex items-center justify-center border border-slate-100">
+<span class="material-symbols-outlined text-indigo-900">precision_manufacturing</span>
+</div>
+<div class="flex-grow">
+<h5 class="text-sm font-bold text-slate-800">Job #9882 - Industrial Lithography</h5>
+<div class="flex items-center gap-4 mt-1">
+<div class="w-full bg-slate-200 h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full w-[72%]"></div>
+</div>
+<span class="text-[10px] font-bold text-secondary">72%</span>
+</div>
+</div>
+</div>
+<!-- Queue Item 2 -->
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-lg border-l-4 border-tertiary transition-all hover:bg-white hover:shadow-lg">
+<div class="flex-shrink-0 w-12 h-12 bg-white rounded-md flex items-center justify-center border border-slate-100">
+<span class="material-symbols-outlined text-indigo-900">colors</span>
+</div>
+<div class="flex-grow">
+<h5 class="text-sm font-bold text-slate-800">Job #9883 - Color Calibration</h5>
+<div class="flex items-center gap-4 mt-1">
+<div class="w-full bg-slate-200 h-1 rounded-full overflow-hidden">
+<div class="bg-tertiary h-full w-[15%]"></div>
+</div>
+<span class="text-[10px] font-bold text-tertiary">15%</span>
+</div>
+</div>
+</div>
+<!-- Queue Item 3 -->
+<div class="flex items-center gap-4 p-4 bg-surface-container-low rounded-lg border-l-4 border-slate-300 transition-all hover:bg-white hover:shadow-lg">
+<div class="flex-shrink-0 w-12 h-12 bg-white rounded-md flex items-center justify-center border border-slate-100 text-slate-300">
+<span class="material-symbols-outlined">queue</span>
+</div>
+<div class="flex-grow">
+<h5 class="text-sm font-bold text-slate-400">Job #9884 - Queued</h5>
+<p class="text-[10px] font-medium text-slate-400 mt-1">Estimated start in 12 mins</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Promotional / Tool Card -->
+<div class="relative h-full min-h-[240px] rounded-2xl overflow-hidden group">
+<img alt="Industrial Printing Machine" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" data-alt="Modern high-tech industrial printing facility with neon blue accents and precision mechanical arms in soft motion blur" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdnToHj3ZpUlfE69H8aiTrHNF-T5t-E87VL-1C9Vs2dUFmpsOFVJ_BqSMWj1W5PpIGbb55ceJfRx5qVzXLVhgLqcbfNyG1Bo4vfGa_LSJ2sKGZak8ziofgAD8DXWZ0OGNy0e1oqKzIIMniAbn4hfhDtlMKYccYBRcUVEiCLtoZTEYix9Th2bvZVG-OlMmY3s671ykMXIZgB2agsclbeAjZpo7zb68tWlbMd5xK5bx3ax95V-6rNhO0Dt5K0grT0516K3KQV_cB_AE"/>
+<div class="absolute inset-0 bg-gradient-to-tr from-indigo-950/90 to-transparent flex flex-col justify-end p-8">
+<span class="text-secondary-fixed font-black text-[10px] tracking-widest uppercase mb-2">New Technology</span>
+<h4 class="text-2xl font-manrope font-extrabold text-white mb-2 leading-tight">Nanographic Printing Now Available</h4>
+<p class="text-indigo-100 text-sm mb-6 max-w-sm">Experience ultra-high resolution and sustainable printing for your next large-scale campaign.</p>
+<button class="w-fit px-6 py-2 bg-white text-indigo-900 rounded-lg font-bold text-xs uppercase tracking-wider hover:bg-secondary-fixed transition-colors">
+                            Explore Specs
+                        </button>
+</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>

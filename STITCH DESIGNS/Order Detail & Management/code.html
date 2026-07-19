@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary-fixed-dim": "#b6c4ff",
+                    "tertiary-container": "#5200b5",
+                    "background": "#f8f9fa",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-primary-fixed-variant": "#264191",
+                    "error-container": "#ffdad6",
+                    "surface-container-highest": "#e1e3e4",
+                    "secondary-container": "#86f2e4",
+                    "on-tertiary-fixed-variant": "#5a00c6",
+                    "surface-container-low": "#f3f4f5",
+                    "outline-variant": "#c5c5d3",
+                    "on-secondary-container": "#006f66",
+                    "on-surface-variant": "#444651",
+                    "surface-bright": "#f8f9fa",
+                    "surface-container-high": "#e7e8e9",
+                    "on-error": "#ffffff",
+                    "surface-container": "#edeeef",
+                    "outline": "#757682",
+                    "surface": "#f8f9fa",
+                    "primary": "#00236f",
+                    "on-surface": "#191c1d",
+                    "tertiary-fixed": "#eaddff",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-dim": "#d9dadb",
+                    "tertiary-fixed-dim": "#d2bbff",
+                    "on-primary-fixed": "#00164e",
+                    "inverse-primary": "#b6c4ff",
+                    "primary-container": "#1e3a8a",
+                    "on-secondary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "on-secondary-fixed": "#00201d",
+                    "on-error-container": "#93000a",
+                    "on-secondary-fixed-variant": "#005049",
+                    "on-background": "#191c1d",
+                    "on-tertiary-container": "#bc9bff",
+                    "on-primary-container": "#90a8ff",
+                    "tertiary": "#37007e",
+                    "secondary": "#006a61",
+                    "error": "#ba1a1a",
+                    "secondary-fixed-dim": "#6bd8cb",
+                    "surface-variant": "#e1e3e4",
+                    "on-tertiary-fixed": "#25005a",
+                    "inverse-surface": "#2e3132",
+                    "primary-fixed": "#dce1ff",
+                    "surface-tint": "#4059aa",
+                    "secondary-fixed": "#89f5e7"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tonal-shift { background-color: #f3f4f5; }
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .litho-gradient {
+            background: linear-gradient(135deg, #00236f 0%, #1e3a8a 100%);
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3 { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar -->
+<aside class="flex flex-col fixed left-0 top-0 h-full z-40 h-screen w-64 bg-slate-50 dark:bg-slate-950 border-r-0 tonal-shift">
+<div class="px-8 py-10">
+<h1 class="text-xl font-black text-indigo-900 dark:text-indigo-100 tracking-tight">The Precision Press</h1>
+<p class="font-manrope font-bold text-xs uppercase tracking-widest text-slate-400 mt-1">Command Center</p>
+</div>
+<nav class="flex-1 px-4 space-y-2">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-200/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="text-[0.75rem] font-semibold">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-indigo-700 dark:text-indigo-300 font-bold border-r-4 border-indigo-700 translate-x-1 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="text-[0.75rem] font-semibold">Orders</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-200/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="factory">factory</span>
+<span class="text-[0.75rem] font-semibold">Production</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-200/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+<span class="text-[0.75rem] font-semibold">Customers</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-500 dark:text-slate-400 hover:text-indigo-600 hover:bg-slate-200/50 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+<span class="text-[0.75rem] font-semibold">Inventory</span>
+</a>
+</nav>
+<div class="px-4 py-8 space-y-2">
+<button class="w-full flex items-center justify-center gap-2 py-3 px-4 litho-gradient text-white rounded-lg font-bold text-sm shadow-lg mb-6">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+                New Order
+            </button>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-indigo-600 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-[0.75rem] font-semibold">Settings</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2 text-slate-500 hover:text-indigo-600 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+<span class="text-[0.75rem] font-semibold">Support</span>
+</a>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="flex justify-between items-center w-full px-8 py-4 sticky top-0 z-30 ml-64 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/50 dark:border-slate-800/50 transition-all duration-300 ease-in-out">
+<div class="flex items-center gap-6">
+<h2 class="font-manrope text-lg text-indigo-900 dark:text-indigo-400 font-bold">Order Management</h2>
+<div class="flex items-center gap-4 border-l border-slate-200 pl-6">
+<a class="font-inter uppercase tracking-wider text-[0.65rem] font-bold text-indigo-700 dark:text-indigo-300 border-b-2 border-indigo-700 pb-2" href="#">Active</a>
+<a class="font-inter uppercase tracking-wider text-[0.65rem] font-bold text-slate-500 hover:text-indigo-600" href="#">Pending</a>
+<a class="font-inter uppercase tracking-wider text-[0.65rem] font-bold text-slate-500 hover:text-indigo-600" href="#">Archive</a>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" data-icon="search">search</span>
+<input class="bg-surface-container-high border-none rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:ring-2 focus:ring-primary/20" placeholder="Search orders..." type="text"/>
+</div>
+<button class="bg-surface-container-high text-primary font-bold py-2 px-4 rounded-lg text-sm transition-all hover:bg-surface-container-highest">Export CSV</button>
+<div class="flex items-center gap-4 text-slate-500">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary" data-icon="notifications">notifications</span>
+<div class="w-10 h-10 rounded-full bg-slate-200 overflow-hidden border-2 border-white shadow-sm">
+<img alt="Admin Avatar" data-alt="professional portrait of a male administrative manager in a modern office setting, clean lighting, sharp focus" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC6k6XipJE1wCthMNqCYSvGGuff7QLg9VOLESjF6xOOHe3hPeV2JoUXYEYboJ9SOKUdCNsZR4G5th28EBpD9Y6ZSFg5Uqmx1o-QzH26O2QregZxm7M87HdTWAJGaMFT2zOXN6EB1GBrNcNlhtxhxgsZc_i9LEvmoYRJuad3EePnVYZLA1q7Ehnwr0i3y_8cdYhNmklBMSXiD_4WdKhwow-LAYIWlk8hjrD96DpezzbwzJ1s-YH691s8jSkBETGQcmj4ACuP4ey7Wgw"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 p-8 min-h-screen">
+<!-- Header Actions & Navigation -->
+<div class="flex justify-between items-start mb-8">
+<div>
+<nav class="flex items-center gap-2 text-xs text-slate-400 mb-2 font-semibold tracking-wide">
+<span>ORDERS</span>
+<span class="material-symbols-outlined text-[10px]" data-icon="chevron_right">chevron_right</span>
+<span class="text-indigo-600">ORD-2023-8842</span>
+</nav>
+<h1 class="text-4xl font-black text-primary flex items-center gap-4">
+                    Order #8842
+                    <span class="text-sm font-bold bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full uppercase tracking-tighter">In Production</span>
+</h1>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2.5 bg-surface-container-high text-primary rounded-lg font-bold text-sm flex items-center gap-2">
+<span class="material-symbols-outlined" data-icon="print">print</span> Print Job Sheet
+                </button>
+<button class="px-5 py-2.5 litho-gradient text-white rounded-lg font-bold text-sm shadow-lg shadow-indigo-200">
+                    Update Order Status
+                </button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-8">
+<!-- Left Column: Specs & Customer -->
+<div class="col-span-12 lg:col-span-8 space-y-8">
+<!-- Order Breakdown Bento Card -->
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<div class="flex justify-between items-center mb-8 border-b-2 border-surface-container-low pb-6">
+<h3 class="text-xl font-bold text-primary">Product Specification</h3>
+<span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Job ID: LP-992-K</span>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-y-8 gap-x-12">
+<div>
+<p class="text-[0.65rem] font-bold text-slate-400 uppercase mb-1">Product Type</p>
+<p class="font-bold text-indigo-900">Custom Hardcover Book</p>
+</div>
+<div>
+<p class="text-[0.65rem] font-bold text-slate-400 uppercase mb-1">Dimensions</p>
+<p class="font-bold text-indigo-900">210 x 297 mm (A4)</p>
+</div>
+<div>
+<p class="text-[0.65rem] font-bold text-slate-400 uppercase mb-1">Paper Stock</p>
+<p class="font-bold text-indigo-900">150gsm Silk Art</p>
+</div>
+<div>
+<p class="text-[0.65rem] font-bold text-slate-400 uppercase mb-1">Quantity</p>
+<p class="font-bold text-indigo-900">500 Units</p>
+</div>
+<div>
+<p class="text-[0.65rem] font-bold text-slate-400 uppercase mb-1">Binding</p>
+<p class="font-bold text-indigo-900">Smyth Sewn Case</p>
+</div>
+<div>
+<p class="text-[0.65rem] font-bold text-slate-400 uppercase mb-1">Lamination</p>
+<p class="font-bold text-indigo-900">Matt Soft-Touch</p>
+</div>
+<div>
+<p class="text-[0.65rem] font-bold text-slate-400 uppercase mb-1">Color Mode</p>
+<p class="font-bold text-indigo-900">CMYK + Spot UV</p>
+</div>
+<div>
+<p class="text-[0.65rem] font-bold text-slate-400 uppercase mb-1">Estimated Value</p>
+<p class="font-bold text-indigo-900 text-lg">$4,250.00</p>
+</div>
+</div>
+<!-- File Preview Strip -->
+<div class="mt-10 bg-surface-container-low rounded-xl p-4 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-indigo-500" data-icon="picture_as_pdf">picture_as_pdf</span>
+</div>
+<div>
+<p class="text-sm font-bold text-indigo-900">Annual_Report_v2_Final.pdf</p>
+<p class="text-xs text-slate-400 font-medium">84.5 MB • Uploaded 2h ago</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="p-2 hover:bg-white rounded-lg transition-colors text-slate-500">
+<span class="material-symbols-outlined" data-icon="visibility">visibility</span>
+</button>
+<button class="p-2 hover:bg-white rounded-lg transition-colors text-indigo-600">
+<span class="material-symbols-outlined" data-icon="download">download</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Customer & Payment Details -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Customer Card -->
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<h3 class="text-lg font-bold text-primary mb-6">Customer Profile</h3>
+<div class="flex items-center gap-4 mb-6">
+<div class="w-14 h-14 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed font-black text-xl">
+                                SA
+                            </div>
+<div>
+<p class="font-bold text-indigo-900">Stellar Agency Co.</p>
+<p class="text-xs text-slate-400">ID: CUST-0492</p>
+</div>
+</div>
+<div class="space-y-3">
+<div class="flex justify-between text-sm">
+<span class="text-slate-400">Contact</span>
+<span class="font-semibold text-indigo-900">Sarah Jenkins</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-slate-400">Email</span>
+<span class="font-semibold text-indigo-900">s.jenkins@stellar.io</span>
+</div>
+<div class="flex justify-between text-sm">
+<span class="text-slate-400">Phone</span>
+<span class="font-semibold text-indigo-900">+1 202 555 0192</span>
+</div>
+</div>
+</div>
+<!-- Payment Card -->
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm border-l-4 border-secondary">
+<div class="flex justify-between items-start mb-6">
+<h3 class="text-lg font-bold text-primary">Payment Status</h3>
+<span class="material-symbols-outlined text-secondary" data-icon="verified" data-weight="fill">verified</span>
+</div>
+<div class="mb-6">
+<p class="text-3xl font-black text-indigo-900">$4,250.00</p>
+<p class="text-xs font-bold text-secondary uppercase tracking-wider mt-1">Paid via Credit Card</p>
+</div>
+<div class="pt-6 border-t border-surface-container-low">
+<div class="flex justify-between text-xs mb-2">
+<span class="text-slate-400 font-bold uppercase">Transaction ID</span>
+<span class="text-indigo-900 font-mono">TXN-9920334812</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-slate-400 font-bold uppercase">Date</span>
+<span class="text-indigo-900">Oct 24, 2023 - 11:04 AM</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Dispatch Management Section -->
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<div class="flex items-center gap-3 mb-8">
+<span class="material-symbols-outlined text-indigo-500" data-icon="local_shipping">local_shipping</span>
+<h3 class="text-xl font-bold text-primary">Dispatch Management</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-1.5">
+<label class="text-[0.65rem] font-bold text-slate-400 uppercase ml-1">Delivery Type</label>
+<select class="w-full bg-surface-container-highest border-none rounded-lg py-3 px-4 text-sm font-semibold text-indigo-900 focus:ring-2 focus:ring-primary/20">
+<option>Express Freight</option>
+<option>Standard Ground</option>
+<option>Local Pickup</option>
+<option>Next Day Air</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="text-[0.65rem] font-bold text-slate-400 uppercase ml-1">Transport Provider</label>
+<input class="w-full bg-surface-container-highest border-none rounded-lg py-3 px-4 text-sm font-semibold text-indigo-900 focus:ring-2 focus:ring-primary/20" type="text" value="BlueDart Logistics"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[0.65rem] font-bold text-slate-400 uppercase ml-1">LR / Tracking Number</label>
+<input class="w-full bg-surface-container-highest border-none rounded-lg py-3 px-4 text-sm font-semibold text-indigo-900 focus:ring-2 focus:ring-primary/20" placeholder="Enter tracking ID" type="text"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[0.65rem] font-bold text-slate-400 uppercase ml-1">Dispatch Date</label>
+<input class="w-full bg-surface-container-highest border-none rounded-lg py-3 px-4 text-sm font-semibold text-indigo-900 focus:ring-2 focus:ring-primary/20" type="date"/>
+</div>
+</div>
+<div class="mt-8 flex justify-end">
+<button class="bg-surface-container-high text-primary font-bold py-3 px-8 rounded-lg text-sm transition-all hover:bg-indigo-50">Save Dispatch Details</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Status & Workflow -->
+<div class="col-span-12 lg:col-span-4 space-y-8">
+<!-- Order Status Stepper -->
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<h3 class="text-lg font-bold text-primary mb-8">Production Status</h3>
+<div class="space-y-8 relative">
+<div class="absolute left-[11px] top-2 bottom-2 w-0.5 bg-surface-container-high"></div>
+<div class="relative flex gap-4">
+<div class="w-6 h-6 rounded-full bg-secondary text-white flex items-center justify-center z-10">
+<span class="material-symbols-outlined text-xs" data-icon="check">check</span>
+</div>
+<div>
+<p class="text-sm font-bold text-indigo-900">Pending</p>
+<p class="text-[0.65rem] text-slate-400 uppercase font-bold tracking-tighter">Completed - Oct 23</p>
+</div>
+</div>
+<div class="relative flex gap-4">
+<div class="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center z-10 border-4 border-white ring-2 ring-primary">
+<div class="w-2 h-2 rounded-full bg-white"></div>
+</div>
+<div>
+<p class="text-sm font-bold text-indigo-900">Processing</p>
+<p class="text-[0.65rem] text-indigo-600 uppercase font-black tracking-tighter">Current Stage</p>
+</div>
+</div>
+<div class="relative flex gap-4 opacity-40">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-slate-400 flex items-center justify-center z-10"></div>
+<div>
+<p class="text-sm font-bold text-slate-500">Completed</p>
+<p class="text-[0.65rem] text-slate-400 uppercase font-bold tracking-tighter">Waiting</p>
+</div>
+</div>
+<div class="relative flex gap-4 opacity-40">
+<div class="w-6 h-6 rounded-full bg-surface-container-highest text-slate-400 flex items-center justify-center z-10"></div>
+<div>
+<p class="text-sm font-bold text-slate-500">Dispatched</p>
+<p class="text-[0.65rem] text-slate-400 uppercase font-bold tracking-tighter">Waiting</p>
+</div>
+</div>
+</div>
+<div class="mt-10 pt-8 border-t border-surface-container-low">
+<label class="text-[0.65rem] font-bold text-slate-400 uppercase mb-2 block ml-1">Force Update State</label>
+<select class="w-full bg-surface-container-highest border-none rounded-lg py-3 px-4 text-sm font-semibold text-indigo-900 focus:ring-2 focus:ring-primary/20">
+<option>Move to Processing</option>
+<option>Mark as Completed</option>
+<option>Ready for Dispatch</option>
+<option class="text-error">On Hold / Issue</option>
+</select>
+</div>
+</div>
+<!-- Assign Printer Workflow -->
+<div class="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+<h3 class="text-lg font-bold text-primary mb-6">Printer Assignment</h3>
+<div class="p-4 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center gap-4 mb-8">
+<div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-indigo-600" data-icon="print_connect">print_connect</span>
+</div>
+<div>
+<p class="text-xs text-slate-400 font-bold uppercase tracking-tight">Currently Assigned</p>
+<p class="text-sm font-bold text-indigo-900">HP Indigo 12000 #2</p>
+</div>
+</div>
+<div class="space-y-4">
+<div class="space-y-1.5">
+<label class="text-[0.65rem] font-bold text-slate-400 uppercase ml-1">Select Alternate Printer</label>
+<select class="w-full bg-surface-container-highest border-none rounded-lg py-3 px-4 text-sm font-semibold text-indigo-900 focus:ring-2 focus:ring-primary/20">
+<option>Heidelberg Speedmaster XL</option>
+<option>Komori Lithrone G40</option>
+<option>Xerox Iridesse #1</option>
+<option>Roland 700 Evolution</option>
+</select>
+</div>
+<button class="w-full py-3 litho-gradient text-white rounded-lg font-bold text-sm shadow-md">
+                            Assign to Printer
+                        </button>
+</div>
+<div class="mt-8">
+<h4 class="text-[0.65rem] font-bold text-slate-400 uppercase mb-4 tracking-widest">Operator Note</h4>
+<div class="bg-surface-container-low p-4 rounded-lg italic text-xs text-slate-600 leading-relaxed">
+                            "Special attention to Spot UV registration on the front cover. Ensure drying time is doubled for silk art stock."
+                        </div>
+</div>
+</div>
+<!-- Internal Log Card (Editorial style) -->
+<div class="bg-surface-container-low rounded-xl p-6">
+<h3 class="text-sm font-bold text-primary mb-4 uppercase tracking-widest">Order Logs</h3>
+<div class="space-y-4">
+<div class="flex gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-1.5"></div>
+<div>
+<p class="text-xs font-bold text-indigo-900">Assigned to Press #2</p>
+<p class="text-[10px] text-slate-400">by Alex Rivera • 2h ago</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5"></div>
+<div>
+<p class="text-xs font-bold text-indigo-900">Payment Verified</p>
+<p class="text-[10px] text-slate-400">System • 4h ago</p>
+</div>
+</div>
+<div class="flex gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5"></div>
+<div>
+<p class="text-xs font-bold text-indigo-900">Files Pre-flight Passed</p>
+<p class="text-[10px] text-slate-400">Automated Bot • 5h ago</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

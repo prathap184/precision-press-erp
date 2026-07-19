@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "surface-variant": "#e1e3e4",
+                        "primary-fixed": "#dce1ff",
+                        "on-tertiary-fixed": "#25005a",
+                        "on-primary-fixed": "#00164e",
+                        "secondary-container": "#86f2e4",
+                        "tertiary": "#37007e",
+                        "primary-fixed-dim": "#b6c4ff",
+                        "on-secondary-container": "#006f66",
+                        "surface-tint": "#4059aa",
+                        "outline": "#757682",
+                        "on-tertiary-fixed-variant": "#5a00c6",
+                        "on-tertiary-container": "#bc9bff",
+                        "primary": "#00236f",
+                        "on-primary": "#ffffff",
+                        "tertiary-fixed": "#eaddff",
+                        "surface": "#f8f9fa",
+                        "secondary-fixed-dim": "#6bd8cb",
+                        "background": "#f8f9fa",
+                        "surface-container-highest": "#e1e3e4",
+                        "surface-container-high": "#e7e8e9",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#d9dadb",
+                        "secondary-fixed": "#89f5e7",
+                        "inverse-surface": "#2e3132",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#edeeef",
+                        "on-primary-container": "#90a8ff",
+                        "tertiary-fixed-dim": "#d2bbff",
+                        "on-secondary-fixed-variant": "#005049",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-bright": "#f8f9fa",
+                        "on-surface-variant": "#444651",
+                        "secondary": "#006a61",
+                        "on-secondary-fixed": "#00201d",
+                        "on-surface": "#191c1d",
+                        "error-container": "#ffdad6",
+                        "outline-variant": "#c5c5d3",
+                        "on-primary-fixed-variant": "#264191",
+                        "on-secondary": "#ffffff",
+                        "on-background": "#191c1d",
+                        "inverse-primary": "#b6c4ff",
+                        "tertiary-container": "#5200b5",
+                        "surface-container-low": "#f3f4f5",
+                        "primary-container": "#1e3a8a",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; }
+        h1, h2, h3, .headline { font-family: 'Manrope', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .tonal-shift { transition: background-color 0.3s ease; }
+        .glass-overlay {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+<body class="text-on-surface">
+<!-- SideNavBar (Authority Source) -->
+<aside class="fixed left-0 h-screen w-64 bg-slate-100 dark:bg-slate-900 flex flex-col p-6 space-y-4">
+<div class="flex items-center space-x-3 mb-8">
+<div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined">print</span>
+</div>
+<div>
+<h1 class="text-lg font-black text-indigo-900 dark:text-white leading-tight">Precision Press</h1>
+<p class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Admin Command</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-medium">Ledger</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="qr_code_2">qr_code_2</span>
+<span class="font-medium">Payments</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-indigo-900 dark:text-indigo-100 font-bold bg-white/50 dark:bg-slate-800/50 rounded-lg transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-medium">Approvals</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+<span class="font-medium">Invoices</span>
+</a>
+<a class="flex items-center space-x-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all duration-200 ease-in-out rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+<span class="font-medium">Settings</span>
+</a>
+</nav>
+<div class="pt-4 mt-auto">
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-white py-3 rounded-lg font-bold shadow-lg shadow-primary/10 flex items-center justify-center space-x-2">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>New Transaction</span>
+</button>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="ml-64 min-h-screen">
+<!-- TopNavBar (Authority Source) -->
+<header class="fixed top-0 left-64 right-0 z-50 flex justify-between items-center px-8 py-4 bg-slate-50 dark:bg-slate-950 tonal-shift">
+<div class="flex items-center space-x-8">
+<span class="text-xl font-bold tracking-tight text-indigo-900 dark:text-indigo-100">Indigo Press Pro</span>
+<nav class="hidden md:flex space-x-6 text-sm font-medium">
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors" href="#">Dashboard</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors" href="#">Orders</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors" href="#">Clients</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition-colors" href="#">Reports</a>
+</nav>
+</div>
+<div class="flex items-center space-x-4">
+<div class="relative group">
+<span class="material-symbols-outlined text-slate-500 hover:text-primary cursor-pointer">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-error rounded-full"></span>
+</div>
+<span class="material-symbols-outlined text-slate-500 hover:text-primary cursor-pointer">settings</span>
+<img alt="User profile avatar" class="w-8 h-8 rounded-full ring-2 ring-indigo-100" data-alt="Close up portrait of a professional man in a charcoal suit with clean studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9IckOY6R6CF4AtcMMUF6MQW8APxjhPegl_bL-7ICwQA964s7sIaFwd4AHZR12ea2vMdBc-O1iPCqSNUWwSOaa6tF5wCZWYGSUOfvK7f4yGLBDMQDO9O_XaPGXPlg8k91o8S_vaZ4MNmYg0qHml_lfECp2sM3rHhej63tU215cPm5_gp8aVqavfq2iRouLAMcx5YYB_psQuAXFEl43W9RBspjSOLRQT6wYGYUraty9Tl_6fpep-9qsmnhkIWTHEZvqA8oicuC6_E8"/>
+</div>
+</header>
+<!-- Page Content -->
+<div class="pt-24 px-12 pb-12">
+<div class="mb-10">
+<h2 class="text-4xl font-extrabold text-indigo-900 tracking-tight headline">Payment Approvals</h2>
+<p class="text-on-surface-variant font-medium mt-1">Review and reconcile incoming industrial print job payments.</p>
+</div>
+<!-- Dashboard Metric Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+<div class="bg-surface-container-lowest p-6 rounded-xl border-none shadow-sm flex flex-col justify-between">
+<span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Pending Review</span>
+<div class="mt-4 flex items-baseline justify-between">
+<span class="text-3xl font-extrabold text-indigo-900 headline">14</span>
+<span class="text-xs font-bold text-error bg-error-container/20 px-2 py-1 rounded">Urgent</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border-none shadow-sm flex flex-col justify-between">
+<span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Volume</span>
+<div class="mt-4 flex items-baseline">
+<span class="text-3xl font-extrabold text-indigo-900 headline">$42,850</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border-none shadow-sm flex flex-col justify-between">
+<span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Approval Rate</span>
+<div class="mt-4 flex items-baseline">
+<span class="text-3xl font-extrabold text-indigo-900 headline">98.2%</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border-none shadow-sm flex flex-col justify-between">
+<span class="text-xs font-bold text-slate-400 uppercase tracking-widest">Avg Reconcile Time</span>
+<div class="mt-4 flex items-baseline">
+<span class="text-3xl font-extrabold text-indigo-900 headline">4.2h</span>
+</div>
+</div>
+</div>
+<!-- Main Table Section -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden border-none">
+<div class="p-6 bg-surface-container-low flex justify-between items-center">
+<div class="flex items-center space-x-4">
+<div class="bg-surface-container-highest px-3 py-1.5 rounded-lg flex items-center space-x-2">
+<span class="material-symbols-outlined text-sm text-outline">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-on-surface placeholder-outline-variant w-64" placeholder="Filter requests..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-2">
+<button class="bg-surface-container-high px-4 py-2 rounded-lg text-sm font-bold text-indigo-900 hover:bg-surface-container-highest transition-colors">Export CSV</button>
+<button class="bg-surface-container-high px-4 py-2 rounded-lg text-sm font-bold text-indigo-900 hover:bg-surface-container-highest transition-colors">Filters</button>
+</div>
+</div>
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low/50">
+<th class="px-6 py-4 text-[10px] uppercase tracking-widest text-slate-500 font-black">Customer Name</th>
+<th class="px-6 py-4 text-[10px] uppercase tracking-widest text-slate-500 font-black">Amount</th>
+<th class="px-6 py-4 text-[10px] uppercase tracking-widest text-slate-500 font-black">Date</th>
+<th class="px-6 py-4 text-[10px] uppercase tracking-widest text-slate-500 font-black">Mode</th>
+<th class="px-6 py-4 text-[10px] uppercase tracking-widest text-slate-500 font-black">Status</th>
+<th class="px-6 py-4 text-[10px] uppercase tracking-widest text-slate-500 font-black">Proof</th>
+<th class="px-6 py-4 text-[10px] uppercase tracking-widest text-slate-500 font-black">Remarks</th>
+<th class="px-6 py-4 text-[10px] uppercase tracking-widest text-slate-500 font-black text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-low">
+<!-- Row 1 -->
+<tr class="hover:bg-slate-50/80 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-primary font-bold text-xs">AM</div>
+<span class="font-semibold text-on-surface">Apex Media Group</span>
+</div>
+</td>
+<td class="px-6 py-5 font-bold text-indigo-900">$12,450.00</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 24, 2023</td>
+<td class="px-6 py-5">
+<span class="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">ACH Transfer</span>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-tertiary-container/10 text-tertiary-fixed-dim">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary mr-1.5"></span> In Production
+                                </span>
+</td>
+<td class="px-6 py-5">
+<button class="flex items-center space-x-1 text-primary hover:text-indigo-600 transition-colors text-xs font-bold">
+<span class="material-symbols-outlined text-sm">attach_file</span>
+<span>View Proof</span>
+</button>
+</td>
+<td class="px-6 py-5">
+<span class="text-xs text-on-surface-variant italic">Ref: INV-8829-PX</span>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 rounded-lg bg-secondary-container/20 text-secondary hover:bg-secondary-container/40 transition-colors">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<button class="p-2 rounded-lg bg-error-container/20 text-error hover:bg-error-container/40 transition-colors">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">cancel</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50/80 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-primary font-bold text-xs">VL</div>
+<span class="font-semibold text-on-surface">Vanguard Logistics</span>
+</div>
+</td>
+<td class="px-6 py-5 font-bold text-indigo-900">$3,200.00</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 25, 2023</td>
+<td class="px-6 py-5">
+<span class="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">Wire</span>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-secondary-container/10 text-secondary">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary mr-1.5"></span> Completed
+                                </span>
+</td>
+<td class="px-6 py-5">
+<div class="w-10 h-10 rounded border border-outline-variant bg-surface-container-low flex items-center justify-center overflow-hidden cursor-pointer hover:border-primary transition-all">
+<img alt="Payment Receipt" class="w-full h-full object-cover grayscale" data-alt="Minimalist top down view of a financial receipt with sharp typography and deep indigo ink on white textured paper" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgKvN9-4cU-7K1iewN1o1LnlgSVVU0Q3qUIdjG3LJA9qTV7JLx6A7HoDZuEtMHRUr4Szx47yG9Md1v6B5NecQOibs-4Hj-aJ1-TIrJSojn4ct5nRfkWyhSgbzDft5djSvGYGzWOKfc6t7PKIaGbhm6YWFSaY9mLQtWxXg39GVsf7jFQQNAbCxcpQsk13kLGImNYVSxxzelZ7uNO6W6Ak7RB8FCWleQx8weLUdcfCbQ9edKjnMaKu4q1qCXxoOHndonsVn2MieJTyc"/>
+</div>
+</td>
+<td class="px-6 py-5">
+<span class="text-xs text-on-surface-variant italic">Bulk order batch 1</span>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 rounded-lg bg-secondary-container/20 text-secondary hover:bg-secondary-container/40 transition-colors">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<button class="p-2 rounded-lg bg-error-container/20 text-error hover:bg-error-container/40 transition-colors">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">cancel</span>
+</button>
+</div>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50/80 transition-colors group">
+<td class="px-6 py-5">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-primary font-bold text-xs">BP</div>
+<span class="font-semibold text-on-surface">Blue Print Co.</span>
+</div>
+</td>
+<td class="px-6 py-5 font-bold text-indigo-900">$21,000.00</td>
+<td class="px-6 py-5 text-sm text-on-surface-variant">Oct 25, 2023</td>
+<td class="px-6 py-5">
+<span class="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded">Corporate Card</span>
+</td>
+<td class="px-6 py-5">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-error-container/10 text-error">
+<span class="w-1.5 h-1.5 rounded-full bg-error mr-1.5"></span> Flagged
+                                </span>
+</td>
+<td class="px-6 py-5">
+<button class="flex items-center space-x-1 text-primary hover:text-indigo-600 transition-colors text-xs font-bold">
+<span class="material-symbols-outlined text-sm">attach_file</span>
+<span>View Proof</span>
+</button>
+</td>
+<td class="px-6 py-5">
+<span class="text-xs text-error font-medium">Wait for bank auth</span>
+</td>
+<td class="px-6 py-5 text-right">
+<div class="flex justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+<button class="p-2 rounded-lg bg-secondary-container/20 text-secondary hover:bg-secondary-container/40 transition-colors">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<button class="p-2 rounded-lg bg-error-container/20 text-error hover:bg-error-container/40 transition-colors">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">cancel</span>
+</button>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Pagination -->
+<div class="px-6 py-4 bg-surface-container-low flex justify-between items-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+<span>Showing 1-10 of 42 results</span>
+<div class="flex items-center space-x-4">
+<button class="hover:text-primary transition-colors disabled:opacity-30">Previous</button>
+<div class="flex space-x-2">
+<span class="text-primary border-b-2 border-primary pb-0.5">1</span>
+<span class="hover:text-primary cursor-pointer">2</span>
+<span class="hover:text-primary cursor-pointer">3</span>
+</div>
+<button class="hover:text-primary transition-colors">Next</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Proof Modal (Mockup State) -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-8 bg-indigo-900/40 backdrop-blur-md hidden">
+<div class="bg-surface-container-lowest w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
+<div class="flex-1 p-0 bg-slate-900">
+<img alt="Full Proof View" class="w-full h-full object-contain" data-alt="Close up of a professional bank transfer document with geometric logos and indigo accented grid lines in sharp focus" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAXSYDQYU3eYXQS5x5F7Zo-xqnSpvLmvPipemZzltetf9-Q3f_XUWlbkEP-rIjEUQhqZ_QMclCvOm-u8Pw9BP_NjnklNxtaLrPVJfvc8cafqp_CM3hu8D_i9ue0SjEW34hl4oy8xiZYrZLffCKO844ute5V4zrKfhf9TVWvnWykl5fVxyQtVuDEyeOu4RnsMVx38kvNzUvBCB79Aikwo6A4Nv68-eGrrG_j5n872BM2idIHVmTW9-UuUz-E9ZEeZtJUdkEC-sVoSxc"/>
+</div>
+<div class="w-full md:w-80 p-8 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-6">
+<h3 class="text-2xl font-extrabold text-indigo-900 headline">Proof Details</h3>
+<button class="text-slate-400 hover:text-error transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<div class="space-y-4">
+<div>
+<span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold block">Uploader</span>
+<span class="font-semibold">Sarah Jenkins (Customer Portal)</span>
+</div>
+<div>
+<span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold block">Timestamp</span>
+<span class="font-semibold">Oct 24, 2023 14:22 EST</span>
+</div>
+<div>
+<span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold block">Verification Hash</span>
+<span class="font-mono text-xs text-on-surface-variant">0x42f8...22a9</span>
+</div>
+</div>
+</div>
+<div class="space-y-3 pt-8">
+<button class="w-full bg-secondary text-white py-3 rounded-lg font-bold hover:bg-on-secondary-container transition-all">Approve Transaction</button>
+<button class="w-full bg-surface-container-high text-error py-3 rounded-lg font-bold hover:bg-error-container/20 transition-all">Reject &amp; Notify</button>
+</div>
+</div>
+</div>
+</div>
+</body></html>

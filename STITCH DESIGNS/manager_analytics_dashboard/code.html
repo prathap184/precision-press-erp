@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Precision Press | Manager Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#00201d",
+                    "inverse-surface": "#2e3132",
+                    "tertiary": "#37007e",
+                    "on-surface": "#191c1d",
+                    "surface-variant": "#e1e3e4",
+                    "on-primary-fixed-variant": "#264191",
+                    "primary-fixed": "#dce1ff",
+                    "tertiary-container": "#5200b5",
+                    "outline": "#757682",
+                    "on-secondary-container": "#006f66",
+                    "on-background": "#191c1d",
+                    "surface-container-highest": "#e1e3e4",
+                    "inverse-primary": "#b6c4ff",
+                    "primary": "#00236f",
+                    "surface-container": "#edeeef",
+                    "on-tertiary-container": "#bc9bff",
+                    "background": "#f8f9fa",
+                    "inverse-on-surface": "#f0f1f2",
+                    "surface-tint": "#4059aa",
+                    "surface-container-lowest": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#444651",
+                    "on-tertiary-fixed-variant": "#5a00c6",
+                    "on-primary-container": "#90a8ff",
+                    "on-secondary-fixed-variant": "#005049",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed-dim": "#d2bbff",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed": "#eaddff",
+                    "on-tertiary-fixed": "#25005a",
+                    "surface": "#f8f9fa",
+                    "secondary-fixed-dim": "#6bd8cb",
+                    "secondary-fixed": "#89f5e7",
+                    "secondary-container": "#86f2e4",
+                    "primary-container": "#1e3a8a",
+                    "surface-container-high": "#e7e8e9",
+                    "surface-bright": "#f8f9fa",
+                    "secondary": "#006a61",
+                    "on-primary-fixed": "#00164e",
+                    "outline-variant": "#c5c5d3",
+                    "error": "#ba1a1a",
+                    "surface-container-low": "#f3f4f5",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "surface-dim": "#d9dadb"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tonal-shift { transition: background-color 0.3s ease; }
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface antialiased">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-slate-100 dark:bg-slate-950 flex flex-col py-6 px-4 gap-2 z-50">
+<div class="mb-8 px-2">
+<h1 class="font-headline font-black text-indigo-900 dark:text-indigo-100 text-xl tracking-tight">Precision Press</h1>
+<p class="text-xs font-medium text-slate-500">ERP v2.4</p>
+</div>
+<nav class="flex-1 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-indigo-900 dark:text-white font-bold bg-white/50 dark:bg-indigo-900/20 rounded-lg translate-x-1 duration-200 font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined text-indigo-700 dark:text-indigo-400" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 rounded-lg transition-all font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="receipt_long">receipt_long</span>
+                Orders
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 rounded-lg transition-all font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="factory">factory</span>
+                Production
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 rounded-lg transition-all font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="local_shipping">local_shipping</span>
+                Dispatch
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 rounded-lg transition-all font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+                Customers
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 rounded-lg transition-all font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+                Reports
+            </a>
+</nav>
+<div class="mt-auto flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 rounded-lg transition-all font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Support
+            </a>
+<a class="flex items-center gap-3 px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 hover:bg-slate-200/30 dark:hover:bg-slate-800/30 rounded-lg transition-all font-inter text-sm font-medium" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Logout
+            </a>
+</div>
+</aside>
+<main class="ml-64 min-h-screen">
+<!-- TopAppBar -->
+<header class="w-full h-16 sticky top-0 z-40 bg-slate-50 dark:bg-slate-900 flex items-center justify-between px-8 gap-4">
+<div class="flex items-center gap-6 flex-1">
+<span class="font-headline font-bold text-lg tracking-tight text-indigo-900 dark:text-indigo-400">Dashboard Overview</span>
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-high rounded-lg text-sm border-none focus:ring-2 focus:ring-primary/20 placeholder-slate-400" placeholder="Search orders, machines or clients..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors relative">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-300" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
+<span class="material-symbols-outlined text-slate-600 dark:text-slate-300" data-icon="settings">settings</span>
+</button>
+<div class="flex items-center gap-3 ml-2 pl-4 border-l border-outline-variant/30">
+<div class="text-right">
+<p class="text-xs font-bold text-indigo-900">Aryan Sharma</p>
+<p class="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Plant Manager</p>
+</div>
+<img alt="Manager Profile" class="w-8 h-8 rounded-full border border-primary/10 object-cover" data-alt="professional portrait of a confident male manager in a clean white shirt against a neutral office background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-fVz-wTqYhSReR9ZBCRWnrW4SFE8iu1rKNdBITzEWzoc6Qz_Gt9t7oskO67arcqRk7RmmZHcVBVRbD3Mrx6CEGMYfjDO7mAnGLdvwo9c-4lmDHuuKWrANtNejP-gjFZj-lKcjPj5843M86fOKNM62ecW8j0q0WZB5ORVT2XIw7Rh9Lrz09shymB1GtXr5i0Hdq-SzWikMHTyib0wWx24KqPl2l9eTXP-0wF98jOtfYdutlXIJSgJBIrWWOfhS7kveM05tMlAUt00"/>
+</div>
+</div>
+</header>
+<div class="p-8 space-y-8">
+<!-- Top Section: 6 KPI Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-none border border-transparent hover:shadow-lg hover:shadow-indigo-900/5 transition-all">
+<p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Total Revenue</p>
+<h3 class="text-xl font-headline font-extrabold text-indigo-900">₹12,84,500</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-secondary">
+<span class="material-symbols-outlined text-xs">trending_up</span> 12% vs LW
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-none border border-transparent hover:shadow-lg hover:shadow-indigo-900/5 transition-all">
+<p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Orders Today</p>
+<h3 class="text-xl font-headline font-extrabold text-indigo-900">42</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-secondary">
+<span class="material-symbols-outlined text-xs">add_task</span> 8 new in hour
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-none border border-transparent hover:shadow-lg hover:shadow-indigo-900/5 transition-all">
+<p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Prod. Efficiency</p>
+<h3 class="text-xl font-headline font-extrabold text-indigo-900">94%</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-secondary">
+<span class="material-symbols-outlined text-xs">bolt</span> Optimal Range
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-none border border-transparent hover:shadow-lg hover:shadow-indigo-900/5 transition-all">
+<p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Delayed Jobs</p>
+<h3 class="text-xl font-headline font-extrabold text-error">3</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-error">
+<span class="material-symbols-outlined text-xs">warning</span> Action Required
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-none border border-transparent hover:shadow-lg hover:shadow-indigo-900/5 transition-all">
+<p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Machine Util.</p>
+<h3 class="text-xl font-headline font-extrabold text-indigo-900">78%</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-on-tertiary-fixed-variant">
+<span class="material-symbols-outlined text-xs">precision_manufacturing</span> Target 85%
+                    </div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-none border border-transparent hover:shadow-lg hover:shadow-indigo-900/5 transition-all">
+<p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Profit Per Job</p>
+<h3 class="text-xl font-headline font-extrabold text-indigo-900">₹320</h3>
+<div class="mt-2 flex items-center gap-1 text-[10px] font-bold text-secondary">
+<span class="material-symbols-outlined text-xs">arrow_upward</span> +₹15 peak
+                    </div>
+</div>
+</div>
+<!-- Middle Grid Row -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Production Overview -->
+<div class="lg:col-span-6 bg-surface-container-lowest rounded-xl p-6">
+<div class="flex justify-between items-center mb-6">
+<h4 class="font-headline font-bold text-lg text-indigo-900">Production Overview</h4>
+<div class="flex gap-2">
+<span class="bg-surface-container-high px-3 py-1 rounded-full text-[10px] font-bold uppercase">7-Day Trend</span>
+</div>
+</div>
+<div class="h-64 flex items-end gap-3 px-4">
+<div class="flex-1 bg-primary/10 rounded-t-lg relative group h-[40%]">
+<div class="absolute inset-x-0 bottom-0 bg-primary/30 h-1/2 rounded-t-lg"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-400">Mon</span>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg relative group h-[65%]">
+<div class="absolute inset-x-0 bottom-0 bg-primary/30 h-1/3 rounded-t-lg"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-400">Tue</span>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg relative group h-[85%]">
+<div class="absolute inset-x-0 bottom-0 bg-primary/40 h-2/3 rounded-t-lg"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-400">Wed</span>
+</div>
+<div class="flex-1 bg-primary/20 rounded-t-lg relative group h-[95%]">
+<div class="absolute inset-x-0 bottom-0 bg-primary h-1/4 rounded-t-lg"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-400">Thu</span>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg relative group h-[70%]">
+<div class="absolute inset-x-0 bottom-0 bg-primary/30 h-1/2 rounded-t-lg"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-400">Fri</span>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg relative group h-[50%]">
+<div class="absolute inset-x-0 bottom-0 bg-primary/30 h-1/3 rounded-t-lg"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-400">Sat</span>
+</div>
+<div class="flex-1 bg-primary/10 rounded-t-lg relative group h-[30%]">
+<div class="absolute inset-x-0 bottom-0 bg-primary/30 h-1/4 rounded-t-lg"></div>
+<span class="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-medium text-slate-400">Sun</span>
+</div>
+</div>
+</div>
+<!-- System Bottlenecks -->
+<div class="lg:col-span-3 bg-surface-container-lowest rounded-xl p-6">
+<h4 class="font-headline font-bold text-lg text-indigo-900 mb-6">System Bottlenecks</h4>
+<div class="space-y-4">
+<div class="p-3 bg-error-container/30 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-error" data-icon="error_outline">error_outline</span>
+<div class="flex-1">
+<p class="text-xs font-bold text-on-error-container">Printer #2 overloaded</p>
+<p class="text-[10px] text-on-surface-variant">Queue: 14 jobs (2h delay)</p>
+<button class="mt-2 text-[10px] font-bold text-primary hover:underline">Resolve</button>
+</div>
+</div>
+<div class="p-3 bg-surface-container-low rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-slate-500" data-icon="file_present">file_present</span>
+<div class="flex-1">
+<p class="text-xs font-bold text-slate-700">Missing files</p>
+<p class="text-[10px] text-on-surface-variant">Order #9921 - Waiting...</p>
+<button class="mt-2 text-[10px] font-bold text-primary hover:underline">Resolve</button>
+</div>
+</div>
+<div class="p-3 bg-tertiary-container/10 rounded-lg flex items-start gap-3">
+<span class="material-symbols-outlined text-tertiary" data-icon="payments">payments</span>
+<div class="flex-1">
+<p class="text-xs font-bold text-tertiary">Payment pending</p>
+<p class="text-[10px] text-on-surface-variant">Global Corp - 24% deposit</p>
+<button class="mt-2 text-[10px] font-bold text-primary hover:underline">Resolve</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Order Status Distribution -->
+<div class="lg:col-span-3 bg-surface-container-lowest rounded-xl p-6 flex flex-col">
+<h4 class="font-headline font-bold text-lg text-indigo-900 mb-6">Order Status</h4>
+<div class="flex-1 flex items-center justify-center relative">
+<div class="w-32 h-32 rounded-full border-[12px] border-slate-100 relative">
+<div class="absolute inset-0 border-[12px] border-primary rounded-full" style="clip-path: polygon(50% 50%, 50% 0%, 100% 0%, 100% 50%)"></div>
+<div class="absolute inset-0 border-[12px] border-secondary rounded-full" style="clip-path: polygon(50% 50%, 100% 50%, 100% 100%, 50% 100%)"></div>
+</div>
+<div class="absolute text-center">
+<p class="text-xl font-bold text-indigo-900">42</p>
+<p class="text-[10px] text-slate-400 uppercase">Total</p>
+</div>
+</div>
+<div class="mt-6 grid grid-cols-2 gap-2 text-[10px] font-semibold text-slate-500 uppercase">
+<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-primary"></span> Production</div>
+<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-secondary"></span> Completed</div>
+<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-tertiary"></span> Pending</div>
+<div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-outline"></span> Dispatched</div>
+</div>
+</div>
+</div>
+<!-- Bottom Grid Row -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+<!-- Printer Performance Table -->
+<div class="lg:col-span-7 bg-surface-container-lowest rounded-xl overflow-hidden">
+<div class="p-6">
+<h4 class="font-headline font-bold text-lg text-indigo-900 mb-4">Printer Performance</h4>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="text-[10px] text-slate-400 uppercase tracking-widest border-b border-outline-variant/10">
+<th class="py-3 px-2 font-semibold">Name</th>
+<th class="py-3 px-2 font-semibold">Status</th>
+<th class="py-3 px-2 font-semibold text-center">Jobs</th>
+<th class="py-3 px-2 font-semibold">Efficiency</th>
+<th class="py-3 px-2 font-semibold">Alerts</th>
+</tr>
+</thead>
+<tbody class="text-xs">
+<tr class="border-b border-outline-variant/5 hover:bg-slate-50/50 transition-colors">
+<td class="py-4 px-2 font-bold text-indigo-900">Heidelberg XL 106</td>
+<td class="py-4 px-2">
+<span class="bg-secondary-container/20 text-on-secondary-container px-2 py-0.5 rounded text-[10px] font-bold uppercase">Active</span>
+</td>
+<td class="py-4 px-2 text-center font-medium">124</td>
+<td class="py-4 px-2">
+<div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[98%]"></div>
+</div>
+</td>
+<td class="py-4 px-2"><span class="material-symbols-outlined text-sm text-slate-300" data-icon="check_circle">check_circle</span></td>
+</tr>
+<tr class="border-b border-outline-variant/5 hover:bg-slate-50/50 transition-colors">
+<td class="py-4 px-2 font-bold text-indigo-900">HP Indigo 12000</td>
+<td class="py-4 px-2">
+<span class="bg-secondary-container/20 text-on-secondary-container px-2 py-0.5 rounded text-[10px] font-bold uppercase">Active</span>
+</td>
+<td class="py-4 px-2 text-center font-medium">89</td>
+<td class="py-4 px-2">
+<div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[92%]"></div>
+</div>
+</td>
+<td class="py-4 px-2"><span class="material-symbols-outlined text-sm text-tertiary" data-icon="info">info</span></td>
+</tr>
+<tr class="border-b border-outline-variant/5 hover:bg-slate-50/50 transition-colors">
+<td class="py-4 px-2 font-bold text-indigo-900">Komori GL-840</td>
+<td class="py-4 px-2">
+<span class="bg-error-container/20 text-on-error-container px-2 py-0.5 rounded text-[10px] font-bold uppercase">Maintenance</span>
+</td>
+<td class="py-4 px-2 text-center font-medium">--</td>
+<td class="py-4 px-2">
+<div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-error w-[40%]"></div>
+</div>
+</td>
+<td class="py-4 px-2"><span class="material-symbols-outlined text-sm text-error" data-icon="warning">warning</span></td>
+</tr>
+<tr class="hover:bg-slate-50/50 transition-colors">
+<td class="py-4 px-2 font-bold text-indigo-900">Xerox Iridesse</td>
+<td class="py-4 px-2">
+<span class="bg-secondary-container/20 text-on-secondary-container px-2 py-0.5 rounded text-[10px] font-bold uppercase">Active</span>
+</td>
+<td class="py-4 px-2 text-center font-medium">210</td>
+<td class="py-4 px-2">
+<div class="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+<div class="h-full bg-secondary w-[96%]"></div>
+</div>
+</td>
+<td class="py-4 px-2"><span class="material-symbols-outlined text-sm text-slate-300" data-icon="check_circle">check_circle</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- AI Insights -->
+<div class="lg:col-span-5 flex flex-col gap-4">
+<h4 class="font-headline font-bold text-lg text-indigo-900">AI Intelligence Core</h4>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="bg-white p-4 rounded-xl border border-primary/5 shadow-sm hover:border-primary/20 transition-all flex flex-col">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-lg bg-error-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-error text-lg" data-icon="dynamic_feed">dynamic_feed</span>
+</div>
+<p class="text-[10px] font-bold text-indigo-900 uppercase">Delay risk detected</p>
+</div>
+<p class="text-xs text-on-surface-variant flex-1 leading-relaxed">3 posters for "TechConf" might miss deadline due to paper stock low in Bin A.</p>
+<button class="mt-4 w-full py-2 bg-primary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-primary-container transition-colors">Apply Fix</button>
+</div>
+<div class="bg-white p-4 rounded-xl border border-primary/5 shadow-sm hover:border-primary/20 transition-all flex flex-col">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-lg bg-secondary-container/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-lg" data-icon="auto_awesome">auto_awesome</span>
+</div>
+<p class="text-[10px] font-bold text-indigo-900 uppercase">Efficiency Boost</p>
+</div>
+<p class="text-xs text-on-surface-variant flex-1 leading-relaxed">Reordering queue efficiency: Swap Job #882 with #891 to save 12m wash time.</p>
+<button class="mt-4 w-full py-2 bg-primary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-primary-container transition-colors">Apply</button>
+</div>
+<div class="bg-white p-4 rounded-xl border border-primary/5 shadow-sm hover:border-primary/20 transition-all flex flex-col">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-lg bg-tertiary-container/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary text-lg" data-icon="smart_toy">smart_toy</span>
+</div>
+<p class="text-[10px] font-bold text-indigo-900 uppercase">Printer Suggestion</p>
+</div>
+<p class="text-xs text-on-surface-variant flex-1 leading-relaxed">Route large format canvas to Heidelberg for 8% better margin today.</p>
+<button class="mt-4 w-full py-2 bg-primary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-primary-container transition-colors">Route</button>
+</div>
+<div class="bg-white p-4 rounded-xl border border-primary/5 shadow-sm hover:border-primary/20 transition-all flex flex-col">
+<div class="flex items-center gap-3 mb-3">
+<div class="w-8 h-8 rounded-lg bg-outline-variant/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-outline text-lg" data-icon="local_shipping">local_shipping</span>
+</div>
+<p class="text-[10px] font-bold text-indigo-900 uppercase">Dispatch Alert</p>
+</div>
+<p class="text-xs text-on-surface-variant flex-1 leading-relaxed">Potential traffic delay for Route 4. Reschedule dispatch to 4:00 PM?</p>
+<button class="mt-4 w-full py-2 bg-primary text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-primary-container transition-colors">Reschedule</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Revenue vs Cost Detail Chart Area -->
+<div class="bg-surface-container-lowest rounded-xl p-8">
+<div class="flex flex-col md:flex-row justify-between md:items-end gap-4 mb-8">
+<div>
+<h4 class="font-headline font-extrabold text-2xl text-indigo-900 mb-1">Financial Performance</h4>
+<p class="text-sm text-slate-500">Revenue, Operating Costs &amp; Net Margin Analysis</p>
+</div>
+<div class="flex items-center gap-8">
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gross Margin</span>
+<span class="text-xl font-headline font-bold text-secondary">38.4%</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Net Profit</span>
+<span class="text-xl font-headline font-bold text-tertiary">₹4,82,100</span>
+</div>
+</div>
+</div>
+<div class="relative h-48 w-full">
+<!-- Area Chart Visual Placeholder using Gradients and Clipping -->
+<div class="absolute inset-0 flex items-end">
+<div class="w-full h-full relative">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<!-- Revenue Area -->
+<path d="M0 80 Q 20 60, 40 40 T 80 20 T 100 30 L 100 100 L 0 100 Z" fill="url(#grad1)" fill-opacity="0.2"></path>
+<!-- Cost Area -->
+<path d="M0 90 Q 20 80, 40 70 T 80 60 T 100 75 L 100 100 L 0 100 Z" fill="url(#grad2)" fill-opacity="0.3"></path>
+<defs>
+<lineargradient id="grad1" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#00236f;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#00236f;stop-opacity:0"></stop>
+</lineargradient>
+<lineargradient id="grad2" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#5200b5;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#5200b5;stop-opacity:0"></stop>
+</lineargradient>
+</defs>
+</svg>
+</div>
+</div>
+<div class="absolute inset-x-0 bottom-0 flex justify-between px-4 text-[10px] font-bold text-slate-300">
+<span>MAY 01</span>
+<span>MAY 07</span>
+<span>MAY 14</span>
+<span>MAY 21</span>
+<span>MAY 28</span>
+</div>
+</div>
+<div class="mt-8 flex gap-6">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-primary"></div>
+<span class="text-[10px] font-bold text-slate-600 uppercase">Revenue</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-tertiary"></div>
+<span class="text-[10px] font-bold text-slate-600 uppercase">Cost</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual FAB - Hide on Analytics according to instructions, but including for structural awareness -->
+<!-- Suppressed based on rule: "suppress the FAB on Settings, Profile, Details, and Transactional screens" -->
+</body></html>

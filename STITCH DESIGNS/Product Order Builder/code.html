@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Order Builder | Sol Frontlit Flex 180</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary": "#ffffff",
+                    "secondary-fixed": "#89f5e7",
+                    "on-secondary-fixed": "#00201d",
+                    "surface-dim": "#d9dadb",
+                    "outline": "#757682",
+                    "on-error-container": "#93000a",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary": "#006a61",
+                    "primary-fixed": "#dce1ff",
+                    "surface-container-low": "#f3f4f5",
+                    "on-secondary-container": "#006f66",
+                    "tertiary-fixed-dim": "#d2bbff",
+                    "error-container": "#ffdad6",
+                    "on-background": "#191c1d",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed-variant": "#264191",
+                    "inverse-surface": "#2e3132",
+                    "surface-container-high": "#e7e8e9",
+                    "surface-container-highest": "#e1e3e4",
+                    "on-tertiary-container": "#bc9bff",
+                    "on-surface": "#191c1d",
+                    "tertiary": "#37007e",
+                    "primary": "#00236f",
+                    "inverse-primary": "#b6c4ff",
+                    "on-surface-variant": "#444651",
+                    "tertiary-fixed": "#eaddff",
+                    "surface-tint": "#4059aa",
+                    "outline-variant": "#c5c5d3",
+                    "on-tertiary-fixed": "#25005a",
+                    "on-primary-fixed": "#00164e",
+                    "inverse-on-surface": "#f0f1f2",
+                    "on-primary-container": "#90a8ff",
+                    "primary-container": "#1e3a8a",
+                    "surface-bright": "#f8f9fa",
+                    "on-error": "#ffffff",
+                    "background": "#f8f9fa",
+                    "surface-container": "#edeeef",
+                    "on-tertiary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed-variant": "#005049",
+                    "surface-variant": "#e1e3e4",
+                    "secondary-fixed-dim": "#6bd8cb",
+                    "surface": "#f8f9fa",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "on-tertiary-fixed-variant": "#5a00c6",
+                    "tertiary-container": "#5200b5",
+                    "secondary-container": "#86f2e4"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Manrope"],
+                    "body": ["Inter"],
+                    "label": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+        }
+        .primary-gradient {
+            background: linear-gradient(135deg, #00236f 0%, #1e3a8a 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface font-body text-on-surface">
+<!-- TopNavBar (Shared Component) -->
+<nav class="w-full top-0 sticky z-50 bg-white dark:bg-slate-900 flex justify-between items-center px-8 py-4 max-w-full mx-auto tonal-shift bg-slate-50 dark:bg-slate-950">
+<div class="text-xl font-bold tracking-tight text-indigo-950 dark:text-white font-headline">The Precision Press</div>
+<div class="hidden md:flex gap-8">
+<a class="text-indigo-700 dark:text-indigo-400 border-b-2 border-indigo-700 dark:border-indigo-400 pb-1 font-inter transition-colors" href="#">Products</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-inter transition-colors" href="#">Pricing</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-inter transition-colors" href="#">Solutions</a>
+<a class="text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-300 font-inter transition-colors" href="#">Contact</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-indigo-900 dark:text-indigo-400 font-semibold px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all">Login</button>
+<button class="primary-gradient text-on-primary font-bold px-6 py-2 rounded-lg shadow-lg hover:opacity-90 transition-all">Get Started</button>
+</div>
+</nav>
+<div class="flex">
+<!-- SideNavBar (Shared Component) -->
+<aside class="h-screen w-64 fixed left-0 top-0 bg-slate-50 dark:bg-slate-950 flex flex-col p-4 border-r border-slate-200/15 dark:border-slate-800/15 z-40 mt-16">
+<div class="mb-8 px-4">
+<div class="text-lg font-black text-indigo-900 dark:text-white font-headline uppercase tracking-tight">Command Center</div>
+<div class="text-[10px] font-semibold text-slate-500 uppercase tracking-widest font-label">Industrial Precision</div>
+</div>
+<nav class="flex flex-col gap-1 flex-1">
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-indigo-600 transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">dashboard</span>Dashboard
+                </a>
+<a class="flex items-center gap-3 bg-white dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-lg px-4 py-3 shadow-sm text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">inventory_2</span>Active Orders
+                </a>
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-indigo-600 transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">folder_open</span>File Library
+                </a>
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-indigo-600 transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">print</span>Print Queue
+                </a>
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-indigo-600 transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">payments</span>Billing
+                </a>
+<a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:bg-slate-100 dark:hover:bg-slate-900 hover:text-indigo-600 transition-all text-xs font-semibold tracking-wider font-inter uppercase" href="#">
+<span class="material-symbols-outlined">settings</span>Settings
+                </a>
+</nav>
+<button class="mt-4 primary-gradient text-white px-4 py-3 rounded-xl font-bold flex items-center justify-center gap-2 mb-8 mx-2 text-sm shadow-md">
+<span class="material-symbols-outlined text-sm">add</span>New Print Job
+            </button>
+<div class="border-t border-slate-200 dark:border-slate-800 pt-4 mt-auto">
+<a class="flex items-center gap-3 text-slate-500 px-4 py-3 text-xs font-semibold tracking-wider font-inter uppercase" href="#"><span class="material-symbols-outlined">help</span>Support</a>
+<a class="flex items-center gap-3 text-slate-500 px-4 py-3 text-xs font-semibold tracking-wider font-inter uppercase" href="#"><span class="material-symbols-outlined">logout</span>Sign Out</a>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 flex-1 min-h-screen">
+<!-- TopAppBar (Shared Component) -->
+<header class="w-full sticky top-0 z-30 bg-white dark:bg-slate-900 flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<button class="hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full p-2 transition-all"><span class="material-symbols-outlined text-indigo-900 dark:text-indigo-400">arrow_back</span></button>
+<h1 class="text-2xl font-manrope font-bold text-indigo-950 dark:text-white">Order Management</h1>
+</div>
+<div class="flex items-center gap-3">
+<button class="hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full p-2 transition-all"><span class="material-symbols-outlined text-slate-400">notifications</span></button>
+<button class="hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full p-2 transition-all"><span class="material-symbols-outlined text-slate-400">history</span></button>
+<button class="hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full p-2 transition-all"><span class="material-symbols-outlined text-slate-400">print</span></button>
+</div>
+</header>
+<div class="px-8 py-8 space-y-8">
+<!-- Product Overview Section -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+<div class="lg:col-span-5 rounded-2xl overflow-hidden shadow-2xl relative group">
+<img class="w-full h-80 object-cover" data-alt="Close-up of industrial white vinyl banner material texture showing high-quality fiber weave under studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDA3oB2t_At0Fga_trGY5e0BrP9QsBpq0R2qFjpC92pOzP33mb7Asmx8i6TfvpGsezTwx9NV3uilGLVqM-K7YzVJr1LW60sA2ljsMFXHqgygeszE31AATa6BQu2bm3mra3nYdZnU3EeVpsajYtPiQXZRz61_O809Q8TWyzML0nPBMkvK3fhGYfJI8egAogptn40hC7eEUcQ52gAIJW7LHXC66U7q0bilCcb-rRh3vuTpWtpT5ajGC_w207smy5FJVrDVwj_lmlrsJY"/>
+<div class="absolute inset-0 bg-gradient-to-t from-primary/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+<span class="text-white font-medium flex items-center gap-2"><span class="material-symbols-outlined">zoom_in</span> View Texture Detail</span>
+</div>
+</div>
+<div class="lg:col-span-7 space-y-4 pt-4">
+<div class="flex items-center gap-3">
+<span class="px-3 py-1 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-wider">Premium Grade</span>
+<span class="text-slate-400 text-sm font-label uppercase tracking-widest">SKU: FP180-PRO-SL</span>
+</div>
+<h2 class="text-4xl font-headline font-extrabold text-primary tracking-tight">Sol Frontlit Flex 180</h2>
+<p class="text-on-surface-variant max-w-xl leading-relaxed font-body">
+                            The industry standard for high-resolution wide format front-lit displays. Engineered for durability, weather resistance, and superior ink absorption. Features a semi-matte finish to reduce industrial glare.
+                        </p>
+<div class="flex gap-12 pt-4">
+<div>
+<div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Max Width</div>
+<div class="text-xl font-bold font-headline">16.4 ft (5m)</div>
+</div>
+<div>
+<div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Weight</div>
+<div class="text-xl font-bold font-headline">510 gsm / 15 oz</div>
+</div>
+<div>
+<div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Fire Rating</div>
+<div class="text-xl font-bold font-headline">B1 Certified</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Order Builder Table & Pricing Panel -->
+<div class="grid grid-cols-1 xl:grid-cols-4 gap-8">
+<!-- Complex Table Section -->
+<div class="xl:col-span-3 space-y-6">
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden p-1">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low text-[10px] font-bold uppercase tracking-widest text-slate-500">
+<th class="px-4 py-4">Height</th>
+<th class="px-2 py-4">Unit</th>
+<th class="px-4 py-4">Width</th>
+<th class="px-2 py-4">Unit</th>
+<th class="px-4 py-4">Qty</th>
+<th class="px-4 py-4">Sqft</th>
+<th class="px-4 py-4">Project Name</th>
+<th class="px-4 py-4">Artwork</th>
+<th class="px-4 py-4">Eyelets</th>
+<th class="px-4 py-4"></th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container-high">
+<!-- Row 1 -->
+<tr class="group hover:bg-surface-container-low/50 transition-colors">
+<td class="px-4 py-4"><input class="w-16 bg-surface-container-high border-none rounded-lg text-sm focus:ring-2 focus:ring-primary py-2 px-3" type="number" value="10"/></td>
+<td class="px-2 py-4 text-xs font-semibold text-slate-400">ft</td>
+<td class="px-4 py-4"><input class="w-16 bg-surface-container-high border-none rounded-lg text-sm focus:ring-2 focus:ring-primary py-2 px-3" type="number" value="20"/></td>
+<td class="px-2 py-4 text-xs font-semibold text-slate-400">ft</td>
+<td class="px-4 py-4"><input class="w-16 bg-surface-container-high border-none rounded-lg text-sm focus:ring-2 focus:ring-primary py-2 px-3" type="number" value="1"/></td>
+<td class="px-4 py-4 font-bold text-primary font-headline">200</td>
+<td class="px-4 py-4"><input class="bg-surface-container-high border-none rounded-lg text-sm focus:ring-2 focus:ring-primary py-2 px-3 w-32" placeholder="e.g. Main Lobby" type="text"/></td>
+<td class="px-4 py-4">
+<button class="flex items-center gap-1 text-primary hover:bg-primary/10 px-3 py-2 rounded-lg transition-all text-xs font-bold">
+<span class="material-symbols-outlined text-sm">upload_file</span> Upload
+                                            </button>
+</td>
+<td class="px-4 py-4">
+<select class="bg-surface-container-high border-none rounded-lg text-xs font-semibold focus:ring-2 focus:ring-primary py-2 px-3">
+<option>None</option>
+<option selected="">Every 2ft</option>
+<option>Every 1ft</option>
+<option>Corners Only</option>
+</select>
+</td>
+<td class="px-4 py-4">
+<button class="text-error opacity-0 group-hover:opacity-100 p-2 hover:bg-error-container rounded-full transition-all">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="group hover:bg-surface-container-low/50 transition-colors">
+<td class="px-4 py-4"><input class="w-16 bg-surface-container-high border-none rounded-lg text-sm focus:ring-2 focus:ring-primary py-2 px-3" type="number" value="8"/></td>
+<td class="px-2 py-4 text-xs font-semibold text-slate-400">ft</td>
+<td class="px-4 py-4"><input class="w-16 bg-surface-container-high border-none rounded-lg text-sm focus:ring-2 focus:ring-primary py-2 px-3" type="number" value="12"/></td>
+<td class="px-2 py-4 text-xs font-semibold text-slate-400">ft</td>
+<td class="px-4 py-4"><input class="w-16 bg-surface-container-high border-none rounded-lg text-sm focus:ring-2 focus:ring-primary py-2 px-3" type="number" value="3"/></td>
+<td class="px-4 py-4 font-bold text-primary font-headline">288</td>
+<td class="px-4 py-4"><input class="bg-surface-container-high border-none rounded-lg text-sm focus:ring-2 focus:ring-primary py-2 px-3 w-32" placeholder="e.g. Side Wall" type="text"/></td>
+<td class="px-4 py-4">
+<button class="flex items-center gap-1 text-primary hover:bg-primary/10 px-3 py-2 rounded-lg transition-all text-xs font-bold">
+<span class="material-symbols-outlined text-sm">upload_file</span> Upload
+                                            </button>
+</td>
+<td class="px-4 py-4">
+<select class="bg-surface-container-high border-none rounded-lg text-xs font-semibold focus:ring-2 focus:ring-primary py-2 px-3">
+<option>None</option>
+<option>Every 2ft</option>
+<option>Every 1ft</option>
+<option selected="">Corners Only</option>
+</select>
+</td>
+<td class="px-4 py-4">
+<button class="text-error opacity-0 group-hover:opacity-100 p-2 hover:bg-error-container rounded-full transition-all">
+<span class="material-symbols-outlined text-sm">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<div class="p-4 bg-surface-container-low/30">
+<button class="flex items-center gap-2 text-indigo-700 font-bold hover:bg-white rounded-lg px-4 py-2 shadow-sm border border-slate-200 transition-all text-sm">
+<span class="material-symbols-outlined text-sm">add_circle</span> + Add Row
+                                </button>
+</div>
+</div>
+<!-- Delivery Options -->
+<div class="bg-surface-container-lowest rounded-2xl p-6 shadow-sm space-y-4">
+<h3 class="text-sm font-bold uppercase tracking-widest text-slate-500">Logistics &amp; Delivery</h3>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<label class="cursor-pointer group">
+<input class="hidden peer" name="delivery" type="radio"/>
+<div class="p-4 border-2 border-surface-container-high rounded-xl peer-checked:border-primary peer-checked:bg-primary-fixed/30 transition-all flex flex-col items-center gap-2 text-center">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">store</span>
+<span class="text-xs font-bold uppercase tracking-wider">Pickup</span>
+</div>
+</label>
+<label class="cursor-pointer group">
+<input checked="" class="hidden peer" name="delivery" type="radio"/>
+<div class="p-4 border-2 border-surface-container-high rounded-xl peer-checked:border-primary peer-checked:bg-primary-fixed/30 transition-all flex flex-col items-center gap-2 text-center">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">local_shipping</span>
+<span class="text-xs font-bold uppercase tracking-wider">Door</span>
+</div>
+</label>
+<label class="cursor-pointer group">
+<input class="hidden peer" name="delivery" type="radio"/>
+<div class="p-4 border-2 border-surface-container-high rounded-xl peer-checked:border-primary peer-checked:bg-primary-fixed/30 transition-all flex flex-col items-center gap-2 text-center">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">bolt</span>
+<span class="text-xs font-bold uppercase tracking-wider">Courier</span>
+</div>
+</label>
+<label class="cursor-pointer group">
+<input class="hidden peer" name="delivery" type="radio"/>
+<div class="p-4 border-2 border-surface-container-high rounded-xl peer-checked:border-primary peer-checked:bg-primary-fixed/30 transition-all flex flex-col items-center gap-2 text-center">
+<span class="material-symbols-outlined text-slate-400 group-hover:text-primary">train</span>
+<span class="text-xs font-bold uppercase tracking-wider">Transport</span>
+</div>
+</label>
+</div>
+<div class="pt-2">
+<label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Special Instructions / Production Notes</label>
+<textarea class="w-full bg-surface-container-low border-none rounded-xl focus:ring-2 focus:ring-primary text-sm p-4 placeholder-slate-400" placeholder="e.g. Ensure color match to Pantone 286C, double-stitch hems..." rows="3"></textarea>
+</div>
+</div>
+</div>
+<!-- Right Pricing Panel -->
+<div class="xl:col-span-1 space-y-6">
+<div class="glass-panel border border-white/50 rounded-2xl shadow-xl p-8 sticky top-32">
+<h3 class="text-lg font-headline font-extrabold text-primary mb-6">Price Breakdown</h3>
+<div class="space-y-4">
+<div class="flex justify-between items-center text-sm">
+<span class="text-on-surface-variant font-medium">Base Price (488 sqft)</span>
+<span class="font-bold">$1,220.00</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-on-surface-variant font-medium">Extras (Eyelets)</span>
+<span class="font-bold">$42.50</span>
+</div>
+<div class="flex justify-between items-center text-sm">
+<span class="text-on-surface-variant font-medium">Delivery (Door-to-Door)</span>
+<span class="font-bold">$65.00</span>
+</div>
+<div class="border-t border-slate-200/50 pt-4 flex justify-between items-center text-sm">
+<span class="text-on-surface-variant font-medium">GST (15%)</span>
+<span class="font-bold">$199.13</span>
+</div>
+<div class="bg-primary/5 rounded-xl p-6 mt-6 border border-primary/10">
+<div class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Final Total</div>
+<div class="text-4xl font-headline font-extrabold text-primary">$1,526.63</div>
+<div class="text-[10px] text-slate-500 font-medium mt-1 italic">Payment due net 30 upon approval</div>
+</div>
+<button class="w-full primary-gradient text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-primary/20 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3 mt-6">
+<span class="material-symbols-outlined">shopping_cart_checkout</span> Place Order
+                                </button>
+<div class="flex items-center justify-center gap-2 mt-4">
+<span class="material-symbols-outlined text-secondary-fixed-dim text-sm" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Enterprise Secured Checkout</span>
+</div>
+</div>
+</div>
+<!-- Secondary Info Card -->
+<div class="bg-tertiary-container text-white rounded-2xl p-6 shadow-sm overflow-hidden relative">
+<div class="relative z-10">
+<h4 class="text-xs font-bold uppercase tracking-widest opacity-70 mb-2">Lead Time</h4>
+<div class="text-lg font-headline font-bold">Standard: 3-5 Days</div>
+<p class="text-[10px] opacity-80 mt-2">Expedited production available for recurring enterprise accounts.</p>
+</div>
+<span class="material-symbols-outlined absolute -right-4 -bottom-4 text-9xl opacity-10 rotate-12">schedule</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

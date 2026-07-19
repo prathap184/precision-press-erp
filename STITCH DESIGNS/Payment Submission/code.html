@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Payment Portal | Indigo Press Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        h1, h2, h3, .headline { font-family: 'Manrope', sans-serif; }
+        .tonal-shift { transition: background-color 0.2s ease-in-out; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-error": "#ffffff",
+                      "error": "#ba1a1a",
+                      "surface-variant": "#e1e3e4",
+                      "primary-fixed": "#dce1ff",
+                      "on-tertiary-fixed": "#25005a",
+                      "on-primary-fixed": "#00164e",
+                      "secondary-container": "#86f2e4",
+                      "tertiary": "#37007e",
+                      "primary-fixed-dim": "#b6c4ff",
+                      "on-secondary-container": "#006f66",
+                      "surface-tint": "#4059aa",
+                      "outline": "#757682",
+                      "on-tertiary-fixed-variant": "#5a00c6",
+                      "on-tertiary-container": "#bc9bff",
+                      "primary": "#00236f",
+                      "on-primary": "#ffffff",
+                      "tertiary-fixed": "#eaddff",
+                      "surface": "#f8f9fa",
+                      "secondary-fixed-dim": "#6bd8cb",
+                      "background": "#f8f9fa",
+                      "surface-container-highest": "#e1e3e4",
+                      "surface-container-high": "#e7e8e9",
+                      "on-tertiary": "#ffffff",
+                      "surface-dim": "#d9dadb",
+                      "secondary-fixed": "#89f5e7",
+                      "inverse-surface": "#2e3132",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container": "#edeeef",
+                      "on-primary-container": "#90a8ff",
+                      "tertiary-fixed-dim": "#d2bbff",
+                      "on-secondary-fixed-variant": "#005049",
+                      "inverse-on-surface": "#f0f1f2",
+                      "surface-bright": "#f8f9fa",
+                      "on-surface-variant": "#444651",
+                      "secondary": "#006a61",
+                      "on-secondary-fixed": "#00201d",
+                      "on-surface": "#191c1d",
+                      "error-container": "#ffdad6",
+                      "outline-variant": "#c5c5d3",
+                      "on-primary-fixed-variant": "#264191",
+                      "on-secondary": "#ffffff",
+                      "on-background": "#191c1d",
+                      "inverse-primary": "#b6c4ff",
+                      "tertiary-container": "#5200b5",
+                      "surface-container-low": "#f3f4f5",
+                      "primary-container": "#1e3a8a",
+                      "on-error-container": "#93000a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Manrope"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            }
+          }
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface min-h-screen">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-slate-50 dark:bg-slate-950 tonal-shift bg-slate-100 dark:bg-slate-900 flex justify-between items-center px-8 py-4 w-full">
+<div class="text-xl font-bold tracking-tight text-indigo-900 dark:text-indigo-100">Indigo Press Pro</div>
+<div class="hidden md:flex items-center space-x-8">
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors" href="#">Dashboard</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors" href="#">Orders</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors" href="#">Clients</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-200 transition-colors" href="#">Reports</a>
+<!-- Active state semantic mapping: Payment page doesn't have an explicit tab, but Payments is in SideNav. For TopNav, we keep them all inactive. -->
+</div>
+<div class="flex items-center space-x-6">
+<button class="material-symbols-outlined text-slate-500 hover:text-primary transition-colors">notifications</button>
+<button class="material-symbols-outlined text-slate-500 hover:text-primary transition-colors">settings</button>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container">
+<img alt="User profile avatar" data-alt="professional corporate headshot of a business executive in a dark suit with neutral background and soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCsRFBSSp930G1X3gJb1MCD_KFCdzvXsqq36y6CGYQG6zFeA_066mMAEMuBhlqzOcn9Yf6b9TrI1Rd2xZIQuJWOFG-plNhcfpJYLTX9HByg2O8LSpgTb9nhReHTWVpHsaUvbYvqdSNZ-auWEJGCp6aiJ9mKRPAgKt_n3WUcA8rqdf0D-t2bpy8CqlU97So9xpwQTFoFLWUGNIgAzht4e4oI_sCvllURK97xI-EDCAEXddzgS-JMHqY63qPB3t5V5HqvtIobgwoYRNA"/>
+</div>
+</div>
+</nav>
+<!-- SideNavBar (Hidden on Mobile) -->
+<aside class="hidden md:flex fixed left-0 h-screen w-64 bg-slate-100 dark:bg-slate-900 flex-col h-full p-6 space-y-4 pt-24">
+<div class="flex items-center space-x-3 mb-8">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined">print</span>
+</div>
+<div>
+<div class="text-lg font-black text-indigo-900 dark:text-white">Precision Press</div>
+<div class="text-xs text-slate-500 uppercase tracking-widest">Admin Command</div>
+</div>
+</div>
+<div class="flex flex-col space-y-1">
+<a class="flex items-center space-x-3 p-3 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span>Ledger</span>
+</a>
+<a class="flex items-center space-x-3 p-3 text-indigo-900 dark:text-indigo-100 font-bold bg-white/50 dark:bg-slate-800/50 rounded-lg transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">qr_code_2</span>
+<span>Payments</span>
+</a>
+<a class="flex items-center space-x-3 p-3 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">fact_check</span>
+<span>Approvals</span>
+</a>
+<a class="flex items-center space-x-3 p-3 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">receipt_long</span>
+<span>Invoices</span>
+</a>
+<a class="flex items-center space-x-3 p-3 text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-all duration-200 ease-in-out" href="#">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<span>Settings</span>
+</a>
+</div>
+<div class="pt-8">
+<button class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-lg font-semibold flex items-center justify-center space-x-2 shadow-lg shadow-primary/10">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>New Transaction</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="md:ml-64 pt-24 px-8 pb-12">
+<header class="mb-12">
+<h1 class="text-4xl font-extrabold text-primary tracking-tight mb-2">Credit Settlement</h1>
+<p class="text-on-surface-variant">Complete your pending dues through our secure industrial payment gateway.</p>
+</header>
+<!-- Top Section: Payment Details (Asymmetric Grid) -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-12">
+<!-- QR Code Card -->
+<div class="lg:col-span-4 bg-surface-container-lowest p-8 rounded-xl flex flex-col items-center justify-center text-center">
+<div class="mb-6 p-4 bg-surface rounded-xl">
+<img alt="Payment QR Code" class="w-40 h-40 opacity-90" data-alt="clean minimal qr code on white square background with thin black borders and subtle gray background texture" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_bcpV61zEUzUagzgjdrcQUcZVXhxc6l8VedWGYpELaoYACp4dXJuZLkyus1E33-K8axvhfjT7BU2dUtbQx9QewzCD9mvALaRmElAjjlhBWaoJDWARJpwKszBr0INGYZIffu8PD6mU8RmSyKLjScUgXi2rrVCYeiiWD26eCgwv03tfGAunoGO3DOiVYQZ0VqEb5pKo_k_uNZRDloyKrzkT3PC2rPW9-BfjTu_bv29_p02_2EjhxicvZYVrJKZ6elrNtbhOhIOl4lU"/>
+</div>
+<h3 class="headline font-bold text-primary mb-1">Scan to Pay</h3>
+<p class="text-sm text-on-surface-variant">Instant confirmation for UPI apps</p>
+</div>
+<!-- UPI and Bank Details -->
+<div class="lg:col-span-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- UPI ID Card -->
+<div class="bg-surface-container-lowest p-8 rounded-xl flex flex-col justify-between">
+<div>
+<span class="text-xs font-bold text-secondary uppercase tracking-widest mb-4 block">Merchant UPI</span>
+<div class="flex items-center justify-between bg-surface-container-low p-4 rounded-lg">
+<span class="text-lg font-mono text-primary">indigopresspro@bank</span>
+<button class="material-symbols-outlined text-primary-container hover:scale-110 transition-transform">content_copy</button>
+</div>
+</div>
+<p class="text-sm text-on-surface-variant mt-4">Verified business account for Indigo Press Pro Solutions.</p>
+</div>
+<!-- Bank Details Card -->
+<div class="bg-primary text-white p-8 rounded-xl shadow-xl shadow-primary/20 flex flex-col justify-between relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+<div>
+<div class="flex items-center space-x-2 mb-6">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+<span class="font-bold tracking-tight">Direct Bank Transfer</span>
+</div>
+<div class="space-y-3">
+<div>
+<label class="text-[10px] uppercase opacity-60 tracking-widest">Account Number</label>
+<div class="text-xl font-bold tracking-widest">9900 4545 2201 008</div>
+</div>
+<div class="flex justify-between">
+<div>
+<label class="text-[10px] uppercase opacity-60 tracking-widest">IFSC Code</label>
+<div class="font-semibold">IPPB0001234</div>
+</div>
+<div>
+<label class="text-[10px] uppercase opacity-60 tracking-widest">Bank</label>
+<div class="font-semibold text-right">Standard Chartered</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Submission Form Section -->
+<section class="bg-surface-container-low rounded-xl p-10 mb-12">
+<div class="flex items-center space-x-3 mb-8">
+<span class="w-8 h-1 bg-primary rounded-full"></span>
+<h2 class="text-2xl font-bold text-primary">Payment Submission Form</h2>
+</div>
+<form class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<!-- Amount -->
+<div class="space-y-2">
+<label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Amount (INR)</label>
+<div class="relative">
+<span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant font-bold">₹</span>
+<input class="w-full pl-10 pr-4 py-3 bg-surface-container-lowest rounded-lg border-none focus:ring-0 focus:border-primary border-b-2 border-transparent focus:border-b-primary transition-all" placeholder="0.00" type="number"/>
+</div>
+</div>
+<!-- Payment Mode -->
+<div class="space-y-2">
+<label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Payment Mode</label>
+<select class="w-full px-4 py-3 bg-surface-container-lowest rounded-lg border-none focus:ring-0 appearance-none">
+<option>UPI Transfer</option>
+<option>IMPS / NEFT</option>
+<option>Bank Deposit</option>
+<option>Cheque</option>
+</select>
+</div>
+<!-- Date -->
+<div class="space-y-2">
+<label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Transaction Date</label>
+<input class="w-full px-4 py-3 bg-surface-container-lowest rounded-lg border-none focus:ring-0" type="date"/>
+</div>
+<!-- Bank Name -->
+<div class="space-y-2">
+<label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Your Bank Name</label>
+<input class="w-full px-4 py-3 bg-surface-container-lowest rounded-lg border-none focus:ring-0" placeholder="e.g. HDFC Bank" type="text"/>
+</div>
+<!-- Branch -->
+<div class="space-y-2">
+<label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Branch Details</label>
+<input class="w-full px-4 py-3 bg-surface-container-lowest rounded-lg border-none focus:ring-0" placeholder="Branch City" type="text"/>
+</div>
+<!-- Upload Proof -->
+<div class="space-y-2">
+<label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Payment Receipt</label>
+<div class="relative group cursor-pointer">
+<div class="absolute inset-0 bg-primary/5 rounded-lg border-2 border-dashed border-outline-variant group-hover:bg-primary/10 transition-colors"></div>
+<div class="relative py-3 px-4 flex items-center justify-center space-x-2 text-primary font-medium">
+<span class="material-symbols-outlined text-xl">upload_file</span>
+<span>Choose File</span>
+</div>
+<input class="absolute inset-0 opacity-0 cursor-pointer" type="file"/>
+</div>
+</div>
+<!-- Remarks -->
+<div class="md:col-span-3 space-y-2">
+<label class="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Remarks / Transaction ID</label>
+<textarea class="w-full px-4 py-3 bg-surface-container-lowest rounded-lg border-none focus:ring-0" placeholder="Add any specific details regarding this payment..." rows="3"></textarea>
+</div>
+<div class="md:col-span-3 flex justify-end">
+<button class="px-10 py-4 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-xl font-bold text-lg shadow-xl shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all" type="submit">
+                        Submit Payment Record
+                    </button>
+</div>
+</form>
+</section>
+<!-- Payment History Table -->
+<section class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+<div class="p-6 flex justify-between items-center bg-surface-container">
+<h3 class="headline font-bold text-primary">Transaction History</h3>
+<div class="flex space-x-2">
+<button class="p-2 hover:bg-white rounded-lg transition-colors"><span class="material-symbols-outlined text-on-surface-variant">filter_list</span></button>
+<button class="p-2 hover:bg-white rounded-lg transition-colors"><span class="material-symbols-outlined text-on-surface-variant">download</span></button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-surface-container-low text-xs font-bold text-on-surface-variant uppercase tracking-widest">
+<th class="px-6 py-4">Transaction ID</th>
+<th class="px-6 py-4">Date</th>
+<th class="px-6 py-4">Mode</th>
+<th class="px-6 py-4">Amount</th>
+<th class="px-6 py-4">Status</th>
+<th class="px-6 py-4 text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-container">
+<!-- Pending Row -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4 font-mono text-sm text-primary">#TRX-88210</td>
+<td class="px-6 py-4 text-sm">Oct 24, 2023</td>
+<td class="px-6 py-4 text-sm">UPI Transfer</td>
+<td class="px-6 py-4 font-bold">₹ 1,24,500.00</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-tertiary-fixed text-tertiary text-[10px] font-bold uppercase rounded-full tracking-wider">Pending</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary">visibility</button>
+</td>
+</tr>
+<!-- Approved Row -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4 font-mono text-sm text-primary">#TRX-88194</td>
+<td class="px-6 py-4 text-sm">Oct 18, 2023</td>
+<td class="px-6 py-4 text-sm">NEFT Transfer</td>
+<td class="px-6 py-4 font-bold">₹ 85,000.00</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase rounded-full tracking-wider">Approved</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary">visibility</button>
+</td>
+</tr>
+<!-- Rejected Row -->
+<tr class="hover:bg-surface-container-low/50 transition-colors">
+<td class="px-6 py-4 font-mono text-sm text-primary">#TRX-88152</td>
+<td class="px-6 py-4 text-sm">Oct 12, 2023</td>
+<td class="px-6 py-4 text-sm">Bank Deposit</td>
+<td class="px-6 py-4 font-bold">₹ 42,300.00</td>
+<td class="px-6 py-4">
+<span class="px-3 py-1 bg-error-container text-on-error-container text-[10px] font-bold uppercase rounded-full tracking-wider">Rejected</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary">visibility</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+</main>
+<!-- BottomNavBar (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 w-full bg-slate-50 dark:bg-slate-950 flex justify-around items-center p-4 z-50">
+<button class="flex flex-col items-center text-slate-500">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center text-indigo-700 dark:text-indigo-300">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="text-[10px]">Pay</span>
+</button>
+<button class="flex flex-col items-center text-slate-500">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="text-[10px]">Ledger</span>
+</button>
+<button class="flex flex-col items-center text-slate-500">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px]">Profile</span>
+</button>
+</nav>
+</body></html>

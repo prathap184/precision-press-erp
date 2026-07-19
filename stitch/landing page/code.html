@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Precision Press | Industrial Online Printing System</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-primary": "#ffffff",
+                      "secondary-fixed": "#89f5e7",
+                      "on-secondary-fixed": "#00201d",
+                      "surface-dim": "#d9dadb",
+                      "outline": "#757682",
+                      "on-error-container": "#93000a",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary": "#006a61",
+                      "primary-fixed": "#dce1ff",
+                      "surface-container-low": "#f3f4f5",
+                      "on-secondary-container": "#006f66",
+                      "tertiary-fixed-dim": "#d2bbff",
+                      "error-container": "#ffdad6",
+                      "on-background": "#191c1d",
+                      "on-secondary": "#ffffff",
+                      "on-primary-fixed-variant": "#264191",
+                      "inverse-surface": "#2e3132",
+                      "surface-container-high": "#e7e8e9",
+                      "surface-container-highest": "#e1e3e4",
+                      "on-tertiary-container": "#bc9bff",
+                      "on-surface": "#191c1d",
+                      "tertiary": "#37007e",
+                      "primary": "#00236f",
+                      "inverse-primary": "#b6c4ff",
+                      "on-surface-variant": "#444651",
+                      "tertiary-fixed": "#eaddff",
+                      "surface-tint": "#4059aa",
+                      "outline-variant": "#c5c5d3",
+                      "on-tertiary-fixed": "#25005a",
+                      "on-primary-fixed": "#00164e",
+                      "inverse-on-surface": "#f0f1f2",
+                      "on-primary-container": "#90a8ff",
+                      "primary-container": "#1e3a8a",
+                      "surface-bright": "#f8f9fa",
+                      "on-error": "#ffffff",
+                      "background": "#f8f9fa",
+                      "surface-container": "#edeeef",
+                      "on-tertiary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "on-secondary-fixed-variant": "#005049",
+                      "surface-variant": "#e1e3e4",
+                      "secondary-fixed-dim": "#6bd8cb",
+                      "surface": "#f8f9fa",
+                      "primary-fixed-dim": "#b6c4ff",
+                      "on-tertiary-fixed-variant": "#5a00c6",
+                      "tertiary-container": "#5200b5",
+                      "secondary-container": "#86f2e4"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Manrope"],
+                      "body": ["Inter"],
+                      "label": ["Inter"]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+        }
+        .litho-gradient {
+            background: linear-gradient(135deg, #00236f 0%, #1e3a8a 100%);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-border-separation {
+            border: none !important;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body selection:bg-primary-container selection:text-white">
+<!-- TopNavBar Component -->
+<header class="w-full top-0 sticky bg-white z-50 tonal-shift bg-slate-50">
+<nav class="flex justify-between items-center px-8 py-4 max-w-full mx-auto">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-indigo-950 font-headline">The Precision Press</span>
+<!-- Search Bar Integration -->
+<div class="hidden lg:flex items-center bg-surface-container-highest px-4 py-2 rounded-lg gap-2 w-80">
+<span class="material-symbols-outlined text-outline text-sm">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full font-body" placeholder="Search orders, materials..." type="text"/>
+</div>
+</div>
+<!-- Navigation Links -->
+<div class="hidden md:flex items-center gap-8">
+<a class="text-slate-600 font-medium hover:text-indigo-600 transition-colors text-sm font-label" href="#">Products</a>
+<a class="text-slate-600 font-medium hover:text-indigo-600 transition-colors text-sm font-label" href="#">Pricing</a>
+<a class="text-slate-600 font-medium hover:text-indigo-600 transition-colors text-sm font-label" href="#">Solutions</a>
+<a class="text-indigo-700 font-bold border-b-2 border-indigo-700 pb-1 text-sm font-label" href="#">Contact</a>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-4">
+<button class="text-indigo-900 font-semibold px-4 py-2 text-sm font-label">Login</button>
+<button class="litho-gradient text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-sm hover:opacity-90 transition-opacity font-label">Get Started</button>
+</div>
+</nav>
+</header>
+<main>
+<!-- Hero Section: Editorial Asymmetry -->
+<section class="relative min-h-[819px] flex items-center overflow-hidden bg-surface py-20 px-8">
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+<div class="lg:col-span-6 z-10">
+<span class="text-primary font-bold tracking-widest text-xs uppercase mb-4 block font-label">Industrial Excellence</span>
+<h1 class="text-5xl lg:text-7xl font-extrabold font-headline text-indigo-950 leading-[1.1] mb-6">
+                        Architectural Precision in <span class="text-primary">Every Micron.</span>
+</h1>
+<p class="text-on-surface-variant text-lg max-w-xl mb-10 leading-relaxed">
+                        The definitive operating system for industrial-scale printing. Command your entire production floor through a single, meticulously engineered interface.
+                    </p>
+<div class="flex flex-wrap gap-4">
+<button class="litho-gradient text-on-primary px-8 py-4 rounded-lg font-bold text-lg flex items-center gap-2">
+                            Explore Solutions <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<button class="bg-surface-container-high text-primary px-8 py-4 rounded-lg font-bold text-lg">
+                            Request Sample Kit
+                        </button>
+</div>
+</div>
+<div class="lg:col-span-6 relative h-[600px] w-full">
+<div class="absolute inset-0 bg-surface-container-low rounded-[2rem] transform translate-x-8 translate-y-8 -z-10"></div>
+<img alt="High-end industrial printing machinery" class="w-full h-full object-cover rounded-[2rem] shadow-2xl" data-alt="Close up shot of a high-speed industrial flatbed printer nozzle array moving across a substrate with sharp focus and cinematic blue lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDvj4OVNY_xR7Ul6wsmifR0pYkku6-IDNTxXRNisxzL9QYy6kPE9Fp87rNuzW22N3aYxp7CUA5YnoTnl9si1Q6RrP_oEkW5GFwrkOu8Ut0UfDzn2IZLbhpwsrixEUIBDcUGkH8VOR2ex6Q1VYPPm7o_viVh-UOgrUy0F-7iIZtKOYAnFWzoCbAyqC7gIXsfIKfXCMK_guMyW-hFrVPjbTrTiVzoNQ-v0p4bJxi7KThMJMxziia8fuaad77wf4INOPhH67pBjtpPTng"/>
+<!-- Floating Stat Card -->
+<div class="absolute -bottom-6 -left-6 glass-effect p-8 rounded-xl shadow-lg border border-white/20">
+<div class="text-primary font-headline text-4xl font-extrabold">2,400</div>
+<div class="text-on-surface-variant font-label text-xs uppercase tracking-widest">DPI Native Resolution</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Category Grid: Bento Layout -->
+<section class="py-24 px-8 bg-surface-container-low">
+<div class="max-w-7xl mx-auto">
+<div class="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+<div>
+<h2 class="text-3xl font-bold font-headline text-indigo-950 mb-2">Print Modalities</h2>
+<p class="text-on-surface-variant max-w-md font-body">Specialized output engines calibrated for professional material precision.</p>
+</div>
+<a class="text-primary font-bold flex items-center gap-2 hover:gap-3 transition-all" href="#">
+                        View All Categories <span class="material-symbols-outlined">east</span>
+</a>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-6 gap-6">
+<!-- Solvent Print (Large) -->
+<div class="md:col-span-4 group relative h-[400px] rounded-xl overflow-hidden bg-surface-container-lowest transition-all hover:-translate-y-1">
+<img alt="Solvent Print" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-80" data-alt="Detailed view of high-quality solvent prints on durable vinyl material with rich vibrant colors and sharp edges in a bright studio" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB6kilfWUqsXcf99PX5oKJimTp1eGSFU0XlVfX4pnUSMXbBulIkZ-tEdu1A4ZVH-OLjLvedUpWjsiJxiCKPwULIoWBcSJZeIYYvc1ctvj9TjCP_2yL1MKpuusggasHxKUkm38BuQYRg8JXHMZIKOzLYxpACyqQtapi9JuOPiOdmihyNPLI41MbNLxQUpLcr78okq87CoEHnaz0o0JZj_Pf-LZ5HG2fUQQZSaRcujiQR3fUbkMK4d0FUHQSGkMSCqol90U3N59Ys6d0"/>
+<div class="absolute inset-0 bg-gradient-to-t from-indigo-950/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 p-8">
+<span class="bg-secondary-container text-on-secondary-container px-3 py-1 rounded-full text-xs font-bold uppercase tracking-tighter mb-4 inline-block">High Durability</span>
+<h3 class="text-white text-3xl font-headline font-bold">Solvent Print</h3>
+<p class="text-slate-200 mt-2 max-w-sm font-body">Weather-resistant output for heavy-duty outdoor applications and fleet graphics.</p>
+</div>
+</div>
+<!-- Digital Print -->
+<div class="md:col-span-2 group relative h-[400px] rounded-xl overflow-hidden bg-white transition-all hover:-translate-y-1">
+<img alt="Digital Print" class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-70" data-alt="Stacks of professionally printed brochures and marketing materials on premium paper stock with clean minimalist aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA11hdplQhPArJ5bZHFaQwoo1Ax-ZANnvzyaPlzgZrL0tz2aLW6BFZTsNl8xh_6-R5qXdVKLw9TZURcklpOcJyD6IY31L0Be7abB_2Pd0TvDmB98CI5MEVEq6bGaGk1G9__9Cv5PZy7bfm7-rL4mwYBx8_Mz2ejbQ7z8AUFdGGwBeDVA_xlYTCPjYA6N1bT50-8ZU_RbqVzo7jpa1z6tX8NNZE6LY5jwHECvhjyBRoYhxkPbhY5cEshp1UiJIMgiQWF1TrgE4eD2mE"/>
+<div class="absolute inset-0 bg-gradient-to-t from-tertiary-container/80 via-transparent to-transparent"></div>
+<div class="absolute bottom-0 p-8">
+<h3 class="text-white text-2xl font-headline font-bold">Digital Print</h3>
+<p class="text-slate-200 mt-2 text-sm font-body">Ultra-crisp commercial documentation and small-format collateral.</p>
+</div>
+</div>
+<!-- UV Print Roll -->
+<div class="md:col-span-2 group relative h-[350px] rounded-xl overflow-hidden bg-white transition-all hover:-translate-y-1">
+<div class="absolute inset-0 litho-gradient opacity-10"></div>
+<div class="p-8 flex flex-col h-full justify-between relative z-10">
+<div>
+<span class="material-symbols-outlined text-primary text-4xl mb-4">texture</span>
+<h3 class="text-indigo-950 text-xl font-headline font-bold">UV Print Roll</h3>
+<p class="text-on-surface-variant mt-2 text-sm font-body">Instant-dry UV curing for roll-to-roll banner production.</p>
+</div>
+<button class="flex items-center gap-2 text-primary font-bold text-sm">Configure Job <span class="material-symbols-outlined">add</span></button>
+</div>
+</div>
+<!-- UV Print Flat -->
+<div class="md:col-span-2 group relative h-[350px] rounded-xl overflow-hidden bg-white transition-all hover:-translate-y-1">
+<img alt="UV Flat" class="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-40 transition-opacity" data-alt="A wide flatbed printer applying texture to a rigid wooden panel with glowing UV light curing the ink immediately" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAK39aKOoZbFVIJhs017FoZ_BlClsFFlrfnVIVkKpn0PYvfQ6ZKK-Ona_AIdo26D7bgHTZL-te0Sq9Jvf0Fzc6_BfA81JIjANdVyDOALzBdhJ6yhJg5Q7OIL1eJbulg5FMiCzxIB4p-T4jkPhlOUHSRDiSdw__5XqMa0rsRNFWfT8Q9Dtq7gL3HqpZiQy4j8GPsxvIITWkiemkowHYpLOxdJQ_lse3AUhJP7eOSlm_IU26IqBJqxe_uLlWMlIbEqqCI0Wi_oJ3rXDA"/>
+<div class="p-8 flex flex-col h-full justify-between relative z-10">
+<div>
+<span class="material-symbols-outlined text-primary text-4xl mb-4">layers</span>
+<h3 class="text-indigo-950 text-xl font-headline font-bold">UV Print Flat</h3>
+<p class="text-on-surface-variant mt-2 text-sm font-body">Direct-to-substrate printing on acrylic, wood, and metal.</p>
+</div>
+<button class="flex items-center gap-2 text-primary font-bold text-sm">Configure Job <span class="material-symbols-outlined">add</span></button>
+</div>
+</div>
+<!-- Eco Solvent -->
+<div class="md:col-span-2 group relative h-[350px] rounded-xl overflow-hidden bg-white transition-all hover:-translate-y-1">
+<div class="absolute inset-0 bg-secondary-container/10"></div>
+<div class="p-8 flex flex-col h-full justify-between relative z-10">
+<div>
+<span class="material-symbols-outlined text-secondary text-4xl mb-4">eco</span>
+<h3 class="text-indigo-950 text-xl font-headline font-bold">Eco Solvent Print</h3>
+<p class="text-on-surface-variant mt-2 text-sm font-body">Sustainable printing solutions with zero VOC emissions.</p>
+</div>
+<button class="flex items-center gap-2 text-primary font-bold text-sm">Configure Job <span class="material-symbols-outlined">add</span></button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Technical Specs Strip -->
+<section class="bg-indigo-950 py-12 px-8 overflow-hidden">
+<div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-12 text-center md:text-left">
+<div class="flex flex-col">
+<span class="text-indigo-300 font-label text-xs uppercase tracking-widest mb-1">Color Accuracy</span>
+<span class="text-white font-headline text-2xl font-bold">99.8% Pantone Match</span>
+</div>
+<div class="w-px h-12 bg-white/10 hidden lg:block"></div>
+<div class="flex flex-col">
+<span class="text-indigo-300 font-label text-xs uppercase tracking-widest mb-1">Daily Capacity</span>
+<span class="text-white font-headline text-2xl font-bold">45,000 m² Output</span>
+</div>
+<div class="w-px h-12 bg-white/10 hidden lg:block"></div>
+<div class="flex flex-col">
+<span class="text-indigo-300 font-label text-xs uppercase tracking-widest mb-1">Turnaround</span>
+<span class="text-white font-headline text-2xl font-bold">24hr Express Queue</span>
+</div>
+<div class="w-px h-12 bg-white/10 hidden lg:block"></div>
+<div class="flex flex-col">
+<span class="text-indigo-300 font-label text-xs uppercase tracking-widest mb-1">Material Support</span>
+<span class="text-white font-headline text-2xl font-bold">200+ Substrates</span>
+</div>
+</div>
+</section>
+<!-- Newsletter / Contact CTA -->
+<section class="py-24 px-8 bg-surface">
+<div class="max-w-5xl mx-auto bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col md:flex-row">
+<div class="p-12 md:w-1/2">
+<h2 class="text-3xl font-headline font-bold text-indigo-950 mb-4">Precision Support</h2>
+<p class="text-on-surface-variant mb-8 font-body">Consult with our industrial printing engineers to optimize your workflow and material selection.</p>
+<div class="space-y-4">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary">call</span>
+<span class="font-medium text-indigo-950 font-label">+1 (800) PRECISION</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-primary">mail</span>
+<span class="font-medium text-indigo-950 font-label">engineering@precisionpress.com</span>
+</div>
+</div>
+</div>
+<div class="md:w-1/2 litho-gradient p-12 text-white flex flex-col justify-center">
+<h3 class="text-xl font-headline font-bold mb-6">Stay informed on material innovation.</h3>
+<div class="flex flex-col gap-4">
+<input class="bg-white/10 border-white/20 rounded-lg py-3 px-4 text-white placeholder:text-white/40 focus:ring-secondary focus:border-secondary font-body" placeholder="professional@email.com" type="email"/>
+<button class="bg-white text-primary py-3 rounded-lg font-bold hover:bg-slate-100 transition-colors font-label">Subscribe to Updates</button>
+</div>
+<p class="mt-4 text-xs text-white/60 text-center font-body">Architecture-grade precision, delivered bi-weekly.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-high py-20 px-8">
+<div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-12">
+<div class="col-span-1 md:col-span-1">
+<span class="text-xl font-bold tracking-tight text-indigo-950 font-headline block mb-6">The Precision Press</span>
+<p class="text-on-surface-variant text-sm leading-relaxed font-body">
+                    Setting the global benchmark for industrial online printing systems through technological superiority and uncompromising precision.
+                </p>
+</div>
+<div class="space-y-4">
+<h4 class="text-xs font-bold uppercase tracking-widest text-indigo-950 font-label">Company</h4>
+<ul class="space-y-2 text-sm text-on-surface-variant font-body">
+<li><a class="hover:text-primary transition-colors" href="#">About Us</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Infrastructure</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Sustainability</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Careers</a></li>
+</ul>
+</div>
+<div class="space-y-4">
+<h4 class="text-xs font-bold uppercase tracking-widest text-indigo-950 font-label">Solutions</h4>
+<ul class="space-y-2 text-sm text-on-surface-variant font-body">
+<li><a class="hover:text-primary transition-colors" href="#">Enterprise API</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Workflow Automation</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">White Label Printing</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Bulk Distribution</a></li>
+</ul>
+</div>
+<div class="space-y-4">
+<h4 class="text-xs font-bold uppercase tracking-widest text-indigo-950 font-label">Legal</h4>
+<ul class="space-y-2 text-sm text-on-surface-variant font-body">
+<li><a class="hover:text-primary transition-colors" href="#">Terms of Service</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Privacy Policy</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Service Level Agreement</a></li>
+<li><a class="hover:text-primary transition-colors" href="#">Copyright</a></li>
+</ul>
+</div>
+</div>
+<div class="max-w-7xl mx-auto mt-20 pt-8 border-t border-slate-300/30 flex flex-col md:flex-row justify-between items-center gap-6">
+<span class="text-xs text-on-surface-variant font-label">© 2024 The Precision Press. All Rights Reserved.</span>
+<div class="flex gap-6">
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined text-xl">language</span></a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined text-xl">share</span></a>
+<a class="text-on-surface-variant hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined text-xl">rss_feed</span></a>
+</div>
+</div>
+</footer>
+</body></html>

@@ -70,7 +70,7 @@ export async function POST(request: Request) {
         || (existingAuthUser?.user_metadata as any)?.name
         || email.split('@')[0];
 
-      const { error: createProfileError } = await supabaseServer.from('profiles').upsert({
+      const { error: createProfileError } = await (supabaseServer.from('profiles') as any).upsert({
         id: existingAuthUser?.id || email,
         uid: existingAuthUser?.id || email,
         email,
