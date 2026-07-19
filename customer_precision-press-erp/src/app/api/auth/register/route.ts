@@ -45,7 +45,7 @@ async function findAuthUserByEmail(email: string) {
 }
 
 async function findProfileByEmail(email: string) {
-  const { data, error } = await supabaseServer.from('profiles').select('*').eq('email', email).maybeSingle();
+  const { data, error } = await (supabaseServer.from('profiles') as any).select('*').eq('email', email).maybeSingle();
   if (error) {
     throw error;
   }
@@ -107,12 +107,12 @@ export async function POST(request: Request) {
     const customerType = isCustomer ? (body.customerType || 'CASH') : 'CASH';
     const creditStatus = isCustomer && customerType === 'CREDIT' ? 'PENDING_APPROVAL' : 'APPROVED';
 
-    const profilePayload = existingProfile
+    const profilePayload: any = existingProfile
       ? {
-          ...existingProfile,
-          role: existingProfile.role ?? role,
-          roles: existingProfile.roles ?? [existingProfile.role ?? role],
-          uid: existingProfile.uid ?? existingProfile.id,
+          ...(existingProfile as any),
+          role: (existingProfile as any).role ?? role,
+          roles: (existingProfile as any).roles ?? [(existingProfile as any).role ?? role],
+          uid: (existingProfile as any).uid ?? (existingProfile as any).id,
         }
       : {
           id: authUser!.id,
@@ -178,7 +178,7 @@ export async function POST(request: Request) {
         };
 
     if (!existingProfile) {
-      const { error: profileError } = await supabaseServer.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+      const { error: profileError } = await (supabaseServer.from('profiles') as any).upsert(profilePayload, { onConflict: 'id' });
       if (profileError) {
         return NextResponse.json({ error: profileError.message }, { status: 400 });
       }
