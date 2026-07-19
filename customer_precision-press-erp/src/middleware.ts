@@ -19,7 +19,10 @@ const PROTECTED_PREFIXES = [
 export function middleware(req: NextRequest) {
   const customerRole = req.cookies.get('customer_role')?.value;
   const staffRole = req.cookies.get('role')?.value;
+  const supabaseSession = req.cookies.get('sb-access-token')?.value || req.cookies.get('sb-session')?.value;
+  
   const role = customerRole || staffRole;
+  const isAuthenticated = !!(role || supabaseSession);
   const { pathname } = req.nextUrl;
 
   // 1. If a STAFF member lands here -> block them or redirect to /login
@@ -29,12 +32,12 @@ export function middleware(req: NextRequest) {
 
   // 2. If not authenticated and on a protected route → redirect to /login
   const isProtected = PROTECTED_PREFIXES.some(prefix => pathname.startsWith(prefix));
-  if (isProtected && !role) {
+  if (isProtected && !isAuthenticated) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
   // 3. If already authenticated and on /login → redirect to /dashboard
-  if (pathname === '/login' && role === 'CUSTOMER') {
+  if (pathname === '/login' && isAuthenticated) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
