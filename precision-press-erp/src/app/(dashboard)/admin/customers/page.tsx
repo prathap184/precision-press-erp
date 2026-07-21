@@ -1,6 +1,7 @@
 import React from 'react';
 import { getCustomers } from '@/lib/actions/users';
 import { updateCustomerCreditLimit } from '@/lib/actions/users';
+import { syncCustomerToTally } from '@/lib/actions/tally-sync';
 import CustomerManagement from '@/components/admin/CustomerManagement';
 import { Metadata } from 'next';
 
@@ -19,6 +20,11 @@ export default function CustomersPage() {
         'use server';
         return updateCustomerCreditLimit(uid, limit);
       }}
+      syncCustomerToTally={async (uid) => {
+        'use server';
+        return syncCustomerToTally(uid);
+      }}
     />
   );
 }
+

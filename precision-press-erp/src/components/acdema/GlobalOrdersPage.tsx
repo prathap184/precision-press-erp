@@ -20,6 +20,8 @@ import {
   Package,
   Search,
   Truck,
+  Filter,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
@@ -49,6 +51,19 @@ export function GlobalOrdersPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [parentTotals, setParentTotals] = useState<Record<string, number>>({});
   const [highlightedIds, setHighlightedIds] = useState<string[]>([]);
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string | null>(null);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+
+  const ALL_WORKFLOW_ROLES = [
+    { id: 'ACCOUNTANT', label: 'Accounts Approval', color: 'bg-teal-100' },
+    { id: 'DESIGNER',   label: 'Design & Artwork',  color: 'bg-purple-100' },
+    { id: 'MANAGER',    label: 'Manager Sign-Off',  color: 'bg-blue-100' },
+    { id: 'PRINTER',    label: 'Printing',          color: 'bg-orange-100' },
+    { id: 'PASTING',    label: 'Pasting',           color: 'bg-amber-100' },
+    { id: 'FINISHING',  label: 'Finishing',         color: 'bg-lime-100' },
+    { id: 'DISPATCH',   label: 'Dispatch',          color: 'bg-cyan-100' },
+    { id: 'DELIVERY',   label: 'Delivery',          color: 'bg-green-100' },
+  ];
 
   const searchParams = useSearchParams();
   const highlightParam = searchParams.get('highlight');
@@ -58,7 +73,7 @@ export function GlobalOrdersPage() {
   useEffect(() => {
     if (typeof window !== 'undefined' && highlightParam) {
       setHighlightedIds(highlightParam.split(','));
-      
+
       // Use Next.js router to clear the query param without reloading
       const newUrl = new URL(window.location.href);
       newUrl.searchParams.delete('highlight');
@@ -76,7 +91,7 @@ export function GlobalOrdersPage() {
       const firstId = highlightedIds[0];
       let attempts = 0;
       let interval: NodeJS.Timeout;
-      
+
       const tryScroll = () => {
         const row = document.getElementById(`order-row-${firstId}`);
         if (row) {
@@ -121,7 +136,7 @@ export function GlobalOrdersPage() {
 
   useEffect(() => {
     let q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(limitCount));
-    
+
     if (dateRange.start) {
       q = query(q, where('createdAt', '>=', dateRange.start.toISOString()));
     }
@@ -276,7 +291,18 @@ export function GlobalOrdersPage() {
     return orders;
   }, [tab, orders, stageOrders, completedStageOrders, completedByMeOrders, workedByMeOrders]);
 
+  const isViewerAdmin = viewerRoles.includes('ADMIN') || viewerRoles.includes('SUPER_ADMIN');
+  const roleFilterOptions = isViewerAdmin
+    ? ALL_WORKFLOW_ROLES
+    : ALL_WORKFLOW_ROLES.filter(r => viewerRoles.includes(r.id as any));
+
   const filtered = activeOrders.filter((order) => {
+    // Role stage filter
+    if (selectedRoleFilter) {
+      const currentStep = order.workflowSnapshot?.steps?.[order.workflowSnapshot?.currentStepIndex ?? 0];
+      const currentRole = (order.currentWorkflowRole || currentStep?.role || '').toUpperCase();
+      if (currentRole !== selectedRoleFilter || order.status === 'CANCELLED') return false;
+    }
     const matchesSearch =
       order.id.toLowerCase().includes(search.toLowerCase()) ||
       order.status?.toLowerCase().includes(search.toLowerCase()) ||
@@ -284,11 +310,8 @@ export function GlobalOrdersPage() {
       order.customerSnapshot?.name?.toLowerCase().includes(search.toLowerCase()) ||
       order.customerSnapshot?.phone?.toLowerCase().includes(search.toLowerCase());
     const isOwnedByAcdema = viewerUid && (order.createdBy === viewerUid || order.proxyExecutor?.uid === viewerUid);
-
-    // Authorization: if viewer is ACDEMA (non-admin) show only accountant/designer/manager stages by default.
     const isAdmin = viewerRoles.includes('ADMIN') || viewerRoles.includes('SUPER_ADMIN');
     if (isAdmin) return matchesSearch;
-
     if (viewerRoles.includes('ACDEMA')) {
       if (tab === 'global') return matchesSearch;
       const acdemaDefaults = ['ACCOUNTANT', 'DESIGNER', 'MANAGER'];
@@ -298,14 +321,25 @@ export function GlobalOrdersPage() {
       const isAllowedStage = !!currentRole && allowed.has(currentRole as any);
       return matchesSearch && (isOwnedByAcdema || isAllowedStage);
     }
-
     return matchesSearch;
   });
 
   return (
     <RoleGuard allowedRoles={['ACDEMA', 'ADMIN', 'SUPER_ADMIN']}>
-      <div className="w-full space-y-4 pb-10">
-        <section className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-4 bg-white py-3 border-b border-slate-200 -mt-6">
+      <div className="font-sans text-slate-800 bg-[#d4d4d8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none">
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          {/* Grid Pattern */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+
+          {/* Abstract Shapes */}
+          <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-400/40 blur-[140px] pointer-events-none animate-pulse"></div>
+          <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-fuchsia-400/40 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-cyan-400/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+        </div>
+
+        <div className="w-full relative z-10">
+          <section className="relative z-50 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-slate-900 rounded text-white">
               <ClipboardList size={18} />
@@ -381,7 +415,7 @@ export function GlobalOrdersPage() {
           </div>
         </section>
 
-        <div className="px-4 flex gap-4 flex-col md:flex-row">
+        <div className="relative z-40 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 mb-6 flex gap-4 flex-col md:flex-row">
           <div className="flex-1 relative group">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
             <input
@@ -392,6 +426,74 @@ export function GlobalOrdersPage() {
               className="w-full bg-white border border-slate-200 rounded px-10 py-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-600 transition-all shadow-sm"
             />
           </div>
+
+          {/* Role Stage Filter */}
+          {roleFilterOptions.length > 0 && (
+            <div className="relative flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setRoleDropdownOpen(v => !v)}
+                onBlur={() => setTimeout(() => setRoleDropdownOpen(false), 150)}
+                className={`h-9 flex items-center gap-2 rounded border px-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                  selectedRoleFilter
+                    ? 'border-blue-400 bg-blue-600 text-white shadow-md'
+                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
+                }`}
+              >
+                <Filter size={11} />
+                {selectedRoleFilter
+                  ? (ALL_WORKFLOW_ROLES.find(r => r.id === selectedRoleFilter)?.label ?? selectedRoleFilter)
+                  : 'All Stages'}
+                <ChevronDown size={11} className={`transition-transform ${roleDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {roleDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 z-[9999] w-52 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+                  <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Filter by Stage</p>
+                  </div>
+                  <div className="p-1.5 space-y-0.5">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); setSelectedRoleFilter(null); setRoleDropdownOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-black text-left transition-colors ${
+                        !selectedRoleFilter ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
+                      All Stages
+                      <span className="ml-auto text-[9px] font-bold opacity-60">{activeOrders.length}</span>
+                    </button>
+                    {roleFilterOptions.map(roleOpt => {
+                      const count = activeOrders.filter(o => {
+                        const step = o.workflowSnapshot?.steps?.[o.workflowSnapshot?.currentStepIndex ?? 0];
+                        const cr = (o.currentWorkflowRole || step?.role || '').toUpperCase();
+                        return cr === roleOpt.id && o.status !== 'CANCELLED';
+                      }).length;
+                      return (
+                        <button
+                          key={roleOpt.id}
+                          type="button"
+                          onMouseDown={(e) => { e.preventDefault(); setSelectedRoleFilter(roleOpt.id); setRoleDropdownOpen(false); }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-black text-left transition-colors ${
+                            selectedRoleFilter === roleOpt.id ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${selectedRoleFilter === roleOpt.id ? 'bg-white' : roleOpt.color}`} />
+                          {roleOpt.label}
+                          {count > 0 && (
+                            <span className={`ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                              selectedRoleFilter === roleOpt.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                            }`}>{count}</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="relative">
             <button 
@@ -441,8 +543,8 @@ export function GlobalOrdersPage() {
           </div>
         </div>
 
-        <div className="px-4">
-          <div className="bg-white rounded border border-slate-200 shadow-sm overflow-hidden">
+        <div className="relative z-30 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+          <div className="bg-white/40 rounded-2xl border border-white/60 shadow-sm overflow-hidden backdrop-blur-md">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left">
                 <thead>
@@ -598,12 +700,31 @@ export function GlobalOrdersPage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-center tabular-nums">
-                            <Link
-                              href={`/acdema/orders/${order.id}`}
-                              className="inline-flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm group-hover:scale-105"
-                            >
-                              <ArrowRight size={14} />
-                            </Link>
+                            <div className="flex flex-col items-center gap-1.5">
+                              <Link
+                                href={`/acdema/orders/${order.id}`}
+                                className="inline-flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm group-hover:scale-105"
+                                title="View Order Details"
+                              >
+                                <ArrowRight size={14} />
+                              </Link>
+                              <div className="flex flex-col gap-1 w-full max-w-[80px]">
+                                <Link
+                                  href={`/admin/invoice-generation/${order.customerId}/${order.id}`}
+                                  className="w-full text-center text-[9px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap"
+                                  title="Generate Invoice"
+                                >
+                                  Invoice
+                                </Link>
+                                <Link
+                                  href={`/receipt-entry?customerId=${order.customerId}`}
+                                  className="w-full text-center text-[9px] font-bold uppercase tracking-widest text-emerald-600 border border-emerald-200 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap"
+                                  title="Record Receipt"
+                                >
+                                  Receipt
+                                </Link>
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -624,8 +745,9 @@ export function GlobalOrdersPage() {
             )}
           </div>
         </div>
+        </div>
       </div>
     </RoleGuard>
   );
-}
 
+}

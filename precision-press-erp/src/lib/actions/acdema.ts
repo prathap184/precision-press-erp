@@ -3,6 +3,7 @@
 import * as admin from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { createReceiptEntry } from '@/lib/actions/accounts';
 
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { createCustomerGroupedOrders } from '@/lib/workflow';
@@ -69,6 +70,9 @@ export interface ProxyOrderPayload {
     receiptAmount: string | number;
     receiptRef: string;
     receiptRemarks: string;
+    bankLedger?: string;
+    utr?: string;
+    paymentMode?: string;
   };
 }
 
@@ -195,6 +199,10 @@ export async function createAcdemaProxyOrder(payload: ProxyOrderPayload): Promis
     }
 
     const generatedOrderIds = result.orderIds;
+
+    // Payment routing is now handled on the frontend by redirecting the user 
+    // to the Receipt Entry page with the relevant query parameters.
+
 
     if (payload.refOrderId) {
       await supabaseServer.from('quotations').update({ 

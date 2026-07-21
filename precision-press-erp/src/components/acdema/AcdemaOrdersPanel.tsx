@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { collection, getCountFromServer, limit, onSnapshot, orderBy, query, where, getDoc, doc } from '@/lib/supabase-firestore-shim';
-import { ArrowRight, ClipboardList, Loader2, Search, UserCheck, AlertCircle } from 'lucide-react';
+import { ArrowRight, ClipboardList, Loader2, Search, UserCheck, AlertCircle, ChevronDown, Filter } from 'lucide-react';
 
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
@@ -45,6 +45,24 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
   const [mode, setMode] = useState<'global' | 'mine' | 'stage'>(initialMode);
   const [stats, setStats] = useState({ total: 0, active: 0, done: 0 });
   const [parentTotals, setParentTotals] = useState<Record<string, number>>({});
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string | null>(null);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+
+  const ALL_WORKFLOW_ROLES = [
+    { id: 'ACCOUNTANT', label: 'Accounts Approval', color: 'bg-teal-100 text-teal-700' },
+    { id: 'DESIGNER',   label: 'Design & Artwork',  color: 'bg-purple-100 text-purple-700' },
+    { id: 'MANAGER',    label: 'Manager Sign-Off',  color: 'bg-blue-100 text-blue-700' },
+    { id: 'PRINTER',    label: 'Printing',          color: 'bg-orange-100 text-orange-700' },
+    { id: 'PASTING',    label: 'Pasting',           color: 'bg-amber-100 text-amber-700' },
+    { id: 'FINISHING',  label: 'Finishing',         color: 'bg-lime-100 text-lime-700' },
+    { id: 'DISPATCH',   label: 'Dispatch',          color: 'bg-cyan-100 text-cyan-700' },
+    { id: 'DELIVERY',   label: 'Delivery',          color: 'bg-green-100 text-green-700' },
+  ];
+
+  const isAdmin = roles?.includes('ADMIN') || roles?.includes('SUPER_ADMIN');
+  const roleOptions = isAdmin
+    ? ALL_WORKFLOW_ROLES
+    : ALL_WORKFLOW_ROLES.filter(r => roles?.includes(r.id as any));
 
   useEffect(() => {
     setMode(initialMode as 'global' | 'mine' | 'stage');
@@ -164,9 +182,19 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    if (!term) return activeSource;
+    let result = activeSource;
 
-    return activeSource.filter((order) => {
+    // Role stage filter
+    if (selectedRoleFilter) {
+      result = result.filter((order) => {
+        const currentStep = order.workflowSnapshot?.steps?.[order.workflowSnapshot?.currentStepIndex ?? 0];
+        const currentRole = (order.currentWorkflowRole || currentStep?.role || '').toUpperCase();
+        return currentRole === selectedRoleFilter && order.status !== 'CANCELLED';
+      });
+    }
+
+    if (!term) return result;
+    return result.filter((order) => {
       return (
         order.id.toLowerCase().includes(term) ||
         (order.customerSnapshot?.name || '').toLowerCase().includes(term) ||
@@ -175,7 +203,7 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
         (order.currentWorkflowLabel || '').toLowerCase().includes(term)
       );
     });
-  }, [activeSource, search]);
+  }, [activeSource, search, selectedRoleFilter]);
 
   return (
     <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm space-y-4">
@@ -230,14 +258,84 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
         </div>
       </div>
 
-      <div className="relative">
-        <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search manifest by ID, Customer, Phone..."
-          className="w-full rounded-xl border border-slate-200 bg-slate-50 px-8 py-2 text-xs font-semibold text-slate-800 outline-none"
-        />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search manifest by ID, Customer, Phone..."
+            className="w-full rounded-xl border border-slate-200 bg-slate-50 px-8 py-2 text-xs font-semibold text-slate-800 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+          />
+        </div>
+
+        {/* Role Stage Filter Dropdown */}
+        {roleOptions.length > 0 && (
+          <div className="relative flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setRoleDropdownOpen(v => !v)}
+              onBlur={() => setTimeout(() => setRoleDropdownOpen(false), 150)}
+              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all ${
+                selectedRoleFilter
+                  ? 'border-blue-400 bg-blue-600 text-white shadow-md'
+                  : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-white hover:border-slate-300'
+              }`}
+            >
+              <Filter size={11} />
+              {selectedRoleFilter
+                ? (ALL_WORKFLOW_ROLES.find(r => r.id === selectedRoleFilter)?.label ?? selectedRoleFilter)
+                : 'All Stages'}
+              <ChevronDown size={11} className={`transition-transform ${roleDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {roleDropdownOpen && (
+              <div className="absolute right-0 top-full mt-1.5 z-[9999] w-52 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+                <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Filter by Stage</p>
+                </div>
+                <div className="p-1.5 space-y-0.5">
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); setSelectedRoleFilter(null); setRoleDropdownOpen(false); }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-black text-left transition-colors ${
+                      !selectedRoleFilter ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
+                    All Stages
+                    <span className="ml-auto text-[9px] font-bold opacity-60">{activeSource.length}</span>
+                  </button>
+                  {roleOptions.map(role => {
+                    const count = activeSource.filter(o => {
+                      const step = o.workflowSnapshot?.steps?.[o.workflowSnapshot?.currentStepIndex ?? 0];
+                      const cr = (o.currentWorkflowRole || step?.role || '').toUpperCase();
+                      return cr === role.id && o.status !== 'CANCELLED';
+                    }).length;
+                    return (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); setSelectedRoleFilter(role.id); setRoleDropdownOpen(false); }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-black text-left transition-colors ${
+                          selectedRoleFilter === role.id ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${selectedRoleFilter === role.id ? 'bg-white' : role.color.split(' ')[0]}`} />
+                        {role.label}
+                        {count > 0 && (
+                          <span className={`ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                            selectedRoleFilter === role.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                          }`}>{count}</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200">

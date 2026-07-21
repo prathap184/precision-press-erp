@@ -1,18 +1,21 @@
 import React from 'react';
 import { getQuotationRegister } from '@/lib/actions/registers';
-import { QuotationList } from '@/components/acdema/QuotationList';
+import { TransactionList } from '@/components/accounting/TransactionList';
+import { format } from 'date-fns';
 
-export default async function QuotationRegisterPage() {
-  const transactions = await getQuotationRegister();
+export default async function QuotationRegisterPage({ searchParams }: { searchParams: { from?: string, to?: string } }) {
+  const from = searchParams.from === 'all' ? undefined : (searchParams.from || format(new Date(), 'yyyy-MM-dd'));
+  const to = searchParams.to === 'all' ? undefined : (searchParams.to || format(new Date(), 'yyyy-MM-dd'));
+  
+  const transactions = await getQuotationRegister(from, to);
 
   return (
-    <div className="p-6">
-      <QuotationList 
-        title="Quotation" 
-        quotations={transactions} 
-        newActionHref="/admin/quotation-order"
-        newActionLabel="Add Quotation"
-      />
-    </div>
+    <TransactionList 
+      title="Quotations Register" 
+      transactions={transactions} 
+      emptyMessage="No quotations found."
+      newActionHref="/admin/quotation-generation"
+      newActionLabel="Create Quotation"
+    />
   );
 }

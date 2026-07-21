@@ -51,6 +51,13 @@ export const adminAuth = {
     const { data, error } = await supabaseServer.auth.getUser(token);
     if (error || !data.user) {
       console.error('[firebase-admin] verifyIdToken failed', error?.message || 'no user');
+      
+      // If token is expired, redirect to login page gracefully
+      if (error?.message?.includes('expired') || error?.message?.includes('JWT')) {
+        const { redirect } = await import('next/navigation');
+        redirect('/staff-login?expired=true');
+      }
+      
       throw new Error('Unauthorized');
     }
 

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
 import { Loader2, Building, Banknote, ArrowRight, Save } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -23,40 +24,45 @@ export default function TreasuryContraPage() {
   const [bankBalance, setBankBalance] = useState<number | null>(null);
   const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
-  const handleFetchBalances = async () => {
+  const fetchInternalBalances = async () => {
     setFetchingBalances(true);
-    setSyncStatus('Fetching from Tally...');
+    setSyncStatus('Fetching internal balances...');
     try {
-      const res = await fetchLiveBalances('SYSTEM');
-      if (res.success && res.data) {
-        const ledgers = res.data?.ENVELOPE?.BODY?.DATA?.COLLECTION?.LEDGER || [];
-        const ledgerArray = Array.isArray(ledgers) ? ledgers : [ledgers];
+      const { data: cashData } = await supabase
+        .from('company_cash_ledger')
+        .select('balance_after')
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-        // Basic parsing assuming standard tally names 'Cash' and 'Bank Accounts'
-        const cashLedger = ledgerArray.find((l: any) => l.NAME?.toLowerCase().includes('cash'));
-        const bankLedger = ledgerArray.find((l: any) => l.PARENT?.toLowerCase().includes('bank accounts'));
+      const { data: bankData } = await supabase
+        .from('company_bank_ledger')
+        .select('balance_after')
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-        const parseBalance = (closingBal: string | number) => {
-          if (typeof closingBal === 'string') {
-             const num = parseFloat(closingBal.replace(/[^\d.-]/g, ''));
-             return closingBal.includes('Dr') ? num : -num; // Dr is positive balance for assets
-          }
-          return Number(closingBal) || 0;
-        };
-
-        if (cashLedger) setCashBalance(parseBalance(cashLedger.CLOSINGBALANCE));
-        if (bankLedger) setBankBalance(parseBalance(bankLedger.CLOSINGBALANCE));
-        
-        setSyncStatus('Successfully synced live balances.');
+      if (cashData && cashData.length > 0) {
+        setCashBalance(cashData[0].balance_after);
       } else {
-        setSyncStatus(`Sync Failed: ${res.error}`);
+        setCashBalance(0);
       }
+      
+      if (bankData && bankData.length > 0) {
+        setBankBalance(bankData[0].balance_after);
+      } else {
+        setBankBalance(0);
+      }
+      
+      setSyncStatus('Internal balances loaded.');
     } catch (err: any) {
       setSyncStatus(`Error: ${err.message}`);
     } finally {
       setFetchingBalances(false);
     }
   };
+
+  useEffect(() => {
+    fetchInternalBalances();
+  }, []);
 
   const handleSubmit = async () => {
     if (!amount || Number(amount) <= 0) return toast.error('Enter valid amount');
@@ -118,16 +124,16 @@ export default function TreasuryContraPage() {
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h2 className="text-sm font-bold text-slate-800">Current Balances</h2>
-                <p className="text-xs text-slate-500">Live data from Tally</p>
+                <p className="text-xs text-slate-500">Live data from internal ledger</p>
               </div>
               <div>
                 <button 
-                  onClick={handleFetchBalances}
+                  onClick={fetchInternalBalances}
                   disabled={fetchingBalances}
                   className="bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 text-xs font-bold rounded-md shadow disabled:opacity-50 transition-colors flex items-center gap-2"
                 >
                   {fetchingBalances && <Loader2 className="animate-spin" size={14}/>}
-                  Fetch Live Balances
+                  Refresh Balances
                 </button>
                 {syncStatus && <p className="text-[10px] text-slate-500 mt-1 text-right">{syncStatus}</p>}
               </div>

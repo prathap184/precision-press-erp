@@ -41,7 +41,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
   const workspaceParam = searchParams.get('workspace');
   let activeModule = ['/manager', '/designer', '/printer', '/pasting', '/finishing', '/dispatch', '/accountant', '/support', '/acdema'].find(p => pathname.startsWith(p));
   
-  if ((pathname.startsWith('/admin') || pathname.startsWith('/settings')) && workspaceParam) {
+  if (workspaceParam) {
     activeModule = `/${workspaceParam}`;
   }
 
@@ -84,15 +84,6 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
       if (allowSharedLinks && sharedWorkspaceLinks.has(item.href)) return true;
 
       const effectiveItemRoles = [...item.roles];
-      if (
-        effectiveItemRoles.includes('ACCOUNTANT') ||
-        effectiveItemRoles.includes('MANAGER') ||
-        effectiveItemRoles.includes('DESIGNER')
-      ) {
-        if (!effectiveItemRoles.includes('ACDEMA')) {
-          effectiveItemRoles.push('ACDEMA');
-        }
-      }
 
       if (lockedModule === '/designer') {
         if (item.href === '/designer') return true;
@@ -109,15 +100,6 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
 
     // Default: Multi-role: show item if user has ANY required role (STRICT CHECK)
     const effectiveItemRoles = [...item.roles];
-    if (
-      effectiveItemRoles.includes('ACCOUNTANT') ||
-      effectiveItemRoles.includes('MANAGER') ||
-      effectiveItemRoles.includes('DESIGNER')
-    ) {
-      if (!effectiveItemRoles.includes('ACDEMA')) {
-        effectiveItemRoles.push('ACDEMA');
-      }
-    }
     return effectiveItemRoles.some(r => liveRoles.includes(r as StaffRole));
   }).filter((item, index, self) =>
     // Deduplicate by label + href
@@ -142,12 +124,15 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
     setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
   };
 
-  const NavLink = ({ item }: { item: NavItem }) => {
+  const renderNavLink = (item: NavItem) => {
     let finalHref = item.href;
-    if (sharedWorkspaceLinks.has(item.href) && lockedModule && lockedModule !== '/admin' && lockedModule !== '/acdema') {
-      finalHref = finalHref.includes('?') 
-         ? `${finalHref}&workspace=${lockedModule.replace('/', '')}`
-         : `${finalHref}?workspace=${lockedModule.replace('/', '')}`;
+    if (item.href !== '/staff' && lockedModule) {
+      const paramName = lockedModule.replace('/', '');
+      if (!finalHref.includes('workspace=')) {
+        finalHref = finalHref.includes('?') 
+           ? `${finalHref}&workspace=${paramName}`
+           : `${finalHref}?workspace=${paramName}`;
+      }
     }
 
     const isActive = item.href.includes('?')
@@ -181,7 +166,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
 
     if (hasSubItems) {
       return (
-        <div className="w-full">
+        <div key={item.href} className="w-full">
           <button
             onClick={(e) => toggleMenu(item.label, e)}
             title={!visualExpanded ? item.label : undefined}
@@ -193,10 +178,22 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
             <div className="flex flex-col mt-1 mb-2">
               {item.subItems!.map(sub => {
                 const isThisSubActive = pathname === sub.href;
+                
+                let subHref = sub.href;
+                if (sub.href !== '/staff' && lockedModule) {
+                  const paramName = lockedModule.replace('/', '');
+                  if (!subHref.includes('workspace=')) {
+                    subHref = subHref.includes('?') 
+                       ? `${subHref}&workspace=${paramName}`
+                       : `${subHref}?workspace=${paramName}`;
+                  }
+                }
+
                 return (
                   <Link
                     key={sub.href}
-                    href={sub.href}
+                    href={subHref}
+                    scroll={false}
                     className={cn(
                       "py-2 pl-[52px] pr-4 text-sm whitespace-nowrap transition-colors rounded-r-full mr-4",
                       isThisSubActive 
@@ -218,6 +215,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
       <Link
         key={item.href}
         href={finalHref}
+        scroll={false}
         title={!visualExpanded ? item.label : undefined}
         className={className}
       >
@@ -301,7 +299,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
               <p className="text-[11px] font-semibold tracking-wide text-slate-500 px-6 pb-2 pt-2">PAGES</p>
             )}
             <div className="space-y-0.5">
-              {mainItems.map(item => <NavLink key={item.href} item={item} />)}
+              {mainItems.map(item => renderNavLink(item))}
             </div>
           </div>
         )}
@@ -313,7 +311,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
               : <div className="border-t border-slate-200 my-2 mx-3" />
             }
             <div className="space-y-0.5">
-              {accountItems.map(item => <NavLink key={item.href} item={item} />)}
+              {accountItems.map(item => renderNavLink(item))}
             </div>
           </div>
         )}
@@ -321,7 +319,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
         {bottomItems.length > 0 && (
           <div className="pt-2">
             <div className="space-y-0.5">
-              {bottomItems.map(item => <NavLink key={item.href} item={item} />)}
+              {bottomItems.map(item => renderNavLink(item))}
             </div>
           </div>
         )}

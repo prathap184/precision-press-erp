@@ -44,7 +44,7 @@ export default function StaffDashboardPage() {
            <div className="flex items-center gap-3">
               <div className="text-right border-r border-slate-200 pr-3">
                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mb-0.5">Terminal Active</p>
-                 <p className="text-[10px] font-bold text-slate-900 leading-none">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                 <p suppressHydrationWarning className="text-[10px] font-bold text-slate-900 leading-none">{new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
               </div>
               <div className="p-1.5 bg-slate-50 rounded border border-slate-200 text-indigo-600">
                  <Activity size={14} className="animate-pulse" />

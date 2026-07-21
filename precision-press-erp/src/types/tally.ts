@@ -21,6 +21,10 @@ export type TallySyncType =
   | 'PAYMENT_ENTRY'    // Pushed as Payment Voucher
   | 'JOURNAL_ENTRY'    // Pushed as Journal Voucher
   | 'CONTRA_ENTRY'     // Pushed as Contra Voucher
+  | 'CREATE_CUSTOMER'  // Push a Customer to Tally
+  | 'CREATE_SUPPLIER'  // Push a Supplier to Tally
+  | 'CREATE_PRODUCT'   // Push a Product Item to Tally
+  | 'CREATE_STOCKGROUP' // Push a Stock Group to Tally
   | 'FETCH_MASTERS'    // Pull Ledgers and Company Details from Tally
   | 'FETCH_BALANCES';  // Pull live balances from Tally
 

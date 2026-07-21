@@ -1,0 +1,127 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+
+export type MenuState = null | 'VOUCHERS' | 'DISPLAY_REPORTS' | 'DAY_REPORT' | 'ACCOUNT_BOOKS' | 'LEDGERS';
+
+export function useGlobalShortcuts() {
+  const [menuState, setMenuState] = useState<MenuState>(null);
+  const router = useRouter();
+  const { profile } = useAuth();
+
+  const closeMenu = useCallback(() => setMenuState(null), []);
+
+  useEffect(() => {
+    const allowedRoles = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'];
+    if (!profile || !allowedRoles.includes(profile.role)) {
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input, textarea, or contenteditable element
+      const activeElement = document.activeElement as HTMLElement;
+      if (
+        activeElement &&
+        (activeElement.tagName === 'INPUT' ||
+          activeElement.tagName === 'TEXTAREA' ||
+          activeElement.isContentEditable)
+      ) {
+        return;
+      }
+
+      // Close menu on Escape, or go back if menu is already closed
+      if (e.key === 'Escape') {
+        if (menuState !== null) {
+          closeMenu();
+        } else {
+          router.back();
+        }
+        return;
+      }
+
+      // Root shortcuts when no menu is open
+      if (menuState === null) {
+        const key = e.key.toLowerCase();
+        if (key === 'v') {
+          e.preventDefault();
+          setMenuState('VOUCHERS');
+        } else if (key === 'd') {
+          e.preventDefault();
+          setMenuState('DISPLAY_REPORTS');
+        }
+      } 
+      // Vouchers Menu Shortcuts
+      else if (menuState === 'VOUCHERS') {
+        const isFunctionKey = /^F(4|5|6|7|8|9|10)$/.test(e.key);
+        if (isFunctionKey) {
+          e.preventDefault();
+          if (e.key === 'F8') {
+            router.push('/sales-register');
+          } else if (e.key === 'F10') {
+            router.push('/quotation-register');
+          } else if (e.key === 'F6') {
+            router.push('/receipt-register');
+          } else if (e.key === 'F5') {
+            router.push('/payment-entry');
+          } else if (e.key === 'F4') {
+            router.push('/admin/treasury');
+          } else if (e.key === 'F7') {
+            router.push('/admin/journal-transfers');
+          }
+          closeMenu();
+        }
+      } 
+      // Display Reports Menu Shortcuts
+      else if (menuState === 'DISPLAY_REPORTS') {
+        const key = e.key.toLowerCase();
+        if (key === 'd') {
+          e.preventDefault();
+          router.push('/accountant/day-book');
+          closeMenu();
+        } else if (key === 'a') {
+          e.preventDefault();
+          setMenuState('ACCOUNT_BOOKS');
+        }
+      } 
+      // Account Books Menu Shortcuts
+      else if (menuState === 'ACCOUNT_BOOKS') {
+        const key = e.key.toLowerCase();
+        if (key === 'l') {
+          e.preventDefault();
+          setMenuState('LEDGERS');
+        }
+      }
+      // Ledgers Menu Shortcuts
+      else if (menuState === 'LEDGERS') {
+        const key = e.key.toLowerCase();
+        if (key === 'd') {
+          e.preventDefault();
+          router.push('/accountant/day-book');
+          closeMenu();
+        } else if (key === 'a') {
+          e.preventDefault();
+          router.push('/accountant/ledger');
+          closeMenu();
+        } else if (key === 'b') {
+          e.preventDefault();
+          router.push('/accountant/bank-ledger');
+          closeMenu();
+        } else if (key === 'c') {
+          e.preventDefault();
+          router.push('/accountant/cash-ledger');
+          closeMenu();
+        } else if (key === 'u') {
+          e.preventDefault();
+          router.push('/accountant/ledger');
+          closeMenu();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [menuState, router, closeMenu, profile]);
+
+  return { menuState, closeMenu, setMenuState };
+}

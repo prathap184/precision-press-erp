@@ -55,9 +55,26 @@ export default function AdminInvoicesPage() {
     DISPATCH_ROLLED_BACK:{ label: 'Rolled Back',       cls: 'bg-orange-50 text-orange-600 border-orange-200' },
   };
 
+  const handleSyncToTally = async (invoiceId: string) => {
+    setActionMsg({ invoiceId, msg: 'Syncing...', success: true });
+    try {
+      const { syncGeneratedInvoiceToTally } = await import('@/lib/actions/tally-sync');
+      const res = await syncGeneratedInvoiceToTally(invoiceId, 'admin');
+      if (res.success) {
+        setActionMsg({ invoiceId, msg: 'Queued for Tally sync', success: true });
+        setTimeout(() => setActionMsg(null), 3000);
+      } else {
+        setActionMsg({ invoiceId, msg: `Failed: ${res.error}`, success: false });
+        setTimeout(() => setActionMsg(null), 5000);
+      }
+    } catch(e: any) {
+      setActionMsg({ invoiceId, msg: `Error: ${e.message}`, success: false });
+      setTimeout(() => setActionMsg(null), 5000);
+    }
+  };
+
   // Note: Invoice regeneration is now done via the Invoice Generation module.
   // This listing page is read-only — no retry/generate-again action.
-
   // Summary counts
   const failedCount = invoices.filter(i => ['FAILED', 'PERMANENTLY_FAILED', 'DLQ'].includes(i.status)).length;
   const generatedCount = invoices.filter(i => i.status === 'GENERATED').length;
@@ -163,12 +180,22 @@ export default function AdminInvoicesPage() {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             {status === 'GENERATED' && (
-                              <button
-                                onClick={() => window.open(`/documents/invoice/${inv.parent_order_id}/print`, '_blank')}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 border border-blue-200 rounded text-[9px] font-black text-blue-600 hover:bg-blue-100 transition-colors"
-                              >
-                                <Download size={9} /> PDF
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => window.open(`/documents/invoice/${inv.parent_order_id}/print`, '_blank')}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 border border-blue-200 rounded text-[9px] font-black text-blue-600 hover:bg-blue-100 transition-colors"
+                                >
+                                  <Download size={9} /> PDF
+                                </button>
+                                <button
+                                  onClick={() => handleSyncToTally(inv.id)}
+                                  disabled={actionMsg?.invoiceId === inv.id}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-green-50 border border-green-200 rounded text-[9px] font-black text-green-700 hover:bg-green-100 transition-colors disabled:opacity-50"
+                                >
+                                  <RefreshCw size={9} className={actionMsg?.invoiceId === inv.id ? 'animate-spin' : ''} /> 
+                                  {actionMsg?.invoiceId === inv.id ? 'SYNCING...' : 'SYNC TALLY'}
+                                </button>
+                              </>
                             )}
                           </div>
                         </td>

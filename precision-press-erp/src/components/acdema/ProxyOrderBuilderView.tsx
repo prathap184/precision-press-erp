@@ -28,6 +28,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [paymentMethodTab, setPaymentMethodTab] = useState<'CASH_UPI' | 'CREDIT'>('CASH_UPI');
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
 
   const creditAvailable = selectedCustomer ? (selectedCustomer.creditLimit || 0) - (selectedCustomer.usedCredit || 0) : 0;
   const creditExceeded = paymentMethodTab === 'CREDIT' && summary.grandTotal > creditAvailable;
@@ -314,7 +315,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       <tr className="border-b-2 border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
                         <th className="py-3 px-2 w-8 text-center">#</th>
                         <th className="py-3 px-2">Name of Item</th>
-                        <th className="py-3 px-2">Project</th>
+                        <th className="py-3 px-2">Project <span className="normal-case font-normal text-slate-400 tracking-normal italic">(optional)</span></th>
                         <th className="py-3 px-2 text-center">GST%</th>
                         <th className="py-3 px-2">Width</th>
                         <th className="py-3 px-2">Length</th>
@@ -323,7 +324,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         <th className="py-3 px-2">Rate/Sft</th>
                         <th className="py-3 px-2 text-center">Rate Per</th>
                         <th className="py-3 px-2">Finish</th>
-                        <th className="py-3 px-2">File Path *</th>
+                        <th className="py-3 px-2">File Path <span className="normal-case font-normal text-slate-400 tracking-normal italic">(optional)</span></th>
                         <th className="py-3 px-2 text-right">Amount</th>
                         <th className="py-3 px-2 text-center">×</th>
                       </tr>
@@ -406,26 +407,84 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               })()}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <input value={row.projectName || ''} onChange={(e) => updateRow(row.id, { projectName: e.target.value })} className="h-10 w-full min-w-[80px] rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800 outline-none placeholder:text-slate-300" placeholder="Project" />
+                              <input value={row.projectName || ''} onChange={(e) => updateRow(row.id, { projectName: e.target.value })} className="h-10 w-full min-w-[80px] rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800 outline-none placeholder:text-slate-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="Project (optional)" />
                             </td>
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
                             <td className="py-3 px-2 tabular-nums">
-                              <div className="flex h-10 w-[80px] items-center rounded-lg border border-slate-200 bg-slate-50 px-1 overflow-hidden">
-                                <input id={`error-row-${row.id}-width`} value={row.width} onChange={(e) => updateRow(row.id, { width: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="W" />
-                                <select value={row.widthUnit} onChange={(e) => updateRow(row.id, { widthUnit: e.target.value })} className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-400 outline-none focus:ring-0"><option value="FT">ft</option><option value="IN">in</option></select>
+                              <div className={`flex h-10 w-[90px] items-center rounded-lg border bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-blue-50/40 ${validationErrors[`row-${row.id}-width`] ? 'border-red-400' : 'border-slate-200'}`}>
+                                <input id={`error-row-${row.id}-width`} value={row.width} onChange={(e) => updateRow(row.id, { width: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="W" />
+                                {/* Unit picker */}
+                                <div className="relative flex-shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
+                                    onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                    className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                  >
+                                    {row.widthUnit === 'FT' ? 'ft' : 'in'}
+                                    <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                  </button>
+                                  {openUnitPickerId === `${row.id}-w` && (
+                                    <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                                      {['FT', 'IN'].map(u => (
+                                        <button
+                                          key={u}
+                                          type="button"
+                                          onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { widthUnit: u }); setOpenUnitPickerId(null); }}
+                                          className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                            row.widthUnit === u
+                                              ? 'bg-blue-600 text-white'
+                                              : 'text-slate-600 hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          {u.toLowerCase()}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <div className="flex h-10 w-[80px] items-center rounded-lg border border-slate-200 bg-slate-50 px-1 overflow-hidden">
-                                <input id={`error-row-${row.id}-height`} value={row.height} onChange={(e) => updateRow(row.id, { height: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="L" />
-                                <select value={row.heightUnit} onChange={(e) => updateRow(row.id, { heightUnit: e.target.value })} className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-400 outline-none focus:ring-0"><option value="FT">ft</option><option value="IN">in</option></select>
+                              <div className={`flex h-10 w-[90px] items-center rounded-lg border bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-blue-50/40 ${validationErrors[`row-${row.id}-height`] ? 'border-red-400' : 'border-slate-200'}`}>
+                                <input id={`error-row-${row.id}-height`} value={row.height} onChange={(e) => updateRow(row.id, { height: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="L" />
+                                {/* Unit picker */}
+                                <div className="relative flex-shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
+                                    onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                    className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                  >
+                                    {row.heightUnit === 'FT' ? 'ft' : 'in'}
+                                    <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                  </button>
+                                  {openUnitPickerId === `${row.id}-h` && (
+                                    <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                                      {['FT', 'IN'].map(u => (
+                                        <button
+                                          key={u}
+                                          type="button"
+                                          onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { heightUnit: u }); setOpenUnitPickerId(null); }}
+                                          className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                            row.heightUnit === u
+                                              ? 'bg-blue-600 text-white'
+                                              : 'text-slate-600 hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          {u.toLowerCase()}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">
                               {sqft > 0 ? sqft.toFixed(2) : '—'}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <input id={`error-row-${row.id}-quantity`} value={row.quantity} onChange={(e) => updateRow(row.id, { quantity: e.target.value })} className={`h-10 w-16 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-800 outline-none ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : ''}`} placeholder="Qty" />
+                              <input id={`error-row-${row.id}-quantity`} value={row.quantity} onChange={(e) => updateRow(row.id, { quantity: e.target.value })} className={`h-10 w-16 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : ''}`} placeholder="Qty" />
                             </td>
                             <td className="py-3 px-2 text-xs font-bold text-slate-600 tabular-nums">
                               {product?.baseRate?.toFixed(2) || '—'}
@@ -443,7 +502,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               </div>
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <input id={`error-row-${row.id}-file`} value={row.tiffPath} onChange={(e) => { updateRow(row.id, { tiffPath: e.target.value }); setValidationErrors(prev => ({...prev, [`row-${row.id}-file`]: ''})); }} className={`h-10 w-full min-w-[120px] rounded-lg border px-3 font-mono text-[10px] outline-none ${validationErrors[`row-${row.id}-file`] ? 'border-red-400 bg-red-50 text-red-600 placeholder-red-300' : 'border-slate-200 bg-slate-50 text-slate-800'}`} placeholder="\\server\path\file" />
+                              <input id={`error-row-${row.id}-file`} value={row.tiffPath} onChange={(e) => { updateRow(row.id, { tiffPath: e.target.value }); setValidationErrors(prev => ({...prev, [`row-${row.id}-file`]: ''})); }} className={`h-10 w-full min-w-[120px] rounded-lg border px-3 font-mono text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${validationErrors[`row-${row.id}-file`] ? 'border-red-400 bg-red-50 text-red-600 placeholder-red-300' : 'border-slate-200 bg-slate-50 text-slate-800'}`} placeholder="\\server\path\file (optional)" />
                             </td>
                             <td className="py-3 px-2 text-right text-sm font-black text-slate-900 tabular-nums">
                               {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -508,6 +567,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     <div className="flex gap-1.5 p-1 bg-slate-100/60 rounded-xl mb-4 border border-slate-200/40">
                       {[
                         { id: 'HAND_CASH', label: 'CASH' },
+                        { id: 'UPI', label: 'UPI' },
+                        { id: 'BANK', label: 'BANK' },
                         { id: 'COD', label: 'COD' }
                       ].map((opt) => (
                         <button
@@ -570,9 +631,36 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Amount Received (₹)</label>
                           <input type="number" placeholder={summary.grandTotal.toString()} value={vm.receiptAmount} onChange={e => vm.setReceiptAmount(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold focus:border-emerald-400 outline-none" />
                         </div>
+                        {(paymentMode === 'BANK' || paymentMode === 'UPI') && (
+                          <>
+                            {paymentMode === 'UPI' && (
+                              <div>
+                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">UPI App</label>
+                                <input type="text" placeholder="PhonePe, GPay, etc." value={vm.upiApp} onChange={e => vm.setUpiApp(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none" />
+                              </div>
+                            )}
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Bank Ledger Name</label>
+                              <select 
+                                value={vm.bankLedger} 
+                                onChange={e => vm.setBankLedger(e.target.value)} 
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none"
+                              >
+                                <option value="">Select Bank Account...</option>
+                                {vm.bankAccountsList?.map((bank: string) => (
+                                  <option key={bank} value={bank}>{bank}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">UTR / Transaction ID</label>
+                              <input type="text" placeholder="e.g. UTR123456" value={vm.utr} onChange={e => vm.setUtr(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none" />
+                            </div>
+                          </>
+                        )}
                         <div>
-                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Reference / UTR (Optional)</label>
-                          <input type="text" placeholder="e.g. UTR123456" value={vm.receiptRef} onChange={e => vm.setReceiptRef(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none" />
+                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Reference (Optional)</label>
+                          <input type="text" placeholder="e.g. Receipt no." value={vm.receiptRef} onChange={e => vm.setReceiptRef(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none" />
                         </div>
                         <div>
                           <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Remarks (Optional)</label>
@@ -585,14 +673,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     </>
                   )}
 
-                  {/* Special Notes block */}
+                  {/* Additional Notes block */}
                   <div className="mb-4">
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1.5 block">SPECIAL NOTES</label>
+                    <div className="flex items-center gap-2 mb-2 px-1">
+                      <div className="w-1 h-5 rounded-full bg-blue-500 flex-shrink-0" />
+                      <label className="text-[11px] font-black uppercase tracking-widest text-slate-700 leading-tight">
+                        Additional Notes
+                        <span className="block text-[9px] font-semibold normal-case tracking-normal text-slate-400 mt-0.5">by consumer for order processing</span>
+                      </label>
+                    </div>
                     <textarea 
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Specific color needs, hardware requirements..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs h-20 outline-none focus:border-slate-400 font-semibold resize-none transition-all"
+                      placeholder="Specific color needs, hardware requirements, special instructions..."
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs h-20 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 font-semibold resize-none transition-all"
                     />
                   </div>
 

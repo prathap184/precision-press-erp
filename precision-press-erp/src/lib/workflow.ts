@@ -645,6 +645,30 @@ export async function transitionOrder(
     }
   });
 
+  // 2.6 Tally Sync Automation
+  // Automatically queue a Tally Sales Invoice sync when the order reaches a final/shipped state.
+  // The enqueueTallySync function uses an idempotency key, so it won't duplicate if it triggers twice.
+  if (['DISPATCHED', 'DELIVERED', 'COMPLETED'].includes(nextStatus)) {
+    try {
+      const { enqueueTallySync, buildSalesInvoicePayload } = await import('@/lib/actions/tally-sync');
+      
+      const itemsSnap = await adminDb.collection('orders').doc(orderId).collection('items').get();
+      const items = itemsSnap.docs.map(i => i.data());
+      
+      if (items.length > 0) {
+        const payload = await buildSalesInvoicePayload(orderData, items);
+        await enqueueTallySync({
+          syncType: 'SALES_INVOICE',
+          orderId: orderId,
+          payload,
+          createdBy: user.id
+        });
+      }
+    } catch (err) {
+      console.error(`[Workflow] Failed to enqueue Tally sync for order ${orderId}:`, err);
+    }
+  }
+
   // 3. Log Activity
   await logActivity({
     userId: user.id,
@@ -755,8 +779,8 @@ function buildWorkflowSnapshot(
     blocking: step.blocking !== false,
     status: idx < startIdx ? 'COMPLETED' : idx === startIdx ? 'PENDING' : 'LOCKED',
     completedAt: idx < startIdx ? new Date().toISOString() : undefined,
-    completedBy: idx < startIdx ? 'ACDEMA_PROXY' : undefined,
-    notes: idx < startIdx ? 'Auto-completed for ACDEMA proxy flow.' : '',
+    completedBy: idx < startIdx ? 'STAFF_PROXY' : undefined,
+    notes: idx < startIdx ? 'Auto-completed for staff proxy order.' : '',
   }));
 
   return {
@@ -911,18 +935,21 @@ async function executeOrderPlacementTx(
   let initialStatus: OrderStatus = 'PLACED';
   let initialPaymentStatus = 'PENDING';
   
-  const isAcdemaUser = user.role === 'ACDEMA';
+  // Treat ADMIN and SUPER_ADMIN the same as ACDEMA — they can skip straight to Printer
+  const isAcdemaUser = user.role === 'ACDEMA' || user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
   const firstItem = payload.items[0];
   const firstProduct = products.find(p => p.id === String(firstItem?.productId || firstItem?.id || '').trim());
   let parentWorkflowSnapshot = buildWorkflowSnapshot(firstProduct, isAcdemaUser);
 
   const isCreditPayment = customerData.type === 'CREDIT' || payload.paymentMethod === 'CREDIT' || payload.paymentMode === 'CREDIT';
 
-  if ((user.role === 'ACDEMA' && payload.paymentMethod !== 'UPI' && payload.paymentMode !== 'UPI') || isCreditPayment) {
+  const isStaffProxyOrder = ['ACDEMA', 'ADMIN', 'SUPER_ADMIN'].includes(user.role);
+
+  if ((isStaffProxyOrder && payload.paymentMethod !== 'UPI' && payload.paymentMode !== 'UPI') || isCreditPayment) {
     initialStatus = 'ACCOUNTANT_APPROVED';
     initialPaymentStatus = 'VERIFIED';
     
-    // Auto-advance accountant step in workflowSnapshot
+    // Auto-advance all steps before PRINTER in workflowSnapshot
     if (parentWorkflowSnapshot && Array.isArray(parentWorkflowSnapshot.steps)) {
       const steps = [...parentWorkflowSnapshot.steps];
       const currentIdx = parentWorkflowSnapshot.currentStepIndex ?? 0;
@@ -932,7 +959,7 @@ async function executeOrderPlacementTx(
           status: 'COMPLETED',
           completedAt: now,
           completedBy: 'SYSTEM',
-          notes: 'Auto-approved for ACDEMA order'
+          notes: 'Auto-approved for staff proxy order'
         };
         const nextIdx = currentIdx + 1;
         if (nextIdx < steps.length) {
@@ -1279,29 +1306,8 @@ async function executeOrderPlacementTx(
 
   // Automatic SALE and RECEIPT generation during order placement has been removed.
   // Sales are strictly recognized when Invoices are generated.
-  // Staff (ACDEMA) manual receipt entry from checkout
-  if (user.role === 'ACDEMA' && payload.acdemaJobPayloadExtra?.receiptAmount) {
-     const recTxId = `TX-REC-${baseId}-${Date.now()}`;
-     const amount = Number(payload.acdemaJobPayloadExtra.receiptAmount);
-     ledgerEntries.push({
-      id: recTxId,
-      userId: customerData.id,
-      type: 'RECEIPT',
-      ledgerType: customerData.type,
-      refId: baseId,
-      debit: 0,
-      credit: amount,
-      balanceBefore: usedCredit, // No SALE was inserted, so usedCredit is the same
-      balanceAfter: usedCredit - amount,
-      availableCredit: 0,
-      remarks: payload.acdemaJobPayloadExtra.receiptRemarks || `Manual payment at checkout for Order ${baseId}`,
-      createdBy: user.id,
-      isVerified: true,
-      verifiedBy: user.id,
-      verifiedAt: now,
-      paymentId: payload.acdemaJobPayloadExtra.receiptRef || baseId
-    });
-  }
+  // Proxy Order advance receipts are handled separately in acdema.ts post-processing
+  // using the standard createReceiptEntry workflow.
 
   // 5. Background Jobs (Transactional Outbox)
   const jobs: Array<{ jobId: string; jobType: string; orderId: string; priority: number; payload: Record<string, any> }> = [

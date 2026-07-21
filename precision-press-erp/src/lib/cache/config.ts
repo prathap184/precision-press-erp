@@ -103,27 +103,17 @@ export async function getCachedDeliverySettings() {
 }
 
 export async function getCachedTallySettings() {
-  return getOrSetCache(
-    CACHE_KEYS.SETTINGS + ':tally',
-    async () => {
-      const snap = await adminDb.collection('settings').doc('tally').get();
-      if (!snap.exists) {
-        return {
-          companyName: 'Hindustan Enterprises',
-          salesLedgerName: 'Sales (GST 18%)',
-          cgstLedgerName: 'Output CGST',
-          sgstLedgerName: 'Output SGST',
-          igstLedgerName: 'Output IGST',
-          cashLedgerName: 'Cash',
-          bankLedgerName: 'Bank Account',
-          upiLedgerName: 'UPI / Paytm',
-          sundryDebtorsGroup: 'Sundry Debtors',
-        };
-      }
-      return snap.data();
-    },
-    CACHE_TTL.VERY_LONG
-  );
+  return {
+    companyName: 'Auravionx',
+    salesLedgerName: 'Sales',
+    cgstLedgerName: 'Output CGST',
+    sgstLedgerName: 'Output SGST',
+    igstLedgerName: 'Output IGST',
+    cashLedgerName: 'Cash',
+    bankLedgerName: 'Bank Account',
+    upiLedgerName: 'UPI / Paytm',
+    sundryDebtorsGroup: 'Sundry Debtors',
+  };
 }
 
 // --- INVALIDATORS ---

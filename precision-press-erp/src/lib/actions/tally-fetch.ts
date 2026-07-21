@@ -1,8 +1,8 @@
 'use server';
 
-import { adminDb } from '@/lib/firebase-admin';
+import { supabaseServer } from '@/lib/supabase-server';
 import { enqueueTallySync } from '@/lib/actions/tally-sync';
-import { TallySyncType, TallySyncEvent } from '@/types/tally';
+import { TallySyncEvent } from '@/types/tally';
 
 const POLL_INTERVAL_MS = 1000; // 1 second
 const TIMEOUT_MS = 15000;      // 15 seconds max wait
@@ -20,12 +20,13 @@ export async function liveTallyFetch({
   try {
     // 1. Enqueue the fetch event with a unique ID to bypass idempotency
     const uniqueRef = `FETCH-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-    
+
     const enqueueRes = await enqueueTallySync({
       syncType: fetchType,
       orderId: uniqueRef,
       payload: {},
       createdBy,
+      voucherType: fetchType,
     });
 
     if (!enqueueRes.success || !enqueueRes.eventId) {
@@ -34,25 +35,29 @@ export async function liveTallyFetch({
 
     const eventId = enqueueRes.eventId;
 
-    // 2. Poll Firestore waiting for the connector to process it
+    // 2. Poll Supabase waiting for the connector to process it
     const startTime = Date.now();
     let isComplete = false;
     let resultData = null;
 
     while (Date.now() - startTime < TIMEOUT_MS) {
-      // Wait before checking
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS));
 
-      const docSnap = await adminDb.collection('tally_sync_queue').doc(eventId).get();
-      if (docSnap.exists) {
-        const data = docSnap.data() as TallySyncEvent;
-        
-        if (data.status === 'SUCCESS') {
+      const { data: row } = await supabaseServer
+        .from('tally_sync_queue')
+        .select('status, tallyResponse, lastError')
+        .eq('id', eventId)
+        .single();
+
+      if (row) {
+        const ev = row as Pick<TallySyncEvent, 'status' | 'tallyResponse' | 'lastError'>;
+
+        if (ev.status === 'SUCCESS') {
           isComplete = true;
-          resultData = data.tallyResponse?.json || data.tallyResponse?.rawXml;
+          resultData = ev.tallyResponse?.json || ev.tallyResponse?.rawXml;
           break;
-        } else if (data.status === 'FAILED') {
-          return { success: false, error: data.lastError || 'Tally Connector failed to fetch data.' };
+        } else if (ev.status === 'FAILED') {
+          return { success: false, error: ev.lastError || 'Tally Connector failed to fetch data.' };
         }
       }
     }
@@ -61,9 +66,7 @@ export async function liveTallyFetch({
       return { success: false, error: 'Timeout waiting for Tally Connector. Ensure Tally and the Connector are running.' };
     }
 
-    // 3. Return the parsed JSON
     return { success: true, data: resultData };
-
   } catch (error: any) {
     console.error('[LiveTallyFetch] Error:', error.message);
     return { success: false, error: 'Internal server error during live fetch.' };

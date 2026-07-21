@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { AuthProvider } from "@/lib/auth-context";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { ShortcutMenu } from "@/components/layout/ShortcutMenu";
 import { Header } from "@/components/layout/Header";
 import { RoleGuard } from "@/lib/role-guard";
 import { Toaster } from "react-hot-toast";
@@ -29,7 +30,8 @@ export default function DashboardRootLayout({
   const isDesignerWorkspacePage = pathname.startsWith('/designer/orders');
   const isManagerWorkspacePage = pathname.startsWith('/manager/orders');
   const isPrinterWorkspacePage = pathname.startsWith('/printer/orders') || pathname === '/printer';
-  const displaySidebarExpanded = (isGlobalOrdersPage || isAcdemaViewPage || isAccountantLedgerPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage) ? false : isSidebarExpanded;
+  const isProxyOrderPage = pathname.startsWith('/proxy-order') || pathname.startsWith('/admin/orders/proxy') || pathname.startsWith('/acdema');
+  const displaySidebarExpanded = (isGlobalOrdersPage || isAcdemaViewPage || isAccountantLedgerPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage) ? false : isSidebarExpanded;
   const mainPadding = isAccountantLedgerPage ? 'p-3 lg:p-4' : 'p-4 lg:p-6';
 
   return (
@@ -107,6 +109,7 @@ export default function DashboardRootLayout({
               100% { transform: translate(-30px, -20px) scale(1.06); }
             }
           `}</style>
+          <ShortcutMenu />
           <Sidebar isExpanded={displaySidebarExpanded} onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)} />
           <div className={`relative z-10 flex flex-col min-h-screen transition-all duration-300 ${displaySidebarExpanded ? 'pl-[280px]' : 'pl-[72px]'}`}>
             <Header />

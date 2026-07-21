@@ -15,6 +15,7 @@ import { createAcdemaProxyOrder } from '@/lib/actions/acdema';
 import { refreshAuthTokenCookie } from '@/lib/refresh-auth-token';
 import { ProxyOrderBuilderView } from '@/components/acdema/ProxyOrderBuilderView';
 import { getQuotationById, createStandaloneQuotation } from '@/lib/actions/quotations';
+import { supabase } from '@/lib/supabase';
 
 type PaymentMode = 'HAND_CASH' | 'COD' | 'CREDIT';
 type DeliveryType = 'selfPickup' | 'door' | 'courier' | 'transport';
@@ -75,6 +76,10 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
   const [receiptAmount, setReceiptAmount] = useState('');
   const [receiptRef, setReceiptRef] = useState('');
   const [receiptRemarks, setReceiptRemarks] = useState('');
+  const [bankLedger, setBankLedger] = useState('');
+  const [upiApp, setUpiApp] = useState('');
+  const [bankAccountsList, setBankAccountsList] = useState<string[]>([]);
+  const [utr, setUtr] = useState('');
   const [verifyingGst, setVerifyingGst] = useState(false);
   const [createdCustomer, setCreatedCustomer] = useState<{ email: string; password: string; name: string } | null>(null);
   const [newCustomerForm, setNewCustomerForm] = useState({
@@ -147,12 +152,19 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
 
     const bootstrap = async () => {
       try {
-        const [productData, customerData] = await Promise.all([getProducts(), getCustomers()]);
+        const [productData, customerData, bankData] = await Promise.all([
+          getProducts(), 
+          getCustomers(),
+          supabase.from('bankAccounts').select('label')
+        ]);
         if (!active) return;
 
         const activeProducts = productData.filter((product: Product) => product.status === 'ACTIVE');
         setProducts(activeProducts);
         setCustomers(customerData);
+        if (bankData.data) {
+          setBankAccountsList(bankData.data.map((b: any) => b.label));
+        }
         
         if (quotationId) {
           try {
@@ -382,6 +394,14 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
       isVoucherEligible,
     };
   }, [rows, products, deliveryType, applyVoucher, shippingAddress, selectedCustomer]);
+
+  useEffect(() => {
+    if (paymentMode !== 'COD') {
+      setReceiptAmount(summary.grandTotal.toString());
+    } else {
+      setReceiptAmount('');
+    }
+  }, [summary.grandTotal, paymentMode]);
 
   const updateRow = (id: string, updates: Partial<AcdemaRow>) => {
     setRows((current) => current.map((row) => {
@@ -664,11 +684,14 @@ ${parts.join(', ')}`;
         depositDate: new Date().toISOString().split('T')[0],
         voucherApplied: summary.voucherApplied,
         voucherGstDiscount: summary.voucherGstDiscount,
-        acdemaJobPayloadExtra: paymentMode !== 'COD' && receiptAmount ? {
-          receiptAmount,
+        acdemaJobPayloadExtra: paymentMode !== 'COD' ? {
+          receiptAmount: receiptAmount || summary.grandTotal.toString(),
           receiptRef,
-          receiptRemarks
-        } : undefined
+          receiptRemarks,
+          bankLedger,
+          utr,
+          paymentMode
+        } : undefined,
       };
 
       if (mode === 'quotation') {
@@ -695,9 +718,23 @@ ${parts.join(', ')}`;
         }
 
         toast.success(`Proxy orders created successfully.`);
-        const highlightIds = result.orderIds?.length ? result.orderIds.join(',') : result.orderId;
-        const basePath = profile?.role === 'ACDEMA' ? '/acdema' : profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN' ? '/admin' : `/${profile?.role?.toLowerCase() || 'admin'}`;
-        router.push(`${basePath}/orders?highlight=${highlightIds}`);
+        
+        if (paymentMode !== 'COD' && receiptAmount && Number(receiptAmount) > 0) {
+          const params = new URLSearchParams({
+            customerId: selectedCustomer.uid,
+            amount: receiptAmount,
+            mode: paymentMode,
+            bankLedger: bankLedger || '',
+            upiApp: upiApp || '',
+            utr: utr || '',
+            remarks: receiptRemarks || `Advance for Proxy Order ${result.orderId || (result.orderIds ? result.orderIds[0] : '')}`
+          });
+          router.push(`/receipt-entry?${params.toString()}`);
+        } else {
+          const highlightIds = result.orderIds?.length ? result.orderIds.join(',') : result.orderId;
+          const basePath = profile?.role === 'ACDEMA' ? '/acdema' : profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN' ? '/admin' : `/${profile?.role?.toLowerCase() || 'admin'}`;
+          router.push(`${basePath}/orders?highlight=${highlightIds}`);
+        }
       }
     } catch (error: any) {
       console.error(error);
@@ -740,6 +777,8 @@ ${parts.join(', ')}`;
     tiffError,
     notes,
     setNotes,
+    upiApp,
+    setUpiApp,
     summary,
     submitProxyOrder,
     loading,
@@ -755,6 +794,11 @@ ${parts.join(', ')}`;
     setReceiptRef,
     receiptRemarks,
     setReceiptRemarks,
+    bankLedger,
+    setBankLedger,
+    bankAccountsList,
+    utr,
+    setUtr,
     mode,
   };
 

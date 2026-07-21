@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Loader2, Wallet, ChevronDown, Save, X, Plus, Trash2, CheckCircle } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { RoleGuard } from '@/lib/role-guard';
 import { getCustomers } from '@/lib/actions/users';
 import { createReceiptEntry } from '@/lib/actions/accounts';
@@ -51,10 +51,59 @@ export default function ReceiptEntryPage() {
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
 
+  const hasPrefilled = useRef(false);
+
+  const searchParams = useSearchParams();
+
   useEffect(() => {
+    // Read query params for pre-filling (e.g. from Proxy Order redirection)
+    const initCustomerId = searchParams.get('customerId');
+    const initAmount = searchParams.get('amount');
+    const initMode = searchParams.get('mode')?.trim().toUpperCase();
+    const initBankLedger = searchParams.get('bankLedger');
+    const initUpiApp = searchParams.get('upiApp');
+    const initUtr = searchParams.get('utr');
+    const initRemarks = searchParams.get('remarks');
+
+    if (initMode) {
+      if (initMode === 'HAND_CASH' || initMode === 'CASH') {
+        setPaymentMode('CASH');
+      } else if (initMode === 'BANK' || initMode === 'BANK_TRANSFER') {
+        setPaymentMode('BANK_TRANSFER');
+      } else if (initMode === 'UPI') {
+        setPaymentMode('UPI');
+      } else {
+        setPaymentMode(initMode);
+      }
+    }
+    
+    if (initBankLedger) {
+      setBankLedger(initBankLedger);
+      setBankName(initBankLedger);
+    }
+    if (initUpiApp) setUpiApp(initUpiApp);
+    if (initUtr) setUtr(initUtr);
+    if (initRemarks) setRemarks(initRemarks);
+
+    if (initAmount && Number(initAmount) > 0) {
+      hasPrefilled.current = true;
+      setAllocations([{
+        id: Date.now().toString(),
+        type: 'On Account',
+        amountAllocated: Number(initAmount)
+      }]);
+    }
+
+    if (initCustomerId) setSelectedCustomerId(initCustomerId);
+
     getCustomers().then(data => {
       setCustomers(data);
       setLoadingCustomers(false);
+      // Pre-fill customer search text if we have an initCustomerId
+      if (initCustomerId) {
+        const found = data.find(c => c.uid === initCustomerId);
+        if (found) setCustomerSearch(found.displayName || found.name || found.phone || '');
+      }
     }).catch(err => {
       console.error(err);
       toast.error('Failed to load customers');
@@ -107,11 +156,22 @@ export default function ReceiptEntryPage() {
         })
         .finally(() => setLoadingOrders(false));
 
-      // Start with one empty row
-      setAllocations([{ id: Date.now().toString(), type: 'Agst Ref', amountAllocated: 0 }]);
+      setAllocations(prev => {
+        // If we already have a pre-filled On Account with an amount, keep it.
+        if (prev.length === 1 && prev[0].type === 'On Account' && prev[0].amountAllocated > 0) {
+          return prev;
+        }
+        return [{ id: Date.now().toString(), type: 'Agst Ref', amountAllocated: 0 }];
+      });
     } else {
       setPendingOrders([]);
-      setAllocations([]);
+      setAllocations(prev => {
+        // Don't wipe if we have a pre-filled advance
+        if (prev.length === 1 && prev[0].type === 'On Account' && prev[0].amountAllocated > 0) {
+          return prev;
+        }
+        return [];
+      });
     }
   }, [selectedCustomerId]);
 

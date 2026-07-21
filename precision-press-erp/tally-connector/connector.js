@@ -91,257 +91,18 @@ const tallyApi = axios.create({
 
 // ─── XML Generators ───────────────────────────────────────────────────────────
 
-/**
- * Generates a Sales Invoice XML for TallyPrime.
- * Follows the TDL XML import format.
- */
-function buildSalesInvoiceXML(payload) {
-  let {
-    tallyCompanyName,
-    invoiceNumber,
-    invoiceDate,
-    customerName,
-    items,
-    subTotal,
-    cgst,
-    sgst,
-    igst,
-    grandTotal,
-    salesLedgerName,
-    gstLedgerName,
-  } = payload;
-
-  // Fallbacks
-  const actualCompanyName = 'Auravionx'; // Override default from ERP
-  if (!invoiceNumber) invoiceNumber = `INV-${Date.now()}`;
-  
-  if (invoiceDate) {
-    invoiceDate = String(invoiceDate).replace(/\D/g, ''); // Strip hyphens
-  }
-  if (!invoiceDate || String(invoiceDate).length < 8) {
-    const d = new Date();
-    invoiceDate = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-  }
-
-  // Educational Mode: Tally's trial copy only accepts the 1st, 2nd, and 31st.
-  // Any other date returns a misleading "Voucher date is missing" error.
-  // Disable via TALLY_EDUCATIONAL_MODE=false in .env when using a licensed copy.
-  if (EDUCATIONAL_MODE) {
-    invoiceDate = invoiceDate.substring(0, 6) + '01';
-  }
-
-  // Build line item ledger entries
-  const itemEntries = items.map(item => `
-          <ALLLEDGERENTRIES.LIST>
-            <LEDGERNAME>${xmlEscape(item.productName || 'Printing Services')}</LEDGERNAME>
-            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-            <LEDGERFROMITEM>No</LEDGERFROMITEM>
-            <REMOVEZEROENTRIES>No</REMOVEZEROENTRIES>
-            <AMOUNT>-${item.amount.toFixed(2)}</AMOUNT>
-          </ALLLEDGERENTRIES.LIST>`).join('');
-
-  // GST entries
-  const gstEntries = (cgst > 0 ? `
-          <ALLLEDGERENTRIES.LIST>
-            <LEDGERNAME>Output CGST</LEDGERNAME>
-            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-            <AMOUNT>-${cgst.toFixed(2)}</AMOUNT>
-          </ALLLEDGERENTRIES.LIST>
-          <ALLLEDGERENTRIES.LIST>
-            <LEDGERNAME>Output SGST</LEDGERNAME>
-            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-            <AMOUNT>-${sgst.toFixed(2)}</AMOUNT>
-          </ALLLEDGERENTRIES.LIST>` : `
-          <ALLLEDGERENTRIES.LIST>
-            <LEDGERNAME>Output IGST</LEDGERNAME>
-            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-            <AMOUNT>-${igst.toFixed(2)}</AMOUNT>
-          </ALLLEDGERENTRIES.LIST>`);
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<ENVELOPE>
-  <HEADER>
-    <TALLYREQUEST>Import Data</TALLYREQUEST>
-  </HEADER>
-  <BODY>
-    <IMPORTDATA>
-      <REQUESTDESC>
-        <REPORTNAME>Vouchers</REPORTNAME>
-        <STATICVARIABLES>
-          <SVCURRENTCOMPANY>${xmlEscape(actualCompanyName)}</SVCURRENTCOMPANY>
-        </STATICVARIABLES>
-      </REQUESTDESC>
-      <REQUESTDATA>
-        <TALLYMESSAGE xmlns:UDF="TallyUDF">
-          <VOUCHER DATE="${invoiceDate}" VCHTYPE="Sales" ACTION="Create" OBJVIEW="Invoice Voucher View">
-            <DATE>${invoiceDate}</DATE>
-            <EFFECTIVEDATE>${invoiceDate}</EFFECTIVEDATE>
-            <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
-            <PARTYLEDGERNAME>${xmlEscape(customerName)}</PARTYLEDGERNAME>
-            <VOUCHERNUMBER>${xmlEscape(invoiceNumber)}</VOUCHERNUMBER>
-            <NARRATION>ERP Auto-Sync: ${xmlEscape(invoiceNumber)}</NARRATION>
-            <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
-            <ISINVOICE>Yes</ISINVOICE>
-
-            ${itemEntries}
-            ${gstEntries}
-
-            <ALLLEDGERENTRIES.LIST>
-              <LEDGERNAME>${xmlEscape(debtorLedgerName)}</LEDGERNAME>
-              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-              <AMOUNT>${grandTotal.toFixed(2)}</AMOUNT>
-            </ALLLEDGERENTRIES.LIST>
-
-          </VOUCHER>
-        </TALLYMESSAGE>
-      </REQUESTDATA>
-    </IMPORTDATA>
-  </BODY>
-</ENVELOPE>`;
-}
-
-/**
- * Generates a Receipt Voucher XML for TallyPrime.
- */
-function buildReceiptVoucherXML(payload) {
-  // ── 1. Extract fields ─────────────────────────────────────────────────────────
-  const {
-    voucherNumber,
-    voucherDate,
-    amount,
-    customerName,
-    bankLedgerName,
-    debtorLedgerName,
-  } = payload;
-
-  // ── 2. Strict Validation ──────────────────────────────────────────────────────
-  // Resolve customer ledger: debtorLedgerName for credit orders (e.g. customer
-  // ledger in Tally); customerName for cash orders (the party ledger name).
-  const customerLedger = (debtorLedgerName && debtorLedgerName !== 'Cash') ? debtorLedgerName : customerName;
-
-  const validationErrors = [];
-  if (!voucherNumber || String(voucherNumber).trim() === '')
-    validationErrors.push('voucherNumber is missing');
-  if (!bankLedgerName || String(bankLedgerName).trim() === '')
-    validationErrors.push('bankLedgerName is missing');
-  if (!customerLedger || String(customerLedger).trim() === '' || customerLedger === 'Customer')
-    validationErrors.push(`customerLedger is missing or generic placeholder — got: "${customerLedger}"`);
-  if (!amount || isNaN(Number(amount)) || Number(amount) <= 0)
-    validationErrors.push(`amount is invalid — got: "${amount}"`);
-
-  if (validationErrors.length > 0) {
-    const msg = `FAILED_VALIDATION: ${validationErrors.join('; ')}`;
-    logger.error(`❌ ${msg}`);
-    throw new Error(msg);
-  }
-
-  const amountNum = Number(amount);
-
-  // ── 3. Date Normalisation ─────────────────────────────────────────────────────
-  const toTallyDate = (d) => new Date(d).toISOString().slice(0, 10).replace(/-/g, '');
-
-  let tallyDate;
-  if (!voucherDate || voucherDate === 'undefined' || voucherDate === 'null') {
-    tallyDate = toTallyDate(new Date());
-  } else if (String(voucherDate).length === 8 && !isNaN(Number(voucherDate))) {
-    tallyDate = String(voucherDate);
-  } else {
-    try { tallyDate = toTallyDate(voucherDate); }
-    catch (e) { tallyDate = toTallyDate(new Date()); }
-  }
-
-  // Educational Mode: Tally's trial copy only accepts the 1st, 2nd, and 31st.
-  // Any other date returns a misleading "Voucher date is missing" error.
-  // Disable via TALLY_EDUCATIONAL_MODE=false in .env when using a licensed copy.
-  if (EDUCATIONAL_MODE) {
-    tallyDate = tallyDate.substring(0, 6) + '01';
-  }
-
-  // ── 4. Debug Log ──────────────────────────────────────────────────────────────
-  logger.info(`📝 RECEIPT XML PAYLOAD:
-    voucherNumber  : ${voucherNumber}
-    tallyDate      : ${tallyDate}  (raw: ${voucherDate})
-    amount         : ${amountNum.toFixed(2)}
-    bankLedger     : ${bankLedgerName}
-    customerLedger : ${customerLedger}
-  `);
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<ENVELOPE>
-  <HEADER>
-    <TALLYREQUEST>Import Data</TALLYREQUEST>
-  </HEADER>
-  <BODY>
-    <IMPORTDATA>
-      <REQUESTDESC>
-        <REPORTNAME>Vouchers</REPORTNAME>
-        <STATICVARIABLES>
-          <SVCURRENTCOMPANY>Auravionx</SVCURRENTCOMPANY>
-        </STATICVARIABLES>
-      </REQUESTDESC>
-      <REQUESTDATA>
-        <TALLYMESSAGE xmlns:UDF="TallyUDF">
-          <VOUCHER VCHTYPE="Receipt" ACTION="Create">
-            <DATE>${tallyDate}</DATE>
-            <EFFECTIVEDATE>${tallyDate}</EFFECTIVEDATE>
-            <VOUCHERTYPENAME>Receipt</VOUCHERTYPENAME>
-            <VOUCHERNUMBER>${xmlEscape(voucherNumber)}</VOUCHERNUMBER>
-            <NARRATION>ERP Auto-Sync: ${xmlEscape(voucherNumber)}</NARRATION>
-
-            <ALLLEDGERENTRIES.LIST>
-              <LEDGERNAME>${xmlEscape(bankLedgerName)}</LEDGERNAME>
-              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-              <AMOUNT>${amountNum.toFixed(2)}</AMOUNT>
-            </ALLLEDGERENTRIES.LIST>
-
-            <ALLLEDGERENTRIES.LIST>
-              <LEDGERNAME>${xmlEscape(customerLedger)}</LEDGERNAME>
-              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-              <AMOUNT>-${amountNum.toFixed(2)}</AMOUNT>
-            </ALLLEDGERENTRIES.LIST>
-
-          </VOUCHER>
-        </TALLYMESSAGE>
-      </REQUESTDATA>
-    </IMPORTDATA>
-  </BODY>
-</ENVELOPE>`;
-}
-
-// ─── XML Utility ──────────────────────────────────────────────────────────────
-
-function xmlEscape(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
-
-/**
- * Generates an Export XML for fetching masters (List of Accounts) or Trial Balance.
- */
-function buildFetchXML(reportName) {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<ENVELOPE>
-  <HEADER>
-    <TALLYREQUEST>Export Data</TALLYREQUEST>
-  </HEADER>
-  <BODY>
-    <EXPORTDATA>
-      <REQUESTDESC>
-        <REPORTNAME>${reportName}</REPORTNAME>
-        <STATICVARIABLES>
-          <EXPLODEFLAG>Yes</EXPLODEFLAG>
-          <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-        </STATICVARIABLES>
-      </REQUESTDESC>
-    </EXPORTDATA>
-  </BODY>
-</ENVELOPE>`;
-}
+const {
+  buildSalesInvoiceXML,
+  buildReceiptVoucherXML,
+  buildPaymentVoucherXML,
+  buildJournalVoucherXML,
+  buildContraVoucherXML,
+  buildCustomerLedgerXML,
+  buildSupplierLedgerXML,
+  buildStockItemXML,
+  buildStockGroupXML,
+  buildFetchXML,
+} = require('./xml-builder');
 
 // ─── Parse Tally Response ─────────────────────────────────────────────────────
 
@@ -398,9 +159,23 @@ async function processEvent(event) {
   let isExport = false;
   try {
     if (event.syncType === 'SALES_INVOICE') {
-      xml = buildSalesInvoiceXML(event.payload);
+      xml = buildSalesInvoiceXML(event.payload, EDUCATIONAL_MODE);
     } else if (event.syncType === 'RECEIPT_VOUCHER') {
-      xml = buildReceiptVoucherXML(event.payload);
+      xml = buildReceiptVoucherXML(event.payload, EDUCATIONAL_MODE);
+    } else if (event.syncType === 'PAYMENT_VOUCHER') {
+      xml = buildPaymentVoucherXML(event.payload, EDUCATIONAL_MODE);
+    } else if (event.syncType === 'JOURNAL_VOUCHER') {
+      xml = buildJournalVoucherXML(event.payload, EDUCATIONAL_MODE);
+    } else if (event.syncType === 'CONTRA_VOUCHER') {
+      xml = buildContraVoucherXML(event.payload, EDUCATIONAL_MODE);
+    } else if (event.syncType === 'CREATE_CUSTOMER') {
+      xml = buildCustomerLedgerXML(event.payload);
+    } else if (event.syncType === 'CREATE_SUPPLIER') {
+      xml = buildSupplierLedgerXML(event.payload);
+    } else if (event.syncType === 'CREATE_STOCKGROUP') {
+      xml = buildStockGroupXML(event.payload);
+    } else if (event.syncType === 'CREATE_PRODUCT') {
+      xml = buildStockItemXML(event.payload);
     } else if (event.syncType === 'FETCH_MASTERS') {
       xml = buildFetchXML('List of Accounts');
       isExport = true;

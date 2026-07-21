@@ -9,13 +9,16 @@ import Link from 'next/link';
 // Define expected server actions
 type GetCustomersFn = () => Promise<UserProfile[]>;
 type UpdateCreditLimitFn = (uid: string, limit: number) => Promise<{ success: boolean; error?: string }>;
+type SyncCustomerFn = (uid: string) => Promise<{ success: boolean; error?: string }>;
 
 export default function CustomerManagement({
   getCustomers,
   updateCustomerCreditLimit,
+  syncCustomerToTally,
 }: {
   getCustomers: GetCustomersFn;
   updateCustomerCreditLimit: UpdateCreditLimitFn;
+  syncCustomerToTally?: SyncCustomerFn;
 }) {
   const [customers, setCustomers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -24,6 +27,7 @@ export default function CustomerManagement({
 
   const [editingCredit, setEditingCredit] = useState<{ uid: string; limit: string } | null>(null);
   const [savingCredit, setSavingCredit] = useState(false);
+  const [syncingCustomer, setSyncingCustomer] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCustomers();
@@ -82,6 +86,20 @@ export default function CustomerManagement({
       toast.error(error.message);
     } finally {
       setSavingCredit(false);
+    }
+  };
+
+  const handleSyncToTally = async (uid: string) => {
+    if (!syncCustomerToTally) return;
+    setSyncingCustomer(uid);
+    try {
+      const res = await syncCustomerToTally(uid);
+      if (res.success) toast.success('Customer queued for Tally sync');
+      else toast.error(res.error || 'Failed to sync to Tally');
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to sync');
+    } finally {
+      setSyncingCustomer(null);
     }
   };
 
@@ -207,13 +225,25 @@ export default function CustomerManagement({
                         )}
                       </td>
                       <td className="p-4">
-                        <button
-                          onClick={() => setEditingCredit({ uid: customer.uid, limit: String(customer.creditLimit || 0) })}
-                          className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-700 hover:bg-slate-50"
-                        >
-                          <Edit3 size={12} />
-                          Limit
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setEditingCredit({ uid: customer.uid, limit: String(customer.creditLimit || 0) })}
+                            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-700 hover:bg-slate-50"
+                          >
+                            <Edit3 size={12} />
+                            Limit
+                          </button>
+                          {syncCustomerToTally && (
+                            <button
+                              onClick={() => handleSyncToTally(customer.uid)}
+                              disabled={syncingCustomer === customer.uid}
+                              className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest text-green-700 hover:bg-green-100 disabled:opacity-50"
+                            >
+                              <Check size={12} className={syncingCustomer === customer.uid ? "animate-pulse" : ""} />
+                              {syncingCustomer === customer.uid ? 'Syncing...' : 'Tally'}
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )

@@ -730,7 +730,7 @@ export async function createReceiptEntry(
     }
   }
 
-  const isCash = paymentMode?.toUpperCase() === 'CASH';
+  const isCash = paymentMode?.toUpperCase() === 'CASH' || paymentMode?.toUpperCase() === 'HAND_CASH';
   const tasks: Promise<any>[] = [];
 
   if (updateOrdersPromise) tasks.push(updateOrdersPromise);
@@ -763,10 +763,17 @@ export async function createReceiptEntry(
 
   const refIdStr = invoiceNumberForLink ? invoiceNumberForLink : receiptEntryNumber;
 
+  const { data: customerProfile } = await supabaseServer.from('profiles').select('usedCredit, creditLimit').eq('id', customerId).single();
+  const balanceBefore = Number(customerProfile?.usedCredit || 0);
+  const balanceAfter = Math.max(0, balanceBefore - amount);
+  const availableCredit = Math.max(0, Number(customerProfile?.creditLimit || 0) - balanceAfter);
+
   tasks.push(
     supabaseServer.from('transactions').insert({
-      id: receiptEntryNumber, type: 'RECEIPT', ledgerType: 'RECEIPT',
-      userId: customerId, credit: amount, debit: 0, timestamp: nowStr,
+      id: receiptEntryNumber, type: 'RECEIPT', ledgerType: isCash ? 'CASH' : 'BANK',
+      userId: customerId, credit: amount, debit: 0, 
+      balanceBefore, balanceAfter, availableCredit,
+      timestamp: nowStr,
       isVerified: true, refId: refIdStr, paymentId: refNumber,
       paymentMode: paymentMode, remarks: remarks,
       receipt_entry_number: receiptEntryNumber, sale_entry_number: invoiceNumberForLink,
@@ -776,6 +783,12 @@ export async function createReceiptEntry(
       cash_ledger: cashLedger, upi_app: upiApp, bank_ledger: bankLedger,
       bank_name: bankName, utr: utr
     })
+  );
+
+  tasks.push(
+    supabaseServer.from('profiles').update({
+      usedCredit: balanceAfter
+    }).eq('id', customerId)
   );
 
   tasks.push(
@@ -821,7 +834,27 @@ export async function createReceiptEntry(
     })());
   }
 
-  await Promise.all(tasks);
+  // Update company full details
+  tasks.push(
+    supabaseServer.from('company_full_details').insert({
+      company_name: 'Hindustan Enterprises',
+      cash_amount: isCash ? amount : 0,
+      bank_amount: !isCash ? amount : 0,
+      status: 'NEW',
+      transaction_type: 'RECEIPT',
+      transaction_type_ref: receiptEntryNumber,
+      created_by: authUser.id
+    })
+  );
+
+  const results = await Promise.all(tasks);
+
+  for (const res of results) {
+    if (res && res.error) {
+      console.error('Error inserting receipt data:', res.error);
+      throw new Error(`Receipt entry failed: ${res.error.message || JSON.stringify(res.error)}`);
+    }
+  }
 
   revalidatePath('/', 'layout');
   return { success: true, receiptEntryNumber };
@@ -979,25 +1012,90 @@ export async function createJournalEntry(
 
   if (txErr) throw new Error(txErr.message);
 
-  // 2. Queue for Tally Push
-  const { error: syncErr } = await supabaseServer.from('tally_sync_queue').insert({
-    voucher_type: 'Journal',
-    voucher_date: new Date().toISOString().split('T')[0],
-    reference_id: journalId,
-    status: 'PENDING',
-    payload: {
-      journalEntryNumber,
-      fromCustomerId: fromId,
-      toCustomerId: toId,
-      totalAmount: amount,
-      remarks,
-      type: 'JOURNAL'
+  // Fetch names for Tally XML
+  let fromLedger = 'Unknown';
+  let toLedger = 'Unknown';
+  try {
+    const { data: profiles } = await supabaseServer
+      .from('profiles')
+      .select('id, name, displayName, businessName')
+      .in('id', [fromId, toId]);
+    if (profiles) {
+      const fromP = profiles.find(p => p.id === fromId);
+      const toP = profiles.find(p => p.id === toId);
+      if (fromP) fromLedger = fromP.displayName || fromP.businessName || fromP.name || fromId;
+      if (toP) toLedger = toP.displayName || toP.businessName || toP.name || toId;
     }
-  });
+  } catch (e) {}
 
-  if (syncErr) {
+  // 2. Queue for Tally Push
+  try {
+    const { enqueueTallySync } = await import('./tally-sync');
+    await enqueueTallySync({
+      syncType: 'JOURNAL_ENTRY',
+      orderId: journalId,
+      customerId: fromId || 'system',
+      createdBy: authUser.id,
+      voucherId: journalEntryNumber,
+      voucherType: 'Journal',
+      refId: journalEntryNumber,
+      amountSnap: { amount: amount, type: 'JOURNAL' },
+      payload: {
+        journalEntryNumber,
+        voucherNumber: journalEntryNumber,
+        fromCustomerId: fromId,
+        toCustomerId: toId,
+        totalAmount: amount,
+        amount: amount,
+        remarks,
+        voucherDate: journalDate || new Date().toISOString().split('T')[0],
+        type: 'JOURNAL',
+        entries: [
+          { ledgerName: fromLedger, amount: amount, isDebit: false },
+          { ledgerName: toLedger, amount: amount, isDebit: true }
+        ]
+      }
+    });
+  } catch (syncErr: any) {
     console.warn('[createJournalEntry] Failed to enqueue Tally sync:', syncErr.message);
   }
+
+  // 3. Insert into transactions table (Double Entry for General Ledger)
+  const txDate = new Date().toISOString();
+  
+  // Credit leg (Source / Giver)
+  const { error: txCredErr } = await supabaseServer.from('transactions').insert({
+    id: journalEntryNumber + '-CR',
+    userId: fromId,
+    type: 'JOURNAL',
+    ledgerType: 'JOURNAL',
+    debit: 0,
+    credit: amount,
+    remarks: remarks,
+    createdBy: authUser.name,
+    timestamp: txDate,
+    isVerified: true,
+    refId: journalEntryNumber,
+    paymentMode: 'JOURNAL'
+  });
+  if (txCredErr) console.warn('[createJournalEntry] Failed to insert Credit leg into transactions:', txCredErr.message);
+
+  // Debit leg (Target / Receiver)
+  const { error: txDebErr } = await supabaseServer.from('transactions').insert({
+    id: journalEntryNumber + '-DR',
+    userId: toId,
+    type: 'JOURNAL',
+    ledgerType: 'JOURNAL',
+    debit: amount,
+    credit: 0,
+    remarks: remarks,
+    createdBy: authUser.name,
+    timestamp: txDate,
+    isVerified: true,
+    refId: journalEntryNumber,
+    paymentMode: 'JOURNAL'
+  });
+  if (txDebErr) console.warn('[createJournalEntry] Failed to insert Debit leg into transactions:', txDebErr.message);
 
   return { success: true, journalEntryNumber };
 }
@@ -1040,22 +1138,116 @@ export async function createContraEntry(
     userId: authUser.id
   });
 
-  // 2. Queue for Tally Push
-  const { error: syncErr } = await supabaseServer.from('tally_sync_queue').insert({
-    voucher_type: 'Contra',
-    voucher_date: new Date().toISOString().split('T')[0],
-    reference_id: contraId,
-    status: 'PENDING',
-    payload: {
-      contraEntryNumber,
-      transferType,
-      totalAmount: amount,
-      remarks,
-      type: 'CONTRA'
-    }
-  });
+  // Fetch previous balances
+  const { data: lastCash } = await supabaseServer.from('company_cash_ledger')
+    .select('balance_after, cash_ledger_name')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  
+  const { data: lastBank } = await supabaseServer.from('company_bank_ledger')
+    .select('balance_after, bank_ledger_name')
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
 
-  if (syncErr) {
+  const balBeforeCash = Number(lastCash?.balance_after || 0);
+  const cashLedgerName = lastCash?.cash_ledger_name || (transferType === 'CASH_TO_BANK' ? source_ledger : target_ledger);
+
+  const balBeforeBank = Number(lastBank?.balance_after || 0);
+  const bankLedgerName = lastBank?.bank_ledger_name || (transferType === 'CASH_TO_BANK' ? target_ledger : source_ledger);
+
+  const dateStr = contraDate || new Date().toISOString().split('T')[0];
+
+  if (transferType === 'CASH_TO_BANK') {
+    await Promise.all([
+      supabaseServer.from('company_cash_ledger').insert({
+        entry_date: dateStr, cash_ledger_name: cashLedgerName, type: 'OUT',
+        amount: amount, balance_before: balBeforeCash, balance_after: Math.max(0, balBeforeCash - amount),
+        transaction_type: 'CONTRA', ref_id: contraEntryNumber,
+        narration: `Contra | ${remarks || ''}`, created_by: authUser.name || authUser.id
+      }),
+      supabaseServer.from('company_bank_ledger').insert({
+        entry_date: dateStr, bank_ledger_name: bankLedgerName, type: 'IN',
+        amount: amount, balance_before: balBeforeBank, balance_after: balBeforeBank + amount,
+        transaction_type: 'CONTRA', ref_id: contraEntryNumber,
+        narration: `Contra | ${remarks || ''}`, created_by: authUser.name || authUser.id
+      })
+    ]);
+  } else {
+    // BANK_TO_CASH
+    await Promise.all([
+      supabaseServer.from('company_bank_ledger').insert({
+        entry_date: dateStr, bank_ledger_name: bankLedgerName, type: 'OUT',
+        amount: amount, balance_before: balBeforeBank, balance_after: Math.max(0, balBeforeBank - amount),
+        transaction_type: 'CONTRA', ref_id: contraEntryNumber,
+        narration: `Contra | ${remarks || ''}`, created_by: authUser.name || authUser.id
+      }),
+      supabaseServer.from('company_cash_ledger').insert({
+        entry_date: dateStr, cash_ledger_name: cashLedgerName, type: 'IN',
+        amount: amount, balance_before: balBeforeCash, balance_after: balBeforeCash + amount,
+        transaction_type: 'CONTRA', ref_id: contraEntryNumber,
+        narration: `Contra | ${remarks || ''}`, created_by: authUser.name || authUser.id
+      })
+    ]);
+  }
+
+  // 1.c. Insert into transactions table
+  const txDate = contraDate ? `${contraDate}T00:00:00.000Z` : new Date().toISOString();
+  await supabaseServer.from('transactions').insert([
+    {
+      id: contraEntryNumber + '-BANK',
+      type: 'CONTRA',
+      ledgerType: 'CONTRA',
+      debit: transferType === 'BANK_TO_CASH' ? amount : 0,
+      credit: transferType === 'CASH_TO_BANK' ? amount : 0,
+      timestamp: txDate,
+      isVerified: true,
+      refId: contraEntryNumber,
+      paymentMode: transferType,
+      remarks: remarks,
+      createdBy: authUser.name || authUser.id,
+      verifiedBy: authUser.name || authUser.id,
+      bank_ledger: bankLedgerName
+    },
+    {
+      id: contraEntryNumber + '-CASH',
+      type: 'CONTRA',
+      ledgerType: 'CONTRA',
+      debit: transferType === 'CASH_TO_BANK' ? amount : 0,
+      credit: transferType === 'BANK_TO_CASH' ? amount : 0,
+      timestamp: txDate,
+      isVerified: true,
+      refId: contraEntryNumber,
+      paymentMode: transferType,
+      remarks: remarks,
+      createdBy: authUser.name || authUser.id,
+      verifiedBy: authUser.name || authUser.id,
+      cash_ledger: cashLedgerName
+    }
+  ]);
+
+  // 2. Queue for Tally Push
+  try {
+    const { enqueueTallySync } = await import('./tally-sync');
+    await enqueueTallySync({
+      syncType: 'CONTRA_ENTRY',
+      orderId: contraId,
+      customerId: 'system',
+      createdBy: authUser.id,
+      voucherId: contraEntryNumber,
+      voucherType: 'Contra',
+      refId: contraEntryNumber,
+      amountSnap: { amount, type: transferType },
+      payload: {
+        contraEntryNumber,
+        voucherNumber: contraEntryNumber,
+        transferType,
+        amount: amount,
+        remarks,
+        voucherDate: contraDate || new Date().toISOString().split('T')[0],
+        fromLedgerName: source_ledger,
+        toLedgerName: target_ledger,
+        type: 'CONTRA'
+      }
+    });
+  } catch (syncErr: any) {
     console.warn('[createContraEntry] Failed to enqueue Tally sync:', syncErr.message);
   }
 

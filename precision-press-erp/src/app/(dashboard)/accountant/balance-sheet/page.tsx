@@ -21,7 +21,7 @@ export default async function BalanceSheetPage() {
 
   return (
     <BalanceSheetClient 
-      allEntries={allEntries} 
+      allEntries={allEntries.rows} 
       totalOpeningBalance={totalOpeningBalance} 
     />
   );

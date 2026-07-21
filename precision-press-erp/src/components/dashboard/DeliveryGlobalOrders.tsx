@@ -97,9 +97,21 @@ export function DeliveryGlobalOrders() {
 
   return (
     <RoleGuard allowedRoles={['DELIVERY', 'ADMIN', 'MANAGER']} redirectTo="/delivarypartner">
-      <section id="global-orders" className="space-y-4 scroll-mt-28">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-4 bg-white py-3 border-b border-slate-200">
-          <div className="flex items-center gap-3">
+      <div className="font-sans text-slate-800 bg-[#d4d4d8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none">
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+          {/* Grid Pattern */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+
+          {/* Abstract Shapes */}
+          <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-400/40 blur-[140px] pointer-events-none animate-pulse"></div>
+          <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-fuchsia-400/40 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-cyan-400/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+        </div>
+
+        <div className="w-full relative z-10">
+          <section id="global-orders" className="relative z-50 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 scroll-mt-28">
+            <div className="flex items-center gap-3">
             <div className="p-2 bg-slate-900 rounded text-white">
               <ClipboardList size={18} />
             </div>
@@ -124,9 +136,9 @@ export function DeliveryGlobalOrders() {
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        <div className="px-4 flex gap-4">
+        <div className="relative z-40 mb-6 flex gap-4">
           <div className="flex-1 relative group">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
             <input
@@ -185,8 +197,8 @@ export function DeliveryGlobalOrders() {
           </div>
         </div>
 
-        <div className="px-4">
-          <div className="bg-white rounded border border-slate-200 shadow-sm overflow-hidden">
+        <div className="relative z-30 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+          <div className="bg-white/40 rounded-2xl border border-white/60 shadow-sm overflow-hidden backdrop-blur-md">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left">
                 <thead>
@@ -299,7 +311,8 @@ export function DeliveryGlobalOrders() {
             )}
           </div>
         </div>
-      </section>
+      </div>
+      </div>
     </RoleGuard>
   );
 }

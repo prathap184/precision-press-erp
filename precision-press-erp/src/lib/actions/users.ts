@@ -243,6 +243,34 @@ export async function updateCustomerProfile(uid: string, data: Partial<UserProfi
     });
 
     await adminDb.collection('profiles').doc(uid).update(updates);
+
+    try {
+      const { enqueueTallySync, getTallySettings } = await import('@/lib/actions/tally-sync');
+      const settings = await getTallySettings();
+      const profileSnap = await adminDb.collection('profiles').doc(uid).get();
+      const profile = profileSnap.data();
+      if (profile) {
+        await enqueueTallySync({
+          syncType: 'CREATE_CUSTOMER',
+          customerId: uid,
+          payload: {
+            tallyCompanyName: settings.companyName,
+            ledgerName: profile.businessName || profile.name || profile.displayName || 'Customer',
+            parentGroup: 'Sundry Debtors',
+            state: profile.billing_state || profile.state || 'Karnataka',
+            country: profile.billing_country || profile.country || 'India',
+            address: profile.billing_address_line1 || profile.address || '',
+            gstin: profile.gstNumber || '',
+            pinCode: profile.billing_pincode || profile.pincode || '',
+            mobile: profile.phone || '',
+          },
+          createdBy: 'system',
+        });
+      }
+    } catch (err) {
+      console.error('[updateCustomerProfile] Failed to enqueue Tally sync:', err);
+    }
+
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

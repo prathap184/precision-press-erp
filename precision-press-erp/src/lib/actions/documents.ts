@@ -355,21 +355,45 @@ export async function generateInvoiceFromChildOrders(
           invoice_id: invoiceId
         }).in('id', childOrderIds);
 
-        await supabaseServer.from('tally_sync_queue').insert({
-          id: `TSYNC-S-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`.toUpperCase(),
-          syncType: 'SALES_VOUCHER',
-          customerId: customerId,
-          idempotencyKey: `SALES_VOUCHER::${txId}`,
-          status: 'PENDING',
-          payload: {
-            saleEntryNumber: invoiceNumber,
-            customerId,
-            totalAmount: Number(totalGrand.toFixed(2)),
-            remarks: `Auto-generated from Invoice ${invoiceNumber}`,
-            orderIds: childOrderIds,
-            type: 'SALE',
-            voucherDate: new Date().toISOString().split('T')[0]
-          }
+        const { enqueueTallySync, getTallySettings } = await import('@/lib/actions/tally-sync');
+        const settings = await getTallySettings();
+        
+        const payload = {
+          tallyCompanyName: settings.companyName,
+          invoiceNumber: invoiceNumber,
+          invoiceDate: new Date().toISOString().split('T')[0].replace(/-/g, ''), // Tally format YYYYMMDD
+          orderDate: new Date().toISOString().split('T')[0].replace(/-/g, ''),
+          customerName: customerSnap.name || 'Cash Customer',
+          customerAddress: customerSnap.address || '',
+          state: customerSnap.state || 'Karnataka',
+          items: orders.map(order => {
+             const fbItem = (typeof order.items === 'string' ? JSON.parse(order.items) : order.items)?.[0] || {};
+             const specs = fbItem.specs || {};
+             const pricing = fbItem.pricingSnapshot || {};
+             return {
+                productName: order.productName || 'Printing Services',
+                quantity: specs.quantity || 1,
+                sqft: specs.sqft || 0,
+                rate: pricing.baseRate || 0,
+                amount: order.amounts?.subtotal || order.amounts?.productTotal || 0,
+                gstPercent: (Number(order.cgst_percentage) || 0) + (Number(order.sgst_percentage) || 0) + (Number(order.igst_percentage) || 0)
+             };
+          }),
+          subTotal: totalTaxable,
+          cgst: totalCgst,
+          sgst: totalSgst,
+          igst: totalIgst,
+          grandTotal: Number(totalGrand.toFixed(2)),
+          deliveryCharges: totalTransport,
+          narration: `Consolidated Invoice ${invoiceNumber}`
+        };
+
+        await enqueueTallySync({
+          syncType: 'SALES_INVOICE',
+          orderId: invoiceId, // Track against invoice ID
+          customerId,
+          payload,
+          createdBy: actorName,
         });
       }
     } catch(e) {
