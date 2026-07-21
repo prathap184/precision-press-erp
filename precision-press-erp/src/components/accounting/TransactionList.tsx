@@ -6,6 +6,8 @@ import { format, parseISO, startOfDay, endOfDay, subDays } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Search, Filter, Plus, FileText, ChevronLeft, ChevronRight, Settings, Download, AlertCircle, X } from 'lucide-react';
 import Link from 'next/link';
+import { useF2DateShortcut } from '@/hooks/useF2DateShortcut';
+import { F2DatePicker } from '@/components/ui/F2DatePicker';
 
 interface Transaction {
   id: string;
@@ -78,6 +80,15 @@ export function TransactionList({ title, transactions, emptyMessage, newActionHr
     updateUrl(dateFrom, dateTo);
   };
 
+  const { isOpen: f2Open, open: openF2, close: closeF2 } = useF2DateShortcut();
+
+  const handleF2Apply = (from: string, to: string) => {
+    setDateFrom(from);
+    setDateTo(to);
+    updateUrl(from, to);
+    closeF2();
+  };
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       // Date filtering now largely handled by server, 
@@ -121,6 +132,16 @@ export function TransactionList({ title, transactions, emptyMessage, newActionHr
 
   return (
     <div className="flex flex-col h-full bg-slate-50 min-h-screen">
+      {/* F2 Date Picker Popup */}
+      {f2Open && (
+        <F2DatePicker
+          currentFrom={dateFrom}
+          currentTo={dateTo}
+          onApply={handleF2Apply}
+          onClose={closeF2}
+        />
+      )}
+
       {/* Header bar matching ERPNext */}
       <div className="bg-white border-b px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-4">
@@ -163,28 +184,14 @@ export function TransactionList({ title, transactions, emptyMessage, newActionHr
                 />
               </div>
 
-              {/* Date Filters with Apply Button */}
+              {/* Date Filters */}
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={dateFrom}
-                  onChange={e => setDateFrom(e.target.value)}
-                  onBlur={handleDateChange}
-                  className="text-sm border border-slate-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                />
-                <span className="text-slate-400 text-xs font-medium">to</span>
-                <input
-                  type="date"
-                  value={dateTo}
-                  onChange={e => setDateTo(e.target.value)}
-                  onBlur={handleDateChange}
-                  className="text-sm border border-slate-200 rounded-md px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                />
-                <button 
-                  onClick={handleDateChange}
-                  className="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs font-medium hover:bg-indigo-700 ml-1"
+                <button
+                  onClick={openF2}
+                  title="Press F2 to change date period"
+                  className="text-[10px] font-bold text-indigo-500 bg-indigo-50 border border-indigo-300 px-2 py-1 rounded-md hover:bg-indigo-100 transition-colors cursor-pointer select-none"
                 >
-                  Apply
+                  F2 · {format(new Date(dateFrom || new Date()), 'dd MMM')} → {format(new Date(dateTo || new Date()), 'dd MMM yyyy')}
                 </button>
               </div>
 
