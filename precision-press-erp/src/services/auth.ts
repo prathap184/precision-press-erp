@@ -100,6 +100,8 @@ export class AuthService {
 
     if (error) {
       if (error.message === 'Invalid login credentials') {
+        // Call bootstrap-login — it will ONLY succeed if this email already
+        // has a profile in our system. Unknown emails get a 401 back.
         const bootstrapResponse = await fetch('/api/auth/bootstrap-login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -107,10 +109,13 @@ export class AuthService {
         });
 
         const bootstrapData = (await bootstrapResponse.json().catch(() => null)) as AuthBootstrapResponse | null;
+
+        // If bootstrap rejected (unknown user, inactive account, etc.) — surface that error
         if (!bootstrapResponse.ok || bootstrapData?.error) {
-          throw new Error(bootstrapData?.error || error.message);
+          throw new Error(bootstrapData?.error || 'Invalid login credentials.');
         }
 
+        // Bootstrap succeeded — retry sign-in with the synced password
         const retry = await supabase.auth.signInWithPassword({ email, password });
         if (retry.error) {
           throw new Error(retry.error.message);
@@ -122,8 +127,12 @@ export class AuthService {
         }
 
         const retryProfileRow = await fetchProfileByIdOrEmail(retryUser.id, retryUser.email ?? email);
+        if (!retryProfileRow) {
+          // Should never reach here since bootstrap already verified profile exists
+          throw new Error('Account not found. Please contact admin.');
+        }
 
-        return retryProfileRow ? normalizeProfile(retryProfileRow, retryUser.email) : normalizeProfile({ id: retryUser.id, email: retryUser.email, role: 'CUSTOMER' }, retryUser.email);
+        return normalizeProfile(retryProfileRow, retryUser.email);
       }
 
       throw new Error(error.message);
