@@ -7,32 +7,66 @@ type LoginBody = {
   password?: string;
 };
 
+async function findProfileByEmail(email: string) {
+  const { data, error } = await supabaseServer
+    .from('profiles')
+    .select('id, email, role, status')
+    .eq('email', email.toLowerCase())
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ?? null;
+}
+
 async function findAuthUserByEmail(email: string) {
   const { data, error } = await supabaseServer.auth.admin.listUsers();
-  if (error) {
-    throw error;
-  }
-
-  return data.users.find((user) => user.email?.toLowerCase() === email.toLowerCase()) ?? null;
+  if (error) throw error;
+  return data.users.find((u) => u.email?.toLowerCase() === email.toLowerCase()) ?? null;
 }
 
 export async function POST(request: Request) {
   try {
     const rateLimit = await checkRateLimit('auth_login', 10, 60);
     if (!rateLimit.allowed) {
-      return NextResponse.json({ error: 'Too many requests. Please try again later.' }, { status: 429 });
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 },
+      );
     }
 
     const body = (await request.json()) as LoginBody;
-    const email = body.email?.trim();
+    const email = body.email?.trim().toLowerCase();
     const password = body.password?.trim();
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Missing email or password.' }, { status: 400 });
     }
 
+    // ── SECURITY: Only allow login for pre-approved profiles ──────────────────
+    // If no profile exists in our system, reject immediately.
+    // This prevents anyone from creating an account just by attempting to log in.
+    const existingProfile = await findProfileByEmail(email);
+    if (!existingProfile) {
+      // Return same generic error as a wrong password to avoid email enumeration
+      return NextResponse.json(
+        { error: 'Invalid login credentials.' },
+        { status: 401 },
+      );
+    }
+
+    // ── SECURITY: Block inactive/suspended accounts ───────────────────────────
+    if (existingProfile.status && existingProfile.status === 'INACTIVE') {
+      return NextResponse.json(
+        { error: 'Your account has been deactivated. Please contact admin.' },
+        { status: 403 },
+      );
+    }
+
+    // Profile exists — sync the auth user (create or update password)
     const existingAuthUser = await findAuthUserByEmail(email);
+
     if (existingAuthUser) {
+      // User exists in auth — just update the password
       const { error } = await supabaseServer.auth.admin.updateUserById(existingAuthUser.id, {
         password,
         email_confirm: true,
@@ -42,6 +76,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: error.message }, { status: 400 });
       }
     } else {
+      // Auth record missing (profile exists but no auth user) — create auth user only
       const { error } = await supabaseServer.auth.admin.createUser({
         email,
         password,
@@ -53,44 +88,11 @@ export async function POST(request: Request) {
       }
     }
 
-    const profileQuery = supabaseServer.from('profiles').select('*');
-    const { data: profileRow, error: profileError } = existingAuthUser
-      ? await profileQuery.or(`id.eq.${existingAuthUser.id},email.eq.${email}`).maybeSingle()
-      : await profileQuery.eq('email', email).maybeSingle();
-
-    if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 400 });
-    }
-
-    if (!profileRow) {
-      const role = (existingAuthUser?.user_metadata as any)?.customClaims?.role
-        || (existingAuthUser?.user_metadata as any)?.role
-        || 'CUSTOMER';
-      const name = (existingAuthUser?.user_metadata as any)?.displayName
-        || (existingAuthUser?.user_metadata as any)?.name
-        || email.split('@')[0];
-
-      const { error: createProfileError } = await (supabaseServer.from('profiles') as any).upsert({
-        id: existingAuthUser?.id || email,
-        uid: existingAuthUser?.id || email,
-        email,
-        name,
-        displayName: name,
-        role,
-        customerType: 'CASH',
-        creditLimit: 0,
-        usedCredit: 0,
-        status: 'ACTIVE',
-        createdAt: new Date().toISOString(),
-      }, { onConflict: 'id' });
-
-      if (createProfileError) {
-        return NextResponse.json({ error: createProfileError.message }, { status: 400 });
-      }
-    }
-
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Unable to bootstrap login.' }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message || 'Unable to complete login.' },
+      { status: 500 },
+    );
   }
 }
