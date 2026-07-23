@@ -8,14 +8,13 @@ type LoginBody = {
 };
 
 async function findProfileByEmail(email: string) {
-  const { data, error } = await supabaseServer
-    .from('profiles')
+  const { data, error } = await (supabaseServer.from('profiles') as any)
     .select('id, email, role, status')
     .eq('email', email.toLowerCase())
     .maybeSingle();
 
   if (error) throw error;
-  return data ?? null;
+  return (data as any) ?? null;
 }
 
 async function findAuthUserByEmail(email: string) {
