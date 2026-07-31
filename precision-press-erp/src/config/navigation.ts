@@ -28,6 +28,7 @@ import {
   FileSpreadsheet,
   FilePlus2,
   Wallet,
+  BookOpen,
 } from 'lucide-react';
 import { StaffRole } from '@/types/roles';
 import { UserRole } from '@/types/auth';
@@ -72,13 +73,13 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   // ] },
 
   // ── Admin / Super Admin ─────────────────────────────────────────────
-  { label: 'Ops Dashboard',        href: '/admin',                  icon: LayoutDashboard,      roles: ['ADMIN', 'SUPER_ADMIN', 'SUPPORT'],                                    group: 'main'    },
   // { label: 'Job Queue',            href: '/admin/job-queue',        icon: Activity,             roles: ['ADMIN', 'SUPER_ADMIN'],                                               group: 'main'    },
   { label: 'Management',           href: '#management',             icon: Users,                roles: ['ADMIN', 'SUPER_ADMIN', 'ACDEMA'],                                               group: 'main', subItems: [
     { label: 'Product Management', href: '/admin/products' },
     { label: 'Staff Management', href: '/admin/staff' },
     { label: 'Customer Management', href: '/admin/customers' },
     { label: 'Supplier Ledgers', href: '/admin/suppliers' },
+    { label: 'Bank Accounts', href: '/admin/bank-accounts' },
   ] },
   { label: 'Supplier Ledgers',     href: '/admin/suppliers',        icon: Building2,            roles: ['ACCOUNTANT'],                                 group: 'main'    },
   { label: 'GST PAGE',             href: '#gst-page',               icon: FileSpreadsheet,      roles: ['ADMIN', 'SUPER_ADMIN', 'ACDEMA'],                                               group: 'main', subItems: [
@@ -108,6 +109,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     { label: 'Day Book', href: '/accountant/day-book' },
     { label: 'Cash Ledger', href: '/accountant/cash-ledger' },
     { label: 'Bank Ledgers', href: '/accountant/bank-ledger' },
+    { label: 'Bank Accounts Control', href: '/admin/bank-accounts' },
   ] },
   { label: 'Approved Payments',    href: '/accountant',             icon: Activity,             roles: ['ACCOUNTANT'],                                                         group: 'main'    },
   { label: 'Payment Approvals',    href: '/accountant/payments',    icon: ReceiptIndianRupee,   roles: ['ACCOUNTANT'],                                                         group: 'main'    },
@@ -121,6 +123,9 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   { label: 'Dispatch',             href: '/dispatch',               icon: Truck,                roles: ['DISPATCH'],                                                           group: 'main'    },
   { label: 'Pending Deliveries',   href: '/delivary',               icon: ClipboardList,        roles: ['DELIVERY'],                                                           group: 'main'    },
   { label: 'Delivered Orders',     href: '/delivared',              icon: CheckCircle,          roles: ['DELIVERY'],                                                           group: 'main'    },
+
+  // ── Accounting (Dubbl) ───────────────────────────────────────────────────
+  { label: 'Accounting',           href: '/accounting-redirect',    icon: BookOpen,             roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT'],                                  group: 'main'    },
 
   // ── Universal bottom ──────────────────────────────────────────────────────
   { label: 'Settings',             href: '/settings',               icon: Settings,             roles: ['ADMIN','SUPER_ADMIN','MANAGER','PRINTER','ACCOUNTANT','CUSTOMER','DESIGNER','SUPPORT','DISPATCH','DELIVERY'], group: 'bottom' },

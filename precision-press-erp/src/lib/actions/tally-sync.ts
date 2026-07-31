@@ -388,11 +388,11 @@ export async function triggerPushAllReceipts(createdBy: string = 'admin'): Promi
       let customerName = customerId;
       try {
         const { data: profile } = await supabaseServer
-          .from('profiles')
-          .select('displayName, businessName, name')
+          .from('contact')
+          .select('business_name, name')
           .eq('id', customerId)
           .single();
-        if (profile) customerName = profile.displayName || profile.businessName || profile.name || customerId;
+        if (profile) customerName = (profile as any).business_name || profile.name || customerId;
       } catch (_) {}
 
       // Determine Agst Ref vs On Account
@@ -484,11 +484,11 @@ export async function triggerPushAllPayments(createdBy: string = 'admin'): Promi
       if (supplierId) {
         try {
           const { data: profile } = await supabaseServer
-            .from('profiles')
-            .select('displayName, businessName, name')
+            .from('contact')
+            .select('business_name, name')
             .eq('id', supplierId)
             .single();
-          if (profile) supplierName = profile.displayName || profile.businessName || profile.name || supplierId;
+          if (profile) supplierName = (profile as any).business_name || profile.name || supplierId;
         } catch (_) {}
       } else {
         // Fallback to payment category (e.g., 'Expense', 'Employee') instead of remarks
@@ -561,9 +561,9 @@ export async function triggerPushAllCustomers(createdBy: string = 'admin'): Prom
     let queued = 0;
 
     const { data: customers, error } = await supabaseServer
-      .from('profiles')
+      .from('contact')
       .select('id')
-      .eq('role', 'CUSTOMER');
+      .eq('type', 'customer');
 
     if (error) throw error;
 
@@ -587,7 +587,7 @@ export async function triggerPushAllMasters(createdBy: string): Promise<{ succes
     let queued = 0;
 
     // Products
-    const { data: products } = await supabaseServer.from('products').select('*');
+    const { data: products } = await supabaseServer.from('inventory_item').select('*');
     const categories = new Set<string>();
 
     for (const p of (products || [])) {
@@ -634,9 +634,9 @@ export async function triggerPushAllMasters(createdBy: string): Promise<{ succes
 
     // Customers
     const { data: customers } = await supabaseServer
-      .from('profiles')
+      .from('contact')
       .select('*')
-      .eq('role', 'CUSTOMER');
+      .eq('type', 'customer');
 
     for (const c of (customers || [])) {
       await enqueueTallySync({
@@ -847,7 +847,7 @@ export async function syncGeneratedInvoiceToTally(invoiceId: string, createdBy: 
 export async function syncCustomerToTally(customerId: string, createdBy: string = 'admin'): Promise<{ success: boolean; error?: string }> {
   try {
     const { data: cst, error } = await supabaseServer
-      .from('profiles')
+      .from('contact')
       .select('*')
       .eq('id', customerId)
       .single();
@@ -1049,14 +1049,14 @@ export async function triggerPushAllJournal(createdBy: string = 'admin'): Promis
       let toLedger = 'Unknown';
       try {
         const { data: profiles } = await supabaseServer
-          .from('profiles')
-          .select('id, name, displayName, businessName')
+          .from('contact')
+          .select('id, name, business_name')
           .in('id', [j.source_customer_id, j.target_customer_id]);
         if (profiles) {
           const fromP = profiles.find(p => p.id === j.source_customer_id);
           const toP = profiles.find(p => p.id === j.target_customer_id);
-          if (fromP) fromLedger = fromP.displayName || fromP.businessName || fromP.name || j.source_customer_id;
-          if (toP) toLedger = toP.displayName || toP.businessName || toP.name || j.target_customer_id;
+          if (fromP) fromLedger = (fromP as any).business_name || fromP.name || j.source_customer_id;
+          if (toP) toLedger = (toP as any).business_name || toP.name || j.target_customer_id;
         }
       } catch (e) {}
 

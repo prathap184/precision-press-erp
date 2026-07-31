@@ -6,39 +6,48 @@ import { revalidatePath } from "next/cache";
 import { invalidateProduct, invalidateProductsList } from "@/lib/cache/products";
 
 function parseProduct(row: any): Product {
+  const meta = row.metadata || {};
   return {
     ...row,
+    id: row.sku || row.code || row.id, // Fallback to id if sku/code empty
+    name: row.name,
+    category: row.category,
+    baseRate: (row.sale_price != null) ? (Number(row.sale_price) / 100) : row.base_rate,
+    printerCategory: meta.printerCategory || row.printer_category,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    hsn_code: row.hsn_code,
+    gst_rate: row.gst_rate,
     media: {
-      images: row.media_images || [],
-      video: row.media_video_url ? { url: row.media_video_url } : undefined
+      images: meta.media?.images || row.media_images || [],
+      video: meta.media?.video?.url || row.media_video_url ? { url: meta.media?.video?.url || row.media_video_url } : undefined
     },
     specs: {
-      maxWidth: row.specs_max_width,
-      gsm: row.specs_gsm,
-      description: row.specs_description
+      maxWidth: meta.specs?.maxWidth || row.specs_max_width,
+      gsm: meta.specs?.gsm || row.specs_gsm,
+      description: meta.specs?.description || row.specs_description
     },
     eyeletPricing: {
-      metal: row.eyelet_metal || 0,
-      plastic: row.eyelet_plastic || 0,
+      metal: meta.eyeletPricing?.metal || row.eyelet_metal || 0,
+      plastic: meta.eyeletPricing?.plastic || row.eyelet_plastic || 0,
       none: 0
     },
     deliveryPricing: {
       selfPickup: 0,
-      door: row.delivery_door || 0,
-      courier: row.delivery_courier || 0,
-      transport: row.delivery_transport || 0
+      door: meta.deliveryPricing?.door || row.delivery_door || 0,
+      courier: meta.deliveryPricing?.courier || row.delivery_courier || 0,
+      transport: meta.deliveryPricing?.transport || row.delivery_transport || 0
     },
-    workflowSteps: row.workflow_steps || []
+    workflowSteps: row.workflow_steps || [],
+    status: row.is_active ? 'ACTIVE' : 'INACTIVE'
   };
 }
 
 export async function getProducts() {
   const { data, error } = await supabase
-    .from('products')
+    .from('inventory_item')
     .select('*')
-    .eq('status', 'ACTIVE')
+    .eq('is_active', true)
     .limit(2000);
 
   if (error) throw error;
@@ -48,10 +57,10 @@ export async function getProducts() {
 export async function getProductsByCategory(category: string) {
   const dbCategory = category.toUpperCase().replace('-', '_');
   const { data, error } = await supabase
-    .from('products')
+    .from('inventory_item')
     .select('*')
     .eq('category', dbCategory)
-    .eq('status', 'ACTIVE')
+    .eq('is_active', true)
     .limit(50);
 
   if (error) throw error;
@@ -62,14 +71,14 @@ export async function getAdminProductsByCategory(category: string, search?: stri
   const dbCategory = category.toUpperCase().replace('-', '_');
   
   let query = supabase
-    .from('products')
+    .from('inventory_item')
     .select('*')
     .eq('category', dbCategory);
 
   if (search && search.trim() !== '') {
     query = query.ilike('name', `%${search.trim()}%`).order('name', { ascending: true });
   } else {
-    query = query.in('status', ['ACTIVE', 'INACTIVE']).order('status', { ascending: true }).order('id', { ascending: false });
+    query = query.in('is_active', [true, false]).order('is_active', { ascending: false }).order('id', { ascending: false });
   }
 
   // Very naive pagination for now
@@ -91,9 +100,9 @@ export async function createProduct(data: Partial<Product>) {
     if (data.hsn_code && !hsn) return { success: false, error: "Invalid HSN Code selected." };
 
     const { data: existing, error: fetchError } = await supabase
-      .from('products')
+      .from('inventory_item')
       .select('id')
-      .eq('id', data.id)
+      .eq('sku', data.id)
       .single();
 
     if (existing) {
@@ -106,7 +115,7 @@ export async function createProduct(data: Partial<Product>) {
       name_lowercase: data.name?.toLowerCase() || '',
       category: data.category,
       printer_category: data.printerCategory,
-      status: 'ACTIVE',
+      is_active: true,
       base_rate: data.baseRate,
       hsn_master_id: hsn?.id || null,
       hsn_code: hsn?.hsn_code || null,
@@ -126,7 +135,7 @@ export async function createProduct(data: Partial<Product>) {
       workflow_steps: data.workflowSteps || []
     };
 
-    const { error: insertError } = await supabase.from('products').insert([newProduct]);
+    const { error: insertError } = await supabase.from('inventory_item').insert([newProduct]);
     if (insertError) throw insertError;
 
     if (hsn) {
@@ -158,9 +167,9 @@ export async function updateProduct(id: string, data: Partial<Product>) {
     if (data.hsn_code && !hsn) return { success: false, error: "Invalid HSN Code selected." };
 
     const { data: existingProduct, error: fetchError } = await supabase
-      .from('products')
+      .from('inventory_item')
       .select('*')
-      .eq('id', id)
+      .eq('sku', id)
       .single();
 
     if (!existingProduct || fetchError) {
@@ -203,13 +212,13 @@ export async function updateProduct(id: string, data: Partial<Product>) {
 
     if (newId !== id) {
       // Create new and delete old
-      const { data: existingNewDoc } = await supabase.from('products').select('id').eq('id', newId).single();
+      const { data: existingNewDoc } = await supabase.from('inventory_item').select('id').eq('sku', newId).single();
       if (existingNewDoc) return { success: false, error: "Product ID already exists." };
 
-      const { error: insertError } = await supabase.from('products').insert([{ ...existingProduct, ...updatePayload, id: newId }]);
+      const { error: insertError } = await supabase.from('inventory_item').insert([{ ...existingProduct, ...updatePayload, id: newId }]);
       if (insertError) throw insertError;
 
-      await supabase.from('products').delete().eq('id', id);
+      await supabase.from('inventory_item').delete().eq('sku', id);
 
       if (hsnChanged && hsn) {
          await supabase.from('product_audit_logs').insert({
@@ -232,7 +241,7 @@ export async function updateProduct(id: string, data: Partial<Product>) {
       return { success: true };
     }
 
-    const { error: updateError } = await supabase.from('products').update(updatePayload).eq('id', id);
+    const { error: updateError } = await supabase.from('inventory_item').update(updatePayload).eq('sku', id);
     if (updateError) throw updateError;
 
     if (hsnChanged && hsn) {
@@ -261,9 +270,9 @@ export async function updateProduct(id: string, data: Partial<Product>) {
 export async function softDeleteProduct(id: string) {
   try {
     const { error } = await supabase
-      .from('products')
-      .update({ status: 'INACTIVE', updated_at: new Date().toISOString() })
-      .eq('id', id);
+      .from('inventory_item')
+      .update({ is_active: false, updated_at: new Date().toISOString() })
+      .eq('sku', id);
 
     if (error) throw error;
 

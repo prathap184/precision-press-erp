@@ -622,9 +622,9 @@ export async function createOrder(
   const customerDesignProvided = customerDesignFiles.length > 0;
   
   try {
-    // 1. Fetch user profile
+    // 1. Fetch customer contact
     const { data: userData, error: userError } = await supabase
-      .from('profiles')
+      .from('contact')
       .select('*')
       .eq('id', customerData.id)
       .single();
@@ -632,8 +632,8 @@ export async function createOrder(
     if (userError || !userData) throw new Error('Customer profile not found.');
     
     if (customerData.type === 'CREDIT') {
-      const usedCredit = userData.usedCredit || 0;
-      const creditLimit = userData.creditLimit || 0;
+      const usedCredit = userData.used_credit || 0;
+      const creditLimit = userData.credit_limit || 0;
       if (usedCredit + orderDetails.grandTotal > creditLimit) {
         throw new Error(`Credit limit exceeded. Used: ${usedCredit}, Limit: ${creditLimit}`);
       }
@@ -648,18 +648,18 @@ export async function createOrder(
       'financial.totalUnpaid': orderDetails.grandTotal
     });
 
-    // 3. Update profile with used credit
+    // 3. Update contact with used credit
     const profileUpdates: any = {
       updated_at: new Date().toISOString()
     };
 
     if (customerData.type === 'CREDIT') {
-      const newUsedCredit = (userData.usedCredit || 0) + orderDetails.grandTotal;
-      profileUpdates.usedCredit = newUsedCredit;
+      const newUsedCredit = (userData.used_credit || 0) + orderDetails.grandTotal;
+      profileUpdates.used_credit = newUsedCredit;
     }
 
     await supabase
-      .from('profiles')
+      .from('contact')
       .update(profileUpdates)
       .eq('id', customerData.id);
 
@@ -851,7 +851,7 @@ export async function verifyPayment(orderId: string) {
       .eq('status', 'PENDING');
 
     const { data: userData } = await supabase
-      .from('profiles')
+      .from('contact')
       .select('*')
       .eq('id', customerId)
       .single();
@@ -884,16 +884,16 @@ export async function verifyPayment(orderId: string) {
         .in('id', paymentsData.map(p => p.id));
     }
 
-    // Update user credit
+    // Update customer credit
     if (userData) {
-      const balanceBefore = userData.usedCredit || 0;
+      const balanceBefore = userData.used_credit || 0;
       const balanceAfter = Math.max(0, balanceBefore - totalToVerify);
-      const creditLimit = userData.creditLimit || 0;
+      const creditLimit = userData.credit_limit || 0;
 
       await supabase
-        .from('profiles')
+        .from('contact')
         .update({
-          usedCredit: balanceAfter
+          used_credit: balanceAfter
         })
         .eq('id', customerId);
 
@@ -1553,9 +1553,9 @@ export async function sendNotification(userId: string, event: string, message: s
       timestamp: new Date().toISOString()
     });
 
-  // Log external communication
+  // Log external communication — try contact first (customers), fall back to profiles (staff)
   const { data: userData } = await supabase
-    .from('profiles')
+    .from('contact')
     .select('*')
     .eq('id', userId)
     .single();

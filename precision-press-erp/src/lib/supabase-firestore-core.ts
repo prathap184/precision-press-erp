@@ -88,6 +88,10 @@ function mapCollectionPathToTable(path: string): { table: string; orderId?: stri
     return { table: 'bankAccounts' };
   }
 
+  if (parts[0] === 'payments') {
+    return { table: 'payment' };
+  }
+
   return { table: parts[0] };
 }
 
@@ -104,6 +108,9 @@ function buildDocPath(parts: string[]): { table: string; id?: string; orderId?: 
   }
 
   if (parts.length >= 2) {
+    if (parts[0] === 'payments') {
+      return { table: 'payment', id: parts[1] };
+    }
     return { table: parts[0], id: parts[1] };
   }
 

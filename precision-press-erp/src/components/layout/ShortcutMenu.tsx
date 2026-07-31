@@ -23,8 +23,8 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
   React.useEffect(() => {
     if (menuState !== null && profile && allowedRoles.includes(profile.role)) {
       const routesToPrefetch = [
-        '/sales-register', '/quotation-register', '/receipt-register', 
-        '/payment-entry', '/admin/treasury', '/admin/journal-transfers', 
+        '/proxy-order', '/quotation-builder', '/receipt-entry', 
+        '/payment-entry/create', '/admin/treasury', '/admin/journal-transfers/create', 
         '/purchase', '/accountant/day-book', '/accountant/ledger', 
         '/accountant/bank-ledger', '/accountant/cash-ledger'
       ];
@@ -62,16 +62,17 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
         </div>
 
         {/* Body */}
+        {/* Body */}
         <div className="p-4 bg-white min-h-[300px]">
           
           {menuState === 'VOUCHERS' && (
             <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => {}} />
-              <ShortcutItem hotkey="F10" label="Quote" onClick={() => {}} />
-              <ShortcutItem hotkey="F6" label="Receipt entry (sync) / gpay or cash" onClick={() => {}} />
-              <ShortcutItem hotkey="F5" label="Payment" onClick={() => {}} />
-              <ShortcutItem hotkey="F4" label="Contra" onClick={() => {}} />
-              <ShortcutItem hotkey="F7" label="Journal" onClick={() => {}} />
+              <ShortcutItem hotkey="F4" label="Contra" onClick={() => { router.push('/admin/treasury/create'); closeMenu(); }} />
+              <ShortcutItem hotkey="F5" label="Payment" onClick={() => { router.push('/payment-entry/create'); closeMenu(); }} />
+              <ShortcutItem hotkey="F6" label="Receipt entry (sync) / gpay or cash" onClick={() => { router.push('/receipt-entry'); closeMenu(); }} />
+              <ShortcutItem hotkey="F7" label="Journal" onClick={() => { router.push('/admin/journal-transfers/create'); closeMenu(); }} />
+              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { router.push('/admin/invoice-generation'); closeMenu(); }} />
+              <ShortcutItem hotkey="F10" label="Quote" onClick={() => { router.push('/quotation-builder'); closeMenu(); }} />
             </div>
           )}
 
@@ -81,15 +82,13 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 router.push('/accountant/day-book');
                 closeMenu();
               }} />
-              <ShortcutItem hotkey="A" label="Account Books" hasChildren />
+              <ShortcutItem hotkey="A" label="Account Books" hasChildren onClick={() => setMenuState('ACCOUNT_BOOKS')} />
             </div>
           )}
 
-
-
           {menuState === 'ACCOUNT_BOOKS' && (
             <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="L" label="Ledgers" hasChildren />
+              <ShortcutItem hotkey="L" label="Ledgers" hasChildren onClick={() => setMenuState('LEDGERS')} />
             </div>
           )}
 
@@ -113,7 +112,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 if (menuState === 'ACCOUNT_BOOKS') setMenuState('DISPLAY_REPORTS');
                 if (menuState === 'LEDGERS') setMenuState('ACCOUNT_BOOKS');
               }}
-              className="text-blue-500 hover:text-blue-700"
+              className="text-blue-500 hover:text-blue-700 font-semibold"
             >
               &larr; Go Back
             </button>
@@ -128,7 +127,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
 function ShortcutItem({ hotkey, label, hasChildren, onClick }: { hotkey: string; label: string; hasChildren?: boolean; onClick?: () => void }) {
   return (
     <div 
-      className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-blue-50 text-slate-700 transition-colors group cursor-default"
+      className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-blue-50 text-slate-700 transition-colors group cursor-pointer select-none active:scale-[0.99]"
       onClick={onClick}
     >
       <div className="flex items-center gap-4">

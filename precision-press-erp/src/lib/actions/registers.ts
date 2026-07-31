@@ -23,7 +23,7 @@ export async function getSalesRegister(dateFrom?: string, dateTo?: string) {
   let profiles: Record<string, any> = {};
   if (userIds.length > 0) {
     const { data: profileData } = await supabaseServer
-      .from('profiles')
+      .from('contact')
       .select('id, name')
       .in('id', userIds);
     if (profileData) {
@@ -105,7 +105,7 @@ export async function getReceiptRegister(dateFrom?: string, dateTo?: string) {
   let profiles: Record<string, any> = {};
   if (userIds.length > 0) {
     const { data: profileData } = await supabaseServer
-      .from('profiles')
+      .from('contact')
       .select('id, name')
       .in('id', userIds);
     if (profileData) {
@@ -226,7 +226,7 @@ export async function getJournalRegister(dateFrom?: string, dateTo?: string) {
   let profiles: Record<string, any> = {};
   if (userIds.length > 0) {
     const { data: profileData } = await supabaseServer
-      .from('profiles')
+      .from('contact')
       .select('id, name')
       .in('id', userIds);
     if (profileData) {
@@ -318,7 +318,7 @@ export async function getGeneralLedger(dateFrom?: string, dateTo?: string, filte
   let parties: Record<string, string> = {};
   if (userIds.length > 0) {
     const [{ data: profileData }, { data: supplierData }] = await Promise.all([
-      supabaseServer.from('profiles').select('id, name').in('id', userIds),
+      supabaseServer.from('contact').select('id, name').in('id', userIds),
       supabaseServer.from('suppliers').select('id, name').in('id', userIds)
     ]);
     
@@ -414,7 +414,7 @@ export async function getDayBook(dateFrom?: string, dateTo?: string) {
   let parties: Record<string, string> = {};
   if (allUserIds.length > 0) {
     const [{ data: profileData }, { data: supplierData }] = await Promise.all([
-      supabaseServer.from('profiles').select('id, name').in('id', allUserIds),
+      supabaseServer.from('contact').select('id, name').in('id', allUserIds),
       supabaseServer.from('suppliers').select('id, name').in('id', allUserIds),
     ]);
     if (profileData) profileData.forEach(p => { parties[p.id] = p.name; });

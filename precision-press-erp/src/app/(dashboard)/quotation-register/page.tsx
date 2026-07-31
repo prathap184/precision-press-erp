@@ -14,7 +14,7 @@ export default async function QuotationRegisterPage({ searchParams }: { searchPa
       title="Quotations Register" 
       transactions={transactions} 
       emptyMessage="No quotations found."
-      newActionHref="/admin/quotation-generation"
+      newActionHref="/quotation-builder"
       newActionLabel="Create Quotation"
     />
   );

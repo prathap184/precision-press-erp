@@ -87,7 +87,8 @@ async function getAuthorizedAcdemaUser() {
     .from('profiles')
     .select('role, roles, name')
     .eq('id', user.id)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   if (profileError) {
     console.error('getAuthorizedAcdemaUser DB Error:', profileError);
@@ -216,17 +217,18 @@ export async function createAcdemaProxyOrder(payload: ProxyOrderPayload): Promis
       if (item.productId && item.quantity > 0) {
         // Fetch current stock
         const { data: prodData } = await supabaseServer
-          .from('products')
-          .select('current_stock')
-          .eq('id', item.productId)
-          .single();
+          .from('inventory_item')
+          .select('stock_quantity')
+          .eq('sku', item.productId)
+          .limit(1)
+          .maybeSingle();
           
-        const currentStock = Number(prodData?.current_stock || 0);
+        const currentStock = Number(prodData?.stock_quantity || 0);
         const newStock = currentStock - item.quantity;
         
-        await supabaseServer.from('products')
-          .update({ current_stock: newStock })
-          .eq('id', item.productId);
+        await supabaseServer.from('inventory_item')
+          .update({ stock_quantity: newStock })
+          .eq('sku', item.productId);
           
         await supabaseServer.from('product_track')
           .insert({
@@ -278,7 +280,8 @@ export async function processAcdemaPostOrderBackground(jobPayload: any) {
     .from('orders')
     .select('metadata')
     .eq('id', baseId)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   if ((orderMeta?.metadata as any)?.acdemaPostProcessed === true) {
     console.log(`[ACDEMA Worker] Post-processing already completed for order ${baseId}. Skipping.`);

@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { 
   Printer, Users, Palette, Headphones, Truck, Calculator, ClipboardList, Scissors, CheckCircle2,
-  ArrowRight, ShieldCheck
+  ArrowRight, ShieldCheck, Landmark, FileText, Receipt, ArrowRightLeft
 } from 'lucide-react';
 import { StaffRole } from '@/types/roles';
 import { MODULE_ROUTES } from '@/types/auth';
@@ -143,6 +143,45 @@ export const ROLE_CARDS: RoleCard[] = [
   },
 ];
 
+const DUBBL_LINKS = [
+  {
+    label: 'Receipt Entry',
+    subtitle: 'Money In (Dubbl)',
+    icon: Receipt,
+    color: 'text-emerald-600',
+    bg: 'bg-emerald-50/50',
+    iconBg: 'bg-emerald-500',
+    url: 'http://localhost:3001/sales/customer-prepayments'
+  },
+  {
+    label: 'Sales Register',
+    subtitle: 'Invoices (Dubbl)',
+    icon: FileText,
+    color: 'text-blue-600',
+    bg: 'bg-blue-50/50',
+    iconBg: 'bg-blue-500',
+    url: 'http://localhost:3001/sales'
+  },
+  {
+    label: 'Payment Entry',
+    subtitle: 'Purchases (Dubbl)',
+    icon: Landmark,
+    color: 'text-rose-600',
+    bg: 'bg-rose-50/50',
+    iconBg: 'bg-rose-500',
+    url: 'http://localhost:3001/purchases'
+  },
+  {
+    label: 'Journal Contra',
+    subtitle: 'Treasury (Dubbl)',
+    icon: ArrowRightLeft,
+    color: 'text-slate-600',
+    bg: 'bg-slate-50/50',
+    iconBg: 'bg-slate-500',
+    url: 'http://localhost:3001/accounting'
+  }
+];
+
 interface ControlCenterProps {
   allowedRoles: StaffRole[];
   title?: string;
@@ -165,6 +204,8 @@ export function ControlCenter({
   const filteredRoles = ROLE_CARDS.filter(role => 
     isAdmin || allowedRoles.includes(role.id)
   );
+
+  const showDubblLinks = isAdmin || allowedRoles.includes('ACCOUNTANT') || allowedRoles.includes('ACDEMA');
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 relative">
@@ -218,6 +259,38 @@ export function ControlCenter({
           );
         })}
       </div>
+
+      {/* Dubbl Links Section */}
+      {showDubblLinks && (
+        <div className="pt-8 mt-12 border-t border-slate-200">
+          <div className="mb-6">
+            <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Accounting & Finance</h2>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest mt-1">External Links (Dubbl)</p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+            {DUBBL_LINKS.map((link, idx) => (
+              <a
+                key={idx}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`group relative flex flex-col items-center justify-center p-8 ${link.bg} border border-transparent hover:border-slate-200 rounded-[2rem] hover:bg-white hover:shadow-2xl hover:shadow-slate-200/50 hover:-translate-y-2 transition-all duration-500 text-center`}
+              >
+                <div className={`w-16 h-16 rounded-2xl ${link.iconBg} flex items-center justify-center mb-6 shadow-xl group-hover:scale-110 group-hover:rotate-3 transition-all duration-500`}>
+                  <link.icon className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-2">{link.label}</h3>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-tight">{link.subtitle}</p>
+                
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ArrowRight className="w-4 h-4 text-slate-400 -rotate-45" />
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       {filteredRoles.length === 0 && (

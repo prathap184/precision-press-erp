@@ -22,9 +22,9 @@ export class ProductService {
 
     // 2. Fetch current product state
     const { data: product, error: productError } = await supabase
-      .from('products')
+      .from('inventory_item')
       .select('hsn_code, gst_rate, product_snapshot_version')
-      .eq('id', productId)
+      .eq('sku', productId)
       .single();
 
     if (productError) throw productError;
@@ -38,7 +38,7 @@ export class ProductService {
 
     // 3. Update the Product
     const { error: updateError } = await supabase
-      .from('products')
+      .from('inventory_item')
       .update({
         hsn_master_id: hsn.id,
         hsn_code: hsn.hsn_code,
@@ -47,7 +47,7 @@ export class ProductService {
         gst_effective_from: hsn.current_rate.effective_from,
         product_snapshot_version: newSnapshotVersion
       })
-      .eq('id', productId);
+      .eq('sku', productId);
 
     if (updateError) throw updateError;
 
@@ -78,9 +78,9 @@ export class ProductService {
    */
   static async refreshGSTFromHSN(productId: string, userId: string): Promise<void> {
     const { data: product, error: fetchError } = await supabase
-      .from('products')
+      .from('inventory_item')
       .select('hsn_code')
-      .eq('id', productId)
+      .eq('sku', productId)
       .single();
 
     if (fetchError) throw fetchError;

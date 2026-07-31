@@ -18,26 +18,54 @@ export async function getCachedProductsList() {
   );
 }
 
+import { supabaseServer } from '@/lib/supabase-server';
+
 export async function getCachedProduct(productId: string) {
   return getOrSetCache(
     CACHE_KEYS.PRODUCT(productId),
     async () => {
-      const snap = await db.collection('products').doc(productId).get();
-      if (!snap.exists) return null;
-      const data = snap.data();
+      const { data: row, error } = await supabaseServer
+        .from('inventory_item')
+        .select('*')
+        .eq('sku', productId)
+        .single();
+        
+      if (error || !row) return null;
+      
+      const meta = row.metadata || {};
+      
       return {
-        id: snap.id,
-        name: data.name,
-        category: data.category,
-        baseRate: data.baseRate,
-        deliveryPricing: data.deliveryPricing,
-        eyeletPricing: data.eyeletPricing,
-        media: data.media,
-        specs: data.specs,
-        printerCategory: data.printerCategory,
-        status: data.status,
-        gst_rate: data.gst_rate,
-        workflowId: snap.id // Reference for the separate workflow cache
+        id: row.sku || row.code || row.id,
+        name: row.name,
+        category: row.category,
+        baseRate: row.sale_price || row.base_rate,
+        printerCategory: meta.printerCategory || row.printer_category,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        hsn_code: row.hsn_code,
+        gst_rate: row.gst_rate,
+        media: {
+          images: meta.media?.images || row.media_images || [],
+          video: meta.media?.video?.url || row.media_video_url ? { url: meta.media?.video?.url || row.media_video_url } : undefined
+        },
+        specs: {
+          maxWidth: meta.specs?.maxWidth || row.specs_max_width,
+          gsm: meta.specs?.gsm || row.specs_gsm,
+          description: meta.specs?.description || row.specs_description
+        },
+        eyeletPricing: {
+          metal: meta.eyeletPricing?.metal || row.eyelet_metal || 0,
+          plastic: meta.eyeletPricing?.plastic || row.eyelet_plastic || 0,
+          none: 0
+        },
+        deliveryPricing: {
+          selfPickup: 0,
+          door: meta.deliveryPricing?.door || row.delivery_door || 0,
+          courier: meta.deliveryPricing?.courier || row.delivery_courier || 0,
+          transport: meta.deliveryPricing?.transport || row.delivery_transport || 0
+        },
+        workflowSteps: row.workflow_steps || [],
+        workflowId: row.sku || row.code || row.id
       };
     },
     CACHE_TTL.LONG
@@ -48,9 +76,14 @@ export async function getCachedWorkflow(productId: string): Promise<WorkflowStep
   return getOrSetCache(
     CACHE_KEYS.WORKFLOW(productId),
     async () => {
-      const snap = await db.collection('products').doc(productId).get();
-      if (!snap.exists) return null;
-      return snap.data()?.workflowSteps || [];
+      const { data: row, error } = await supabaseServer
+        .from('inventory_item')
+        .select('workflow_steps')
+        .eq('sku', productId)
+        .single();
+        
+      if (error || !row) return null;
+      return row.workflow_steps || [];
     },
     CACHE_TTL.LONG
   );

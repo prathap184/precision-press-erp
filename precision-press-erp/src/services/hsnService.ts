@@ -20,9 +20,9 @@ export class HSNService {
 
     // Fetch product counts
     const { data: products } = await supabase
-      .from('products')
+      .from('inventory_item')
       .select('hsn_code')
-      .eq('status', 'ACTIVE');
+      .eq('is_active', true);
 
     const counts: Record<string, number> = {};
     if (products) {
@@ -57,9 +57,9 @@ export class HSNService {
     if (error) throw error;
 
     const { data: products } = await supabase
-      .from('products')
+      .from('inventory_item')
       .select('hsn_code')
-      .eq('status', 'ACTIVE');
+      .eq('is_active', true);
 
     const counts: Record<string, number> = {};
     if (products) {
@@ -97,10 +97,10 @@ export class HSNService {
    */
   static async canDisableHSN(hsnCode: string): Promise<{ allowed: boolean; reason?: string }> {
     const { count, error } = await supabase
-      .from('products')
+      .from('inventory_item')
       .select('*', { count: 'exact', head: true })
       .eq('hsn_code', hsnCode)
-      .eq('status', 'ACTIVE');
+      .eq('is_active', true);
 
     if (error) throw error;
 

@@ -43,7 +43,7 @@ export default async function ReceiptViewPage({ params }: { params: { id: string
 
   if (transaction.userId) {
     const { data: profile } = await supabaseServer
-      .from('profiles')
+      .from('contact')
       .select('name, email')
       .eq('id', transaction.userId)
       .single();

@@ -23,7 +23,7 @@ export default async function PaymentViewPage({ params }: { params: { id: string
 
   if (payment.supplier_id) {
     const { data: profile } = await supabaseServer
-      .from('profiles')
+      .from('contact')
       .select('name, email')
       .eq('id', payment.supplier_id)
       .single();

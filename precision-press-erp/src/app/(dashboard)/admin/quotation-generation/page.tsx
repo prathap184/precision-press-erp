@@ -56,14 +56,23 @@ export default function QuotationGenerationCustomerList() {
       <div className="max-w-6xl mx-auto space-y-6 pb-12">
 
         {/* Page Header */}
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
-            <FilePlus2 className="w-6 h-6 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-200">
+              <FilePlus2 className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black text-violet-600 uppercase tracking-[0.4em]">Quotation Generation</p>
+              <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Select Customer</h1>
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] font-black text-violet-600 uppercase tracking-[0.4em]">Quotation Generation</p>
-            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Select Customer</h1>
-          </div>
+          <Link
+            href="/quotation-builder"
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg hover:brightness-110 transition-all uppercase tracking-wider"
+          >
+            <FilePlus2 className="w-4 h-4" />
+            Create Standalone Quotation
+          </Link>
         </div>
 
         {/* Breadcrumb */}

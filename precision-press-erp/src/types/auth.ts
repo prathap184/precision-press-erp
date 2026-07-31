@@ -155,8 +155,8 @@ export function profileHasRole(profile: UserProfile | null, requiredRoles: Staff
 
 // ─── Role → default redirect route ──────────────────────────────────────────
 export const ROLE_ROUTES: Record<UserRole, string> = {
-  SUPER_ADMIN: '/super-admin',
-  ADMIN: '/admin',
+  SUPER_ADMIN: '/admin/orders',
+  ADMIN: '/admin/orders',
   MANAGER: '/manager/dashboard',
   ACDEMA: '/acdema/orders',
   ACCOUNTANT: '/accountant/payments',
@@ -190,8 +190,8 @@ export function getDefaultRoute(profile: UserProfile | null): string {
 
 // ─── Workstation / Module Routes ─────────────────────────────────────────────
 export const MODULE_ROUTES: Record<StaffRole, string> = {
-  SUPER_ADMIN: '/super-admin',
-  ADMIN: '/admin',
+  SUPER_ADMIN: '/admin/orders',
+  ADMIN: '/admin/orders',
   MANAGER: '/manager/dashboard',
   ACDEMA: '/acdema/orders',
   ACCOUNTANT: '/accountant/payments',

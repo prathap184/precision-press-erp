@@ -667,6 +667,8 @@ export function QuotationBuilder() {
     setNotes,
     summary,
     submitQuotation: submitQuotation,
+    submitProxyOrder: submitQuotation,
+    mode: 'quotation',
     loading,
     addingAddress,
     handleAddDeliveryAddress,

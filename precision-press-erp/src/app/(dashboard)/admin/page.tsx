@@ -297,22 +297,7 @@ export default function AdminDashboard() {
         </div>
         
         {/* Maintenance Utilities */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 pr-4 border-r border-[var(--google-border)]">
-             <button 
-              onClick={() => handleMigrate(true)}
-              className="text-[13px] font-medium text-[var(--google-text-secondary)] hover:text-[var(--google-text)] hover:bg-[var(--google-hover)] px-3 py-1.5 rounded-full transition-all"
-            >
-              Test Sync
-            </button>
-            <button 
-              onClick={() => handleMigrate(false)}
-              className="text-[13px] font-medium text-amber-700 hover:bg-amber-50 px-3 py-1.5 rounded-full transition-all"
-            >
-              Live Sync
-            </button>
-          </div>
-
+        <div className="flex items-center gap-3">
           <button 
             onClick={handleRecalculate}
             disabled={recalculating}
@@ -321,13 +306,6 @@ export default function AdminDashboard() {
             {recalculating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Sync Metrics
           </button>
-          <Link 
-            href="/proxy-order"
-            className="btn bg-[#1a73e8] text-white hover:bg-[#1557b0] transition-all shadow-sm"
-          >
-            <Plus className="h-5 w-5 mr-1" />
-            New Proxy Order
-          </Link>
         </div>
       </section>
 

@@ -7,6 +7,7 @@ import { updateStatsIncrementally } from '../stats';
 import { cookies } from 'next/headers';
 import { serializeFirestoreData } from '../firestore-serializer';
 import { getAuthorizedUser } from '../workflow';
+import { supabaseServer } from '../supabase-server';
 
 async function getAuthUser() {
   const user = await getAuthorizedUser(['ADMIN', 'ACDEMA', 'MANAGER', 'SUPPORT']);
@@ -38,14 +39,28 @@ export async function createCustomer(data: {
   try {
     const { uid: adminUid } = await getAuthUser();
 
-    // 1. Create user in Firebase Auth
-    const userRecord = await adminAuth.createUser({
-      email: data.email,
-      password: data.tempPassword || 'ChangeMe123!',
-      displayName: data.businessName || data.name,
-    });
+    let customerUid = '';
 
-    const customerUid = userRecord.uid || (userRecord as any).id;
+    // 1. Create user in Firebase Auth or fetch existing if email exists
+    try {
+      const userRecord = await adminAuth.createUser({
+        email: data.email,
+        password: data.tempPassword || 'ChangeMe123!',
+        displayName: data.businessName || data.name,
+      });
+      customerUid = userRecord.uid || (userRecord as any).id;
+    } catch (authError: any) {
+      if (authError.code === 'email_exists' || authError.message?.includes('already been registered')) {
+        const { data: existingId, error: rpcError } = await supabaseServer.rpc('get_user_id_by_email', { p_email: data.email });
+        if (existingId) {
+          customerUid = existingId;
+        } else {
+          throw new Error('Email exists in auth but could not fetch the user ID.');
+        }
+      } else {
+        throw authError;
+      }
+    }
 
     if (!customerUid) {
       throw new Error('Failed to derive customer UID from auth record');
@@ -55,7 +70,7 @@ export async function createCustomer(data: {
     await adminAuth.setCustomUserClaims(customerUid, { role: 'CUSTOMER' });
 
     // 3. Create Profile and Update Stats in Transaction
-    await adminDb.runTransaction(async (transaction) => {
+    await adminDb.runTransaction(async (transaction: any) => {
       // READS FIRST
       // Update Global Metrics
       await updateStatsIncrementally(transaction, {
@@ -64,7 +79,7 @@ export async function createCustomer(data: {
       });
 
       // WRITES SECOND
-      const profileRef = adminDb.collection('profiles').doc(userRecord.uid);
+      const profileRef = adminDb.collection('contact').doc(customerUid);
       
       const addresses: DeliveryAddress[] = [];
       let defaultAddressId: string | undefined = undefined;
@@ -83,35 +98,32 @@ export async function createCustomer(data: {
         defaultAddressId = addrId;
       }
 
-      const profile: UserProfile = {
-        uid: userRecord.uid,
+      const profile: any = {
+        id: customerUid,
+        organization_id: '00000000-0000-0000-0000-000000000002',
         email: data.email,
         name: data.name,
-        displayName: data.businessName || data.name,
-        role: 'CUSTOMER',
-        customerType: data.customerType,
-        creditLimit: data.creditLimit,
-        usedCredit: data.initialBalance || 0,
+        business_name: data.businessName || data.name,
+        type: 'customer',
+        customer_type: data.customerType,
+        credit_limit: data.customerType === 'CASH' ? 0 : (data.creditLimit || 0),
+        used_credit: data.customerType === 'CASH' ? 0 : (data.initialBalance || 0),
         status: 'ACTIVE',
-        businessName: data.businessName,
         phone: data.phone,
-        state: data.state,
-        country: data.country,
-        pincode: data.pincode,
-        gstType: data.gstType,
-        gstNumber: data.gstNumber,
-        gstVerified: data.gstVerified,
-        gstDetails: data.gstDetails,
-        voucherType: data.voucherType,
+        billing_state: data.state,
+        billing_country: data.country,
+        billing_pincode: data.pincode,
+        gst_type: data.gstType,
+        gst_number: data.gstNumber,
+        gst_verified: data.gstVerified,
+        gst_details: data.gstDetails,
+        voucher_type: data.voucherType,
         addresses,
-        defaultAddressId,
-        createdAt: new Date().toISOString(),
+        created_at: new Date().toISOString(),
         billing_address_line1: data.houseNumber || '',
         billing_address_line2: data.roadName || data.address || '',
         billing_city: data.city || '',
-        billing_state: data.state || '',
-        billing_pincode: data.pincode || '',
-        billing_country: data.country || 'India',
+        
       };
 
       transaction.set(profileRef, profile);
@@ -120,7 +132,7 @@ export async function createCustomer(data: {
     // 4. Initial Balance Transaction (if any)
     if (data.initialBalance && data.initialBalance > 0) {
       await adminDb.collection('transactions').add({
-        userId: userRecord.uid,
+        userId: customerUid,
         type: 'OPENING',
         debit: data.initialBalance,
         credit: 0,
@@ -135,12 +147,12 @@ export async function createCustomer(data: {
       userId: 'SYSTEM_ADMIN',
       role: 'ADMIN',
       action: 'CUSTOMER_CREATED',
-      meta: { customerEmail: data.email, customerUid: userRecord.uid }
+      meta: { customerEmail: data.email, customerUid }
     });
 
     return { 
       success: true, 
-      uid: userRecord.uid, 
+      uid: customerUid, 
       password: data.tempPassword || 'ChangeMe123!' 
     };
   } catch (error: any) {
@@ -159,15 +171,29 @@ export async function createCustomer(data: {
 
 export async function getCustomers() {
   try {
-    const snap = await adminDb.collection('profiles')
-      .where('role', '==', 'CUSTOMER')
-      .get();
+    const snap = await adminDb.collection('contact').get();
     
-    return snap.docs.map(doc => ({
-      id: doc.id,
-      ...serializeFirestoreData(doc.data()),
-    } as UserProfile));
+    return snap.docs
+      .map((doc: any) => {
+        const data = serializeFirestoreData(doc.data());
+        const customerData = {
+          id: doc.id,
+          name: data.name || 'Unknown',
+          displayName: data.name || 'Unknown',
+          businessName: data.business_name || data.name || 'Unknown',
+          email: data.email || '',
+          phone: data.phone || '',
+          role: 'CUSTOMER',
+          ...data,
+          customerType: data.customer_type || (data.payment_terms_days && data.payment_terms_days > 0 ? 'CREDIT' : 'CASH'),
+          creditLimit: data.credit_limit || (data.payment_terms_days > 0 ? 999999 : 0),
+        };
+        customerData.uid = data.uid || doc.id;
+        return customerData as UserProfile;
+      })
+      .filter((c: any) => c.type === 'customer' || c.type === 'both' || !c.type);
   } catch (error: any) {
+    console.error('getCustomers error:', error);
     return [];
   }
 }
@@ -175,7 +201,7 @@ export async function getCustomers() {
 
 export async function updateCustomerStatus(uid: string, status: 'ACTIVE' | 'BLOCKED') {
   try {
-    await adminDb.collection('profiles').doc(uid).update({ status });
+    await adminDb.collection('contact').doc(uid).update({ status });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -194,29 +220,20 @@ export async function updateCustomerProfile(uid: string, data: Partial<UserProfi
       shipping_same_as_billing, shipping_address_line1, shipping_address_line2, shipping_area, shipping_city, shipping_district, shipping_state, shipping_state_code, shipping_pincode, shipping_country
     } = data as any;
 
-    const updates = {
+    const updates: any = {
       name,
-      displayName,
-      role,
-      customerType,
-      creditLimit,
-      usedCredit,
+      business_name: businessName,
+      type: role === 'CUSTOMER' ? 'customer' : (role === 'SUPPLIER' ? 'supplier' : 'both'),
+      customer_type: customerType,
+      credit_limit: creditLimit,
+      used_credit: usedCredit,
       status,
-      businessName,
       phone,
-      gstType,
-      gstNumber,
-      gstVerified,
-      voucherType,
-      houseNumber,
-      roadName,
-      city,
-      state,
-      country,
-      pincode,
-      address,
+      gst_type: gstType,
+      gst_number: gstNumber,
+      gst_verified: gstVerified,
+      voucher_type: voucherType,
       addresses,
-      defaultAddressId,
       billing_address_line1,
       billing_address_line2,
       billing_area,
@@ -235,19 +252,20 @@ export async function updateCustomerProfile(uid: string, data: Partial<UserProfi
       shipping_state,
       shipping_state_code,
       shipping_pincode,
-      shipping_country
-    } as Record<string, any>;
+      shipping_country,
+      
+    };
 
     Object.keys(updates).forEach((key) => {
       if (updates[key] === undefined) delete updates[key];
     });
 
-    await adminDb.collection('profiles').doc(uid).update(updates);
+    await adminDb.collection('contact').doc(uid).update(updates);
 
     try {
       const { enqueueTallySync, getTallySettings } = await import('@/lib/actions/tally-sync');
       const settings = await getTallySettings();
-      const profileSnap = await adminDb.collection('profiles').doc(uid).get();
+      const profileSnap = await adminDb.collection('contact').doc(uid).get();
       const profile = profileSnap.data();
       if (profile) {
         await enqueueTallySync({
@@ -255,12 +273,12 @@ export async function updateCustomerProfile(uid: string, data: Partial<UserProfi
           customerId: uid,
           payload: {
             tallyCompanyName: settings.companyName,
-            ledgerName: profile.businessName || profile.name || profile.displayName || 'Customer',
+            ledgerName: profile.business_name || profile.name || profile.displayName || 'Customer',
             parentGroup: 'Sundry Debtors',
             state: profile.billing_state || profile.state || 'Karnataka',
             country: profile.billing_country || profile.country || 'India',
             address: profile.billing_address_line1 || profile.address || '',
-            gstin: profile.gstNumber || '',
+            gstin: profile.gst_number || profile.gstNumber || '',
             pinCode: profile.billing_pincode || profile.pincode || '',
             mobile: profile.phone || '',
           },
@@ -281,15 +299,14 @@ export async function adjustCustomerCredit(uid: string, amount: number, type: 'D
   try {
     const { uid: adminId, role: adminRole } = await getAuthUser();
     
-    const profileRef = adminDb.collection('profiles').doc(uid);
+    const profileRef = adminDb.collection('contact').doc(uid);
     const profileSnap = await profileRef.get();
     
     if (!profileSnap.exists) throw new Error('Customer not found');
     const profile = profileSnap.data() as UserProfile;
     
-    const newUsedCredit = type === 'DEBIT' 
-      ? (profile.usedCredit || 0) + amount 
-      : (profile.usedCredit || 0) - amount;
+    const usedCredit = (profile as any).used_credit || profile.usedCredit || 0;
+    const newUsedCredit = type === 'DEBIT' ? usedCredit + amount : usedCredit - amount;
 
     await adminDb.runTransaction(async (transaction) => {
       // READS FIRST
@@ -299,7 +316,7 @@ export async function adjustCustomerCredit(uid: string, amount: number, type: 'D
       });
 
       // WRITES SECOND
-      transaction.update(profileRef, { usedCredit: newUsedCredit });
+      transaction.update(profileRef, { used_credit: newUsedCredit });
       
       const transactionRef = adminDb.collection('transactions').doc();
       transaction.set(transactionRef, {
@@ -336,59 +353,92 @@ export async function adjustCustomerCredit(uid: string, amount: number, type: 'D
 
 export async function addCustomerAddress(uid: string, address: Omit<DeliveryAddress, 'id'>) {
   try {
-    const profileRef = adminDb.collection('profiles').doc(uid);
-    const profileSnap = await profileRef.get();
-    
-    if (!profileSnap.exists) throw new Error('Customer not found');
-    
-    const profile = profileSnap.data() as UserProfile;
-    const addresses = profile.addresses || [];
-    
+    // Use direct Supabase query by primary key (id) to avoid Firestore-adapter
+    // quirks where rows with uid=NULL return exists:false despite being present.
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseDirect = createClient(
+      process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      { auth: { persistSession: false, autoRefreshToken: false } }
+    );
+
+    const { data: existingRows, error: fetchError } = await supabaseDirect
+      .from('contact')
+      .select('*')
+      .eq('id', uid)
+      .limit(1);
+
+    if (fetchError) throw fetchError;
+
+    let profile: any = existingRows?.[0] || null;
+
+    if (!profile) {
+      // Customer row is missing — auto-create a minimal stub so the address
+      // is never silently lost. Requires organization_id; use a placeholder UUID.
+      const fallbackOrgId = process.env.DEFAULT_ORG_ID || '00000000-0000-0000-0000-000000000000';
+      const { data: created, error: createError } = await supabaseDirect
+        .from('contact')
+        .insert({
+          id: uid,
+          uid,
+          organization_id: fallbackOrgId,
+          name: 'Customer',
+          type: 'customer',
+          billing_country: 'India',
+          shipping_country: 'India',
+          shipping_same_as_billing: true,
+          gst_registered: false,
+        })
+        .select()
+        .single();
+      if (createError) throw new Error(`Customer not found and auto-create failed: ${createError.message}`);
+      profile = created;
+    }
+
     const newAddress: DeliveryAddress = {
       ...address,
       id: Date.now().toString(),
     };
-    
-    const isFirstAddress = addresses.length === 0;
+
+    const currentAddresses: DeliveryAddress[] = Array.isArray(profile.addresses) ? profile.addresses : [];
+    const isFirstAddress = currentAddresses.length === 0;
     if (isFirstAddress || newAddress.isDefault) {
-      addresses.forEach(a => a.isDefault = false);
+      currentAddresses.forEach(a => (a.isDefault = false));
       newAddress.isDefault = true;
     }
-    
-    addresses.push(newAddress);
-    
-    const updates: Partial<UserProfile> = {
-      addresses,
-    };
-    
+    currentAddresses.push(newAddress);
+
+    const updates: any = { addresses: currentAddresses };
+
     if (!profile.billing_address_line1 && !profile.shipping_address_line1) {
-       updates.billing_address_line1 = newAddress.houseNumber || '';
-       updates.billing_address_line2 = newAddress.roadName || '';
-       updates.billing_area = (newAddress as any).area || '';
-       updates.billing_city = newAddress.city || '';
-       updates.billing_district = (newAddress as any).district || '';
-       updates.billing_state = newAddress.state || '';
-       updates.billing_state_code = (newAddress as any).stateCode || '';
-       updates.billing_pincode = newAddress.pincode || '';
-       updates.billing_country = 'India';
+      updates.billing_address_line1 = newAddress.houseNumber || '';
+      updates.billing_address_line2 = newAddress.roadName || '';
+      updates.billing_area   = (newAddress as any).area || '';
+      updates.billing_city   = newAddress.city || '';
+      updates.billing_district = (newAddress as any).district || '';
+      updates.billing_state  = newAddress.state || '';
+      updates.billing_state_code = (newAddress as any).stateCode || '';
+      updates.billing_pincode = newAddress.pincode || '';
+      updates.billing_country = 'India';
     } else if (profile.billing_address_line1 && !profile.shipping_address_line1) {
-       updates.shipping_address_line1 = newAddress.houseNumber || '';
-       updates.shipping_address_line2 = newAddress.roadName || '';
-       updates.shipping_area = (newAddress as any).area || '';
-       updates.shipping_city = newAddress.city || '';
-       updates.shipping_district = (newAddress as any).district || '';
-       updates.shipping_state = newAddress.state || '';
-       updates.shipping_state_code = (newAddress as any).stateCode || '';
-       updates.shipping_pincode = newAddress.pincode || '';
-       updates.shipping_country = 'India';
+      updates.shipping_address_line1 = newAddress.houseNumber || '';
+      updates.shipping_address_line2 = newAddress.roadName || '';
+      updates.shipping_area   = (newAddress as any).area || '';
+      updates.shipping_city   = newAddress.city || '';
+      updates.shipping_district = (newAddress as any).district || '';
+      updates.shipping_state  = newAddress.state || '';
+      updates.shipping_state_code = (newAddress as any).stateCode || '';
+      updates.shipping_pincode = newAddress.pincode || '';
+      updates.shipping_country = 'India';
     }
-    
-    if (newAddress.isDefault) {
-      updates.defaultAddressId = newAddress.id;
-    }
-    
-    await profileRef.update(updates);
-    
+
+    const { error: updateError } = await supabaseDirect
+      .from('contact')
+      .update(updates)
+      .eq('id', uid);
+
+    if (updateError) throw updateError;
+
     return { success: true, address: newAddress };
   } catch (error: any) {
     console.error('addCustomerAddress error:', error);
@@ -398,7 +448,7 @@ export async function addCustomerAddress(uid: string, address: Omit<DeliveryAddr
 
 export async function deleteCustomerAddress(uid: string, addressId: string) {
   try {
-    const profileRef = adminDb.collection('profiles').doc(uid);
+    const profileRef = adminDb.collection('contact').doc(uid);
     const profileSnap = await profileRef.get();
     
     if (!profileSnap.exists) throw new Error('Customer not found');
@@ -408,12 +458,12 @@ export async function deleteCustomerAddress(uid: string, addressId: string) {
     
     const filtered = addresses.filter(a => a.id !== addressId);
     
-    const updates: Partial<UserProfile> = {
+    const updates: any = {
       addresses: filtered,
     };
     
-    if (profile.defaultAddressId === addressId) {
-      updates.defaultAddressId = filtered.length > 0 ? filtered[0].id : '';
+    if ((profile as any).default_address_id === addressId || profile.defaultAddressId === addressId) {
+      
     }
     
     await profileRef.update(updates);
@@ -429,17 +479,17 @@ export async function updateCustomerCreditLimit(uid: string, newLimit: number) {
   try {
     const { uid: adminUid } = await getAuthUser();
     
-    const profileRef = adminDb.collection('profiles').doc(uid);
+    const profileRef = adminDb.collection('contact').doc(uid);
     const profileSnap = await profileRef.get();
     
     if (!profileSnap.exists) throw new Error('Customer not found');
     
     const profile = profileSnap.data() as UserProfile;
-    const oldLimit = profile.creditLimit || 0;
+    const oldLimit = (profile as any).credit_limit || profile.creditLimit || 0;
     
     await profileRef.update({
-      creditLimit: newLimit,
-      customerType: newLimit > 0 ? 'CREDIT' : profile.customerType
+      credit_limit: newLimit,
+      customer_type: newLimit > 0 ? 'CREDIT' : ((profile as any).customer_type || profile.customerType)
     });
     
     await logActivity({
@@ -463,16 +513,26 @@ export async function updateCustomerCreditLimit(uid: string, newLimit: number) {
 
 export async function getSuppliers() {
   try {
-    const snap = await adminDb.collection('profiles')
-      .where('role', '==', 'SUPPLIER')
-      .get();
+    const snap = await adminDb.collection('contact').get();
     
-    return snap.docs.map(doc => ({
-      id: doc.id,
-      ...serializeFirestoreData(doc.data()),
-    } as UserProfile));
+    return snap.docs
+      .map((doc: any) => {
+        const data = serializeFirestoreData(doc.data());
+        return {
+          id: doc.id,
+          uid: doc.id,
+          name: data.name || 'Unknown',
+          displayName: data.name || 'Unknown',
+          businessName: data.business_name || data.name || 'Unknown',
+          email: data.email || '',
+          phone: data.phone || '',
+          role: 'SUPPLIER',
+          ...data,
+        } as UserProfile;
+      })
+      .filter((c: any) => c.type === 'supplier' || c.type === 'both');
   } catch (error: any) {
+    console.error('getSuppliers error:', error);
     return [];
   }
 }
-

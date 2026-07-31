@@ -16,8 +16,8 @@ export default function StaffLoginPage() {
 
   const getDashboardRoute = (role: string) => {
     const routes: Record<string, string> = {
-      SUPER_ADMIN: '/super-admin',
-      ADMIN: '/admin',
+      SUPER_ADMIN: '/admin/orders',
+      ADMIN: '/admin/orders',
       MANAGER: '/manager/dashboard',
       ACDEMA: '/acdema/orders',
       ACCOUNTANT: '/accountant/payments',
@@ -49,7 +49,8 @@ export default function StaffLoginPage() {
       // Let the useEffect handle the redirect based on the updated profile, 
       // but if we want to be immediate we can wait for context to update
     } catch (err: any) {
-      setError(err.message || 'Failed to sign in. Please check your credentials.');
+      const msg = typeof err?.message === 'string' ? err.message : typeof err === 'string' ? err : '';
+      setError(msg || 'Failed to sign in. Please check your credentials or restart your server.');
     } finally {
       setLoading(false);
     }

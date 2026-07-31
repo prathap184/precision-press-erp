@@ -160,13 +160,17 @@ export const adminAuth = {
       return { success: true };
     }
 
-    const { error } = await supabaseServer
-      .from('profiles')
-      .upsert({ id: uid, ...updates }, { onConflict: 'id' });
+    // Update custom claims directly in Supabase Auth user_metadata / app_metadata
+    // This replaces the old approach of syncing to the now-deprecated 'profiles' table
+    const { error } = await supabaseServer.auth.admin.updateUserById(uid, {
+      user_metadata: updates
+    });
 
     if (error) {
       console.error('[firebase-admin] setCustomUserClaims failed', error.message);
-      throw error;
+      // We log the error but don't strictly throw here, so customer creation can proceed 
+      // even if claim setting has a hiccup (the contact table will define them as a customer anyway)
+      return { success: false, error: error.message };
     }
 
     return { success: true };
@@ -303,7 +307,7 @@ function buildCollectionHandle(ref: ReturnType<typeof coreCollection>) {
       return addDoc(ref, data);
     },
     doc(id?: string) {
-      const generatedId = id || `generated_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+      const generatedId = id || crypto.randomUUID();
       return buildDocHandle(coreDoc(supabaseServer, `${ref.path}/${generatedId}`));
     },
     where(field: string, op: any, value: any) {

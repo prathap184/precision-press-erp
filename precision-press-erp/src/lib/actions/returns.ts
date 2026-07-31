@@ -75,17 +75,17 @@ export async function createCreditNote(payload: CreditNotePayload) {
 
         // Update Inventory (INWARD)
         const { data: prodData } = await supabaseServer
-          .from('products')
-          .select('current_stock')
-          .eq('id', item.productId)
+          .from('inventory_item')
+          .select('stock_quantity')
+          .eq('sku', item.productId)
           .single();
           
-        const currentStock = Number(prodData?.current_stock || 0);
+        const currentStock = Number(prodData?.stock_quantity || 0);
         const newStock = currentStock + item.quantityReturned;
         
-        await supabaseServer.from('products')
-          .update({ current_stock: newStock })
-          .eq('id', item.productId);
+        await supabaseServer.from('inventory_item')
+          .update({ stock_quantity: newStock })
+          .eq('sku', item.productId);
           
         await supabaseServer.from('product_track')
           .insert({
@@ -189,17 +189,17 @@ export async function createDebitNote(payload: DebitNotePayload) {
 
         // Update Inventory (OUTWARD for supplier return)
         const { data: prodData } = await supabaseServer
-          .from('products')
-          .select('current_stock')
-          .eq('id', item.productId)
+          .from('inventory_item')
+          .select('stock_quantity')
+          .eq('sku', item.productId)
           .single();
           
-        const currentStock = Number(prodData?.current_stock || 0);
+        const currentStock = Number(prodData?.stock_quantity || 0);
         const newStock = currentStock - item.quantityReturned;
         
-        await supabaseServer.from('products')
-          .update({ current_stock: newStock })
-          .eq('id', item.productId);
+        await supabaseServer.from('inventory_item')
+          .update({ stock_quantity: newStock })
+          .eq('sku', item.productId);
           
         await supabaseServer.from('product_track')
           .insert({

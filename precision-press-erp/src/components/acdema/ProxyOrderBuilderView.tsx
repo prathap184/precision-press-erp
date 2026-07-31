@@ -544,7 +544,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     >
                       CASH
                     </button>
-                    {selectedCustomer?.customerType !== 'CASH' && (
+                    {selectedCustomer?.customerType === 'CREDIT' && (
                       <button
                         type="button"
                         onClick={() => {

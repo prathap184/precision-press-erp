@@ -19,7 +19,7 @@ export default function CustomerInvoicesPage({ params }: { params: { customerId:
     setLoading(true);
     try {
       const [profileRes, invoiceRes, orderRes] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', params.customerId).single(),
+        supabase.from('contact').select('*').eq('id', params.customerId).single(),
         supabase.from('invoices').select('*').eq('customer_id', params.customerId).order('created_at', { ascending: false }),
         supabase.from('orders').select('*').eq('customer_id', params.customerId).order('created_at', { ascending: false })
       ]);

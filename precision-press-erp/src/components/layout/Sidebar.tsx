@@ -46,7 +46,13 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
   }
 
   const primaryRole = profile?.role && profile.role !== 'CUSTOMER' ? profile.role as StaffRole : null;
-  const lockedModule = activeModule || (primaryRole ? (primaryRole === 'ADMIN' || primaryRole === 'SUPER_ADMIN' ? '/admin' : `/${primaryRole.toLowerCase()}`) : null);
+  const isAdminUser = primaryRole === 'ADMIN' || primaryRole === 'SUPER_ADMIN' || profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN';
+
+  // For Admin users, keep sidebar fixed to '/admin' (Image 2) unless an explicit workspaceParam is provided
+  const lockedModule = isAdminUser
+    ? (workspaceParam ? `/${workspaceParam}` : '/admin')
+    : (activeModule || (primaryRole ? `/${primaryRole.toLowerCase()}` : null));
+
   const sharedWorkspaceLinks = new Set(['/admin/orders', '/settings']);
   const originalDashboardRoute = profile?.role && profile.role !== 'CUSTOMER'
     ? MODULE_ROUTES[profile.role as StaffRole]
@@ -55,7 +61,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
     ? ROLE_META[profile.role as StaffRole]?.label ?? profile.role
     : null;
   const allowSharedLinks = lockedModule !== '/acdema';
-  const showRoleReset = Boolean(activeModule && originalDashboardRoute && originalDashboardRoute !== activeModule);
+  const showRoleReset = Boolean(!isAdminUser && activeModule && originalDashboardRoute && originalDashboardRoute !== activeModule);
 
   const filteredItems = NAVIGATION_ITEMS.filter(item => {
     // Customer-mode or impersonating-customer: use single effectiveRole
@@ -239,7 +245,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
         visualExpanded ? 'justify-between px-6 py-5 gap-3' : 'justify-center py-5'
       )}>
         {visualExpanded && (
-          <Link href="/" className="flex items-center gap-3 overflow-hidden min-w-0 hover:opacity-80 transition-opacity">
+          <Link href="/admin/orders" className="flex items-center gap-3 overflow-hidden min-w-0 hover:opacity-80 transition-opacity">
             <img 
               src="/logo.png" 
               alt="Pixel Marketing Logo" 

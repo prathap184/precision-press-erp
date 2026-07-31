@@ -763,10 +763,10 @@ export async function createReceiptEntry(
 
   const refIdStr = invoiceNumberForLink ? invoiceNumberForLink : receiptEntryNumber;
 
-  const { data: customerProfile } = await supabaseServer.from('profiles').select('usedCredit, creditLimit').eq('id', customerId).single();
-  const balanceBefore = Number(customerProfile?.usedCredit || 0);
+  const { data: customerProfile } = await supabaseServer.from('contact').select('used_credit, credit_limit').eq('id', customerId).single();
+  const balanceBefore = Number(customerProfile?.used_credit || 0);
   const balanceAfter = Math.max(0, balanceBefore - amount);
-  const availableCredit = Math.max(0, Number(customerProfile?.creditLimit || 0) - balanceAfter);
+  const availableCredit = Math.max(0, Number(customerProfile?.credit_limit || 0) - balanceAfter);
 
   tasks.push(
     supabaseServer.from('transactions').insert({
@@ -786,8 +786,8 @@ export async function createReceiptEntry(
   );
 
   tasks.push(
-    supabaseServer.from('profiles').update({
-      usedCredit: balanceAfter
+    supabaseServer.from('contact').update({
+      used_credit: balanceAfter
     }).eq('id', customerId)
   );
 
@@ -1017,14 +1017,14 @@ export async function createJournalEntry(
   let toLedger = 'Unknown';
   try {
     const { data: profiles } = await supabaseServer
-      .from('profiles')
-      .select('id, name, displayName, businessName')
+      .from('contact')
+      .select('id, name, business_name')
       .in('id', [fromId, toId]);
     if (profiles) {
       const fromP = profiles.find(p => p.id === fromId);
       const toP = profiles.find(p => p.id === toId);
-      if (fromP) fromLedger = fromP.displayName || fromP.businessName || fromP.name || fromId;
-      if (toP) toLedger = toP.displayName || toP.businessName || toP.name || toId;
+      if (fromP) fromLedger = (fromP as any).business_name || fromP.name || fromId;
+      if (toP) toLedger = (toP as any).business_name || toP.name || toId;
     }
   } catch (e) {}
 

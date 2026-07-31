@@ -857,7 +857,7 @@ async function executeOrderPlacementTx(
     // Parallelize profile and products lookup for proxy orders
     if (!products) {
       const [profileRes, productsRes] = await Promise.all([
-        supabaseServer.from('profiles').select('*').eq('id', customerData.id).single(),
+        supabaseServer.from('contact').select('*').eq('id', customerData.id).single(),
         Promise.all(productIds.map(async id => {
           const product = await getCachedProduct(id);
           const steps = await getCachedWorkflow(id);
@@ -869,7 +869,7 @@ async function executeOrderPlacementTx(
       customerProfile = profileRes.data;
       products = productsRes;
     } else {
-      const profileRes = await supabaseServer.from('profiles').select('*').eq('id', customerData.id).single();
+      const profileRes = await supabaseServer.from('contact').select('*').eq('id', customerData.id).single();
       if (profileRes.error || !profileRes.data) throw new Error('Customer profile not found.');
       customerProfile = profileRes.data;
     }

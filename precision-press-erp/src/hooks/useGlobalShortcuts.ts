@@ -49,6 +49,18 @@ export function useGlobalShortcuts() {
         } else if (key === 'd') {
           e.preventDefault();
           setMenuState('DISPLAY_REPORTS');
+        } else if (key === 'n') {
+          e.preventDefault();
+          router.push('/proxy-order');
+        } else if (key === 'g') {
+          e.preventDefault();
+          router.push('/admin/orders');
+        } else if (key === 'z') {
+          e.preventDefault();
+          router.push('/accounting-redirect');
+        } else if (key === 'c') {
+          e.preventDefault();
+          window.location.href = `${process.env.NEXT_PUBLIC_DUBBL_URL || 'http://localhost:3001'}/sales/receipts`;
         }
       } 
       // Vouchers Menu Shortcuts
@@ -57,17 +69,17 @@ export function useGlobalShortcuts() {
         if (isFunctionKey) {
           e.preventDefault();
           if (e.key === 'F8') {
-            router.push('/sales-register');
+            router.push('/admin/invoice-generation');
           } else if (e.key === 'F10') {
-            router.push('/quotation-register');
+            router.push('/quotation-builder');
           } else if (e.key === 'F6') {
-            router.push('/receipt-register');
+            router.push('/receipt-entry');
           } else if (e.key === 'F5') {
-            router.push('/payment-entry');
+            router.push('/payment-entry/create');
           } else if (e.key === 'F4') {
-            router.push('/admin/treasury');
+            router.push('/admin/treasury/create');
           } else if (e.key === 'F7') {
-            router.push('/admin/journal-transfers');
+            router.push('/admin/journal-transfers/create');
           }
           closeMenu();
         }
