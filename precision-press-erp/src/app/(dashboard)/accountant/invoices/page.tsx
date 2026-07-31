@@ -1,6 +1,5 @@
-'use client';
-export const dynamic = 'force-dynamic';
-import AdminInvoicesPage from '../../admin/invoices/page';
+import { redirect } from 'next/navigation';
+
 export default function AccountantInvoicesPage() {
-  return <AdminInvoicesPage />;
+  redirect('http://localhost:3001/sales');
 }
