@@ -255,33 +255,7 @@ BEGIN
     FROM unnest(p_order_items) AS item_val;
   END IF;
 
-  -- 8. Insert Ledger Entries into transactions table (Batch)
-  IF p_ledger_entries IS NOT NULL THEN
-    INSERT INTO transactions (
-      id, "userId", type, "ledgerType", "refId", debit, credit, "balanceBefore", "balanceAfter",
-      "availableCredit", remarks, "createdBy", timestamp, "isVerified", "verifiedAt", "verifiedBy",
-      "paymentId"
-    )
-    SELECT
-      ledger_val->>'id',
-      ledger_val->>'userId',
-      ledger_val->>'type',
-      ledger_val->>'ledgerType',
-      ledger_val->>'refId',
-      COALESCE((ledger_val->>'debit')::numeric, 0),
-      COALESCE((ledger_val->>'credit')::numeric, 0),
-      COALESCE((ledger_val->>'balanceBefore')::numeric, 0),
-      COALESCE((ledger_val->>'balanceAfter')::numeric, 0),
-      COALESCE((ledger_val->>'availableCredit')::numeric, 0),
-      ledger_val->>'remarks',
-      ledger_val->>'createdBy',
-      to_jsonb(COALESCE(ledger_val->>'timestamp', v_now::text)),
-      COALESCE((ledger_val->>'isVerified')::boolean, false),
-      CASE WHEN ledger_val->>'verifiedAt' IS NOT NULL THEN to_jsonb(ledger_val->>'verifiedAt') ELSE NULL END,
-      ledger_val->>'verifiedBy',
-      ledger_val->>'paymentId'
-    FROM unnest(p_ledger_entries) AS ledger_val;
-  END IF;
+
 
     -- 9. Insert Jobs into document_jobs table (Batch)
     IF p_jobs IS NOT NULL THEN
