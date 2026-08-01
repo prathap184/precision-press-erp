@@ -148,21 +148,29 @@ export function GlobalOrdersPage() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allOrders = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Order[];
-      const parentOrderIdSet = new Set(allOrders.map(o => (o as any).parent_order_id || (o as any).baseOrderId).filter(Boolean));
+      // Collect all IDs that appear as a parent/base in any child order
+      const parentOrderIdSet = new Set(
+        allOrders
+          .map(o => (o as any).parent_order_id || (o as any).baseOrderId)
+          .filter(Boolean)
+      );
       const visible = allOrders.filter(o => {
         const parentId = (o as any).parent_order_id || (o as any).baseOrderId;
         const hasParent = !!parentId;
+        // This order is referenced as a parent by at least one child
         const isUmbrellaParent = parentOrderIdSet.has(o.id);
         
+        // Check groupOrderIds on the workflow (the parent stores child IDs here)
         let hasGroupChildren = false;
         try {
           const wf = typeof o.workflow === 'string' ? JSON.parse(o.workflow) : (o.workflow || {});
-          hasGroupChildren = Array.isArray(wf?.groupOrderIds) && wf.groupOrderIds.length > 1;
+          // Fix: use > 0 not > 1 — hide parent even if it has only 1 child
+          hasGroupChildren = Array.isArray(wf?.groupOrderIds) && wf.groupOrderIds.length > 0;
         } catch(e) {}
         
-        if (hasParent) return true;            // always show child items
-        if (isUmbrellaParent || hasGroupChildren) return false;  // hide umbrella parents
-        return true;                                // standalone single-item order
+        if (hasParent) return true;                           // always show child orders
+        if (isUmbrellaParent || hasGroupChildren) return false; // hide parent orders
+        return true;                                           // standalone order — show
       });
       setOrders(visible);
       setHasMore(snapshot.docs.length === limitCount);
