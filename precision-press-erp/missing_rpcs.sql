@@ -1,3 +1,5 @@
+CREATE SEQUENCE IF NOT EXISTS "public"."order_id_seq" START 1000;
+
 CREATE OR REPLACE FUNCTION "public"."get_next_order_id"() RETURNS "text"
     LANGUAGE "plpgsql"
     AS $$
@@ -69,7 +71,7 @@ BEGIN
     END IF;
   END IF;
 
-  -- 2. Read and Lock Customer Profile Row
+  -- 2. Read and Lock Customer Profile Row (if it exists)
   SELECT COALESCE("usedCredit", 0), COALESCE("creditLimit", 0)
   INTO v_used_credit, v_credit_limit
   FROM profiles
@@ -77,21 +79,24 @@ BEGIN
   FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Customer profile not found for ID %', p_customer_id;
-  END IF;
-
-  -- 3. Validate Credit Limit (if CREDIT customer)
-  IF p_order_type = 'CREDIT' THEN
-    IF (v_used_credit + p_grand_total) > v_credit_limit THEN
-      RAISE EXCEPTION 'Credit limit exceeded. Current used: %, Limit: %, Requested: %', v_used_credit, v_credit_limit, p_grand_total;
+    -- If customer has no profile in Postgres, they cannot place a CREDIT order
+    IF p_order_type = 'CREDIT' THEN
+      RAISE EXCEPTION 'Customer profile not found for ID % - Cannot place CREDIT order', p_customer_id;
     END IF;
-  END IF;
+  ELSE
+    -- 3. Validate Credit Limit (if CREDIT customer)
+    IF p_order_type = 'CREDIT' THEN
+      IF (v_used_credit + p_grand_total) > v_credit_limit THEN
+        RAISE EXCEPTION 'Credit limit exceeded. Current used: %, Limit: %, Requested: %', v_used_credit, v_credit_limit, p_grand_total;
+      END IF;
+    END IF;
 
-  -- 4. Update Locked Customer Used Credit Balance
-  v_new_used_credit := v_used_credit + p_grand_total;
-  UPDATE profiles
-  SET "usedCredit" = v_new_used_credit, "updatedAt" = v_now_json
-  WHERE id = p_customer_id;
+    -- 4. Update Locked Customer Used Credit Balance
+    v_new_used_credit := v_used_credit + p_grand_total;
+    UPDATE profiles
+    SET "usedCredit" = v_new_used_credit, "updatedAt" = v_now_json
+    WHERE id = p_customer_id;
+  END IF;
 
   -- 5. Insert Parent Order (if provided)
   IF p_parent_order IS NOT NULL THEN
@@ -129,8 +134,8 @@ BEGIN
       COALESCE(p_parent_order->'items', '[]'::jsonb),
       p_parent_order->>'status',
       p_parent_order->>'paymentStatus',
-      COALESCE(p_parent_order->'createdAt', v_now_json),
-      COALESCE(p_parent_order->'updatedAt', v_now_json),
+      COALESCE((p_parent_order->>'createdAt')::timestamp with time zone, v_now),
+      COALESCE((p_parent_order->>'updatedAt')::timestamp with time zone, v_now),
       p_parent_order->>'shippingAddress',
       p_parent_order->>'deliveryChoice',
       p_parent_order->>'ref_order_id',
@@ -187,8 +192,8 @@ BEGIN
       COALESCE(child_val->'items', '[]'::jsonb),
       child_val->>'status',
       child_val->>'paymentStatus',
-      COALESCE(child_val->'createdAt', v_now_json),
-      COALESCE(child_val->'updatedAt', v_now_json),
+      COALESCE((child_val->>'createdAt')::timestamp with time zone, v_now),
+      COALESCE((child_val->>'updatedAt')::timestamp with time zone, v_now),
       child_val->>'shippingAddress',
       child_val->>'deliveryChoice',
       child_val->>'ref_order_id',

@@ -148,12 +148,19 @@ export function GlobalOrdersPage() {
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const allOrders = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as Order[];
-      const baseOrderIdSet = new Set(allOrders.map(o => (o as any).baseOrderId).filter(Boolean));
+      const parentOrderIdSet = new Set(allOrders.map(o => (o as any).parent_order_id || (o as any).baseOrderId).filter(Boolean));
       const visible = allOrders.filter(o => {
-        const hasBaseOrderId = !!(o as any).baseOrderId;          // is a child item
-        const isUmbrellaParent = baseOrderIdSet.has(o.id);        // its ID is used as baseOrderId by others
-        const hasGroupChildren = Array.isArray((o as any).workflow?.groupOrderIds) && (o as any).workflow.groupOrderIds.length > 0;
-        if (hasBaseOrderId) return true;            // always show child items
+        const parentId = (o as any).parent_order_id || (o as any).baseOrderId;
+        const hasParent = !!parentId;
+        const isUmbrellaParent = parentOrderIdSet.has(o.id);
+        
+        let hasGroupChildren = false;
+        try {
+          const wf = typeof o.workflow === 'string' ? JSON.parse(o.workflow) : (o.workflow || {});
+          hasGroupChildren = Array.isArray(wf?.groupOrderIds) && wf.groupOrderIds.length > 1;
+        } catch(e) {}
+        
+        if (hasParent) return true;            // always show child items
         if (isUmbrellaParent || hasGroupChildren) return false;  // hide umbrella parents
         return true;                                // standalone single-item order
       });
@@ -169,7 +176,7 @@ export function GlobalOrdersPage() {
   useEffect(() => {
     const fetchParentTotals = async () => {
       const missingBaseIds = orders
-        .map(o => (o as any).baseOrderId)
+        .map(o => (o as any).parent_order_id || (o as any).baseOrderId)
         .filter((id): id is string => !!id && !parentTotals[id]);
 
       if (missingBaseIds.length === 0) return;
@@ -584,10 +591,8 @@ export function GlobalOrdersPage() {
                           date = new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(parsed);
                         }
                       }
-                      const baseOrderId = (order as any).baseOrderId;
-                      const amount = baseOrderId
-                        ? (parentTotals[baseOrderId] ?? 0)
-                        : (order.amounts?.grandTotal ?? (order as any).grandTotal ?? 0);
+                      const baseOrderId = (order as any).parent_order_id || (order as any).baseOrderId;
+                      const amount = order.amounts?.grandTotal ?? (order as any).grandTotal ?? (order as any).grand_total_snapshot ?? 0;
                       const currentStep = order.workflowSnapshot?.steps?.[order.workflowSnapshot?.currentStepIndex ?? -1];
                       const isDesignerStepActive = currentStep?.role === 'DESIGNER';
                       const thumbnail = <OrderThumbnail orderId={order.id} order={order as any} size="sm" />;

@@ -16,7 +16,11 @@ export const DatabaseService = {
         return;
       }
       if (active && data) {
-        callback(data as Order[]);
+        // Filter out parent proxy orders (orders with no parent but multiple items)
+        const filteredData = (data as Order[]).filter(
+          o => (o as any).parent_order_id !== null || (Array.isArray(o.items) && o.items.length === 1)
+        );
+        callback(filteredData);
       }
     };
 
@@ -50,7 +54,11 @@ export const DatabaseService = {
         return;
       }
       if (active && data) {
-        callback(data as Order[]);
+        // Filter out parent proxy orders (orders with no parent but multiple items)
+        const filteredData = (data as Order[]).filter(
+          o => (o as any).parent_order_id !== null || (Array.isArray(o.items) && o.items.length === 1)
+        );
+        callback(filteredData);
       }
     };
 

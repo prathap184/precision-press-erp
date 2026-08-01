@@ -69,17 +69,17 @@ export function useGlobalShortcuts() {
         if (isFunctionKey) {
           e.preventDefault();
           if (e.key === 'F8') {
-            router.push('/admin/invoice-generation');
+            window.location.href = 'http://40.81.236.61:3001/sales';
           } else if (e.key === 'F10') {
             router.push('/quotation-builder');
           } else if (e.key === 'F6') {
-            router.push('/receipt-entry');
+            window.location.href = 'http://40.81.236.61:3001/sales/customer-prepayments';
           } else if (e.key === 'F5') {
-            router.push('/payment-entry/create');
+            window.location.href = 'http://40.81.236.61:3001/purchases';
           } else if (e.key === 'F4') {
-            router.push('/admin/treasury/create');
+            window.location.href = 'http://40.81.236.61:3001/accounting/banking';
           } else if (e.key === 'F7') {
-            router.push('/admin/journal-transfers/create');
+            window.location.href = 'http://40.81.236.61:3001/accounting';
           }
           closeMenu();
         }

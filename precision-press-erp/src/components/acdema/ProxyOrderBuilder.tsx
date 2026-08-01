@@ -721,15 +721,10 @@ ${parts.join(', ')}`;
         
         if (paymentMode !== 'COD' && receiptAmount && Number(receiptAmount) > 0) {
           const params = new URLSearchParams({
-            customerId: selectedCustomer.uid,
-            amount: receiptAmount,
-            mode: paymentMode,
-            bankLedger: bankLedger || '',
-            upiApp: upiApp || '',
-            utr: utr || '',
-            remarks: receiptRemarks || `Advance for Proxy Order ${result.orderId || (result.orderIds ? result.orderIds[0] : '')}`
+            customer: selectedCustomer.name || selectedCustomer.displayName || '',
+            amount: receiptAmount
           });
-          router.push(`/receipt-entry?${params.toString()}`);
+          window.location.href = `http://40.81.236.61:3001/sales/customer-prepayments?${params.toString()}`;
         } else {
           const highlightIds = result.orderIds?.length ? result.orderIds.join(',') : result.orderId;
           const basePath = profile?.role === 'ACDEMA' ? '/acdema' : profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN' ? '/admin' : `/${profile?.role?.toLowerCase() || 'admin'}`;

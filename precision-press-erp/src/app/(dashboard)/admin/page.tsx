@@ -122,7 +122,11 @@ export default function AdminDashboard() {
         .limit(20);
 
       if (activeOrders) {
-        const overdue = activeOrders.filter(o => !['COMPLETED', 'DELIVERED', 'DISPATCHED', 'CANCELLED'].includes(o.status));
+        // Filter out completed/delivered etc, AND filter out parent proxy orders
+        const overdue = activeOrders.filter(o => 
+          !['COMPLETED', 'DELIVERED', 'DISPATCHED', 'CANCELLED'].includes(o.status) &&
+          ((o as any).parent_order_id !== null || (Array.isArray(o.items) && o.items.length === 1))
+        );
         setOverdueOrders(overdue.slice(0, 5) as Order[]);
       }
     };

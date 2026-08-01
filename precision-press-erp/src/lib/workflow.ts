@@ -1345,10 +1345,10 @@ async function executeOrderPlacementTx(
     p_order_type: customerData.type,
     p_grand_total: totals.grandTotal,
     p_parent_order: parentOrder,
-    p_child_orders: childOrders,
-    p_order_items: orderItems,
-    p_ledger_entries: ledgerEntries,
-    p_jobs: jobs,
+    p_child_orders: childOrders.length > 0 ? childOrders : null,
+    p_order_items: orderItems.length > 0 ? orderItems : null,
+    p_ledger_entries: ledgerEntries.length > 0 ? ledgerEntries : null,
+    p_jobs: jobs.length > 0 ? jobs : null,
     p_idempotency_key: payload.idempotencyKey || null
   });
 

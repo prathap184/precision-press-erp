@@ -23,8 +23,8 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
   React.useEffect(() => {
     if (menuState !== null && profile && allowedRoles.includes(profile.role)) {
       const routesToPrefetch = [
-        '/proxy-order', '/quotation-builder', '/receipt-entry', 
-        '/payment-entry/create', '/admin/treasury', '/admin/journal-transfers/create', 
+        '/sales-register', '/quotation-register', '/receipt-register', 
+        '/payment-entry', '/admin/treasury', '/admin/journal-transfers', 
         '/purchase', '/accountant/day-book', '/accountant/ledger', 
         '/accountant/bank-ledger', '/accountant/cash-ledger'
       ];
@@ -62,17 +62,16 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
         </div>
 
         {/* Body */}
-        {/* Body */}
         <div className="p-4 bg-white min-h-[300px]">
           
           {menuState === 'VOUCHERS' && (
             <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="F4" label="Contra" onClick={() => { router.push('/admin/treasury/create'); closeMenu(); }} />
-              <ShortcutItem hotkey="F5" label="Payment" onClick={() => { router.push('/payment-entry/create'); closeMenu(); }} />
-              <ShortcutItem hotkey="F6" label="Receipt entry (sync) / gpay or cash" onClick={() => { router.push('/receipt-entry'); closeMenu(); }} />
-              <ShortcutItem hotkey="F7" label="Journal" onClick={() => { router.push('/admin/journal-transfers/create'); closeMenu(); }} />
-              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { router.push('/admin/invoice-generation'); closeMenu(); }} />
+              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { window.location.href = 'http://40.81.236.61:3001/sales'; }} />
               <ShortcutItem hotkey="F10" label="Quote" onClick={() => { router.push('/quotation-builder'); closeMenu(); }} />
+              <ShortcutItem hotkey="F6" label="Receipt entry (sync) / gpay or cash" onClick={() => { window.location.href = 'http://40.81.236.61:3001/sales/customer-prepayments'; }} />
+              <ShortcutItem hotkey="F5" label="Payment" onClick={() => { window.location.href = 'http://40.81.236.61:3001/purchases'; }} />
+              <ShortcutItem hotkey="F4" label="Contra" onClick={() => { window.location.href = 'http://40.81.236.61:3001/accounting/banking'; }} />
+              <ShortcutItem hotkey="F7" label="Journal" onClick={() => { window.location.href = 'http://40.81.236.61:3001/accounting'; }} />
             </div>
           )}
 
@@ -82,13 +81,15 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 router.push('/accountant/day-book');
                 closeMenu();
               }} />
-              <ShortcutItem hotkey="A" label="Account Books" hasChildren onClick={() => setMenuState('ACCOUNT_BOOKS')} />
+              <ShortcutItem hotkey="A" label="Account Books" hasChildren />
             </div>
           )}
 
+
+
           {menuState === 'ACCOUNT_BOOKS' && (
             <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="L" label="Ledgers" hasChildren onClick={() => setMenuState('LEDGERS')} />
+              <ShortcutItem hotkey="L" label="Ledgers" hasChildren />
             </div>
           )}
 
@@ -112,7 +113,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 if (menuState === 'ACCOUNT_BOOKS') setMenuState('DISPLAY_REPORTS');
                 if (menuState === 'LEDGERS') setMenuState('ACCOUNT_BOOKS');
               }}
-              className="text-blue-500 hover:text-blue-700 font-semibold"
+              className="text-blue-500 hover:text-blue-700"
             >
               &larr; Go Back
             </button>
@@ -127,7 +128,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
 function ShortcutItem({ hotkey, label, hasChildren, onClick }: { hotkey: string; label: string; hasChildren?: boolean; onClick?: () => void }) {
   return (
     <div 
-      className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-blue-50 text-slate-700 transition-colors group cursor-pointer select-none active:scale-[0.99]"
+      className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-blue-50 text-slate-700 transition-colors group cursor-default"
       onClick={onClick}
     >
       <div className="flex items-center gap-4">
