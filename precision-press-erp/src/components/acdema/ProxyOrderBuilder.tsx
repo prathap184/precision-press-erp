@@ -724,12 +724,10 @@ ${parts.join(', ')}`;
           const clipText = `Customer: ${customerName}\nAmount: ${receiptAmount}`;
           try { await navigator.clipboard.writeText(clipText); } catch(e) {}
           toast.success(
-            `📋 Copied! Customer: ${customerName} | Amount: ₹${receiptAmount} — Paste in the form`,
+            `📋 Copied! Customer: ${customerName} | Amount: ₹${receiptAmount} — Paste in the prepayment form`,
             { duration: 8000 }
           );
-          // Small delay so staff can read the toast before page changes
-          await new Promise(res => setTimeout(res, 1500));
-          window.location.href = `http://40.81.236.61:3001/sales/customer-prepayments`;
+          window.open(`http://40.81.236.61:3001/sales/customer-prepayments`, '_blank');
         } else {
           const highlightIds = result.orderIds?.length ? result.orderIds.join(',') : result.orderId;
           const basePath = profile?.role === 'ACDEMA' ? '/acdema' : profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN' ? '/admin' : `/${profile?.role?.toLowerCase() || 'admin'}`;
