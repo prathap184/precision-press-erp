@@ -720,13 +720,6 @@ ${parts.join(', ')}`;
         toast.success(`Proxy orders created successfully.`);
         
         if (paymentMode !== 'COD' && receiptAmount && Number(receiptAmount) > 0) {
-          const customerName = selectedCustomer.name || selectedCustomer.displayName || '';
-          const clipText = `Customer: ${customerName}\nAmount: ${receiptAmount}`;
-          try { await navigator.clipboard.writeText(clipText); } catch(e) {}
-          toast.success(
-            `📋 Copied! Customer: ${customerName} | Amount: ₹${receiptAmount} — Paste in the prepayment form`,
-            { duration: 8000 }
-          );
           window.open(`http://40.81.236.61:3001/sales/customer-prepayments`, '_blank');
         } else {
           const highlightIds = result.orderIds?.length ? result.orderIds.join(',') : result.orderId;
