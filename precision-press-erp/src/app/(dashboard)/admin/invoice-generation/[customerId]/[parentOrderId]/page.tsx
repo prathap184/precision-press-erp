@@ -262,7 +262,7 @@ export default function InvoiceGenerationSelectPage({
           }
         }
         
-
+      }
 
       // Load active company template
       const { data: tpl } = await supabase
