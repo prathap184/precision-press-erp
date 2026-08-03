@@ -129,12 +129,23 @@ export default function InvoiceGenerationSelectPage({
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // Load child orders from Supabase
-      const { data, error } = await supabase
+      // Load child orders — try parent_order_id column first, fallback to LIKE pattern
+      let { data, error } = await supabase
         .from('orders')
         .select('*')
-        .like('id', `${parentOrderId}-item%`)
+        .eq('parent_order_id', parentOrderId)
         .order('id', { ascending: true });
+
+      if (error || !data || data.length === 0) {
+        // Fallback: LIKE pattern for older orders
+        const res = await supabase
+          .from('orders')
+          .select('*')
+          .like('id', `${parentOrderId}-item%`)
+          .order('id', { ascending: true });
+        data = res.data;
+        error = res.error;
+      }
 
       if (error) throw error;
       
@@ -251,16 +262,7 @@ export default function InvoiceGenerationSelectPage({
           }
         }
         
-        // Fetch transactions to get Mode/Terms of Payment
-        const { data: transactionData } = await supabase
-          .from('transactions')
-          .select('ledgerType')
-          .eq('refId', parentOrderId)
-          .limit(1);
-        if (transactionData && transactionData.length > 0) {
-          setPaymentMode(transactionData[0].ledgerType || '');
-        }
-      }
+
 
       // Load active company template
       const { data: tpl } = await supabase

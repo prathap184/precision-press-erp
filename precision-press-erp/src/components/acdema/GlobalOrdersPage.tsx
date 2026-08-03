@@ -723,7 +723,7 @@ export function GlobalOrdersPage() {
                               </Link>
                               <div className="flex flex-col gap-1 w-full max-w-[80px]">
                                 <Link
-                                  href={`/admin/invoice-generation/${order.customerId}/${order.id}`}
+                                  href={`/admin/invoice-generation/${order.customerId}/${(order as any).parent_order_id || (order as any).baseOrderId || order.id}`}
                                   className="w-full text-center text-[9px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap"
                                   title="Generate Invoice"
                                 >
