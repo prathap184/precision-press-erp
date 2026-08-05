@@ -44,15 +44,19 @@ export function OrgLoader({ children }: { children: React.ReactNode }) {
 
     fetch("/api/v1/organization", { headers })
       .then((r) => r.json())
-      .then((data) => {
-        // Single org response (header was sent)
-        const org = data.organization
-          // List response (no header) - pick the first org
-          ?? data.organizations?.[0];
-
+      .then(async (data) => {
+        let org = data.organization ?? data.organizations?.[0];
+        if (!org && orgId) {
+          localStorage.removeItem("activeOrgId");
+          const retryRes = await fetch("/api/v1/organization");
+          const retryData = await retryRes.json();
+          org = retryData.organization ?? retryData.organizations?.[0];
+        }
+        return org;
+      })
+      .then((org) => {
         if (org) {
-          // Persist resolved org for OAuth users who don't have it set yet
-          if (!orgId && org.id) {
+          if (org.id) {
             localStorage.setItem("activeOrgId", org.id);
           }
           setOrganization({
