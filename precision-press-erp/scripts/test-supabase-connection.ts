@@ -6,6 +6,9 @@ import { pathToFileURL } from 'url';
 const require = createRequire(import.meta.url);
 
 require('dotenv').config({ path: '.env.local' });
+try {
+  globalThis.WebSocket = require('ws');
+} catch {}
 const { createClient } = require('@supabase/supabase-js');
 
 function mask(value: string | undefined) {
