@@ -24,6 +24,11 @@ export function useGlobalShortcuts() {
         return;
       }
 
+      // Ignore shortcut handling when modifier keys (Ctrl, Cmd, Alt) are pressed
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
       // Close menu on Escape, or go back if menu is already closed
       if (e.key === 'Escape') {
         if (menuState !== null) {
