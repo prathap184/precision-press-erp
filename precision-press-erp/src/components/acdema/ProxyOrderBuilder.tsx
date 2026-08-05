@@ -720,7 +720,8 @@ ${parts.join(', ')}`;
         toast.success(`Proxy orders created successfully.`);
         
         if (paymentMode !== 'COD' && receiptAmount && Number(receiptAmount) > 0) {
-          window.open(`http://40.81.236.61:3001/sales/customer-prepayments`, '_blank');
+          const receiptUrl = `http://40.81.236.61:3000/accounting/sales/customer-prepayments?openReceipt=1&customerName=${encodeURIComponent(selectedCustomer?.name || selectedCustomer?.displayName || '')}&amount=${encodeURIComponent(summary.grandTotal.toString())}&currency=INR&country=India`;
+          window.location.href = receiptUrl;
         } else {
           const highlightIds = result.orderIds?.length ? result.orderIds.join(',') : result.orderId;
           const basePath = profile?.role === 'ACDEMA' ? '/acdema' : profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN' ? '/admin' : `/${profile?.role?.toLowerCase() || 'admin'}`;

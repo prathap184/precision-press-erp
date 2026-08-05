@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useDebounce } from "@/lib/hooks/use-debounce";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Plus, Wallet, ReceiptText, X, Search, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { DataTable, type Column } from "@/components/dashboard/data-table";
@@ -123,6 +123,35 @@ function buildColumns(): Column<CustomerCredit>[] {
 export default function CustomerPrepaymentsPage() {
   const router = useRouter();
   const { open: openDrawer } = useCreateDrawer();
+  const searchParams = useSearchParams();
+
+  // Auto-open receipt drawer when redirected from proxy-order
+  useEffect(() => {
+    if (searchParams.get("openReceipt") !== "1") return;
+    const customerName = searchParams.get("customerName") || "";
+    const amount = searchParams.get("amount") || "";
+    const currency = searchParams.get("currency") || "INR";
+
+    // Small delay so the page + drawer provider are fully mounted
+    const t = setTimeout(() => {
+      openDrawer("customerCredit", {
+        amount,
+        currency,
+        settlementMode: "on_account",
+        notes: customerName ? `Customer: ${customerName}` : "",
+      });
+      // Clean the URL so refreshing won't re-open the drawer
+      const url = new URL(window.location.href);
+      url.searchParams.delete("openReceipt");
+      url.searchParams.delete("customerName");
+      url.searchParams.delete("amount");
+      url.searchParams.delete("currency");
+      url.searchParams.delete("country");
+      window.history.replaceState({}, "", url.toString());
+    }, 300);
+
+    return () => clearTimeout(t);
+  }, [searchParams, openDrawer]);
   const [credits, setCredits] = useState<CustomerCredit[]>([]);
   const [initialLoad, setInitialLoad] = useState(true);
   const [refetching, setRefetching] = useState(false);

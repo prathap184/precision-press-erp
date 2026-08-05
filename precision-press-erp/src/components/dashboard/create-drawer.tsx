@@ -75,6 +75,11 @@ interface DrawerInitialData {
   lines?: any[];
   deliveryMode?: string;
   deliveryAddress?: string;
+  // Receipt drawer pre-fill (from proxy-order redirect)
+  amount?: string;
+  currency?: string;
+  settlementMode?: "on_account" | "against_ref";
+  notes?: string;
 }
 
 interface CreateDrawerContextValue {
@@ -128,7 +133,7 @@ export function CreateDrawerProvider({ children }: { children: React.ReactNode }
       <ContractorDrawer open={activeType === "contractor"} onClose={close} />
       <DealDrawer open={activeType === "deal"} onClose={close} initialData={initialData} />
       <DebitNoteDrawer open={activeType === "debitNote"} onClose={close} />
-      <CustomerCreditDrawer open={activeType === "customerCredit"} onClose={close} />
+      <CustomerCreditDrawer open={activeType === "customerCredit"} onClose={close} initialData={initialData} />
       <LoanDrawer open={activeType === "loan"} onClose={close} />
       <OpeningBalanceDrawer open={activeType === "openingBalance"} onClose={close} />
       <AccrualScheduleDrawer open={activeType === "accrualSchedule"} onClose={close} />
@@ -2768,14 +2773,14 @@ function EmployeeDrawer({ open, onClose }: { open: boolean; onClose: () => void 
   const [taxRate, setTaxRate] = useState("20");
   const [bankAccountNumber, setBankAccountNumber] = useState("");
   const [empStartDate, setEmpStartDate] = useState(new Date().toISOString().split("T")[0]);
-  const [empCurrency, setEmpCurrency] = useState("USD");
+  const [empCurrency, setEmpCurrency] = useState("INR");
 
   useEffect(() => {
     if (!open) {
       setEmpName(""); setEmail(""); setEmployeeNumber(""); setPosition("");
       setSalary(""); setPayFrequency("monthly"); setTaxRate("20");
       setBankAccountNumber(""); setEmpStartDate(new Date().toISOString().split("T")[0]);
-      setEmpCurrency("USD");
+      setEmpCurrency("INR");
     }
   }, [open]);
 
@@ -3194,9 +3199,9 @@ function RecurringDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // ---------------------------------------------------------------------------
 function AccountDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [saving, setSaving] = useState(false);
-  const [acctCurrency, setAcctCurrency] = useState("USD");
+  const [acctCurrency, setAcctCurrency] = useState("INR");
 
-  useEffect(() => { if (!open) setAcctCurrency("USD"); }, [open]);
+  useEffect(() => { if (!open) setAcctCurrency("INR"); }, [open]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -3313,7 +3318,7 @@ function BankAccountDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [accountType, setAccountType] = useState("checking");
-  const [currencyCode, setCurrencyCode] = useState("USD");
+  const [currencyCode, setCurrencyCode] = useState("INR");
   const [countryCode, setCountryCode] = useState("");
   const [color, setColor] = useState(BANK_ACCOUNT_COLORS[0]);
   // Optional: connect to a specific ledger account. Left blank, the account is
@@ -3323,7 +3328,7 @@ function BankAccountDrawer({ open, onClose }: { open: boolean; onClose: () => vo
   useEffect(() => {
     if (!open) {
       setAccountName(""); setBankName(""); setAccountNumber("");
-      setAccountType("checking"); setCurrencyCode("USD"); setCountryCode("");
+      setAccountType("checking"); setCurrencyCode("INR"); setCountryCode("IN");
       setColor(BANK_ACCOUNT_COLORS[0]); setChartAccountId("");
     }
   }, [open]);
@@ -4024,11 +4029,11 @@ function ContractorDrawer({ open, onClose }: { open: boolean; onClose: () => voi
   const [cEmail, setCEmail] = useState("");
   const [cCompany, setCCompany] = useState("");
   const [cRate, setCRate] = useState("");
-  const [cCurrency, setCCurrency] = useState("USD");
+  const [cCurrency, setCCurrency] = useState("INR");
 
   useEffect(() => {
     if (!open) {
-      setCName(""); setCEmail(""); setCCompany(""); setCRate(""); setCCurrency("USD");
+      setCName(""); setCEmail(""); setCCompany(""); setCRate(""); setCCurrency("INR");
     }
   }, [open]);
 
@@ -4473,7 +4478,7 @@ function DebitNoteDrawer({ open, onClose }: { open: boolean; onClose: () => void
 // ---------------------------------------------------------------------------
 // Customer Credit Drawer (prepayment — money received in advance)
 // ---------------------------------------------------------------------------
-function CustomerCreditDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; onClose: () => void; initialData?: DrawerInitialData }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [contactId, setContactId] = useState("");
@@ -4486,23 +4491,28 @@ function CustomerCreditDrawer({ open, onClose }: { open: boolean; onClose: () =>
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [bankAccountId, setBankAccountId] = useState("");
   const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
-  const [currencyCode, setCurrencyCode] = useState("");
+  const [currencyCode, setCurrencyCode] = useState("INR");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
     if (!open) {
       setContactId(""); setDate(new Date().toISOString().split("T")[0]); setAmount("0.00");
       setSourceType("prepayment"); setSettlementMode("on_account"); setSelectedInvoiceId("");
-      setInvoices([]); setBankAccountId(""); setCurrencyCode(""); setNotes("");
+      setInvoices([]); setBankAccountId(""); setCurrencyCode("INR"); setNotes("");
       return;
     }
+    // Pre-fill from proxy-order redirect
+    if (initialData?.amount) setAmount(Number(initialData.amount).toFixed(2));
+    if (initialData?.currency) setCurrencyCode(initialData.currency);
+    if (initialData?.settlementMode) setSettlementMode(initialData.settlementMode);
+    if (initialData?.notes) setNotes(initialData.notes);
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
     fetch("/api/v1/bank-accounts", { headers: { "x-organization-id": orgId } })
       .then((r) => r.json())
       .then((data) => { if (data.bankAccounts) setBankAccounts(data.bankAccounts); })
       .catch(() => {});
-  }, [open]);
+  }, [open, initialData]);
 
   useEffect(() => {
     if (settlementMode !== "against_ref" || !contactId) {
