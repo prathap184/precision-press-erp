@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { organization, member, users, subscription, journalEntry } from "@/lib/db/schema";
-import { eq, sql, inArray } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { isValidCurrencyCode } from "@/lib/currency/iso4217";
 import { auth } from "@/lib/auth";
 import { getAuthContext, AuthError } from "@/lib/api/auth-context";
@@ -105,15 +105,14 @@ export async function GET(request: Request) {
     let memberCounts: Record<string, number> = {};
 
     if (orgIds.length > 0) {
+      const placeholders = orgIds.map((_, i) => `$${i + 1}`).join(", ");
       const counts = await db
         .select({
           organizationId: member.organizationId,
           count: sql<number>`count(*)::int`,
         })
         .from(member)
-        .where(
-          inArray(member.organizationId, orgIds)
-        )
+        .where(sql`${member.organizationId} IN (${sql.raw(orgIds.map((id) => `'${id.replace(/'/g, "''")}'`).join(", "))})`)
         .groupBy(member.organizationId);
       memberCounts = Object.fromEntries(
         counts.map((c) => [c.organizationId, c.count])
