@@ -8,6 +8,7 @@ import { ShortcutMenu } from "@/components/layout/ShortcutMenu";
 import { Header } from "@/components/layout/Header";
 import { RoleGuard } from "@/lib/role-guard";
 import { Toaster } from "react-hot-toast";
+import { CreateDrawerProvider } from "@/components/dashboard/create-drawer";
 
 import { ImpersonationProvider } from "@/lib/impersonation-context";
 import { useAuth } from "@/lib/auth-context";
@@ -109,14 +110,16 @@ export default function DashboardRootLayout({
               100% { transform: translate(-30px, -20px) scale(1.06); }
             }
           `}</style>
-          <ShortcutMenu />
-          <Sidebar isExpanded={displaySidebarExpanded} onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)} />
-          <div className={`relative z-10 flex flex-col min-h-screen transition-all duration-300 ${displaySidebarExpanded ? 'pl-[280px]' : 'pl-[72px]'}`}>
-            <Header />
-            <main className={`flex-1 ${mainPadding} w-full text-slate-900`}>
-              {children}
-            </main>
-          </div>
+          <CreateDrawerProvider>
+            <ShortcutMenu />
+            <Sidebar isExpanded={displaySidebarExpanded} onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)} />
+            <div className={`relative z-10 flex flex-col min-h-screen transition-all duration-300 ${displaySidebarExpanded ? 'pl-[280px]' : 'pl-[72px]'}`}>
+              <Header />
+              <main className={`flex-1 ${mainPadding} w-full text-slate-900`}>
+                {children}
+              </main>
+            </div>
+          </CreateDrawerProvider>
         </div>
         </Suspense>
       </ImpersonationProvider>

@@ -350,7 +350,7 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 text-right">Settlement</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y-2 divide-slate-300">
             {loading ? (
               <tr>
                 <td colSpan={5} className="px-4 py-16 text-center tabular-nums">

@@ -16,6 +16,19 @@
   --google-primary: #1a73e8;
   --google-hover: #f1f3f4;
   --google-selected: #d2e3fc;
+
+  /* Popover & Dropdown Solid Backgrounds */
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+}
+
+.dark {
+  --popover: #0f172a;
+  --popover-foreground: #f8fafc;
+  --card: #0f172a;
+  --card-foreground: #f8fafc;
 }
 
 /* ─── Base Typography ─────────────────────────────────────────────────────────── */

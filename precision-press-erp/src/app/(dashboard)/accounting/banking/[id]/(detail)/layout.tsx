@@ -1,0 +1,614 @@
+"use client";
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useParams, useRouter, usePathname } from "next/navigation";
+import {
+  ArrowLeft,
+  ArrowDownRight,
+  ArrowUpRight,
+  BookOpen,
+  CircleDot,
+  History,
+  ListFilter,
+  RefreshCcw,
+  Settings2,
+  Upload,
+  Wallet,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { BrandLoader } from "@/components/dashboard/brand-loader";
+import { ContentReveal } from "@/components/ui/content-reveal";
+import { formatMoney } from "@/lib/money";
+import { useEntityTitle } from "@/lib/hooks/use-entity-title";
+import { cn } from "@/lib/utils";
+import type {
+  BankAccountDetail,
+  Transaction,
+  StatementImport,
+  ImportPreview,
+  StatementFormat,
+  OpenBill,
+  OpenInvoice,
+  SuggestedMatch,
+  ExistingMatch,
+  BankAccountSummary,
+} from "../_components";
+import {
+  ImportSheet,
+  MatchToBillSheet,
+  CreateExpenseSheet,
+  CategorizeSheet,
+  MatchToInvoiceSheet,
+  MatchSheet,
+  TransferSheet,
+  SplitAccountSheet,
+} from "../_components";
+import { ACCOUNT_TYPE_LABELS } from "../_components";
+
+import { BankAccountContext, type BankAccountContextValue } from "./bank-account-context";
+// useBankAccountContext is exported from bank-account-context.tsx — import it from there directly
+
+// ---------------------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------------------
+
+const PAGE_TABS = [
+  { value: "overview", label: "Overview", icon: Wallet, href: (id: string) => `/accounting/banking/${id}` },
+  { value: "transactions", label: "Transactions", icon: ListFilter, href: (id: string) => `/accounting/banking/${id}/transactions` },
+  { value: "ledger", label: "Ledger", icon: BookOpen, href: (id: string) => `/accounting/banking/${id}/ledger` },
+  { value: "imports", label: "Imports", icon: History, href: (id: string) => `/accounting/banking/${id}/imports` },
+  { value: "settings", label: "Settings", icon: Settings2, href: (id: string) => `/accounting/banking/${id}/settings` },
+] as const;
+
+function getActiveTab(pathname: string): string {
+  if (pathname.endsWith("/transactions")) return "transactions";
+  if (pathname.endsWith("/ledger")) return "ledger";
+  if (pathname.endsWith("/imports")) return "imports";
+  if (pathname.endsWith("/settings")) return "settings";
+  return "overview";
+}
+
+// ---------------------------------------------------------------------------
+// Layout
+// ---------------------------------------------------------------------------
+
+export default function BankAccountDetailLayout({ children }: { children: React.ReactNode }) {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [account, setAccount] = useState<BankAccountDetail | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [imports, setImports] = useState<StatementImport[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Import sheet state
+  const [importOpen, setImportOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [manualContent, setManualContent] = useState("");
+  const [format, setFormat] = useState<StatementFormat>("auto");
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  // Match / expense sheet state
+  const [matchTx, setMatchTx] = useState<Transaction | null>(null);
+  const [matchBills, setMatchBills] = useState<OpenBill[]>([]);
+  const [matchSuggestions, setMatchSuggestions] = useState<SuggestedMatch[]>([]);
+  const [matchLoading, setMatchLoading] = useState(false);
+  const [expenseTx, setExpenseTx] = useState<Transaction | null>(null);
+  const [categorizeTx, setCategorizeTx] = useState<Transaction | null>(null);
+  // Match-to-invoice (incoming) sheet state
+  const [matchInvoiceTx, setMatchInvoiceTx] = useState<Transaction | null>(null);
+  const [matchInvoices, setMatchInvoices] = useState<OpenInvoice[]>([]);
+  const [matchInvoiceSuggestions, setMatchInvoiceSuggestions] = useState<SuggestedMatch[]>([]);
+  const [matchInvoiceLoading, setMatchInvoiceLoading] = useState(false);
+
+  // Unified find-&-match sheet state (invoices + bills + existing records)
+  const [unifiedMatchTx, setUnifiedMatchTx] = useState<Transaction | null>(null);
+  const [unifiedInvoices, setUnifiedInvoices] = useState<OpenInvoice[]>([]);
+  const [unifiedBills, setUnifiedBills] = useState<OpenBill[]>([]);
+  const [unifiedDocSuggestions, setUnifiedDocSuggestions] = useState<SuggestedMatch[]>([]);
+  const [unifiedExistingMatches, setUnifiedExistingMatches] = useState<ExistingMatch[]>([]);
+  const [unifiedMatchLoading, setUnifiedMatchLoading] = useState(false);
+
+  // Transfer + split sheet state
+  const [transferTx, setTransferTx] = useState<Transaction | null>(null);
+  const [splitTx, setSplitTx] = useState<Transaction | null>(null);
+
+  // Other own bank accounts (transfer targets)
+  const [bankAccounts, setBankAccounts] = useState<BankAccountSummary[]>([]);
+
+  useEntityTitle(account?.accountName ?? undefined);
+
+  const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+
+  const fetchData = useCallback(() => {
+    if (!orgId) return;
+    setLoading(true);
+    const headers = { "x-organization-id": orgId };
+
+    Promise.all([
+      fetch(`/api/v1/bank-accounts/${id}`, { headers }).then((r) => r.json()),
+      fetch(`/api/v1/bank-accounts/${id}/transactions`, { headers }).then((r) => r.json()),
+      fetch(`/api/v1/bank-accounts/${id}/imports`, { headers }).then((r) => r.json()),
+    ])
+      .then(([accountData, txData, importData]) => {
+        setAccount(accountData.bankAccount || null);
+        setTransactions(txData.data || []);
+        setImports(importData.imports || []);
+      })
+      .finally(() => setLoading(false));
+  }, [id, orgId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Load the org's other bank accounts once — used as transfer targets.
+  useEffect(() => {
+    if (!orgId) return;
+    fetch(`/api/v1/bank-accounts`, { headers: { "x-organization-id": orgId } })
+      .then((r) => r.json())
+      .then((data) => {
+        const list = (data.bankAccounts ?? []).map((b: {
+          id: string;
+          accountName: string;
+          bankName: string | null;
+          currencyCode: string;
+          accountType: BankAccountSummary["accountType"];
+          balance: number;
+          chartAccountId: string | null;
+        }) => ({
+          id: b.id,
+          accountName: b.accountName,
+          bankName: b.bankName,
+          currencyCode: b.currencyCode,
+          accountType: b.accountType,
+          balance: b.balance,
+          hasLedgerAccount: Boolean(b.chartAccountId),
+        }));
+        setBankAccounts(list);
+      })
+      .catch(() => {});
+  }, [orgId]);
+
+  const summary = useMemo(() => {
+    const unreconciled = transactions.filter((tx) => tx.status === "unreconciled").length;
+    const reconciled = transactions.filter((tx) => tx.status === "reconciled").length;
+    const excluded = transactions.filter((tx) => tx.status === "excluded").length;
+    const credits = transactions
+      .filter((tx) => tx.amount > 0 && tx.status !== "excluded")
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    const debits = transactions
+      .filter((tx) => tx.amount < 0 && tx.status !== "excluded")
+      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    return { unreconciled, reconciled, excluded, credits, debits, total: transactions.length };
+  }, [transactions]);
+
+  // Transaction actions
+  async function handleReconcile(txId: string) {
+    if (!orgId) return;
+    try {
+      const res = await fetch(`/api/v1/bank-transactions/${txId}/reconcile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Marked as cleared");
+      fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't mark as cleared");
+    }
+  }
+
+  async function handleExclude(txId: string) {
+    if (!orgId) return;
+    try {
+      const res = await fetch(`/api/v1/bank-transactions/${txId}/exclude`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Transaction status updated");
+      fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update status");
+    }
+  }
+
+  // Undo an already-done line: reverse the bookkeeping (and unwind any matched
+  // invoice/bill/transfer) and move it back to the to-do list so it can be
+  // re-done. Backed by the same /unreconcile endpoint used everywhere.
+  async function handleUndo(tx: Transaction) {
+    if (!orgId) return;
+    try {
+      const res = await fetch(`/api/v1/bank-transactions/${tx.id}/unreconcile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Moved back to your to-do list");
+      fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't undo this");
+    }
+  }
+
+  async function handleOpenMatch(tx: Transaction) {
+    if (!orgId) return;
+    setMatchTx(tx);
+    setMatchLoading(true);
+    setMatchBills([]);
+    setMatchSuggestions([]);
+    try {
+      const res = await fetch(`/api/v1/bank-transactions/${tx.id}/match`, {
+        headers: { "x-organization-id": orgId },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatchBills(data.openBills || []);
+        setMatchSuggestions(data.suggestedMatches || []);
+      }
+    } finally {
+      setMatchLoading(false);
+    }
+  }
+
+  function handleOpenExpense(tx: Transaction) {
+    setExpenseTx(tx);
+  }
+
+  function handleOpenCategorize(tx: Transaction) {
+    setCategorizeTx(tx);
+  }
+
+  async function handleOpenMatchInvoice(tx: Transaction) {
+    if (!orgId) return;
+    setMatchInvoiceTx(tx);
+    setMatchInvoiceLoading(true);
+    setMatchInvoices([]);
+    setMatchInvoiceSuggestions([]);
+    try {
+      const res = await fetch(`/api/v1/bank-transactions/${tx.id}/match-invoice`, {
+        headers: { "x-organization-id": orgId },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMatchInvoices(data.openInvoices || []);
+        setMatchInvoiceSuggestions(data.suggestedMatches || []);
+      }
+    } finally {
+      setMatchInvoiceLoading(false);
+    }
+  }
+
+  // Unified find-&-match: pulls invoices + bills + existing records from the
+  // single GET …/match endpoint so the user can match against any record.
+  async function handleOpenMatchUnified(tx: Transaction) {
+    if (!orgId) return;
+    setUnifiedMatchTx(tx);
+    setUnifiedMatchLoading(true);
+    setUnifiedInvoices([]);
+    setUnifiedBills([]);
+    setUnifiedDocSuggestions([]);
+    setUnifiedExistingMatches([]);
+    try {
+      const res = await fetch(`/api/v1/bank-transactions/${tx.id}/match`, {
+        headers: { "x-organization-id": orgId },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUnifiedInvoices(data.openInvoices || []);
+        setUnifiedBills(data.openBills || []);
+        setUnifiedDocSuggestions(data.suggestedMatches || []);
+        setUnifiedExistingMatches(data.existingMatches || []);
+      }
+    } finally {
+      setUnifiedMatchLoading(false);
+    }
+  }
+
+  function handleOpenTransfer(tx: Transaction) {
+    setTransferTx(tx);
+  }
+
+  function handleOpenSplit(tx: Transaction) {
+    setSplitTx(tx);
+  }
+
+  // Import handlers
+  async function readStatementContent(): Promise<{ content: string; fileName: string | null }> {
+    if (selectedFile) return { content: await selectedFile.text(), fileName: selectedFile.name };
+    return { content: manualContent, fileName: null };
+  }
+
+  async function handlePreview() {
+    if (!orgId) return;
+    setPreviewing(true);
+    try {
+      const { content, fileName } = await readStatementContent();
+      const res = await fetch(`/api/v1/bank-accounts/${id}/transactions/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify({ mode: "preview", content, fileName, format: format === "auto" ? null : format }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Request failed");
+      setPreview(data.preview);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to preview");
+    } finally {
+      setPreviewing(false);
+    }
+  }
+
+  async function handleImport() {
+    if (!orgId) return;
+    setImporting(true);
+    try {
+      const { content, fileName } = await readStatementContent();
+      const res = await fetch(`/api/v1/bank-accounts/${id}/transactions/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify({ mode: "commit", content, fileName, format: format === "auto" ? null : format }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(typeof data.error === "string" ? data.error : "Request failed");
+      toast.success(`Imported ${data.import.imported} transactions`);
+      setImportOpen(false);
+      setSelectedFile(null);
+      setManualContent("");
+      setFormat("auto");
+      setPreview(null);
+      fetchData();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to import");
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  if (loading) return <BrandLoader />;
+
+  if (!account) {
+    return (
+      <div className="space-y-4 pt-12 text-center">
+        <p className="text-sm text-muted-foreground">Account not found</p>
+        <Button variant="outline" size="sm" onClick={() => router.push("/accounting/banking")}>Back to Banking</Button>
+      </div>
+    );
+  }
+
+  const cur = account.currencyCode;
+  const reconciledPct = summary.total > 0 ? Math.round((summary.reconciled / summary.total) * 100) : 0;
+  const activeTab = getActiveTab(pathname);
+
+  return (
+    <BankAccountContext.Provider value={{
+      account,
+      setAccount,
+      transactions,
+      imports,
+      refetch: fetchData,
+      handleReconcile,
+      handleExclude,
+      handleUndo,
+      handleOpenMatch,
+      handleOpenExpense,
+      handleOpenCategorize,
+      handleOpenMatchInvoice,
+      handleOpenMatchUnified,
+      handleOpenTransfer,
+      handleOpenSplit,
+      bankAccounts,
+      openImport: () => setImportOpen(true),
+      summary,
+    }}>
+      <ContentReveal>
+        {/* Back link */}
+        <button
+          onClick={() => router.push("/accounting/banking")}
+          className="flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors mb-6"
+        >
+          <ArrowLeft className="size-3.5" />
+          Back to banking
+        </button>
+
+        {/* Header */}
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex size-10 shrink-0 items-center justify-center rounded-lg"
+              style={{ backgroundColor: account.color + "18", color: account.color }}
+            >
+              <CircleDot className="size-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                <h1 className="text-base sm:text-lg font-semibold tracking-tight">{account.accountName}</h1>
+                <Badge variant="outline">{ACCOUNT_TYPE_LABELS[account.accountType]}</Badge>
+                <Badge variant="outline" className="text-[10px]">{account.currencyCode}</Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {[account.bankName, account.countryCode, account.accountNumber ? `····${account.accountNumber.slice(-4)}` : null]
+                  .filter(Boolean)
+                  .join(" · ") || "Manual imports"}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => router.push(`/accounting/banking/${id}/reconcile`)} title="Tick off transactions against your bank statement">
+              <RefreshCcw className="mr-2 size-3.5" />
+              Match statement to your books
+            </Button>
+            <Button size="sm" onClick={() => setImportOpen(true)} className="bg-emerald-600 hover:bg-emerald-700">
+              <Upload className="mr-2 size-3.5" />
+              Import
+            </Button>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 mb-8">
+          <div>
+            <p className="text-[11px] text-muted-foreground">Balance</p>
+            <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums">{formatMoney(account.balance, cur)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1"><ArrowDownRight className="size-3 text-emerald-500" />Money In</p>
+            <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-emerald-600">{formatMoney(summary.credits, cur)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1"><ArrowUpRight className="size-3 text-red-500" />Money Out</p>
+            <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-red-600">{formatMoney(summary.debits, cur)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground">Done</p>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="h-2 flex-1 rounded-full bg-gray-200 dark:bg-muted overflow-hidden">
+                <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${reconciledPct}%` }} />
+              </div>
+              <span className="text-xs font-mono tabular-nums text-muted-foreground">{reconciledPct}%</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Page tabs */}
+        <nav className="-mt-2 mb-8 flex items-center gap-1 overflow-x-auto border-b border-border">
+          {PAGE_TABS.map((t) => {
+            const Icon = t.icon;
+            const tabHref = t.href(id);
+            const active = activeTab === t.value;
+            return (
+              <button
+                key={t.value}
+                onClick={() => router.push(tabHref)}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 border-b-2 px-2.5 pb-2.5 text-[13px] font-medium transition-colors",
+                  active
+                    ? "border-foreground text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="size-3.5" />
+                {t.label}
+                {t.value === "transactions" && summary.unreconciled > 0 && (
+                  <span className="ml-1 text-[11px] tabular-nums text-amber-600">{summary.unreconciled}</span>
+                )}
+                {t.value === "imports" && imports.length > 0 && (
+                  <span className="ml-1 text-[11px] tabular-nums text-muted-foreground">{imports.length}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Tab content */}
+        <ContentReveal key={pathname}>
+          {children}
+        </ContentReveal>
+      </ContentReveal>
+
+      {/* Import Sheet */}
+      <ImportSheet
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        selectedFile={selectedFile}
+        setSelectedFile={setSelectedFile}
+        manualContent={manualContent}
+        setManualContent={setManualContent}
+        format={format}
+        setFormat={setFormat}
+        preview={preview}
+        previewing={previewing}
+        importing={importing}
+        onPreview={handlePreview}
+        onImport={handleImport}
+        currencyCode={cur}
+      />
+
+      {/* Match to Bill Sheet */}
+      <MatchToBillSheet
+        transaction={matchTx}
+        onClose={() => setMatchTx(null)}
+        bills={matchBills}
+        suggestions={matchSuggestions}
+        loading={matchLoading}
+        currencyCode={cur}
+        orgId={orgId}
+        onMatched={() => { setMatchTx(null); fetchData(); }}
+      />
+
+      {/* Create Expense Sheet */}
+      <CreateExpenseSheet
+        transaction={expenseTx}
+        onClose={() => setExpenseTx(null)}
+        currencyCode={cur}
+        orgId={orgId}
+        onCreated={() => { setExpenseTx(null); fetchData(); }}
+      />
+
+      {/* Match to Invoice Sheet (incoming) */}
+      <MatchToInvoiceSheet
+        transaction={matchInvoiceTx}
+        onClose={() => setMatchInvoiceTx(null)}
+        invoices={matchInvoices}
+        suggestions={matchInvoiceSuggestions}
+        loading={matchInvoiceLoading}
+        currencyCode={cur}
+        orgId={orgId}
+        onMatched={() => { setMatchInvoiceTx(null); fetchData(); }}
+      />
+
+      {/* Categorize Sheet (any account: income, expense, loan, owner, transfer) */}
+      <CategorizeSheet
+        transaction={categorizeTx}
+        onClose={() => setCategorizeTx(null)}
+        currencyCode={cur}
+        orgId={orgId}
+        onCategorized={() => { setCategorizeTx(null); fetchData(); }}
+        onSwitchToTransfer={(t) => { setCategorizeTx(null); setTransferTx(t); }}
+        onSwitchToSplit={(t) => { setCategorizeTx(null); setSplitTx(t); }}
+      />
+
+      {/* Find & Match Sheet (invoices, bills, existing payments/journals, transfers) */}
+      <MatchSheet
+        transaction={unifiedMatchTx}
+        onClose={() => setUnifiedMatchTx(null)}
+        invoices={unifiedInvoices}
+        bills={unifiedBills}
+        documentSuggestions={unifiedDocSuggestions}
+        existingMatches={unifiedExistingMatches}
+        loading={unifiedMatchLoading}
+        currencyCode={cur}
+        orgId={orgId}
+        onMatched={() => { setUnifiedMatchTx(null); fetchData(); }}
+      />
+
+      {/* Transfer Sheet (move money between own bank accounts) */}
+      <TransferSheet
+        transaction={transferTx}
+        onClose={() => setTransferTx(null)}
+        bankAccounts={bankAccounts}
+        currentBankAccountId={account.id}
+        currencyCode={cur}
+        orgId={orgId}
+        onTransferred={() => { setTransferTx(null); fetchData(); }}
+      />
+
+      {/* Split Sheet (code one line across multiple accounts) */}
+      <SplitAccountSheet
+        transaction={splitTx}
+        onClose={() => setSplitTx(null)}
+        currencyCode={cur}
+        orgId={orgId}
+        onSplit={() => { setSplitTx(null); fetchData(); }}
+      />
+    </BankAccountContext.Provider>
+  );
+}

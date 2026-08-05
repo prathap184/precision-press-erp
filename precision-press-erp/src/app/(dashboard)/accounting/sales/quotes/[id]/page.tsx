@@ -1,0 +1,129 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { ArrowLeft, Send, Check, X, FileText } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatMoney } from "@/lib/money";
+import { useEntityTitle } from "@/lib/hooks/use-entity-title";
+import { SendDocumentDialog } from "@/components/dashboard/send-document-dialog";
+import { EmailHistory } from "@/components/dashboard/email-history";
+import Link from "next/link";
+
+interface QuoteDetail {
+  id: string; quoteNumber: string; issueDate: string; expiryDate: string; status: string;
+  subtotal: number; taxTotal: number; total: number; notes: string | null;
+  contact: { name: string; email: string | null } | null;
+  lines: { id: string; description: string; quantity: number; unitPrice: number; amount: number; account: { code: string; name: string } | null }[];
+}
+
+const statusColors: Record<string, string> = {
+  draft: "", sent: "border-blue-200 bg-blue-50 text-blue-700", accepted: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  declined: "border-red-200 bg-red-50 text-red-700", expired: "border-gray-200 bg-gray-50 text-gray-700", converted: "border-purple-200 bg-purple-50 text-purple-700",
+};
+
+// Plain-language status labels (end users aren't accountants).
+const statusLabels: Record<string, string> = {
+  draft: "draft", sent: "sent", accepted: "accepted",
+  declined: "declined", expired: "expired", converted: "turned into an invoice",
+};
+
+export default function QuoteDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const [q, setQ] = useState<QuoteDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [emailHistoryKey, setEmailHistoryKey] = useState(0);
+  const [orgName, setOrgName] = useState("");
+  useEntityTitle(q?.quoteNumber);
+  const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+
+  useEffect(() => {
+    if (!orgId) return;
+    fetch(`/api/v1/quotes/${id}`, { headers: { "x-organization-id": orgId } })
+      .then((r) => r.json()).then((data) => { if (data.quote) setQ(data.quote); }).finally(() => setLoading(false));
+    fetch("/api/v1/organization", { headers: { "x-organization-id": orgId } })
+      .then((r) => r.json()).then((data) => { if (data.organization?.name) setOrgName(data.organization.name); }).catch(() => {});
+  }, [id, orgId]);
+
+  async function action(path: string) {
+    if (!orgId) return;
+    const res = await fetch(`/api/v1/quotes/${id}/${path}`, { method: "POST", headers: { "x-organization-id": orgId } });
+    if (res.ok) { const data = await res.json(); setQ((prev) => prev ? { ...prev, ...(data.quote || {}) } : prev); toast.success("Done"); }
+    else toast.error("Failed");
+  }
+
+  function handleSendComplete() {
+    if (!orgId) return;
+    fetch(`/api/v1/quotes/${id}`, { headers: { "x-organization-id": orgId } })
+      .then((r) => r.json()).then((data) => { if (data.quote) setQ(data.quote); });
+    setEmailHistoryKey((k) => k + 1);
+  }
+
+  async function handleConvert() {
+    if (!orgId) return;
+    const res = await fetch(`/api/v1/quotes/${id}/convert`, { method: "POST", headers: { "x-organization-id": orgId } });
+    if (res.ok) { const data = await res.json(); toast.success("Invoice created from this quote"); router.push(`/sales/${data.invoice.id}`); }
+    else toast.error("Couldn't create an invoice from this quote");
+  }
+
+  if (loading) return <div className="space-y-6"><PageHeader title="Loading..." /></div>;
+  if (!q) return <div className="space-y-6"><PageHeader title="Quote not found" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader title={q.quoteNumber} description={`To: ${q.contact?.name || "Unknown"}`}>
+        <Button variant="outline" size="sm" asChild><Link href="/sales/quotes"><ArrowLeft className="mr-2 size-4" />Back</Link></Button>
+        {q.status === "draft" && <Button size="sm" onClick={() => setSendDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700"><Send className="mr-2 size-4" />Send</Button>}
+        {q.status === "sent" && <>
+          <Button size="sm" onClick={() => action("accept")} className="bg-emerald-600 hover:bg-emerald-700"><Check className="mr-2 size-4" />Accept</Button>
+          <Button size="sm" variant="outline" onClick={() => action("decline")} className="text-red-600"><X className="mr-2 size-4" />Decline</Button>
+        </>}
+        {q.status === "accepted" && <Button size="sm" onClick={handleConvert} className="bg-emerald-600 hover:bg-emerald-700" title="Turn this accepted quote into an invoice you can send and get paid on"><FileText className="mr-2 size-4" />Create an invoice from this quote</Button>}
+      </PageHeader>
+
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <Badge variant="outline" className={statusColors[q.status] || ""}>{statusLabels[q.status] || q.status}</Badge>
+        <span className="text-xs sm:text-sm text-muted-foreground">Issued {q.issueDate} · Expires {q.expiryDate}</span>
+      </div>
+
+      <div className="rounded-lg border p-4"><p className="text-xl font-bold font-mono">{formatMoney(q.total)}</p></div>
+
+      <div className="rounded-lg border overflow-x-auto">
+        <div className="grid min-w-[500px] grid-cols-[1fr_80px_100px_120px] gap-2 border-b bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground">
+          <span>Description</span><span className="text-right">Qty</span><span className="text-right">Price</span><span className="text-right">Amount</span>
+        </div>
+        {q.lines.map((line) => (
+          <div key={line.id} className="grid min-w-[500px] grid-cols-[1fr_80px_100px_120px] gap-2 border-b px-4 py-2 last:border-b-0">
+            <div><p className="text-sm">{line.description}</p>{line.account && <p className="text-xs text-muted-foreground">{line.account.code} &middot; {line.account.name}</p>}</div>
+            <span className="text-right text-sm font-mono">{(line.quantity / 100).toFixed(0)}</span>
+            <span className="text-right text-sm font-mono">{formatMoney(line.unitPrice)}</span>
+            <span className="text-right text-sm font-mono font-medium">{formatMoney(line.amount)}</span>
+          </div>
+        ))}
+      </div>
+
+      <EmailHistory key={emailHistoryKey} documentType="quote" documentId={id} />
+
+      <SendDocumentDialog
+        open={sendDialogOpen}
+        onOpenChange={setSendDialogOpen}
+        documentType="quote"
+        documentId={id}
+        documentNumber={q.quoteNumber}
+        contactEmail={q.contact?.email}
+        contactName={q.contact?.name}
+        organizationName={orgName}
+        amountDue={q.total}
+        dueDate={q.expiryDate}
+        issueDate={q.issueDate}
+        sendApiUrl={`/api/v1/quotes/${id}/send`}
+        onSent={handleSendComplete}
+      />
+    </div>
+  );
+}

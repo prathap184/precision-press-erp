@@ -1,11 +1,11 @@
 import React from 'react';
-import Navbar from '@/components/landing/Navbar';
-import Hero from '@/components/landing/Hero';
+import { Navbar } from '@/components/landing/Navbar';
+import { Hero } from '@/components/landing/Hero';
 import Modalities from '@/components/landing/Modalities';
 import FeaturedProduct from '@/components/landing/FeaturedProduct';
 import TechnicalSpecs from '@/components/landing/TechnicalSpecs';
 import SupportCTA from '@/components/landing/SupportCTA';
-import Footer from '@/components/landing/Footer';
+import { Footer } from '@/components/landing/Footer';
 
 export default function LandingPage() {
   return (

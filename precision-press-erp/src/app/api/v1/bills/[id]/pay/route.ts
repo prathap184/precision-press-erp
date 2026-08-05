@@ -1,0 +1,213 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { bill, payment, paymentAllocation, bankAccount, bankTransaction } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import { getAuthContext } from "@/lib/api/auth-context";
+import { handleError, notFound } from "@/lib/api/response";
+import { notDeleted } from "@/lib/db/soft-delete";
+import { createPaymentJournalEntry } from "@/lib/api/journal-automation";
+import { getNextNumber } from "@/lib/api/numbering";
+import { logAudit } from "@/lib/api/audit";
+import { assertNotLocked } from "@/lib/api/period-lock";
+import { z } from "zod";
+
+const paySchema = z.object({
+  amount: z.number().int().min(1),
+  date: z.string().min(1),
+  method: z.enum(["bank_transfer", "cash", "check", "card", "other"]).default("bank_transfer"),
+  reference: z.string().nullable().optional(),
+  bankAccountId: z.string().uuid().nullable().optional(),
+});
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const ctx = await getAuthContext(request);
+
+    const body = await request.json();
+    const parsed = paySchema.parse(body);
+
+    const found = await db.query.bill.findFirst({
+      where: and(
+        eq(bill.id, id),
+        eq(bill.organizationId, ctx.organizationId),
+        notDeleted(bill.deletedAt)
+      ),
+    });
+
+    if (!found) return notFound("Bill");
+    if (found.status === "draft" || found.status === "void") {
+      return NextResponse.json(
+        { error: "Cannot record payment for this bill status" },
+        { status: 400 }
+      );
+    }
+    // Don't accept more than is outstanding — an overpayment would drive the
+    // balance negative and overstate cash out.
+    if (parsed.amount > found.amountDue) {
+      return NextResponse.json(
+        { error: "Payment is more than the amount still due on this bill." },
+        { status: 400 }
+      );
+    }
+    // The payment posts a GL entry on parsed.date — block locked/closed periods.
+    await assertNotLocked(ctx.organizationId, parsed.date, ctx);
+
+    // Settle against the bill's OUTSTANDING balance (amountDue), not a fresh
+    // total - paid. For reverse-charge bills the payable is the net only (the
+    // self-accounted VAT never leaves the bank), so amountDue < total; deriving
+    // the remainder from total left a phantom balance = the RC VAT and the bill
+    // could never reach "paid".
+    const newAmountPaid = found.amountPaid + parsed.amount;
+    const newAmountDue = found.amountDue - parsed.amount;
+    const newStatus = newAmountDue <= 0 ? "paid" : "partial";
+
+    // Generate payment number
+    const paymentNumber = await getNextNumber(ctx.organizationId, "payment", "payment_number", "PAY");
+
+    // Atomically write the payment, allocation, GL journal entry, the
+    // payment->journalEntry link, and the bill balance/status update. If
+    // createPaymentJournalEntry throws (e.g. MissingExchangeRateError), the
+    // whole sequence rolls back so we never leave an orphaned payment or a
+    // bill marked paid without a ledger entry.
+    const { created, updated } = await db.transaction(async (tx) => {
+      // Resolve bank account (from payload or fallback)
+      let selectedBankAccountId = parsed.bankAccountId || null;
+      if (!selectedBankAccountId) {
+        if (parsed.method === "cash") {
+          const cashBank = await tx.query.bankAccount.findFirst({
+            where: and(
+              eq(bankAccount.organizationId, ctx.organizationId),
+              eq(bankAccount.accountType, "cash"),
+              notDeleted(bankAccount.deletedAt)
+            ),
+          });
+          if (cashBank) selectedBankAccountId = cashBank.id;
+        } else {
+          const defaultBank = await tx.query.bankAccount.findFirst({
+            where: and(
+              eq(bankAccount.organizationId, ctx.organizationId),
+              notDeleted(bankAccount.deletedAt)
+            ),
+            orderBy: bankAccount.createdAt,
+          });
+          if (defaultBank) selectedBankAccountId = defaultBank.id;
+        }
+      }
+
+      // Create payment record
+      const [created] = await tx
+        .insert(payment)
+        .values({
+          organizationId: ctx.organizationId,
+          contactId: found.contactId,
+          paymentNumber,
+          type: "made",
+          date: parsed.date,
+          amount: parsed.amount,
+          method: parsed.method,
+          reference: parsed.reference || null,
+          bankAccountId: selectedBankAccountId,
+          createdBy: ctx.userId,
+        })
+        .returning();
+
+      // Create allocation linking payment to this bill
+      await tx.insert(paymentAllocation).values({
+        paymentId: created.id,
+        documentType: "bill",
+        documentId: id,
+        amount: parsed.amount,
+      });
+
+      // Determine the correct ledger account code for the journal entry
+      let bankAccountCode: string | undefined = undefined;
+      if (selectedBankAccountId) {
+        const ba = await tx.query.bankAccount.findFirst({
+          where: eq(bankAccount.id, selectedBankAccountId),
+          with: { chartAccount: true },
+        });
+        if (ba?.chartAccount?.code) bankAccountCode = ba.chartAccount.code;
+      } else if (parsed.method === "cash") {
+        bankAccountCode = "1000"; // Default Cash account
+      } else if (parsed.method === "card") {
+        bankAccountCode = "2110"; // Default Credit Card liability or similar
+      }
+
+      // Create payment journal entry
+      const journalEntry = await createPaymentJournalEntry(
+        { organizationId: ctx.organizationId, userId: ctx.userId },
+        {
+          type: "bill",
+          reference: paymentNumber,
+          amount: parsed.amount,
+          date: parsed.date,
+          bankAccountCode,
+          allocations: [
+            {
+              amount: parsed.amount,
+              currencyCode: found.currencyCode,
+              issueDate: found.issueDate,
+            },
+          ],
+        },
+        tx
+      );
+
+      if (journalEntry) {
+        await tx
+          .update(payment)
+          .set({ journalEntryId: journalEntry.id })
+          .where(eq(payment.id, created.id));
+      }
+
+      // Auto-create bank transaction for the selected bank account so it appears in Banking tab
+      if (selectedBankAccountId) {
+        await tx.insert(bankTransaction).values({
+          bankAccountId: selectedBankAccountId,
+          date: parsed.date,
+          description: `Payment for Bill ${found.billNumber}`,
+          reference: paymentNumber,
+          amount: -parsed.amount,
+          status: "unreconciled",
+          journalEntryId: journalEntry?.id || null,
+          sourceType: "manual",
+          currencyCode: found.currencyCode,
+        });
+      }
+
+      // Update bill amounts
+      const [updated] = await tx
+        .update(bill)
+        .set({
+          amountPaid: newAmountPaid,
+          amountDue: Math.max(0, newAmountDue),
+          status: newStatus,
+          paidAt: newStatus === "paid" ? new Date() : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(bill.id, id))
+        .returning();
+
+      return { created, updated };
+    });
+
+    logAudit({ ctx, action: "pay", entityType: "bill", entityId: id, changes: { previousStatus: found.status }, request });
+
+    return NextResponse.json({
+      bill: updated,
+      payment: {
+        id: created.id,
+        paymentNumber: created.paymentNumber,
+        date: created.date,
+        amount: parsed.amount,
+        method: created.method,
+      },
+    });
+  } catch (err) {
+    return handleError(err);
+  }
+}

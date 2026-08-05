@@ -12,8 +12,11 @@ interface ShortcutMenuProps {
 
 import { useRouter } from 'next/navigation';
 
+import { useCreateDrawer } from '@/components/dashboard/create-drawer';
+
 export function ShortcutMenu({}: ShortcutMenuProps) {
   const { menuState, closeMenu, setMenuState } = useGlobalShortcuts();
+  const { open: openDrawer } = useCreateDrawer();
   const { profile } = useAuth();
   const router = useRouter();
 
@@ -66,40 +69,51 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
           
           {menuState === 'VOUCHERS' && (
             <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { window.location.href = 'http://40.81.236.61:3001/sales'; }} />
+              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { router.push('/sales'); closeMenu(); }} />
               <ShortcutItem hotkey="F10" label="Quote" onClick={() => { router.push('/quotation-builder'); closeMenu(); }} />
-              <ShortcutItem hotkey="F6" label="Receipt entry (sync) / gpay or cash" onClick={() => { window.location.href = 'http://40.81.236.61:3001/sales/customer-prepayments'; }} />
-              <ShortcutItem hotkey="F5" label="Payment" onClick={() => { window.location.href = 'http://40.81.236.61:3001/purchases'; }} />
-              <ShortcutItem hotkey="F4" label="Contra" onClick={() => { window.location.href = 'http://40.81.236.61:3001/accounting/banking'; }} />
-              <ShortcutItem hotkey="F7" label="Journal" onClick={() => { window.location.href = 'http://40.81.236.61:3001/accounting'; }} />
+              <ShortcutItem hotkey="F6" label="Receipt entry (sync) / gpay or cash" onClick={() => { openDrawer("customerCredit"); closeMenu(); }} />
+              <ShortcutItem hotkey="F5" label="Payment" onClick={() => { router.push('/purchases'); closeMenu(); }} />
+              <ShortcutItem hotkey="F4" label="Contra" onClick={() => { router.push('/accounting/banking'); closeMenu(); }} />
+              <ShortcutItem hotkey="F7" label="Journal" onClick={() => { router.push('/accounting'); closeMenu(); }} />
             </div>
           )}
 
           {menuState === 'DISPLAY_REPORTS' && (
             <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="D" label="Day Report" onClick={() => {
-                router.push('/accountant/day-book');
+              <ShortcutItem hotkey="D" label="Day Book" onClick={() => {
+                router.push('/reports/day-book');
                 closeMenu();
               }} />
-              <ShortcutItem hotkey="A" label="Account Books" hasChildren />
+              <ShortcutItem hotkey="G" label="General Ledger" onClick={() => {
+                router.push('/reports/general-ledger');
+                closeMenu();
+              }} />
+              <ShortcutItem hotkey="C" label="Customer Ledger" onClick={() => {
+                router.push('/contacts?type=customer');
+                closeMenu();
+              }} />
+              <ShortcutItem hotkey="S" label="Supplier Ledger" onClick={() => {
+                router.push('/contacts?type=supplier');
+                closeMenu();
+              }} />
+              <ShortcutItem hotkey="A" label="Account Books" hasChildren onClick={() => setMenuState('ACCOUNT_BOOKS')} />
             </div>
           )}
 
-
-
           {menuState === 'ACCOUNT_BOOKS' && (
             <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="L" label="Ledgers" hasChildren />
+              <ShortcutItem hotkey="L" label="Ledgers" hasChildren onClick={() => setMenuState('LEDGERS')} />
             </div>
           )}
 
           {menuState === 'LEDGERS' && (
             <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="D" label="Day book" onClick={() => { router.push('/accountant/day-book'); closeMenu(); }} />
-              <ShortcutItem hotkey="A" label="Account ledger" onClick={() => { router.push('/accountant/ledger'); closeMenu(); }} />
-              <ShortcutItem hotkey="B" label="Bank ledger" onClick={() => { router.push('/accountant/bank-ledger'); closeMenu(); }} />
-              <ShortcutItem hotkey="C" label="Cash ledger" onClick={() => { router.push('/accountant/cash-ledger'); closeMenu(); }} />
-              <ShortcutItem hotkey="U" label="Customer ledger" onClick={() => { router.push('/accountant/ledger'); closeMenu(); }} />
+              <ShortcutItem hotkey="D" label="Day Book" onClick={() => { router.push('/reports/day-book'); closeMenu(); }} />
+              <ShortcutItem hotkey="G" label="General Ledger" onClick={() => { router.push('/reports/general-ledger'); closeMenu(); }} />
+              <ShortcutItem hotkey="C" label="Customer Ledger" onClick={() => { router.push('/contacts?type=customer'); closeMenu(); }} />
+              <ShortcutItem hotkey="S" label="Supplier Ledger" onClick={() => { router.push('/contacts?type=supplier'); closeMenu(); }} />
+              <ShortcutItem hotkey="A" label="Chart of Accounts" onClick={() => { router.push('/accounting/accounts'); closeMenu(); }} />
+              <ShortcutItem hotkey="B" label="Bank Accounts" onClick={() => { router.push('/accounting/banking'); closeMenu(); }} />
             </div>
           )}
         </div>

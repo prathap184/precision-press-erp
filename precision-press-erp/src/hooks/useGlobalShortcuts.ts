@@ -69,17 +69,17 @@ export function useGlobalShortcuts() {
         if (isFunctionKey) {
           e.preventDefault();
           if (e.key === 'F8') {
-            window.location.href = 'http://40.81.236.61:3001/sales';
+            router.push('/sales');
           } else if (e.key === 'F10') {
             router.push('/quotation-builder');
           } else if (e.key === 'F6') {
-            window.location.href = 'http://40.81.236.61:3001/sales/customer-prepayments';
+            router.push('/sales/customer-prepayments');
           } else if (e.key === 'F5') {
-            window.location.href = 'http://40.81.236.61:3001/purchases';
+            router.push('/purchases');
           } else if (e.key === 'F4') {
-            window.location.href = 'http://40.81.236.61:3001/accounting/banking';
+            router.push('/accounting/banking');
           } else if (e.key === 'F7') {
-            window.location.href = 'http://40.81.236.61:3001/accounting';
+            router.push('/accounting');
           }
           closeMenu();
         }
@@ -89,7 +89,19 @@ export function useGlobalShortcuts() {
         const key = e.key.toLowerCase();
         if (key === 'd') {
           e.preventDefault();
-          router.push('/accountant/day-book');
+          router.push('/reports/day-book');
+          closeMenu();
+        } else if (key === 'g') {
+          e.preventDefault();
+          router.push('/reports/general-ledger');
+          closeMenu();
+        } else if (key === 'c') {
+          e.preventDefault();
+          router.push('/contacts?type=customer');
+          closeMenu();
+        } else if (key === 's') {
+          e.preventDefault();
+          router.push('/contacts?type=supplier');
           closeMenu();
         } else if (key === 'a') {
           e.preventDefault();
@@ -109,23 +121,27 @@ export function useGlobalShortcuts() {
         const key = e.key.toLowerCase();
         if (key === 'd') {
           e.preventDefault();
-          router.push('/accountant/day-book');
+          router.push('/reports/day-book');
           closeMenu();
-        } else if (key === 'a') {
+        } else if (key === 'g') {
           e.preventDefault();
-          router.push('/accountant/ledger');
-          closeMenu();
-        } else if (key === 'b') {
-          e.preventDefault();
-          router.push('/accountant/bank-ledger');
+          router.push('/reports/general-ledger');
           closeMenu();
         } else if (key === 'c') {
           e.preventDefault();
-          router.push('/accountant/cash-ledger');
+          router.push('/contacts?type=customer');
           closeMenu();
-        } else if (key === 'u') {
+        } else if (key === 's') {
           e.preventDefault();
-          router.push('/accountant/ledger');
+          router.push('/contacts?type=supplier');
+          closeMenu();
+        } else if (key === 'a') {
+          e.preventDefault();
+          router.push('/accounting/accounts');
+          closeMenu();
+        } else if (key === 'b') {
+          e.preventDefault();
+          router.push('/accounting/banking');
           closeMenu();
         }
       }

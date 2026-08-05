@@ -1,0 +1,739 @@
+import {
+  pgTable,
+  text,
+  uuid,
+  timestamp,
+  integer,
+  boolean,
+  uniqueIndex,
+  pgEnum,
+  jsonb,
+  date,
+} from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
+import { organization } from "./auth";
+import { chartAccount, journalEntry } from "./bookkeeping";
+import { contact } from "./contacts";
+
+export const trackingMethodEnum = pgEnum("tracking_method", [
+  "none",
+  "serial",
+  "lot",
+  "batch",
+]);
+
+export const serialStatusEnum = pgEnum("serial_status", [
+  "available",
+  "sold",
+  "reserved",
+  "damaged",
+]);
+
+// Cost-flow method for perpetual inventory valuation.
+export const costMethodEnum = pgEnum("cost_method", [
+  "average", // moving weighted average (default)
+  "fifo", // first-in-first-out cost layers
+  "standard", // standard cost + purchase-price variance (deferred; gated)
+]);
+
+// --- Inventory Category ---
+
+export const inventoryCategory = pgTable(
+  "inventory_category",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color"),
+    description: text("description"),
+    parentId: uuid("parent_id"),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("inventory_category_org_name_idx").on(
+      table.organizationId,
+      table.name
+    ),
+  ]
+);
+
+export const inventoryItem = pgTable(
+  "inventory_item",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    description: text("description"),
+    imageUrl: text("image_url"),
+    category: text("category"),
+    categoryId: uuid("category_id").references(() => inventoryCategory.id),
+    sku: text("sku"),
+    purchasePrice: integer("purchase_price").notNull().default(0), // cents
+    salePrice: integer("sale_price").notNull().default(0), // cents
+    // Perpetual valuation: costMethod drives how unit cost is derived. averageCost
+    // is the moving weighted-average unit cost (cents); totalValue is the on-hand
+    // book value (cents) = averageCost*qty (average) or sum of FIFO layer values.
+    costMethod: costMethodEnum("cost_method").notNull().default("average"),
+    averageCost: integer("average_cost").notNull().default(0), // cents per unit
+    standardCost: integer("standard_cost").notNull().default(0), // cents per unit
+    totalValue: integer("total_value").notNull().default(0), // cents, on-hand book value
+    unitOfMeasure: text("unit_of_measure"),
+    costAccountId: uuid("cost_account_id").references(() => chartAccount.id),
+    revenueAccountId: uuid("revenue_account_id").references(() => chartAccount.id),
+    inventoryAccountId: uuid("inventory_account_id").references(() => chartAccount.id),
+    quantityOnHand: integer("quantity_on_hand").notNull().default(0),
+    reorderPoint: integer("reorder_point").notNull().default(0),
+    trackingMethod: trackingMethodEnum("tracking_method").notNull().default("none"),
+    hsnCode: text("hsn_code"),
+    gstRate: integer("gst_rate"),
+    workflowSteps: jsonb("workflow_steps").default([]),
+    metadata: jsonb("metadata").default({}),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("inventory_item_org_code_idx").on(
+      table.organizationId,
+      table.code
+    ),
+  ]
+);
+
+// --- Warehouse ---
+
+export const warehouse = pgTable(
+  "warehouse",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    code: text("code").notNull(),
+    address: text("address"),
+    isDefault: boolean("is_default").default(false),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("warehouse_org_code_idx").on(
+      table.organizationId,
+      table.code
+    ),
+  ]
+);
+
+// --- Inventory Movement ---
+
+export const inventoryMovementTypeEnum = pgEnum("inventory_movement_type", [
+  "adjustment",
+  "transfer_in",
+  "transfer_out",
+  "stock_take",
+  "purchase",
+  "sale",
+  "initial",
+]);
+
+export const inventoryMovement = pgTable("inventory_movement", {
+  id: uuid("id")
+    .primaryKey()
+    .defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  inventoryItemId: uuid("inventory_item_id")
+    .notNull()
+    .references(() => inventoryItem.id, { onDelete: "cascade" }),
+  warehouseId: uuid("warehouse_id")
+    .references(() => warehouse.id),
+  type: inventoryMovementTypeEnum("type").notNull(),
+  quantity: integer("quantity").notNull(), // can be negative
+  previousQuantity: integer("previous_quantity").notNull(),
+  newQuantity: integer("new_quantity").notNull(),
+  unitCost: integer("unit_cost").notNull().default(0), // cents per unit at the time of movement
+  value: integer("value").notNull().default(0), // cents, signed GL amount = unitCost*quantity
+  journalEntryId: uuid("journal_entry_id").references(() => journalEntry.id),
+  reason: text("reason"),
+  referenceType: text("reference_type"),
+  referenceId: uuid("reference_id"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+// --- Inventory Item Supplier ---
+
+export const inventoryItemSupplier = pgTable(
+  "inventory_item_supplier",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    inventoryItemId: uuid("inventory_item_id")
+      .notNull()
+      .references(() => inventoryItem.id, { onDelete: "cascade" }),
+    contactId: uuid("contact_id")
+      .notNull()
+      .references(() => contact.id, { onDelete: "cascade" }),
+    supplierCode: text("supplier_code"), // their SKU
+    leadTimeDays: integer("lead_time_days").default(0),
+    purchasePrice: integer("purchase_price").default(0), // cents
+    isPreferred: boolean("is_preferred").default(false),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("inventory_item_supplier_idx").on(
+      table.inventoryItemId,
+      table.contactId
+    ),
+  ]
+);
+
+// --- Stock Take ---
+
+export const stockTakeStatusEnum = pgEnum("stock_take_status", [
+  "draft",
+  "in_progress",
+  "completed",
+  "cancelled",
+]);
+
+export const stockTake = pgTable("stock_take", {
+  id: uuid("id")
+    .primaryKey()
+    .defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  warehouseId: uuid("warehouse_id")
+    .references(() => warehouse.id),
+  name: text("name").notNull(),
+  status: stockTakeStatusEnum("status").notNull().default("draft"),
+  startedAt: timestamp("started_at", { mode: "date" }),
+  completedAt: timestamp("completed_at", { mode: "date" }),
+  notes: text("notes"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+export const stockTakeLine = pgTable("stock_take_line", {
+  id: uuid("id")
+    .primaryKey()
+    .defaultRandom(),
+  stockTakeId: uuid("stock_take_id")
+    .notNull()
+    .references(() => stockTake.id, { onDelete: "cascade" }),
+  inventoryItemId: uuid("inventory_item_id")
+    .notNull()
+    .references(() => inventoryItem.id, { onDelete: "cascade" }),
+  expectedQuantity: integer("expected_quantity").notNull().default(0),
+  countedQuantity: integer("counted_quantity"),
+  discrepancy: integer("discrepancy"),
+  adjusted: boolean("adjusted").default(false),
+  valueAdjustment: integer("value_adjustment"), // cents, GL value of the true-up
+  journalEntryId: uuid("journal_entry_id").references(() => journalEntry.id),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+});
+
+// --- Inventory Variant ---
+
+export const inventoryVariant = pgTable("inventory_variant", {
+  id: uuid("id")
+    .primaryKey()
+    .defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  inventoryItemId: uuid("inventory_item_id")
+    .notNull()
+    .references(() => inventoryItem.id, { onDelete: "cascade" }),
+  name: text("name").notNull(), // e.g. "Red / Large"
+  sku: text("sku"),
+  purchasePrice: integer("purchase_price").default(0),
+  salePrice: integer("sale_price").default(0),
+  quantityOnHand: integer("quantity_on_hand").default(0),
+  options: jsonb("options").$type<Record<string, string>>(), // e.g. {"Color": "Red", "Size": "Large"}
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { mode: "date" }),
+});
+
+// --- Warehouse Stock (per-warehouse quantities) ---
+
+export const warehouseStock = pgTable(
+  "warehouse_stock",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    inventoryItemId: uuid("inventory_item_id")
+      .notNull()
+      .references(() => inventoryItem.id, { onDelete: "cascade" }),
+    warehouseId: uuid("warehouse_id")
+      .notNull()
+      .references(() => warehouse.id, { onDelete: "cascade" }),
+    quantity: integer("quantity").notNull().default(0),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("warehouse_stock_org_item_wh_idx").on(
+      table.organizationId,
+      table.inventoryItemId,
+      table.warehouseId
+    ),
+  ]
+);
+
+// --- Inventory Transfers ---
+
+export const inventoryTransferStatusEnum = pgEnum("inventory_transfer_status", [
+  "draft",
+  "in_transit",
+  "completed",
+  "cancelled",
+]);
+
+export const inventoryTransfer = pgTable("inventory_transfer", {
+  id: uuid("id")
+    .primaryKey()
+    .defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  fromWarehouseId: uuid("from_warehouse_id")
+    .notNull()
+    .references(() => warehouse.id),
+  toWarehouseId: uuid("to_warehouse_id")
+    .notNull()
+    .references(() => warehouse.id),
+  status: inventoryTransferStatusEnum("status").notNull().default("draft"),
+  notes: text("notes"),
+  transferredBy: text("transferred_by"),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  completedAt: timestamp("completed_at", { mode: "date" }),
+});
+
+export const inventoryTransferLine = pgTable("inventory_transfer_line", {
+  id: uuid("id")
+    .primaryKey()
+    .defaultRandom(),
+  transferId: uuid("transfer_id")
+    .notNull()
+    .references(() => inventoryTransfer.id, { onDelete: "cascade" }),
+  inventoryItemId: uuid("inventory_item_id")
+    .notNull()
+    .references(() => inventoryItem.id, { onDelete: "cascade" }),
+  quantity: integer("quantity").notNull(),
+  receivedQuantity: integer("received_quantity"),
+});
+
+// Serial Number tracking
+export const serialNumber = pgTable(
+  "serial_number",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    inventoryItemId: uuid("inventory_item_id")
+      .notNull()
+      .references(() => inventoryItem.id, { onDelete: "cascade" }),
+    serialNumber: text("serial_number").notNull(),
+    status: serialStatusEnum("status").notNull().default("available"),
+    warehouseId: uuid("warehouse_id").references(() => warehouse.id),
+    purchaseMovementId: uuid("purchase_movement_id").references(() => inventoryMovement.id),
+    saleMovementId: uuid("sale_movement_id").references(() => inventoryMovement.id),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at", { mode: "date" }),
+  },
+  (table) => [
+    uniqueIndex("serial_number_org_item_serial_idx").on(
+      table.organizationId,
+      table.inventoryItemId,
+      table.serialNumber
+    ),
+  ]
+);
+
+// Lot/Batch tracking
+export const lotBatch = pgTable("lot_batch", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  organizationId: uuid("organization_id")
+    .notNull()
+    .references(() => organization.id, { onDelete: "cascade" }),
+  inventoryItemId: uuid("inventory_item_id")
+    .notNull()
+    .references(() => inventoryItem.id, { onDelete: "cascade" }),
+  lotNumber: text("lot_number"),
+  batchNumber: text("batch_number"),
+  quantity: integer("quantity").notNull().default(0),
+  availableQuantity: integer("available_quantity").notNull().default(0),
+  warehouseId: uuid("warehouse_id").references(() => warehouse.id),
+  manufacturingDate: date("manufacturing_date"),
+  expiryDate: date("expiry_date"),
+  purchaseMovementId: uuid("purchase_movement_id").references(() => inventoryMovement.id),
+  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  deletedAt: timestamp("deleted_at", { mode: "date" }),
+});
+
+// Movement-Serial assignment
+export const movementSerialAssignment = pgTable("movement_serial_assignment", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  movementId: uuid("movement_id")
+    .notNull()
+    .references(() => inventoryMovement.id, { onDelete: "cascade" }),
+  serialNumberId: uuid("serial_number_id")
+    .notNull()
+    .references(() => serialNumber.id, { onDelete: "cascade" }),
+});
+
+// Movement-Lot assignment
+export const movementLotAssignment = pgTable("movement_lot_assignment", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  movementId: uuid("movement_id")
+    .notNull()
+    .references(() => inventoryMovement.id, { onDelete: "cascade" }),
+  lotBatchId: uuid("lot_batch_id")
+    .notNull()
+    .references(() => lotBatch.id, { onDelete: "cascade" }),
+  quantity: integer("quantity").notNull(),
+});
+
+// --- FIFO cost layers (financial cost flow, separate from physical lot/batch) ---
+
+export const inventoryCostLayer = pgTable(
+  "inventory_cost_layer",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id")
+      .notNull()
+      .references(() => organization.id, { onDelete: "cascade" }),
+    inventoryItemId: uuid("inventory_item_id")
+      .notNull()
+      .references(() => inventoryItem.id, { onDelete: "cascade" }),
+    warehouseId: uuid("warehouse_id").references(() => warehouse.id),
+    receivedAt: timestamp("received_at", { mode: "date" }).defaultNow().notNull(),
+    originalQuantity: integer("original_quantity").notNull(),
+    remainingQuantity: integer("remaining_quantity").notNull(),
+    unitCost: integer("unit_cost").notNull(), // cents per unit for this layer
+    sourceMovementId: uuid("source_movement_id").references(() => inventoryMovement.id),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    // FIFO consumption order: oldest received first
+    uniqueIndex("inventory_cost_layer_fifo_idx").on(
+      table.organizationId,
+      table.inventoryItemId,
+      table.receivedAt,
+      table.id
+    ),
+  ]
+);
+
+// Which layers a given issue movement consumed (audit of FIFO cost-of-issue).
+export const inventoryLayerConsumption = pgTable("inventory_layer_consumption", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  issueMovementId: uuid("issue_movement_id")
+    .notNull()
+    .references(() => inventoryMovement.id, { onDelete: "cascade" }),
+  costLayerId: uuid("cost_layer_id")
+    .notNull()
+    .references(() => inventoryCostLayer.id),
+  quantity: integer("quantity").notNull(),
+  unitCost: integer("unit_cost").notNull(), // cents per unit consumed from this layer
+});
+
+// --- Relations ---
+
+export const inventoryCostLayerRelations = relations(inventoryCostLayer, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [inventoryCostLayer.organizationId],
+    references: [organization.id],
+  }),
+  inventoryItem: one(inventoryItem, {
+    fields: [inventoryCostLayer.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
+  warehouse: one(warehouse, {
+    fields: [inventoryCostLayer.warehouseId],
+    references: [warehouse.id],
+  }),
+  sourceMovement: one(inventoryMovement, {
+    fields: [inventoryCostLayer.sourceMovementId],
+    references: [inventoryMovement.id],
+  }),
+  consumptions: many(inventoryLayerConsumption),
+}));
+
+export const inventoryLayerConsumptionRelations = relations(inventoryLayerConsumption, ({ one }) => ({
+  issueMovement: one(inventoryMovement, {
+    fields: [inventoryLayerConsumption.issueMovementId],
+    references: [inventoryMovement.id],
+  }),
+  costLayer: one(inventoryCostLayer, {
+    fields: [inventoryLayerConsumption.costLayerId],
+    references: [inventoryCostLayer.id],
+  }),
+}));
+
+export const inventoryCategoryRelations = relations(inventoryCategory, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [inventoryCategory.organizationId],
+    references: [organization.id],
+  }),
+  parent: one(inventoryCategory, {
+    fields: [inventoryCategory.parentId],
+    references: [inventoryCategory.id],
+    relationName: "categoryParent",
+  }),
+  children: many(inventoryCategory, { relationName: "categoryParent" }),
+  items: many(inventoryItem),
+}));
+
+export const inventoryItemRelations = relations(inventoryItem, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [inventoryItem.organizationId],
+    references: [organization.id],
+  }),
+  categoryRef: one(inventoryCategory, {
+    fields: [inventoryItem.categoryId],
+    references: [inventoryCategory.id],
+  }),
+  costAccount: one(chartAccount, {
+    fields: [inventoryItem.costAccountId],
+    references: [chartAccount.id],
+    relationName: "inventoryCostAccount",
+  }),
+  revenueAccount: one(chartAccount, {
+    fields: [inventoryItem.revenueAccountId],
+    references: [chartAccount.id],
+    relationName: "inventoryRevenueAccount",
+  }),
+  inventoryAccount: one(chartAccount, {
+    fields: [inventoryItem.inventoryAccountId],
+    references: [chartAccount.id],
+    relationName: "inventoryInventoryAccount",
+  }),
+  movements: many(inventoryMovement),
+  suppliers: many(inventoryItemSupplier),
+  variants: many(inventoryVariant),
+  stockTakeLines: many(stockTakeLine),
+  warehouseStocks: many(warehouseStock),
+  serialNumbers: many(serialNumber),
+  lotBatches: many(lotBatch),
+}));
+
+export const warehouseRelations = relations(warehouse, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [warehouse.organizationId],
+    references: [organization.id],
+  }),
+  movements: many(inventoryMovement),
+  stockTakes: many(stockTake),
+  warehouseStocks: many(warehouseStock),
+}));
+
+export const inventoryMovementRelations = relations(inventoryMovement, ({ one }) => ({
+  organization: one(organization, {
+    fields: [inventoryMovement.organizationId],
+    references: [organization.id],
+  }),
+  inventoryItem: one(inventoryItem, {
+    fields: [inventoryMovement.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
+  warehouse: one(warehouse, {
+    fields: [inventoryMovement.warehouseId],
+    references: [warehouse.id],
+  }),
+}));
+
+export const inventoryItemSupplierRelations = relations(inventoryItemSupplier, ({ one }) => ({
+  organization: one(organization, {
+    fields: [inventoryItemSupplier.organizationId],
+    references: [organization.id],
+  }),
+  inventoryItem: one(inventoryItem, {
+    fields: [inventoryItemSupplier.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
+  contact: one(contact, {
+    fields: [inventoryItemSupplier.contactId],
+    references: [contact.id],
+  }),
+}));
+
+export const stockTakeRelations = relations(stockTake, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [stockTake.organizationId],
+    references: [organization.id],
+  }),
+  warehouse: one(warehouse, {
+    fields: [stockTake.warehouseId],
+    references: [warehouse.id],
+  }),
+  lines: many(stockTakeLine),
+}));
+
+export const stockTakeLineRelations = relations(stockTakeLine, ({ one }) => ({
+  stockTake: one(stockTake, {
+    fields: [stockTakeLine.stockTakeId],
+    references: [stockTake.id],
+  }),
+  inventoryItem: one(inventoryItem, {
+    fields: [stockTakeLine.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
+}));
+
+export const inventoryVariantRelations = relations(inventoryVariant, ({ one }) => ({
+  organization: one(organization, {
+    fields: [inventoryVariant.organizationId],
+    references: [organization.id],
+  }),
+  inventoryItem: one(inventoryItem, {
+    fields: [inventoryVariant.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
+}));
+
+export const warehouseStockRelations = relations(warehouseStock, ({ one }) => ({
+  organization: one(organization, {
+    fields: [warehouseStock.organizationId],
+    references: [organization.id],
+  }),
+  inventoryItem: one(inventoryItem, {
+    fields: [warehouseStock.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
+  warehouse: one(warehouse, {
+    fields: [warehouseStock.warehouseId],
+    references: [warehouse.id],
+  }),
+}));
+
+export const inventoryTransferRelations = relations(inventoryTransfer, ({ one, many }) => ({
+  organization: one(organization, {
+    fields: [inventoryTransfer.organizationId],
+    references: [organization.id],
+  }),
+  fromWarehouse: one(warehouse, {
+    fields: [inventoryTransfer.fromWarehouseId],
+    references: [warehouse.id],
+    relationName: "transferFrom",
+  }),
+  toWarehouse: one(warehouse, {
+    fields: [inventoryTransfer.toWarehouseId],
+    references: [warehouse.id],
+    relationName: "transferTo",
+  }),
+  lines: many(inventoryTransferLine),
+}));
+
+export const inventoryTransferLineRelations = relations(inventoryTransferLine, ({ one }) => ({
+  transfer: one(inventoryTransfer, {
+    fields: [inventoryTransferLine.transferId],
+    references: [inventoryTransfer.id],
+  }),
+  inventoryItem: one(inventoryItem, {
+    fields: [inventoryTransferLine.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
+}));
+
+export const serialNumberRelations = relations(serialNumber, ({ one }) => ({
+  organization: one(organization, {
+    fields: [serialNumber.organizationId],
+    references: [organization.id],
+  }),
+  inventoryItem: one(inventoryItem, {
+    fields: [serialNumber.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
+  warehouse: one(warehouse, {
+    fields: [serialNumber.warehouseId],
+    references: [warehouse.id],
+  }),
+}));
+
+export const lotBatchRelations = relations(lotBatch, ({ one }) => ({
+  organization: one(organization, {
+    fields: [lotBatch.organizationId],
+    references: [organization.id],
+  }),
+  inventoryItem: one(inventoryItem, {
+    fields: [lotBatch.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
+  warehouse: one(warehouse, {
+    fields: [lotBatch.warehouseId],
+    references: [warehouse.id],
+  }),
+}));
+
+export const movementSerialAssignmentRelations = relations(movementSerialAssignment, ({ one }) => ({
+  movement: one(inventoryMovement, {
+    fields: [movementSerialAssignment.movementId],
+    references: [inventoryMovement.id],
+  }),
+  serialNumber: one(serialNumber, {
+    fields: [movementSerialAssignment.serialNumberId],
+    references: [serialNumber.id],
+  }),
+}));
+
+export const movementLotAssignmentRelations = relations(movementLotAssignment, ({ one }) => ({
+  movement: one(inventoryMovement, {
+    fields: [movementLotAssignment.movementId],
+    references: [inventoryMovement.id],
+  }),
+  lotBatch: one(lotBatch, {
+    fields: [movementLotAssignment.lotBatchId],
+    references: [lotBatch.id],
+  }),
+}));
+
+
+// --- HSN Master ---
+
+export const hsnMaster = pgTable("hsn_master", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  hsnCode: text("hsn_code").notNull(),
+  description: text("description").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
+export const hsnGstRates = pgTable("hsn_gst_rates", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  hsnId: uuid("hsn_id").notNull().references(() => hsnMaster.id),
+  gstRate: integer("gst_rate").notNull(),
+  effectiveFrom: timestamp("effective_from"),
+});

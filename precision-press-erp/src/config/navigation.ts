@@ -124,8 +124,15 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   { label: 'Pending Deliveries',   href: '/delivary',               icon: ClipboardList,        roles: ['DELIVERY'],                                                           group: 'main'    },
   { label: 'Delivered Orders',     href: '/delivared',              icon: CheckCircle,          roles: ['DELIVERY'],                                                           group: 'main'    },
 
-  // ── Accounting (Dubbl) ───────────────────────────────────────────────────
-  { label: 'Accounting',           href: '/accounting-redirect',    icon: BookOpen,             roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT'],                                  group: 'main'    },
+  // ── Accounting Dashboard (Dubbl) ─────────────────────────────────────────
+  { label: 'Dubbl Accounting', href: '#dubbl-accounting', icon: BookOpen, roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'MANAGER', 'ACDEMA'], group: 'main', subItems: [
+    { label: 'Banking & Cash Drawer', href: '/accounting/banking' },
+    { label: 'Chart of Accounts & Ledger', href: '/accounting/transactions' },
+    { label: 'Invoices & Sales Receipts', href: '/accounting/sales' },
+    { label: 'Bills & Purchases', href: '/accounting/purchases' },
+    { label: 'Financial Reports', href: '/accounting/reports' },
+    { label: 'Tax Settings', href: '/accounting/tax' },
+  ] },
 
   // ── Universal bottom ──────────────────────────────────────────────────────
   { label: 'Settings',             href: '/settings',               icon: Settings,             roles: ['ADMIN','SUPER_ADMIN','MANAGER','PRINTER','ACCOUNTANT','CUSTOMER','DESIGNER','SUPPORT','DISPATCH','DELIVERY'], group: 'bottom' },

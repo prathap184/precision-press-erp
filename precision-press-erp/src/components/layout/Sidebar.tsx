@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { NAVIGATION_ITEMS, NavItem } from '@/config/navigation';
-import { Printer, Plus, ArrowLeft } from 'lucide-react';
+import { Printer, Plus, ArrowLeft, LayoutDashboard, Users, TrendingUp, ShoppingCart, BookOpen, Receipt, FolderKanban, UserRound, Package, Wallet, Layers, Building2, FileText, BarChart3, ChevronLeft, Settings } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useEffectiveUser } from '@/lib/impersonation-context';
 import { MODULE_ROUTES } from '@/types/auth';
@@ -17,6 +17,155 @@ import { twMerge } from 'tailwind-merge';
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// ─────────────────────────────────────────────
+// DUBBL ACCOUNTING SIDEBAR
+// Shows when on /accounting/* routes
+// ─────────────────────────────────────────────
+const DUBBL_NAV = [
+  {
+    section: null,
+    items: [
+      { label: 'Dashboard',   href: '/accounting',          icon: LayoutDashboard },
+      { label: 'Banking',     href: '/accounting/banking',  icon: Wallet },
+      { label: 'Contacts',    href: '/accounting/contacts', icon: Users },
+    ],
+  },
+  {
+    section: 'FINANCIALS',
+    items: [
+      { label: 'Sales',       href: '/accounting/sales',       icon: TrendingUp },
+      { label: 'Purchases',   href: '/accounting/purchases',   icon: ShoppingCart },
+      { label: 'Accounting',  href: '/accounting/accounts',    icon: BookOpen },
+      { label: 'Tax',         href: '/accounting/tax',         icon: Receipt },
+    ],
+  },
+  {
+    section: 'OPERATIONS',
+    items: [
+      { label: 'Projects',     href: '/accounting/projects',    icon: FolderKanban },
+      { label: 'Teams',        href: '/accounting/teams',       icon: UserRound },
+      { label: 'Inventory',    href: '/accounting/inventory',   icon: Package },
+      { label: 'Payroll',      href: '/accounting/payroll',     icon: Wallet },
+      { label: 'CRM',          href: '/accounting/crm',         icon: Building2 },
+      { label: 'Documents',    href: '/accounting/documents',   icon: FileText },
+      { label: 'Pixel Orders', href: '/admin/orders',           icon: Layers },
+    ],
+  },
+  {
+    section: 'REPORTING & SETTINGS',
+    items: [
+      { label: 'Reports',      href: '/accounting/reports',     icon: BarChart3 },
+      { label: 'Budgets',      href: '/accounting/budgets',     icon: BarChart3 },
+      { label: 'Fixed Assets', href: '/accounting/fixed-assets', icon: Building2 },
+      { label: 'Loans',        href: '/accounting/loans',       icon: Layers },
+      { label: 'Settings',     href: '/accounting/settings',    icon: Settings },
+    ],
+  },
+];
+
+function AccountingSidebar({ isExpanded, isHovered }: { isExpanded: boolean; isHovered: boolean }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const visualExpanded = isExpanded || isHovered;
+
+  // G key → Global Orders
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'g' || e.key === 'G') {
+        router.push('/admin/orders');
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [router]);
+
+  return (
+    <aside
+      className={cn(
+        'sidebar flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 overflow-hidden',
+        visualExpanded ? 'w-[280px]' : 'w-[72px]'
+      )}
+    >
+      {/* HEADER — logo + back button */}
+      <div className={cn(
+        'flex items-center flex-shrink-0',
+        visualExpanded ? 'justify-between px-6 py-5 gap-3' : 'justify-center py-5'
+      )}>
+        {visualExpanded && (
+          <Link href="/admin/orders" className="flex items-center gap-3 overflow-hidden min-w-0 hover:opacity-80 transition-opacity">
+            <img src="/logo.png" alt="Pixel Marketing Logo" className="w-12 h-12 rounded-xl object-contain shadow-md flex-shrink-0" />
+            <div className="overflow-hidden flex flex-col justify-center">
+              <h1 className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 font-black text-sm tracking-widest uppercase truncate leading-tight whitespace-nowrap">Pixel Marketing</h1>
+              <p className="text-[10px] text-slate-400 font-medium tracking-wide">Accounting</p>
+            </div>
+          </Link>
+        )}
+      </div>
+
+      {/* BACK TO ERP BUTTON */}
+      <div className={cn('pb-4 flex-shrink-0', visualExpanded ? 'px-3' : 'px-2')}>
+        <Link
+          href="/admin/orders"
+          title={!visualExpanded ? 'Back to Global Orders (G)' : undefined}
+          className={cn(
+            'flex items-center gap-2.5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all overflow-hidden whitespace-nowrap border',
+            'bg-white text-slate-600 border-slate-200 hover:border-blue-200 hover:text-blue-700 hover:bg-blue-50 shadow-sm',
+            visualExpanded ? 'px-5 justify-start ml-2 mr-3' : 'px-0 justify-center w-12 h-12 mx-auto'
+          )}
+        >
+          <span className="flex items-center justify-center w-6 h-6 rounded-lg flex-shrink-0 bg-blue-50 text-blue-600">
+            <ChevronLeft size={14} strokeWidth={2.5} />
+          </span>
+          {visualExpanded && (
+            <span>Global Orders <kbd className="ml-1 px-1 py-0.5 text-[9px] bg-slate-100 border border-slate-200 rounded font-mono">G</kbd></span>
+          )}
+        </Link>
+      </div>
+
+      {/* SCROLLABLE NAV */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide py-2">
+        {DUBBL_NAV.map((group, gi) => (
+          <div key={gi} className="pb-3">
+            {group.section && visualExpanded && (
+              <p className="text-[11px] font-semibold tracking-wide text-slate-500 px-6 pb-2 pt-2">{group.section}</p>
+            )}
+            {group.section && !visualExpanded && gi > 0 && (
+              <div className="border-t border-slate-200 my-2 mx-3" />
+            )}
+            <div className="space-y-0.5">
+              {group.items.map(item => {
+                const isActive = pathname === item.href || (item.href !== '/admin/orders' && item.href !== '/accounting' && pathname.startsWith(item.href)) || (item.href === '/accounting' && pathname === '/accounting');
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={!visualExpanded ? item.label : undefined}
+                    className={cn(
+                      'sidebar-item flex items-center gap-4 py-2.5 transition-all duration-200 overflow-hidden whitespace-nowrap cursor-pointer w-full text-left',
+                      visualExpanded ? 'px-6 mr-4 rounded-r-full' : 'px-0 justify-center mx-2 rounded-full',
+                      isActive
+                        ? 'selected font-semibold bg-[var(--google-selected)] text-[#174ea6]'
+                        : 'text-slate-600 hover:bg-[var(--google-hover)]'
+                    )}
+                  >
+                    <span className={cn('flex items-center justify-center w-6 h-6 flex-shrink-0', isActive ? 'text-[#174ea6]' : 'text-slate-500')}>
+                      <item.icon size={20} strokeWidth={2} />
+                    </span>
+                    {visualExpanded && <span className="tracking-tight flex-1">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
 
 interface SidebarProps {
   isExpanded?: boolean;
@@ -229,6 +378,22 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
       </Link>
     );
   };
+
+  // Show Dubbl accounting sidebar on /accounting/* pages
+  if (pathname.startsWith('/accounting')) {
+    return (
+      <aside
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={cn(
+          'sidebar flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 overflow-hidden',
+          visualExpanded ? 'w-[280px]' : 'w-[72px]'
+        )}
+      >
+        <AccountingSidebar isExpanded={isExpanded} isHovered={isHovered} />
+      </aside>
+    );
+  }
 
   return (
     <aside

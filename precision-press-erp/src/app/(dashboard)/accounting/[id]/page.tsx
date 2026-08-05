@@ -1,0 +1,819 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import {
+  ArrowLeft,
+  Check,
+  X,
+  Trash2,
+  BookOpen,
+  Calendar,
+  Hash,
+  FileText,
+  Clock,
+  AlertTriangle,
+  Pencil,
+  Plus,
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { AccountPicker } from "@/components/dashboard/account-picker";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatMoney, decimalToCents } from "@/lib/money";
+import { useConfirm } from "@/lib/hooks/use-confirm";
+import { useEntityTitle } from "@/lib/hooks/use-entity-title";
+import { ContentReveal } from "@/components/ui/content-reveal";
+import { cn } from "@/lib/utils";
+import { useDocumentTitle } from "@/lib/hooks/use-document-title";
+import Link from "next/link";
+
+interface Line {
+  id: string;
+  accountId: string;
+  accountCode: string;
+  accountName: string;
+  description: string | null;
+  debitAmount: string;
+  creditAmount: string;
+}
+
+interface Entry {
+  id: string;
+  entryNumber: number;
+  date: string;
+  description: string;
+  reference: string | null;
+  status: "draft" | "posted" | "void";
+  sourceType: string | null;
+  sourceId: string | null;
+  contactName: string | null;
+  contactId: string | null;
+  createdBy: string | null;
+  postedAt: string | null;
+  voidedAt: string | null;
+  voidReason: string | null;
+  createdAt: string;
+  lines: Line[];
+}
+
+const statusConfig: Record<string, { class: string; label: string; bg: string }> = {
+  draft: {
+    class: "",
+    label: "draft",
+    bg: "bg-gray-500",
+  },
+  posted: {
+    class: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    label: "in your books",
+    bg: "bg-emerald-500",
+  },
+  void: {
+    class: "border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300",
+    label: "cancelled",
+    bg: "bg-red-500",
+  },
+};
+
+const sourceTypeLabels: Record<string, string> = {
+  manual: "Manual Entry",
+  invoice: "Invoice",
+  bill: "Bill",
+  payment: "Payment",
+  expense: "Expense",
+  bank: "Bank Transaction",
+  credit_note: "Credit Note",
+  debit_note: "Debit Note",
+  depreciation: "Depreciation",
+  year_end_close: "Year-End Closing",
+  opening_balance: "Opening Balance",
+  customer_credit: "Customer Receipt",
+};
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function formatTimestamp(ts: string) {
+  const d = new Date(ts);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    + " at "
+    + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+}
+
+export default function EntryDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const router = useRouter();
+  const { confirm, dialog: confirmDialog } = useConfirm();
+  const [entry, setEntry] = useState<Entry | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [voidReason, setVoidReason] = useState("");
+  const [actionLoading, setActionLoading] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
+  const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+
+  useDocumentTitle("Accounting \u00B7 Entry Details");
+  useEntityTitle(entry ? `JE-${entry.entryNumber}` : undefined);
+
+  function loadEntry() {
+    if (!orgId) return;
+    fetch(`/api/v1/entries/${id}`, {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.entry) setEntry(data.entry);
+      })
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadEntry();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, orgId]);
+
+  async function postEntry() {
+    if (!orgId) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/v1/entries/${id}/post`, {
+        method: "POST",
+        headers: { "x-organization-id": orgId },
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      setEntry(data.entry);
+      toast.success("Entry finalized and added to your books");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't finalize this entry");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function voidEntry() {
+    if (!orgId || !voidReason) return;
+    setActionLoading(true);
+    try {
+      const res = await fetch(`/api/v1/entries/${id}/void`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-organization-id": orgId,
+        },
+        body: JSON.stringify({ reason: voidReason }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const data = await res.json();
+      setEntry(data.entry);
+      setVoidReason("");
+      toast.success("Entry cancelled");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't cancel this entry");
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function deleteEntry() {
+    if (!orgId) return;
+    await confirm({
+      title: "Delete this entry?",
+      description: "This will permanently remove the draft journal entry. This cannot be undone.",
+      confirmLabel: "Delete Entry",
+      destructive: true,
+      onConfirm: async () => {
+        const res = await fetch(`/api/v1/entries/${id}`, {
+          method: "DELETE",
+          headers: { "x-organization-id": orgId },
+        });
+        if (res.ok) {
+          toast.success("Entry deleted");
+          router.push("/accounting");
+        } else {
+          toast.error("Failed to delete entry");
+        }
+      },
+    });
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-8 rounded-md" />
+          <Skeleton className="h-6 w-48" />
+        </div>
+        <Skeleton className="h-24 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  if (!entry) {
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" asChild className="size-8 p-0">
+          <Link href="/accounting"><ArrowLeft className="size-4" /></Link>
+        </Button>
+        <div className="flex flex-col items-center gap-3 py-20 text-center">
+          <FileText className="size-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Journal entry not found.</p>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/accounting">Back to Transactions</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const sc = statusConfig[entry.status] || statusConfig.draft;
+
+  const totalDebit = entry.lines.reduce(
+    (sum, l) => sum + parseFloat(l.debitAmount || "0"),
+    0
+  );
+  const totalCredit = entry.lines.reduce(
+    (sum, l) => sum + parseFloat(l.creditAmount || "0"),
+    0
+  );
+  const isBalanced = Math.abs(totalDebit - totalCredit) < 0.005;
+
+  return (
+    <ContentReveal>
+      <div className="space-y-6">
+        {/* Top bar */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="sm" asChild className="size-8 p-0">
+              <Link href="/accounting"><ArrowLeft className="size-4" /></Link>
+            </Button>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-lg font-semibold tracking-tight">
+                  Entry #{entry.entryNumber}
+                </h1>
+                <Badge variant="outline" className={sc.class}>{sc.label}</Badge>
+                {entry.voidedAt && (
+                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                    Reversed
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {entry.contactName ? (
+                  <Link
+                    href={`/contacts/${entry.contactId}`}
+                    className="font-medium text-foreground hover:underline"
+                  >
+                    {entry.contactName}
+                  </Link>
+                ) : null}
+                {entry.contactName && " · "}
+                {entry.description}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {entry.status === "draft" && (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditOpen(true)}
+                  disabled={actionLoading}
+                  title="Change this draft entry before finalizing it"
+                >
+                  <Pencil className="mr-2 size-4" />
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={postEntry}
+                  disabled={actionLoading}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                  title="Locks this entry and adds it to your books"
+                >
+                  <Check className="mr-2 size-4" />
+                  Finalize
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={deleteEntry}
+                  className="text-red-600"
+                >
+                  <Trash2 className="mr-2 size-4" />
+                  Delete
+                </Button>
+              </>
+            )}
+            {entry.status === "posted" && !entry.voidedAt && (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600"
+                    title="Reverses this entry so it no longer affects your books"
+                  >
+                    <X className="mr-2 size-4" />
+                    Cancel
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Cancel entry #{entry.entryNumber}?</DialogTitle>
+                    <DialogDescription>
+                      This reverses the entry so it no longer affects your books. Please add a reason.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <Textarea
+                    value={voidReason}
+                    onChange={(e) => setVoidReason(e.target.value)}
+                    placeholder="Reason for cancelling this entry..."
+                    rows={3}
+                  />
+                  <DialogFooter>
+                    <Button
+                      variant="destructive"
+                      onClick={voidEntry}
+                      disabled={!voidReason.trim() || actionLoading}
+                    >
+                      {actionLoading ? "Cancelling..." : "Cancel entry"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
+        </div>
+
+        {/* Void reason alert */}
+        {entry.voidReason && (
+          <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/30 p-4">
+            <AlertTriangle className="size-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-red-700 dark:text-red-300">Entry cancelled</p>
+              <p className="text-sm text-red-600 dark:text-red-400 mt-0.5">{entry.voidReason}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Entry document card */}
+        <div className="rounded-xl border bg-card overflow-hidden">
+          {/* Header with meta info */}
+          <div className="border-b bg-muted/30 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="grid gap-6 sm:grid-cols-2">
+              {/* Left: Entry info */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Hash className="size-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Entry Number</span>
+                  <span className="text-sm font-mono font-semibold">{entry.entryNumber}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Calendar className="size-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Date</span>
+                  <span className="text-sm">{formatDate(entry.date)}</span>
+                </div>
+                {entry.reference && (
+                  <div className="flex items-center gap-2">
+                    <FileText className="size-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Reference</span>
+                    <span className="text-sm">{entry.reference}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Source & timestamps */}
+              <div className="sm:text-right space-y-3">
+                {entry.sourceType && (
+                  <div className="flex sm:justify-end items-center gap-2">
+                    <BookOpen className="size-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Source</span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {sourceTypeLabels[entry.sourceType] || entry.sourceType}
+                    </Badge>
+                  </div>
+                )}
+                {entry.postedAt && (
+                  <div className="flex sm:justify-end items-center gap-2">
+                    <Check className="size-3.5 text-emerald-500" />
+                    <span className="text-xs text-muted-foreground">Finalized</span>
+                    <span className="text-sm">{formatTimestamp(entry.postedAt)}</span>
+                  </div>
+                )}
+                {entry.voidedAt && (
+                  <div className="flex sm:justify-end items-center gap-2">
+                    <X className="size-3.5 text-red-500" />
+                    <span className="text-xs text-muted-foreground">Cancelled</span>
+                    <span className="text-sm">{formatTimestamp(entry.voidedAt)}</span>
+                  </div>
+                )}
+                {!entry.postedAt && !entry.voidedAt && entry.createdAt && (
+                  <div className="flex sm:justify-end items-center gap-2">
+                    <Clock className="size-3.5 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Created</span>
+                    <span className="text-sm">{formatTimestamp(entry.createdAt)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Journal lines table */}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[500px] text-sm">
+              <thead>
+                <tr className="border-b bg-muted/20">
+                  <th className="px-6 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Account
+                  </th>
+                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Description
+                  </th>
+                  <th className="px-6 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-32">
+                    Debit
+                  </th>
+                  <th className="px-6 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-32">
+                    Credit
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {entry.lines.map((line, i) => {
+                  const debit = parseFloat(line.debitAmount);
+                  const credit = parseFloat(line.creditAmount);
+                  return (
+                    <tr
+                      key={line.id}
+                      className={cn(
+                        i < entry.lines.length - 1 ? "border-b border-dashed" : "",
+                        entry.status === "void" && "opacity-50"
+                      )}
+                    >
+                      <td className="px-6 py-3">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs font-mono text-muted-foreground shrink-0">
+                            {line.accountCode}
+                          </span>
+                          <span className="font-medium">{line.accountName}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {line.description || "-"}
+                      </td>
+                      <td className="px-6 py-3 text-right font-mono tabular-nums">
+                        {debit > 0 ? (
+                          <span className="font-medium">{formatMoney(Math.round(debit * 100))}</span>
+                        ) : (
+                          <span className="text-muted-foreground/30">-</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-3 text-right font-mono tabular-nums">
+                        {credit > 0 ? (
+                          <span className="font-medium">{formatMoney(Math.round(credit * 100))}</span>
+                        ) : (
+                          <span className="text-muted-foreground/30">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Totals footer */}
+          <div className="border-t bg-muted/10 px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex justify-end">
+              <div className="w-full max-w-xs space-y-1.5">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Debits</span>
+                  <span className="font-mono tabular-nums font-semibold">
+                    {formatMoney(Math.round(totalDebit * 100))}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Credits</span>
+                  <span className="font-mono tabular-nums font-semibold">
+                    {formatMoney(Math.round(totalCredit * 100))}
+                  </span>
+                </div>
+                <div className="h-px bg-border my-1" />
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Difference</span>
+                  <span className={cn(
+                    "font-mono tabular-nums font-semibold",
+                    isBalanced
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-red-600 dark:text-red-400"
+                  )}>
+                    {isBalanced ? formatMoney(0) : formatMoney(Math.round(Math.abs(totalDebit - totalCredit) * 100))}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Details cards row */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Entry details */}
+          <div className="rounded-xl border bg-card p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+              Entry Details
+            </p>
+            <div className="space-y-3">
+              <div>
+                <p className="text-[11px] text-muted-foreground">Description</p>
+                <p className="text-sm mt-0.5">{entry.description}</p>
+              </div>
+              {entry.reference && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Reference</p>
+                  <p className="text-sm mt-0.5">{entry.reference}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-[11px] text-muted-foreground">Date</p>
+                <p className="text-sm mt-0.5">{formatDate(entry.date)}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Audit trail */}
+          <div className="rounded-xl border bg-card p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+              Audit Trail
+            </p>
+            <div className="space-y-3">
+              {entry.sourceType && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Source</p>
+                  <p className="text-sm mt-0.5">
+                    {sourceTypeLabels[entry.sourceType] || entry.sourceType}
+                  </p>
+                </div>
+              )}
+              {entry.contactName && entry.contactId && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Customer</p>
+                  <Link
+                    href={`/contacts/${entry.contactId}`}
+                    className="text-sm mt-0.5 font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                  >
+                    {entry.contactName}
+                  </Link>
+                </div>
+              )}
+              <div>
+                <p className="text-[11px] text-muted-foreground">Created</p>
+                <p className="text-sm mt-0.5">{formatTimestamp(entry.createdAt)}</p>
+              </div>
+              {entry.postedAt && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Finalized</p>
+                  <p className="text-sm mt-0.5">{formatTimestamp(entry.postedAt)}</p>
+                </div>
+              )}
+              {entry.voidedAt && (
+                <div>
+                  <p className="text-[11px] text-muted-foreground">Cancelled</p>
+                  <p className="text-sm mt-0.5">{formatTimestamp(entry.voidedAt)}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-[11px] text-muted-foreground">Lines</p>
+                <p className="text-sm mt-0.5">
+                  {entry.lines.length} journal {entry.lines.length === 1 ? "line" : "lines"} ·{" "}
+                  {entry.lines.filter((l) => parseFloat(l.debitAmount) > 0).length} debits,{" "}
+                  {entry.lines.filter((l) => parseFloat(l.creditAmount) > 0).length} credits
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {entry.status === "draft" && (
+          <EditEntrySheet
+            open={editOpen}
+            onClose={() => setEditOpen(false)}
+            entry={entry}
+            orgId={orgId}
+            onSaved={() => { setEditOpen(false); loadEntry(); }}
+          />
+        )}
+
+        {confirmDialog}
+      </div>
+    </ContentReveal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Edit draft entry — full header + line replace (PUT /api/v1/entries/[id]).
+// ---------------------------------------------------------------------------
+interface EditLine {
+  accountId: string;
+  description: string;
+  debit: string;
+  credit: string;
+}
+
+function EditEntrySheet({
+  open,
+  onClose,
+  entry,
+  orgId,
+  onSaved,
+}: {
+  open: boolean;
+  onClose: () => void;
+  entry: Entry;
+  orgId: string | null;
+  onSaved: () => void;
+}) {
+  const [date, setDate] = useState(entry.date);
+  const [description, setDescription] = useState(entry.description);
+  const [reference, setReference] = useState(entry.reference ?? "");
+  const [lines, setLines] = useState<EditLine[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setDate(entry.date);
+      setDescription(entry.description);
+      setReference(entry.reference ?? "");
+      setLines(
+        entry.lines.map((l) => ({
+          accountId: l.accountId,
+          description: l.description ?? "",
+          debit: parseFloat(l.debitAmount) > 0 ? l.debitAmount : "",
+          credit: parseFloat(l.creditAmount) > 0 ? l.creditAmount : "",
+        }))
+      );
+    }
+  }, [open, entry]);
+
+  function update(i: number, patch: Partial<EditLine>) {
+    setLines((prev) => prev.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
+  }
+  function addLine() {
+    setLines((prev) => [...prev, { accountId: "", description: "", debit: "", credit: "" }]);
+  }
+  function removeLine(i: number) {
+    setLines((prev) => (prev.length <= 2 ? prev : prev.filter((_, idx) => idx !== i)));
+  }
+
+  const totalDebit = lines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0);
+  const totalCredit = lines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0);
+  const balanced = Math.abs(totalDebit - totalCredit) < 0.005 && totalDebit > 0;
+
+  async function save() {
+    if (!orgId) return;
+    if (!description.trim()) { toast.error("Add a description"); return; }
+    const validLines = lines.filter(
+      (l) => l.accountId && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0)
+    );
+    if (validLines.length < 2) { toast.error("Add at least two lines with an account and an amount"); return; }
+    if (!balanced) { toast.error("Debits must equal credits"); return; }
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/v1/entries/${entry.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify({
+          date,
+          description: description.trim(),
+          reference: reference.trim() || null,
+          lines: validLines.map((l) => ({
+            accountId: l.accountId,
+            description: l.description.trim() || null,
+            debitAmount: decimalToCents(l.debit || 0),
+            creditAmount: decimalToCents(l.credit || 0),
+          })),
+        }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      toast.success("Entry updated");
+      onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't update this entry");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent side="right" className="w-full sm:max-w-2xl flex flex-col p-0">
+        <SheetHeader className="px-4 pt-5 pb-4 sm:px-6 border-b shrink-0">
+          <SheetTitle className="text-lg">Edit entry #{entry.entryNumber}</SheetTitle>
+          <SheetDescription>Change this draft before you finalize it.</SheetDescription>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Date</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Reference (optional)</Label>
+              <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. ADJ-001" />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Description</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this entry for?" />
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Lines</Label>
+              <Button type="button" variant="outline" size="sm" className="h-7 text-xs" onClick={addLine}>
+                <Plus className="mr-1 size-3.5" />Add line
+              </Button>
+            </div>
+            {lines.map((l, i) => (
+              <div key={i} className="grid grid-cols-[1fr_90px_90px_auto] gap-2 items-start">
+                <div className="space-y-1">
+                  <AccountPicker value={l.accountId} onChange={(v) => update(i, { accountId: v })} allowCreate />
+                  <Input
+                    value={l.description}
+                    onChange={(e) => update(i, { description: e.target.value })}
+                    placeholder="Line note (optional)"
+                    className="h-7 text-xs"
+                  />
+                </div>
+                <CurrencyInput
+                  value={l.debit}
+                  onChange={(v) => update(i, { debit: v, credit: v ? "" : l.credit })}
+                  placeholder="Debit"
+                />
+                <CurrencyInput
+                  value={l.credit}
+                  onChange={(v) => update(i, { credit: v, debit: v ? "" : l.debit })}
+                  placeholder="Credit"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-muted-foreground hover:text-red-600"
+                  onClick={() => removeLine(i)}
+                  disabled={lines.length <= 2}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+            <div className="flex justify-between"><span className="text-muted-foreground">Total debits</span><span className="font-mono tabular-nums">{formatMoney(Math.round(totalDebit * 100))}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Total credits</span><span className="font-mono tabular-nums">{formatMoney(Math.round(totalCredit * 100))}</span></div>
+            <div className="mt-1 flex justify-between border-t pt-1">
+              <span className="text-muted-foreground">Difference</span>
+              <span className={cn("font-mono tabular-nums font-semibold", balanced ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400")}>
+                {formatMoney(Math.round(Math.abs(totalDebit - totalCredit) * 100))}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 flex items-center justify-end gap-2 border-t bg-background/80 px-4 py-3 sm:px-6 backdrop-blur-sm shrink-0">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={save} disabled={saving || !balanced} className="bg-emerald-600 hover:bg-emerald-700">
+            {saving ? "Saving…" : "Save changes"}
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}

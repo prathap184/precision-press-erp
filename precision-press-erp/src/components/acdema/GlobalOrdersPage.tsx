@@ -562,23 +562,23 @@ export function GlobalOrdersPage() {
           <div className="bg-white/40 rounded-2xl border border-white/60 shadow-sm overflow-hidden backdrop-blur-md">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
-                    <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">Node ID</th>
-                    <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">Identity</th>
-                    <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 min-w-[550px]">Operational Status</th>
-                    <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500">Dispatch</th>
-                    <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-right">Settlement</th>
-                    <th className="px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-slate-500 text-center">Action</th>
+                 <thead>
+                  <tr className="bg-slate-100 border-b-2 border-slate-300">
+                    <th className="px-4 py-3 text-slate-800" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Node ID</th>
+                    <th className="px-4 py-3 text-slate-800" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Identity</th>
+                    <th className="px-4 py-3 text-slate-800 min-w-[550px]" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Operational Status</th>
+                    <th className="px-4 py-3 text-slate-800" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Dispatch</th>
+                    <th className="px-4 py-3 text-slate-800 text-right" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Settlement</th>
+                    <th className="px-4 py-3 text-slate-800 text-center" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y-0">
                   {loading ? (
                     <tr>
                       <td colSpan={6} className="py-20 text-center tabular-nums">
                         <div className="flex flex-col items-center gap-2">
                           <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
-                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Synchronizing Registry...</p>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Synchronizing Registry...</p>
                         </div>
                       </td>
                     </tr>
@@ -589,7 +589,7 @@ export function GlobalOrdersPage() {
                       </td>
                     </tr>
                   ) : (
-                    filtered.map((order) => {
+                    filtered.map((order, idx) => {
                       const statusKey = order.status && STATUS_CONFIG[order.status] ? order.status : 'PLACED';
                       const cfg = STATUS_CONFIG[statusKey];
                       let date = '—';
@@ -606,140 +606,181 @@ export function GlobalOrdersPage() {
                       const thumbnail = <OrderThumbnail orderId={order.id} order={order as any} size="sm" />;
                       const isHighlighted = highlightedIds.includes(order.id);
 
+                      const cleanId = order.id.replace('ORD-', '');
+                      const parentOrderNum = cleanId.split('-')[0];
+
+                      let groupIdx = 0;
+                      let lastParent = "";
+                      for (let i = 0; i <= idx; i++) {
+                        const p = filtered[i].id.replace('ORD-', '').split('-')[0];
+                        if (i > 0 && p !== lastParent) {
+                          groupIdx++;
+                        }
+                        lastParent = p;
+                      }
+
+                      const nextOrder = filtered[idx + 1];
+                      const nextParentNum = nextOrder ? nextOrder.id.replace('ORD-', '').split('-')[0] : null;
+                      const isLastItemOfGroup = idx === filtered.length - 1 || nextParentNum !== parentOrderNum;
+
+                      const isFirstOfGroup = idx === 0 || filtered[idx - 1].id.replace('ORD-', '').split('-')[0] !== parentOrderNum;
+                      const isEvenGroup = groupIdx % 2 === 0;
+                      const rowBg = isEvenGroup ? 'bg-white hover:bg-slate-50' : 'bg-slate-100/90 hover:bg-slate-200/80';
+                      const tdBorder = isLastItemOfGroup
+                        ? 'border-b-[4px] border-slate-950 shadow-sm'
+                        : 'border-b border-dashed border-slate-300';
+
                       return (
-                        <tr id={`order-row-${order.id}`} key={order.id} className={`${isHighlighted ? 'bg-indigo-50 shadow-inner transition-all duration-1000' : 'hover:bg-slate-50 transition-colors'} group`}>
-                          <td className="px-4 py-3 tabular-nums">
-                            <div className="flex items-center gap-2">
-                              {isDesignerStepActive ? (
-                                <Link 
-                                  href={`/designer/orders/${order.id}?returnTo=/acdema/orders`}
-                                  className="hover:brightness-90 transition-all cursor-pointer"
-                                  title="Open creative studio workstation"
-                                >
-                                  {thumbnail}
-                                </Link>
-                              ) : (
-                                thumbnail
-                              )}
-                              <div>
-                                <p className="text-[11px] font-black text-slate-900 leading-none mb-0.5 font-mono">#{order.id.replace('ORD-', '')}</p>
-                                <p className="text-[9px] font-bold text-slate-400 tracking-tighter uppercase">{date}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 tabular-nums">
-                            <p className="text-xs font-bold text-slate-800 leading-none mb-0.5">{order.customerSnapshot?.name || 'Guest'}</p>
-                            <p className="text-[10px] font-medium text-slate-400">{order.customerSnapshot?.phone || 'No phone'}</p>
-                            {order.proxyExecutor && (
-                              <div className="mt-1">
-                                <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[8px] font-black text-indigo-600 uppercase tracking-widest break-all">
-                                  Proxy: {(() => {
-                                    const proxy = typeof order.proxyExecutor === 'string' ? JSON.parse(order.proxyExecutor) : order.proxyExecutor;
-                                    return order.proxyName || proxy?.name || (proxy?.role === 'ACDEMA' ? 'AcDema Support' : 'Admin');
-                                  })()}
-                                </span>
-                              </div>
-                            )}
-                            <div className="text-[9px] font-medium text-slate-500 mt-1 line-clamp-2">
-                              {order.items?.map(i => i.productName).join(', ') || order.workflow?.printWorkflow?.tiffFileName || 'Custom Print'}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 tabular-nums">
-                            <div className="flex flex-col gap-1.5">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded border text-[9px] font-bold uppercase tracking-tight ${cfg.color.split(' shadow')[0]}`}>
-                                  {React.isValidElement(cfg.icon) ? React.cloneElement(cfg.icon, { size: 10 }) : cfg.icon}
-                                  {cfg.label}
-                                </span>
-                                {order.currentWorkflowLabel && (
-                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 uppercase tracking-widest bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
-                                    <span className="text-[8px] text-slate-400">Current Role:</span>
-                                    <span className="text-slate-700">{order.currentWorkflowLabel}</span>
+                        <React.Fragment key={order.id}>
+                          {isFirstOfGroup && (
+                            <tr key={`header-${parentOrderNum}`} className="bg-slate-900 text-white">
+                              <td colSpan={6} className="px-4 py-2 bg-slate-900 text-white border-t-2 border-slate-950" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '15px', fontWeight: 500, lineHeight: '24px' }}>
+                                <div className="flex items-center justify-between">
+                                  <span className="flex items-center gap-2 font-medium">
+                                    <span className="bg-indigo-600 text-white px-2 py-0.5 rounded text-xs font-bold">ORDER #{parentOrderNum}</span>
+                                    Customer: {order.customerSnapshot?.name || 'Guest'} · {order.customerSnapshot?.phone || 'No phone'}
                                   </span>
+                                  <span className="text-slate-300 text-xs font-normal">
+                                    Placed: {date}
+                                  </span>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                          <tr id={`order-row-${order.id}`} className={`${isHighlighted ? 'bg-indigo-50 shadow-inner transition-all duration-1000' : rowBg + ' transition-colors'} group`}>
+                            <td className={`px-4 py-4 tabular-nums ${tdBorder}`}>
+                              <div className="flex items-center gap-2.5">
+                                {isDesignerStepActive ? (
+                                  <Link 
+                                    href={`/designer/orders/${order.id}?returnTo=/acdema/orders`}
+                                    className="hover:brightness-90 transition-all cursor-pointer"
+                                    title="Open creative studio workstation"
+                                  >
+                                    {thumbnail}
+                                  </Link>
+                                ) : (
+                                  thumbnail
                                 )}
+                                <div>
+                                  <p className="text-slate-900 font-mono" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '15px', fontWeight: 600, lineHeight: '24px' }}>#{order.id.replace('ORD-', '')}</p>
+                                  <p className="text-slate-500" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '13px', fontWeight: 400, lineHeight: '18px' }}>{date}</p>
+                                </div>
                               </div>
-                              <div className="mt-1">
-                                  <WorkflowPipelineVisual
-                                    snapshot={(() => {
-                                      const dispatchMethodKey = order.dispatchInfo?.method || order.delivery?.choice || 'COUNTER';
-                                      const isDeliverySkipped = ['pickup', 'transport', 'courier', 'counter'].includes((dispatchMethodKey || '').toLowerCase());
-                                      if (isDeliverySkipped && order.workflowSnapshot?.steps) {
-                                        return {
-                                          ...order.workflowSnapshot,
-                                          steps: order.workflowSnapshot.steps.filter((s: any) => s.role !== 'DELIVERY')
-                                        };
-                                      }
-                                      return order.workflowSnapshot;
+                            </td>
+                            <td className={`px-4 py-4 tabular-nums ${tdBorder}`}>
+                              <p className="text-slate-900" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '15px', fontWeight: 600, lineHeight: '24px' }}>{order.customerSnapshot?.name || 'Guest'}</p>
+                              <p className="text-slate-500" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 400, lineHeight: '20px' }}>{order.customerSnapshot?.phone || 'No phone'}</p>
+                              {order.proxyExecutor && (
+                                <div className="mt-1">
+                                  <span className="inline-block px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-100 text-[11px] font-bold text-indigo-600 uppercase tracking-widest break-all">
+                                    Proxy: {(() => {
+                                      const proxy = typeof order.proxyExecutor === 'string' ? JSON.parse(order.proxyExecutor) : order.proxyExecutor;
+                                      return order.proxyName || proxy?.name || (proxy?.role === 'ACDEMA' ? 'AcDema Support' : 'Admin');
                                     })()}
-                                    orderId={order.id}
-                                    detailed={true}
-                                    filterByRoles={false}
-                                    allowNavigation={true}
-                                  />
-                                {((order.status === 'DELIVERED') || (order.workflow?.['deliveredAt']) || (order.currentWorkflowLabel === 'COMPLETED') || ((order.workflowSnapshot?.currentStepIndex ?? -1) >= (order.workflowSnapshot?.steps?.length ?? 0))) && (
-                                  <div className="mt-3 rounded-md bg-emerald-50 border border-emerald-100 p-3 text-emerald-700">
-                                    <p className="text-sm font-black">ORDER COMPLETED</p>
-                                    <p className="text-xs">All workflow stages are completed. No further actions are required.</p>
-                                    <p className="text-[11px] font-medium mt-1">Completed on {(() => {
-                                      const completedAt = (order.workflow?.['deliveredAt'] as any) || (() => {
-                                        const steps = order.workflowSnapshot?.steps ?? [];
-                                        return steps.length ? steps[steps.length - 1]?.completedAt : undefined;
-                                      })();
-                                      if (!completedAt) return '—';
-                                      const parsed = (completedAt as any).seconds 
-                                        ? new Date((completedAt as any).seconds * 1000) 
-                                        : new Date(completedAt as any);
-                                      if (Number.isNaN(parsed.getTime())) return '—';
-                                      return parsed.toLocaleDateString('en-IN');
-                                    })()}</p>
-                                  </div>
-                                )}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="text-slate-600 mt-1 line-clamp-2" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 500, lineHeight: '20px' }}>
+                                {order.items?.map(i => i.productName).join(', ') || order.workflow?.printWorkflow?.tiffFileName || 'Custom Print'}
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 tabular-nums">
-                            <div className="flex items-center gap-1.5">
-                              <Truck size={10} className="text-slate-400" />
-                              <p className="text-[10px] font-bold text-slate-600 uppercase">{order.dispatchInfo?.method || 'Standard'}</p>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-right tabular-nums">
-                            <p className="text-xs font-black text-slate-900 tracking-tight">₹{amount.toLocaleString()}</p>
-                            <div className="flex items-center justify-end gap-1">
-                              <div className={`w-1 h-1 rounded-full ${order.paymentStatus === 'VERIFIED' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                              <p className={`text-[9px] font-black uppercase ${order.paymentStatus === 'VERIFIED' ? 'text-emerald-600' : 'text-amber-500'}`}>
-                                {order.paymentStatus === 'VERIFIED' ? 'Verified' : 'Pending'}
-                              </p>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-center tabular-nums">
-                            <div className="flex flex-col items-center gap-1.5">
-                              <Link
-                                href={`/acdema/orders/${order.id}`}
-                                className="inline-flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white text-slate-400 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm group-hover:scale-105"
-                                title="View Order Details"
-                              >
-                                <ArrowRight size={14} />
-                              </Link>
-                              <div className="flex flex-col gap-1 w-full max-w-[80px]">
-                                <Link
-                                  href={`/admin/invoice-generation/${order.customerId}/${(order as any).parent_order_id || (order as any).baseOrderId || order.id}`}
-                                  className="w-full text-center text-[9px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap"
-                                  title="Generate Invoice"
-                                >
-                                  Invoice
-                                </Link>
-                                <Link
-                                  href={`/receipt-entry?customerId=${order.customerId}`}
-                                  className="w-full text-center text-[9px] font-bold uppercase tracking-widest text-emerald-600 border border-emerald-200 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap"
-                                  title="Record Receipt"
-                                >
-                                  Receipt
-                                </Link>
+                            </td>
+                            <td className={`px-4 py-4 tabular-nums ${tdBorder}`}>
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs font-bold uppercase tracking-tight ${cfg.color.split(' shadow')[0]}`}>
+                                    {React.isValidElement(cfg.icon) ? React.cloneElement(cfg.icon, { size: 12 }) : cfg.icon}
+                                    {cfg.label}
+                                  </span>
+                                  {order.currentWorkflowLabel && (
+                                    <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                                      <span className="text-[10px] text-slate-400">Current Role:</span>
+                                      <span className="text-slate-800">{order.currentWorkflowLabel}</span>
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="mt-1">
+                                    <WorkflowPipelineVisual
+                                      snapshot={(() => {
+                                        const dispatchMethodKey = order.dispatchInfo?.method || order.delivery?.choice || 'COUNTER';
+                                        const isDeliverySkipped = ['pickup', 'transport', 'courier', 'counter'].includes((dispatchMethodKey || '').toLowerCase());
+                                        if (isDeliverySkipped && order.workflowSnapshot?.steps) {
+                                          return {
+                                            ...order.workflowSnapshot,
+                                            steps: order.workflowSnapshot.steps.filter((s: any) => s.role !== 'DELIVERY')
+                                          };
+                                        }
+                                        return order.workflowSnapshot;
+                                      })()}
+                                      orderId={order.id}
+                                      detailed={true}
+                                      filterByRoles={false}
+                                      allowNavigation={true}
+                                    />
+                                  {((order.status === 'DELIVERED') || (order.workflow?.['deliveredAt']) || (order.currentWorkflowLabel === 'COMPLETED') || ((order.workflowSnapshot?.currentStepIndex ?? -1) >= (order.workflowSnapshot?.steps?.length ?? 0))) && (
+                                    <div className="mt-3 rounded-md bg-emerald-50 border border-emerald-100 p-3 text-emerald-700">
+                                      <p className="text-sm font-black">ORDER COMPLETED</p>
+                                      <p className="text-xs">All workflow stages are completed. No further actions are required.</p>
+                                      <p className="text-[11px] font-medium mt-1">Completed on {(() => {
+                                        const completedAt = (order.workflow?.['deliveredAt'] as any) || (() => {
+                                          const steps = order.workflowSnapshot?.steps ?? [];
+                                          return steps.length ? steps[steps.length - 1]?.completedAt : undefined;
+                                        })();
+                                        if (!completedAt) return '—';
+                                        const parsed = (completedAt as any).seconds 
+                                          ? new Date((completedAt as any).seconds * 1000) 
+                                          : new Date(completedAt as any);
+                                        if (Number.isNaN(parsed.getTime())) return '—';
+                                        return parsed.toLocaleDateString('en-IN');
+                                      })()}</p>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className={`px-4 py-4 tabular-nums ${tdBorder}`}>
+                              <div className="flex items-center gap-1.5">
+                                <Truck size={12} className="text-slate-500" />
+                                <p className="text-slate-700" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 500, lineHeight: '22px' }}>{order.dispatchInfo?.method || 'Standard'}</p>
+                              </div>
+                            </td>
+                            <td className={`px-4 py-4 text-right tabular-nums ${tdBorder}`}>
+                              <p className="text-slate-900" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '16px', fontWeight: 700, lineHeight: '24px' }}>₹{amount.toLocaleString()}</p>
+                              <div className="flex items-center justify-end gap-1 mt-0.5">
+                                <div className={`w-1.5 h-1.5 rounded-full ${order.paymentStatus === 'VERIFIED' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                <p className={`uppercase ${order.paymentStatus === 'VERIFIED' ? 'text-emerald-600' : 'text-amber-500'}`} style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '12px', fontWeight: 600 }}>
+                                  {order.paymentStatus === 'VERIFIED' ? 'Verified' : 'Pending'}
+                                </p>
+                              </div>
+                            </td>
+                            <td className={`px-4 py-4 text-center tabular-nums ${tdBorder}`}>
+                              <div className="flex flex-col items-center gap-1.5">
+                                <Link
+                                  href={`/acdema/orders/${order.id}`}
+                                  className="inline-flex items-center justify-center w-8 h-8 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm group-hover:scale-105"
+                                  title="View Order Details"
+                                >
+                                  <ArrowRight size={16} />
+                                </Link>
+                                <div className="flex flex-col gap-1.5 w-full max-w-[90px]">
+                                  <Link
+                                    href={`/admin/invoice-generation/${order.customerId}/${(order as any).parent_order_id || (order as any).baseOrderId || order.id}`}
+                                    className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap shadow-xs"
+                                    title="Generate Invoice"
+                                  >
+                                    Invoice
+                                  </Link>
+                                  <Link
+                                    href={`/receipt-entry?customerId=${order.customerId}`}
+                                    className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-emerald-600 border border-emerald-200 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap shadow-xs"
+                                    title="Record Receipt"
+                                  >
+                                    Receipt
+                                  </Link>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        </React.Fragment>
                       );
                     })
                   )}
