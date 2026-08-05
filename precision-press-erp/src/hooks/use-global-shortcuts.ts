@@ -36,9 +36,6 @@ export function useGlobalShortcuts() {
 
       // Root shortcuts when no menu is open
       if (menuState === null) {
-        if (e.ctrlKey || e.metaKey || e.altKey) {
-          return;
-        }
         const key = e.key.toLowerCase();
         if (key === 'v') {
           e.preventDefault();

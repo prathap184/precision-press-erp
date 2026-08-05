@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { collection, getCountFromServer, limit, onSnapshot, orderBy, query, where, getDoc, doc } from '@/lib/supabase-firestore-shim';
 import { db } from '@/lib/firebase';
@@ -60,39 +60,59 @@ export function GlobalOrdersPage() {
   const [siblingsModal, setSiblingsModal] = useState<{ orders: any[], parentId: string } | null>(null);
   const [selectedSiblingIds, setSelectedSiblingIds] = useState<Set<string>>(new Set());
   const [modalProcessing, setModalProcessing] = useState(false);
-  const [invoicesMap, setInvoicesMap] = useState<Record<string, { id: string; number: string }>>({});
+  const [invoicesList, setInvoicesList] = useState<any[]>([]);
 
-  const fetchInvoicesMap = useCallback(async () => {
+  const fetchInvoices = async () => {
     try {
       const orgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrgId') : null;
-      const headers: Record<string, string> = {};
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (orgId) headers['x-organization-id'] = orgId;
-      const res = await fetch('/api/v1/invoices?limit=1000', { headers });
+      const res = await fetch('/api/v1/invoices?limit=200', { headers });
       if (res.ok) {
         const data = await res.json();
-        const map: Record<string, { id: string; number: string }> = {};
-        (data.data || []).forEach((inv: any) => {
-          if (inv.reference) {
-            const refStr = String(inv.reference);
-            map[refStr] = { id: inv.id, number: inv.number };
-            const cleanRef = refStr.replace('ORD-', '');
-            map[cleanRef] = { id: inv.id, number: inv.number };
-            map[`ORD-${cleanRef}`] = { id: inv.id, number: inv.number };
-          }
-        });
-        setInvoicesMap(map);
+        if (Array.isArray(data.data)) {
+          setInvoicesList(data.data);
+        }
       }
-    } catch (e) {
-      console.warn('Failed to fetch invoices map', e);
+    } catch (err) {
+      console.error('Failed to fetch invoices list:', err);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    fetchInvoicesMap();
-    const handleFocus = () => fetchInvoicesMap();
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [fetchInvoicesMap]);
+    fetchInvoices();
+  }, []);
+
+  const getInvoiceForOrder = (order: any) => {
+    const directId = (order as any).invoice_id || (order as any).invoiceId;
+    const directNumber = (order as any).invoice_number || (order as any).invoiceNumber;
+    if (directId || directNumber) {
+      return { id: directId, number: directNumber };
+    }
+
+    const cleanId = order.id.replace('ORD-', '');
+    const parentId = cleanId.split('-')[0];
+
+    const match = invoicesList.find((inv: any) => {
+      if (!inv.reference) return false;
+      const ref = String(inv.reference);
+      return (
+        ref === parentId ||
+        ref === order.id ||
+        ref === cleanId ||
+        ref === `ORDER #${parentId}` ||
+        ref === `#${parentId}` ||
+        ref.includes(parentId) ||
+        ref.includes(order.id)
+      );
+    });
+
+    if (match) {
+      return { id: match.id, number: match.number || match.invoice_number || match.code };
+    }
+
+    return null;
+  };
 
   const { open: openDrawer } = useCreateDrawer();
 
@@ -177,7 +197,7 @@ export function GlobalOrdersPage() {
       const parentRef = (firstOrder as any).parent_order_id || (firstOrder as any).baseOrderId || firstOrder.id.replace('ORD-', '').split('-')[0];
       openDrawer('invoice', { reference: parentRef, contactId, lines: allMappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
       setSiblingsModal(null);
-      setTimeout(() => fetchInvoicesMap(), 2000);
+      setTimeout(() => fetchInvoices(), 3000);
     } catch (err) {
       console.error('Failed to generate invoice', err);
       openDrawer('invoice', { reference: ordersToProcess[0]?.id });
@@ -756,11 +776,6 @@ export function GlobalOrdersPage() {
 
                       const cleanId = order.id.replace('ORD-', '');
                       const parentOrderNum = cleanId.split('-')[0];
-                      const parentRef = baseOrderId || parentOrderNum;
-                      const matchedInv = 
-                        ((order as any).invoice_id || (order as any).invoiceId)
-                          ? { id: (order as any).invoice_id || (order as any).invoiceId, number: (order as any).invoice_number || (order as any).invoiceNumber || 'Invoiced' }
-                          : (invoicesMap[order.id] || invoicesMap[cleanId] || invoicesMap[parentOrderNum] || invoicesMap[parentRef] || invoicesMap[`ORD-${parentOrderNum}`] || null);
 
                       let groupIdx = 0;
                       let lastParent = "";
@@ -915,37 +930,49 @@ export function GlobalOrdersPage() {
                                   <ArrowRight size={16} />
                                 </Link>
                                 <div className="flex flex-col gap-1.5 w-full max-w-[90px]">
-                                   {matchedInv ? (
-                                     <button
-                                       className="w-full text-center text-[10px] font-black uppercase tracking-widest text-emerald-700 border border-emerald-300 bg-emerald-50 rounded py-1 inline-flex items-center justify-center gap-1 shadow-sm hover:bg-emerald-100 transition-colors cursor-pointer"
-                                       title={`View Invoice #${matchedInv.number || 'Generated'}`}
-                                       onClick={() => {
-                                         window.location.href = `http://40.81.236.61:3000/accounting/sales/${matchedInv.id}`;
-                                       }}
-                                     >
-                                       <CheckCircle size={9} className="text-emerald-600" />
-                                       {matchedInv.number ? matchedInv.number : 'Invoiced'}
-                                     </button>
-                                   ) : (
-                                    <button
-                                      disabled={processingOrderId === order.id || modalProcessing}
-                                      onClick={() => {
-                                        const parentId = order.id.replace('ORD-', '').split('-')[0];
-                                        const siblings = filtered.filter((o: any) => o.id.replace('ORD-', '').split('-')[0] === parentId);
-                                        if (siblings.length > 1) {
-                                          setSiblingsModal({ orders: siblings, parentId });
-                                          setSelectedSiblingIds(new Set([order.id]));
-                                          return;
-                                        }
-                                        handleInvoiceMultiple([order]);
-                                      }}
-                                      className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1"
-                                      title="Generate Invoice"
-                                    >
-                                      {processingOrderId === order.id ? <Loader2 size={9} className="animate-spin" /> : <FileText size={9} />}
-                                      Invoice
-                                    </button>
-                                  )}
+                                   {(() => {
+                                     const matchedInvoice = getInvoiceForOrder(order);
+                                     if (matchedInvoice || (order as any).is_invoice_generated || (order as any).isInvoiceGenerated) {
+                                       const invNum = matchedInvoice?.number || (order as any).invoice_number || (order as any).invoiceNumber || 'Invoiced';
+                                       const invId = matchedInvoice?.id || (order as any).invoice_id || (order as any).invoiceId;
+                                       return (
+                                         <button
+                                           className="w-full text-center text-[10px] font-black uppercase tracking-widest text-emerald-700 border border-emerald-300 bg-emerald-50 rounded py-1 inline-flex items-center justify-center gap-1 shadow-sm hover:bg-emerald-100 transition-colors cursor-pointer"
+                                           title={`Invoice #${invNum}`}
+                                           onClick={() => {
+                                             if (invId) {
+                                               window.location.href = `http://40.81.236.61:3000/sales/${invId}`;
+                                             } else {
+                                               window.location.href = `http://40.81.236.61:3000/accounting/sales`;
+                                             }
+                                           }}
+                                         >
+                                           <CheckCircle size={9} className="text-emerald-600" />
+                                           {invNum}
+                                         </button>
+                                       );
+                                     }
+                                     return (
+                                       <button
+                                         disabled={processingOrderId === order.id || modalProcessing}
+                                         onClick={() => {
+                                           const parentId = order.id.replace('ORD-', '').split('-')[0];
+                                           const siblings = filtered.filter((o: any) => o.id.replace('ORD-', '').split('-')[0] === parentId);
+                                           if (siblings.length > 1) {
+                                             setSiblingsModal({ orders: siblings, parentId });
+                                             setSelectedSiblingIds(new Set([order.id]));
+                                             return;
+                                           }
+                                           handleInvoiceMultiple([order]);
+                                         }}
+                                         className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1"
+                                         title="Generate Invoice"
+                                       >
+                                         {processingOrderId === order.id ? <Loader2 size={9} className="animate-spin" /> : <FileText size={9} />}
+                                         Invoice
+                                       </button>
+                                     );
+                                   })()}
                                   <button
                                     disabled={processingOrderId === order.id}
                                     onClick={() => handleReceipt(order)}
@@ -1001,12 +1028,6 @@ export function GlobalOrdersPage() {
             <div className="overflow-y-auto p-4 flex-1 space-y-2 bg-slate-50">
               {siblingsModal.orders.map((o: any) => {
                 const isSelected = selectedSiblingIds.has(o.id);
-                const itemCleanId = o.id.replace('ORD-', '');
-                const itemParentNum = itemCleanId.split('-')[0];
-                const itemMatchedInv = 
-                  ((o as any).invoice_id || (o as any).invoiceId)
-                    ? { id: (o as any).invoice_id || (o as any).invoiceId, number: (o as any).invoice_number || (o as any).invoiceNumber || 'Invoiced' }
-                    : (invoicesMap[o.id] || invoicesMap[itemCleanId] || invoicesMap[itemParentNum] || invoicesMap[`ORD-${itemParentNum}`] || null);
                 return (
                   <div
                     key={o.id}
@@ -1022,14 +1043,7 @@ export function GlobalOrdersPage() {
                       {isSelected && <CheckCircle size={10} />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={`text-xs font-bold truncate ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>{o.id.replace('ORD-', '')}</p>
-                        {itemMatchedInv && (
-                          <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-black border border-emerald-300">
-                            {itemMatchedInv.number}
-                          </span>
-                        )}
-                      </div>
+                      <p className={`text-xs font-bold truncate ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>{o.id.replace('ORD-', '')}</p>
                       <p className="text-[10px] font-medium text-slate-500 truncate mt-0.5">
                         {o.items?.map((i: any) => i.productName).join(', ') || 'Custom Print'}
                       </p>
