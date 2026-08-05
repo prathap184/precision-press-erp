@@ -3,12 +3,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { collection, getCountFromServer, limit, onSnapshot, orderBy, query, where, getDoc, doc } from '@/lib/supabase-firestore-shim';
-import { ArrowRight, ClipboardList, Loader2, Search, UserCheck, AlertCircle, ChevronDown, Filter } from 'lucide-react';
+import { ArrowRight, ClipboardList, Loader2, Search, UserCheck, AlertCircle, ChevronDown, Filter, FileText, CheckCircle } from 'lucide-react';
 
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/lib/auth-context';
 import { Order } from '@/types/models';
 import { WorkflowPipelineVisual } from '@/components/orders/WorkflowPipelineVisual';
+import { useCreateDrawer } from '@/components/dashboard/create-drawer';
 
 const STATUS_TONE: Record<string, string> = {
   PLACED: 'bg-blue-50 text-blue-700 border-blue-200',
@@ -47,6 +48,90 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
   const [parentTotals, setParentTotals] = useState<Record<string, number>>({});
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string | null>(null);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
+
+  const { open: openDrawer } = useCreateDrawer();
+
+  const handleInvoice = async (order: any) => {
+    try {
+      setProcessingOrderId(order.id);
+      const orgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrgId') : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (orgId) headers['x-organization-id'] = orgId;
+      let contactId: string | undefined;
+      const contactName = order.customerSnapshot?.name;
+      if (contactName && contactName !== 'Guest') {
+        const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=1`, { headers });
+        if (sr.ok) { const sd = await sr.json(); if (sd.data?.length > 0) contactId = sd.data[0].id; }
+        if (!contactId) {
+          const cr = await fetch('/api/v1/contacts', { method: 'POST', headers, body: JSON.stringify({ name: contactName, phone: order.customerSnapshot?.phone || null, type: 'customer' }) });
+          if (cr.ok) { const cd = await cr.json(); if (cd.contact) contactId = cd.contact.id; }
+        }
+      }
+      let taxRates: any[] = [];
+      try { const tr = await fetch('/api/v1/tax-rates', { headers }); if (tr.ok) { const td = await tr.json(); taxRates = td.taxRates || []; } } catch {}
+      let inventory: any[] = [];
+      try { const ir = await fetch('/api/v1/inventory?limit=1000', { headers }); if (ir.ok) { const id2 = await ir.json(); inventory = id2.data || []; } } catch {}
+      const parseJson = (val: any) => { if (typeof val === 'string') { try { return JSON.parse(val); } catch { return null; } } return val; };
+      const parsedItems = parseJson(order.items) || (Array.isArray(order.items) ? order.items : []);
+      const parsedAmounts = parseJson(order.amounts) || (order.amounts || {});
+      const orderGstDecimal = ((Number(order.cgst_percentage || 0) + Number(order.sgst_percentage || 0)) || Number(order.igst_percentage || 0)) / 100;
+      const mappedLines = (Array.isArray(parsedItems) ? parsedItems : []).map((i: any) => {
+        const rawWidth = Number(i.specs?.width ?? i.width ?? 0); const rawHeight = Number(i.specs?.height ?? i.height ?? 0);
+        const widthUnit = i.specs?.widthUnit ?? 'FT'; const heightUnit = i.specs?.heightUnit ?? 'FT';
+        const widthFt = widthUnit === 'IN' ? rawWidth / 12 : rawWidth; const heightFt = heightUnit === 'IN' ? rawHeight / 12 : rawHeight;
+        const qty = Number(i.specs?.quantity ?? i.quantity ?? 1);
+        const pricingSnap = parseJson(i.pricingSnapshot ?? i.pricing_snapshot) || {};
+        const eyeletType = pricingSnap.selectedEyeletType ?? 'NONE'; const eyeletRate = Number(pricingSnap.eyeletRate ?? 0);
+        const eyeletCount = eyeletType !== 'NONE' ? qty : 0;
+        const finishAmount = (eyeletCount * eyeletRate).toFixed(2);
+        let gstDecimal = Number(pricingSnap.tax ?? 0);
+        if (gstDecimal === 0 && orderGstDecimal > 0) gstDecimal = orderGstDecimal; else if (gstDecimal === 0) gstDecimal = 0.18;
+        const gstBasisPts = Math.round(gstDecimal * 10000);
+        const matchedTax = taxRates.find((t: any) => t.rate === gstBasisPts);
+        const matchedInventory = inventory.find((inv: any) => inv.name.toLowerCase() === (i.productName || '').toLowerCase());
+        let desc = i.productName || 'Custom Print';
+        if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
+        if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
+        const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
+        const totalFinish = parseFloat(finishAmount || '0');
+        return { description: desc, quantity: qty.toString(), unitPrice: baseRate.toFixed(2), accountId: '', taxRateId: matchedTax?.id ?? '', inventoryItemId: matchedInventory?.id ?? '', width: widthFt > 0 ? widthFt.toString() : '', length: heightFt > 0 ? heightFt.toString() : '', sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '', finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : '' };
+      });
+      if (mappedLines.length === 0) mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+      const deliveryCharge = Number(order.allocated_logistics_amount ?? parsedAmounts.transport ?? parsedAmounts.deliveryCharges ?? 0);
+      if (deliveryCharge > 0) mappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: deliveryCharge.toFixed(2), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+      let orderDelivery: any = {};
+      if (order.delivery) { try { orderDelivery = typeof order.delivery === 'string' ? JSON.parse(order.delivery) : order.delivery; } catch {} }
+      const parentRef = (order as any).parent_order_id || (order as any).baseOrderId || order.id;
+      openDrawer('invoice', { reference: parentRef, contactId, lines: mappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
+    } catch (err) {
+      console.error('Failed to generate invoice', err);
+      openDrawer('invoice', { reference: order.id });
+    } finally { setProcessingOrderId(null); }
+  };
+
+  const handleReceipt = async (order: any) => {
+    try {
+      setProcessingOrderId(order.id);
+      const orgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrgId') : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (orgId) headers['x-organization-id'] = orgId;
+      let contactId: string | undefined;
+      const contactName = order.customerSnapshot?.name;
+      if (contactName && contactName !== 'Guest') {
+        const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=1`, { headers });
+        if (sr.ok) { const sd = await sr.json(); if (sd.data?.length > 0) contactId = sd.data[0].id; }
+        if (!contactId) {
+          const cr = await fetch('/api/v1/contacts', { method: 'POST', headers, body: JSON.stringify({ name: contactName, phone: order.customerSnapshot?.phone || null, type: 'customer' }) });
+          if (cr.ok) { const cd = await cr.json(); if (cd.contact) contactId = cd.contact.id; }
+        }
+      }
+      openDrawer('customerCredit', { contactId });
+    } catch (err) {
+      console.error('Failed to open receipt', err);
+      openDrawer('customerCredit', {});
+    } finally { setProcessingOrderId(null); }
+  };
 
   const ALL_WORKFLOW_ROLES = [
     { id: 'ACCOUNTANT', label: 'Accounts Approval', color: 'bg-teal-100 text-teal-700' },
@@ -348,12 +433,13 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 min-w-[500px]">Operational Status</th>
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Dispatch</th>
               <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 text-right">Settlement</th>
+              <th className="px-4 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 text-center">Action</th>
             </tr>
           </thead>
           <tbody className="divide-y-2 divide-slate-300">
             {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-16 text-center tabular-nums">
+                <td colSpan={7} className="px-4 py-16 text-center tabular-nums">
                   <div className="inline-flex items-center gap-2 text-slate-500">
                     <Loader2 size={16} className="animate-spin" />
                     Loading orders...
@@ -362,7 +448,7 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-16 text-center text-sm font-semibold text-slate-500 tabular-nums">
+                <td colSpan={7} className="px-4 py-16 text-center text-sm font-semibold text-slate-500 tabular-nums">
                   No orders found for this view.
                 </td>
               </tr>
@@ -439,6 +525,28 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
                         <p className={`text-[9px] font-black uppercase ${order.paymentStatus === 'VERIFIED' ? 'text-emerald-600' : 'text-amber-500'}`}>
                           {order.paymentStatus === 'VERIFIED' ? 'Verified' : 'Pending'}
                         </p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-center align-top tabular-nums">
+                      <div className="flex flex-col gap-1.5 items-center">
+                        <button
+                          disabled={processingOrderId === order.id}
+                          onClick={() => handleInvoice(order)}
+                          className="w-full max-w-[80px] text-center text-[9px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1"
+                          title="Generate Invoice"
+                        >
+                          {processingOrderId === order.id ? <Loader2 size={9} className="animate-spin" /> : <FileText size={9} />}
+                          Invoice
+                        </button>
+                        <button
+                          disabled={processingOrderId === order.id}
+                          onClick={() => handleReceipt(order)}
+                          className="w-full max-w-[80px] text-center text-[9px] font-bold uppercase tracking-widest text-emerald-600 border border-emerald-200 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded py-1 transition-colors disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1"
+                          title="Record Customer Prepayment"
+                        >
+                          {processingOrderId === order.id ? <Loader2 size={9} className="animate-spin" /> : <CheckCircle size={9} />}
+                          Receipt
+                        </button>
                       </div>
                     </td>
                   </tr>

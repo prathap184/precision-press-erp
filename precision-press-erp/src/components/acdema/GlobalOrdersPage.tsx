@@ -23,6 +23,7 @@ import {
   Truck,
   Filter,
   ChevronDown,
+  X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useCreateDrawer } from '@/components/dashboard/create-drawer';
@@ -56,24 +57,28 @@ export function GlobalOrdersPage() {
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string | null>(null);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
   const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
+  const [siblingsModal, setSiblingsModal] = useState<{ orders: any[], parentId: string } | null>(null);
+  const [selectedSiblingIds, setSelectedSiblingIds] = useState<Set<string>>(new Set());
+  const [modalProcessing, setModalProcessing] = useState(false);
 
   const { open: openDrawer } = useCreateDrawer();
 
-  const handleInvoice = async (order: any) => {
+  const handleInvoiceMultiple = async (ordersToProcess: any[]) => {
     try {
-      setProcessingOrderId(order.id);
+      if (ordersToProcess.length === 0) return;
+      const firstOrder = ordersToProcess[0];
+      setProcessingOrderId(firstOrder.id);
+      setModalProcessing(true);
       const orgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrgId') : null;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (orgId) headers['x-organization-id'] = orgId;
-
-      // Look up or create contact
       let contactId: string | undefined;
-      const contactName = order.customerSnapshot?.name;
+      const contactName = firstOrder.customerSnapshot?.name;
       if (contactName && contactName !== 'Guest') {
         const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=1`, { headers });
         if (sr.ok) { const sd = await sr.json(); if (sd.data?.length > 0) contactId = sd.data[0].id; }
         if (!contactId) {
-          const cr = await fetch('/api/v1/contacts', { method: 'POST', headers, body: JSON.stringify({ name: contactName, phone: order.customerSnapshot?.phone || null, type: 'customer' }) });
+          const cr = await fetch('/api/v1/contacts', { method: 'POST', headers, body: JSON.stringify({ name: contactName, phone: firstOrder.customerSnapshot?.phone || null, type: 'customer' }) });
           if (cr.ok) { const cd = await cr.json(); if (cd.contact) contactId = cd.contact.id; }
         }
       }
@@ -85,54 +90,66 @@ export function GlobalOrdersPage() {
       try { const ir = await fetch('/api/v1/inventory?limit=1000', { headers }); if (ir.ok) { const id2 = await ir.json(); inventory = id2.data || []; } } catch {}
 
       const parseJson = (val: any) => { if (typeof val === 'string') { try { return JSON.parse(val); } catch { return null; } } return val; };
-      const parsedItems = parseJson(order.items) || (Array.isArray(order.items) ? order.items : []);
-      const parsedAmounts = parseJson(order.amounts) || (order.amounts || {});
-      const orderGstDecimal = ((Number(order.cgst_percentage || 0) + Number(order.sgst_percentage || 0)) || Number(order.igst_percentage || 0)) / 100;
 
-      const mappedLines = (Array.isArray(parsedItems) ? parsedItems : []).map((i: any) => {
-        const rawWidth = Number(i.specs?.width ?? i.width ?? 0);
-        const rawHeight = Number(i.specs?.height ?? i.height ?? 0);
-        const widthUnit = i.specs?.widthUnit ?? 'FT';
-        const heightUnit = i.specs?.heightUnit ?? 'FT';
-        const widthFt = widthUnit === 'IN' ? rawWidth / 12 : rawWidth;
-        const heightFt = heightUnit === 'IN' ? rawHeight / 12 : rawHeight;
-        const qty = Number(i.specs?.quantity ?? i.quantity ?? 1);
-        const pricingSnap = parseJson(i.pricingSnapshot ?? i.pricing_snapshot) || {};
-        const eyeletType = pricingSnap.selectedEyeletType ?? 'NONE';
-        const eyeletRate = Number(pricingSnap.eyeletRate ?? 0);
-        const eyeletCount = eyeletType !== 'NONE' ? qty : 0;
-        const finishAmount = (eyeletCount * eyeletRate).toFixed(2);
-        let gstDecimal = Number(pricingSnap.tax ?? 0);
-        if (gstDecimal === 0 && orderGstDecimal > 0) gstDecimal = orderGstDecimal;
-        else if (gstDecimal === 0) gstDecimal = 0.18;
-        const gstBasisPts = Math.round(gstDecimal * 10000);
-        const matchedTax = taxRates.find((t: any) => t.rate === gstBasisPts);
-        const matchedInventory = inventory.find((inv: any) => inv.name.toLowerCase() === (i.productName || '').toLowerCase());
-        let desc = i.productName || 'Custom Print';
-        if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
-        if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
-        const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
-        const totalFinish = parseFloat(finishAmount || '0');
-        return { description: desc, quantity: qty.toString(), unitPrice: baseRate.toFixed(2), accountId: '', taxRateId: matchedTax?.id ?? '', inventoryItemId: matchedInventory?.id ?? '', width: widthFt > 0 ? widthFt.toString() : '', length: heightFt > 0 ? heightFt.toString() : '', sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '', finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : '' };
-      });
+      const allMappedLines: any[] = [];
+      let totalDeliveryCharge = 0;
+      let orderDelivery: any = {};
 
-      if (mappedLines.length === 0) {
-        mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+      for (const order of ordersToProcess) {
+        const parsedItems = parseJson(order.items) || (Array.isArray(order.items) ? order.items : []);
+        const parsedAmounts = parseJson(order.amounts) || (order.amounts || {});
+        const orderGstDecimal = ((Number(order.cgst_percentage || 0) + Number(order.sgst_percentage || 0)) || Number(order.igst_percentage || 0)) / 100;
+
+        const mappedLines = (Array.isArray(parsedItems) ? parsedItems : []).map((i: any) => {
+          const rawWidth = Number(i.specs?.width ?? i.width ?? 0);
+          const rawHeight = Number(i.specs?.height ?? i.height ?? 0);
+          const widthUnit = i.specs?.widthUnit ?? 'FT';
+          const heightUnit = i.specs?.heightUnit ?? 'FT';
+          const widthFt = widthUnit === 'IN' ? rawWidth / 12 : rawWidth;
+          const heightFt = heightUnit === 'IN' ? rawHeight / 12 : rawHeight;
+          const qty = Number(i.specs?.quantity ?? i.quantity ?? 1);
+          const pricingSnap = parseJson(i.pricingSnapshot ?? i.pricing_snapshot) || {};
+          const eyeletType = pricingSnap.selectedEyeletType ?? 'NONE';
+          const eyeletRate = Number(pricingSnap.eyeletRate ?? 0);
+          const eyeletCount = eyeletType !== 'NONE' ? qty : 0;
+          const finishAmount = (eyeletCount * eyeletRate).toFixed(2);
+          let gstDecimal = Number(pricingSnap.tax ?? 0);
+          if (gstDecimal === 0 && orderGstDecimal > 0) gstDecimal = orderGstDecimal;
+          else if (gstDecimal === 0) gstDecimal = 0.18;
+          const gstBasisPts = Math.round(gstDecimal * 10000);
+          const matchedTax = taxRates.find((t: any) => t.rate === gstBasisPts);
+          const matchedInventory = inventory.find((inv: any) => inv.name.toLowerCase() === (i.productName || '').toLowerCase());
+          let desc = i.productName || 'Custom Print';
+          if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
+          if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
+          const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
+          const totalFinish = parseFloat(finishAmount || '0');
+          return { description: desc, quantity: qty.toString(), unitPrice: baseRate.toFixed(2), accountId: '', taxRateId: matchedTax?.id ?? '', inventoryItemId: matchedInventory?.id ?? '', width: widthFt > 0 ? widthFt.toString() : '', length: heightFt > 0 ? heightFt.toString() : '', sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '', finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : '' };
+        });
+
+        if (mappedLines.length === 0) {
+          mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+        }
+        allMappedLines.push(...mappedLines);
+
+        totalDeliveryCharge += Number(order.allocated_logistics_amount ?? parsedAmounts.transport ?? parsedAmounts.deliveryCharges ?? 0);
+
+        if (Object.keys(orderDelivery).length === 0 && order.delivery) {
+          try { orderDelivery = typeof order.delivery === 'string' ? JSON.parse(order.delivery) : order.delivery; } catch {}
+        }
       }
 
-      const deliveryCharge = Number(order.allocated_logistics_amount ?? parsedAmounts.transport ?? parsedAmounts.deliveryCharges ?? 0);
-      if (deliveryCharge > 0) mappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: deliveryCharge.toFixed(2), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+      if (totalDeliveryCharge > 0) allMappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: totalDeliveryCharge.toFixed(2), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
 
-      let orderDelivery: any = {};
-      if (order.delivery) { try { orderDelivery = typeof order.delivery === 'string' ? JSON.parse(order.delivery) : order.delivery; } catch {} }
-
-      const parentRef = (order as any).parent_order_id || (order as any).baseOrderId || order.id;
-      openDrawer('invoice', { reference: parentRef, contactId, lines: mappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
+      const parentRef = (firstOrder as any).parent_order_id || (firstOrder as any).baseOrderId || firstOrder.id.replace('ORD-', '').split('-')[0];
+      openDrawer('invoice', { reference: parentRef, contactId, lines: allMappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
+      setSiblingsModal(null);
     } catch (err) {
       console.error('Failed to generate invoice', err);
-      openDrawer('invoice', { reference: order.id });
+      openDrawer('invoice', { reference: ordersToProcess[0]?.id });
     } finally {
       setProcessingOrderId(null);
+      setModalProcessing(false);
     }
   };
 
@@ -859,15 +876,40 @@ export function GlobalOrdersPage() {
                                   <ArrowRight size={16} />
                                 </Link>
                                 <div className="flex flex-col gap-1.5 w-full max-w-[90px]">
-                                  <button
-                                    disabled={processingOrderId === order.id}
-                                    onClick={() => handleInvoice(order)}
-                                    className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1"
-                                    title="Generate Invoice"
-                                  >
-                                    {processingOrderId === order.id ? <Loader2 size={9} className="animate-spin" /> : <FileText size={9} />}
-                                    Invoice
-                                  </button>
+                                   {(order as any).is_invoice_generated || (order as any).isInvoiceGenerated || (order as any).invoice_number || (order as any).invoiceNumber || (order as any).invoice_id || (order as any).invoiceId ? (
+                                     <button
+                                       className="w-full text-center text-[10px] font-black uppercase tracking-widest text-emerald-700 border border-emerald-300 bg-emerald-50 rounded py-1 inline-flex items-center justify-center gap-1 shadow-sm hover:bg-emerald-100 transition-colors cursor-pointer"
+                                       title={`Invoice #${(order as any).invoice_number || (order as any).invoiceNumber || 'Generated'}`}
+                                       onClick={() => {
+                                         const invId = (order as any).invoice_id || (order as any).invoiceId;
+                                         if (invId) {
+                                           window.location.href = `http://40.81.236.61:3000/sales/${invId}`;
+                                         }
+                                       }}
+                                     >
+                                       <CheckCircle size={9} className="text-emerald-600" />
+                                       {(order as any).invoice_number || (order as any).invoiceNumber ? ((order as any).invoice_number || (order as any).invoiceNumber) : 'Invoiced'}
+                                     </button>
+                                   ) : (
+                                    <button
+                                      disabled={processingOrderId === order.id || modalProcessing}
+                                      onClick={() => {
+                                        const parentId = order.id.replace('ORD-', '').split('-')[0];
+                                        const siblings = filtered.filter((o: any) => o.id.replace('ORD-', '').split('-')[0] === parentId);
+                                        if (siblings.length > 1) {
+                                          setSiblingsModal({ orders: siblings, parentId });
+                                          setSelectedSiblingIds(new Set([order.id]));
+                                          return;
+                                        }
+                                        handleInvoiceMultiple([order]);
+                                      }}
+                                      className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1"
+                                      title="Generate Invoice"
+                                    >
+                                      {processingOrderId === order.id ? <Loader2 size={9} className="animate-spin" /> : <FileText size={9} />}
+                                      Invoice
+                                    </button>
+                                  )}
                                   <button
                                     disabled={processingOrderId === order.id}
                                     onClick={() => handleReceipt(order)}
@@ -902,6 +944,71 @@ export function GlobalOrdersPage() {
         </div>
         </div>
       </div>
+
+      {siblingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh] border border-slate-200">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-indigo-100 rounded-xl flex items-center justify-center">
+                  <FileText size={16} className="text-indigo-600" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-900 uppercase tracking-widest">Select Items to Invoice</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Parent: {siblingsModal.parentId}</p>
+                </div>
+              </div>
+              <button onClick={() => setSiblingsModal(null)} className="w-7 h-7 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors">
+                <X size={14} />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-4 flex-1 space-y-2 bg-slate-50">
+              {siblingsModal.orders.map((o: any) => {
+                const isSelected = selectedSiblingIds.has(o.id);
+                return (
+                  <div
+                    key={o.id}
+                    onClick={() => {
+                      const next = new Set(selectedSiblingIds);
+                      if (next.has(o.id)) next.delete(o.id);
+                      else next.add(o.id);
+                      setSelectedSiblingIds(next);
+                    }}
+                    className={`flex items-center gap-3 p-3 rounded-xl border ${isSelected ? 'border-indigo-500 bg-indigo-50/50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'} transition-all cursor-pointer`}
+                  >
+                    <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? 'bg-indigo-500 border-indigo-500 text-white' : 'border-slate-300'}`}>
+                      {isSelected && <CheckCircle size={10} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-bold truncate ${isSelected ? 'text-indigo-900' : 'text-slate-700'}`}>{o.id.replace('ORD-', '')}</p>
+                      <p className="text-[10px] font-medium text-slate-500 truncate mt-0.5">
+                        {o.items?.map((i: any) => i.productName).join(', ') || 'Custom Print'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-xs font-black ${isSelected ? 'text-indigo-600' : 'text-slate-900'}`}>₹{(o.amounts?.grandTotal ?? (o as any).grandTotal ?? (o as any).grand_total_snapshot ?? 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="p-4 border-t border-slate-100 bg-white flex gap-3">
+              <button onClick={() => setSiblingsModal(null)} className="flex-1 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">Cancel</button>
+              <button
+                disabled={selectedSiblingIds.size === 0 || modalProcessing}
+                onClick={() => {
+                  const selected = siblingsModal.orders.filter((o: any) => selectedSiblingIds.has(o.id));
+                  handleInvoiceMultiple(selected);
+                }}
+                className="flex-1 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black uppercase tracking-widest transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              >
+                {modalProcessing ? <Loader2 size={12} className="animate-spin" /> : <FileText size={12} />}
+                Generate Invoice
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </RoleGuard>
   );
 

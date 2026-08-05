@@ -20,6 +20,8 @@ const nextConfig = {
       'drizzle-orm/node-postgres',
       '@neondatabase/serverless',
       'pg',
+      '@upstash/redis',
+      '@upstash/ratelimit',
     ],
   },
   webpack: (config) => {
