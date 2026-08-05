@@ -21,7 +21,10 @@ async function testClient(name: string, url: string | undefined, key: string | u
   console.log(`${name}: url=${url}`);
   console.log(`${name}: key=${mask(key)}`);
 
-  const client = createClient(url, key);
+  const client = createClient(url, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    realtime: { log_level: "silent" }
+  });
   const { data, error } = await client.from('profiles').select('*').limit(1);
   if (error) {
     console.error(`${name} query error:`, error.message || error);
