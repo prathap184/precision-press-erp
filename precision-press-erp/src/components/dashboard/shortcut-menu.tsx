@@ -57,7 +57,7 @@ export function ShortcutMenu() {
               <ShortcutItem hotkey="F5" label="Payment" onClick={() => { router.push('/purchases'); closeMenu(); }} />
               <ShortcutItem hotkey="F6" label="Receipt entry (sync) / gpay or cash" onClick={() => { openDrawer("customerCredit"); closeMenu(); }} />
               <ShortcutItem hotkey="F7" label="Journal" onClick={() => { router.push('/accounting'); closeMenu(); }} />
-              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { router.push('/sales'); closeMenu(); }} />
+              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { openDrawer("invoice"); closeMenu(); }} />
               <ShortcutItem hotkey="F10" label="Quote" onClick={() => { window.location.href = 'http://localhost:3000/quotation-builder'; }} />
             </div>
           )}

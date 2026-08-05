@@ -213,8 +213,12 @@ export function GlobalOrdersPage() {
       const contactName = order.customerSnapshot?.name || 'Guest';
       const amount = order.amounts?.grandTotal ?? (order as any).grandTotal ?? (order as any).grand_total_snapshot ?? 0;
       
-      const receiptUrl = `http://40.81.236.61:3000/accounting/sales/customer-prepayments?openReceipt=1&customerName=${encodeURIComponent(contactName)}&amount=${encodeURIComponent(amount.toString())}&currency=INR&country=India`;
-      window.location.href = receiptUrl;
+      openDrawer('customerCredit', {
+        contactName,
+        amount: amount.toString(),
+        notes: `Receipt for Order #${order.id.replace('ORD-', '')}`,
+        reference: order.id
+      });
     } catch (err) {
       console.error('Failed to open receipt', err);
     } finally {
