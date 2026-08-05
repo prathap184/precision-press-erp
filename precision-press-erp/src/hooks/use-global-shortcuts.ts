@@ -6,26 +6,32 @@ import { useRouter } from 'next/navigation';
 export type MenuState = null | 'VOUCHERS' | 'DISPLAY_REPORTS' | 'ACCOUNT_BOOKS' | 'LEDGERS';
 
 const PARENT_ROUTE_MAP: Record<string, string> = {
+  '/dashboard': '/admin/orders',
+  '/accounting': '/admin/orders',
   '/admin/staff': '/admin/orders',
   '/proxy-order': '/admin/orders',
   '/pixel-orders': '/admin/orders',
   '/sales/invoices/new': '/sales/invoices',
-  '/sales/invoices': '/sales',
-  '/sales/quotes': '/sales',
+  '/sales/invoices': '/accounting/sales',
+  '/sales/quotes': '/accounting/sales',
   '/quotation-builder': '/sales/quotes',
-  '/sales/customer-prepayments': '/sales',
-  '/accounting/sales/customer-prepayments': '/sales',
-  '/sales/receipts': '/sales',
-  '/sales': '/admin/orders',
+  '/sales/customer-prepayments': '/accounting/sales',
+  '/accounting/sales/customer-prepayments': '/accounting/sales',
+  '/sales/receipts': '/accounting/sales',
+  '/sales': '/accounting',
+  '/accounting/sales': '/accounting',
   '/accounting/banking': '/accounting',
   '/purchases': '/accounting',
+  '/accounting/purchases': '/accounting',
   '/accounting/accounts': '/accounting',
+  '/accounting/inventory': '/accounting',
+  '/accounting/crm': '/accounting',
+  '/accounting/projects': '/accounting',
+  '/accounting/payrolls': '/accounting',
   '/reports/day-book': '/reports',
   '/reports/general-ledger': '/reports',
   '/reports': '/accounting',
-  '/accounting': '/admin/orders',
   '/contacts': '/admin/orders',
-  '/accounting/inventory': '/admin/orders',
   '/projects': '/admin/orders',
 };
 
@@ -36,6 +42,9 @@ export function getParentRoute(pathname: string): string {
   if (cleanPath.startsWith('/acdema/orders/')) return '/admin/orders';
   if (cleanPath.startsWith('/sales/invoices/')) return '/sales/invoices';
   if (cleanPath.startsWith('/sales/quotes/')) return '/sales/quotes';
+  if (cleanPath.startsWith('/accounting/sales/')) return '/accounting/sales';
+  if (cleanPath.startsWith('/accounting/purchases/')) return '/accounting/purchases';
+  if (cleanPath.startsWith('/accounting/')) return '/accounting';
   if (cleanPath.startsWith('/contacts')) return '/admin/orders';
   if (cleanPath.startsWith('/admin/')) return '/admin/orders';
   return '/admin/orders';
