@@ -13,7 +13,14 @@ const nextConfig = {
     domains: ['firebasestorage.googleapis.com'],
   },
   experimental: {
-    serverComponentsExternalPackages: ['undici', 'sharp'],
+    serverComponentsExternalPackages: [
+      'undici',
+      'sharp',
+      'drizzle-orm',
+      'drizzle-orm/node-postgres',
+      '@neondatabase/serverless',
+      'pg',
+    ],
   },
   webpack: (config) => {
     config.resolve.alias = {
