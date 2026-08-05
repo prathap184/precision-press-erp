@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { organization, member, users, subscription, journalEntry } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, inArray } from "drizzle-orm";
 import { isValidCurrencyCode } from "@/lib/currency/iso4217";
 import { auth } from "@/lib/auth";
 import { getAuthContext, AuthError } from "@/lib/api/auth-context";
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
         })
         .from(member)
         .where(
-          sql`${member.organizationId} IN ${orgIds}`
+          inArray(member.organizationId, orgIds)
         )
         .groupBy(member.organizationId);
       memberCounts = Object.fromEntries(
