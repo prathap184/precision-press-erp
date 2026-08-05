@@ -125,11 +125,11 @@ export function useGlobalShortcuts() {
           } else if (e.key === 'F5') {
             router.push('/purchases');
           } else if (e.key === 'F6') {
-            router.push('/sales/customer-prepayments');
+            window.dispatchEvent(new CustomEvent('open-drawer', { detail: { type: 'customerCredit' } }));
           } else if (e.key === 'F7') {
             router.push('/accounting');
           } else if (e.key === 'F8') {
-            router.push('/sales');
+            window.dispatchEvent(new CustomEvent('open-drawer', { detail: { type: 'invoice' } }));
           } else if (e.key === 'F10') {
             window.location.href = 'http://localhost:3000/quotation-builder';
           }

@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 "use client";
 
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
@@ -104,6 +104,16 @@ export function CreateDrawerProvider({ children }: { children: React.ReactNode }
     setActiveType(type);
   }, []);
   const close = useCallback(() => { setActiveType(null); setInitialData(undefined); }, []);
+
+  // Allow keyboard shortcuts (F6/F8) to open drawers via window event from anywhere
+  useEffect(() => {
+    const handleOpenDrawer = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.type) open(detail.type, detail.initialData);
+    };
+    window.addEventListener("open-drawer", handleOpenDrawer);
+    return () => window.removeEventListener("open-drawer", handleOpenDrawer);
+  }, [open]);
 
   return (
     <CreateDrawerContext.Provider value={{ open, close }}>
