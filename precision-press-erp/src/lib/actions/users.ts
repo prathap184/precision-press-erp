@@ -186,7 +186,7 @@ export async function getCustomers() {
           role: 'CUSTOMER',
           ...data,
           customerType: data.customer_type || (data.payment_terms_days && data.payment_terms_days > 0 ? 'CREDIT' : 'CASH'),
-          creditLimit: data.credit_limit || (data.payment_terms_days > 0 ? 999999 : 0),
+          creditLimit: Number(data.credit_limit ?? 0),
         };
         customerData.uid = data.uid || doc.id;
         return customerData as UserProfile;
