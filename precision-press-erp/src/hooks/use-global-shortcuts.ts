@@ -5,6 +5,42 @@ import { useRouter } from 'next/navigation';
 
 export type MenuState = null | 'VOUCHERS' | 'DISPLAY_REPORTS' | 'ACCOUNT_BOOKS' | 'LEDGERS';
 
+const PARENT_ROUTE_MAP: Record<string, string> = {
+  '/admin/staff': '/admin/orders',
+  '/proxy-order': '/admin/orders',
+  '/pixel-orders': '/admin/orders',
+  '/sales/invoices/new': '/sales/invoices',
+  '/sales/invoices': '/sales',
+  '/sales/quotes': '/sales',
+  '/quotation-builder': '/sales/quotes',
+  '/sales/customer-prepayments': '/sales',
+  '/accounting/sales/customer-prepayments': '/sales',
+  '/sales/receipts': '/sales',
+  '/sales': '/admin/orders',
+  '/accounting/banking': '/accounting',
+  '/purchases': '/accounting',
+  '/accounting/accounts': '/accounting',
+  '/reports/day-book': '/reports',
+  '/reports/general-ledger': '/reports',
+  '/reports': '/accounting',
+  '/accounting': '/admin/orders',
+  '/contacts': '/admin/orders',
+  '/accounting/inventory': '/admin/orders',
+  '/projects': '/admin/orders',
+};
+
+export function getParentRoute(pathname: string): string {
+  const cleanPath = pathname.split('?')[0].replace(/\/$/, '');
+  if (!cleanPath || cleanPath === '/admin/orders') return '/admin/orders';
+  if (PARENT_ROUTE_MAP[cleanPath]) return PARENT_ROUTE_MAP[cleanPath];
+  if (cleanPath.startsWith('/acdema/orders/')) return '/admin/orders';
+  if (cleanPath.startsWith('/sales/invoices/')) return '/sales/invoices';
+  if (cleanPath.startsWith('/sales/quotes/')) return '/sales/quotes';
+  if (cleanPath.startsWith('/contacts')) return '/admin/orders';
+  if (cleanPath.startsWith('/admin/')) return '/admin/orders';
+  return '/admin/orders';
+}
+
 export function useGlobalShortcuts() {
   const [menuState, setMenuState] = useState<MenuState>(null);
   const router = useRouter();
@@ -29,12 +65,20 @@ export function useGlobalShortcuts() {
         return;
       }
 
-      // Close menu on Escape, or go back if menu is already closed
+      // Close menu on Escape, or navigate to parent page in hierarchy tree
       if (e.key === 'Escape') {
         if (menuState !== null) {
           closeMenu();
         } else {
-          router.back();
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/admin/orders') {
+            const parent = getParentRoute(currentPath);
+            if (parent === '/admin/orders' && process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL) {
+              window.location.href = `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}/admin/orders`;
+            } else {
+              router.push(parent);
+            }
+          }
         }
         return;
       }
