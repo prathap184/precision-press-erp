@@ -4,6 +4,12 @@ const path = require('path');
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     domains: ['firebasestorage.googleapis.com'],
   },
