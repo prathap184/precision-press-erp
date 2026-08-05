@@ -69,7 +69,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
           
           {menuState === 'VOUCHERS' && (
             <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { router.push('/sales'); closeMenu(); }} />
+              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { openDrawer("invoice"); closeMenu(); }} />
               <ShortcutItem hotkey="F10" label="Quote" onClick={() => { router.push('/quotation-builder'); closeMenu(); }} />
               <ShortcutItem hotkey="F6" label="Receipt entry (sync) / gpay or cash" onClick={() => { openDrawer("customerCredit"); closeMenu(); }} />
               <ShortcutItem hotkey="F5" label="Payment" onClick={() => { router.push('/purchases'); closeMenu(); }} />

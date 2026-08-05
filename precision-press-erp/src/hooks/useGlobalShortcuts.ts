@@ -127,11 +127,11 @@ export function useGlobalShortcuts() {
         if (isFunctionKey) {
           e.preventDefault();
           if (e.key === 'F8') {
-            router.push('/sales');
+            window.dispatchEvent(new CustomEvent('open-drawer', { detail: { type: 'invoice' } }));
           } else if (e.key === 'F10') {
             router.push('/quotation-builder');
           } else if (e.key === 'F6') {
-            router.push('/sales/customer-prepayments');
+            window.dispatchEvent(new CustomEvent('open-drawer', { detail: { type: 'customerCredit' } }));
           } else if (e.key === 'F5') {
             router.push('/purchases');
           } else if (e.key === 'F4') {
