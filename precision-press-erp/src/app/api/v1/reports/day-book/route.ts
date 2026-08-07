@@ -77,51 +77,40 @@ export async function GET(request: Request) {
         };
       });
 
-      // Tally Standard Voucher Type Classification
-      let voucherType = "Journal";
-      let link = `/accounting`;
-
+      // Tally Standard Voucher Type Classification based on DB voucherType / sourceModule
+      const vType = (ent.voucherType || "").toUpperCase();
+      const sModule = (ent.sourceModule || "").toUpperCase();
+      const sType = (ent.sourceType || "").toLowerCase();
       const descLower = (ent.description || "").toLowerCase();
       const ref = ent.reference || "";
 
-      // Check if it's a Customer Payment / Receipt (Inflow from Customer / Deposit)
-      if (
-        descLower.includes("payment for pay") ||
-        descLower.includes("sales receipt") ||
-        descLower.includes("auto-apply customer credit") ||
-        descLower.includes("prepayment") ||
-        ref === "prepayment" ||
-        ent.sourceType === "payment"
-      ) {
+      let voucherType = "Journal";
+      let link = `/accounting`;
+
+      if (vType === "RECEIPT" || sModule === "RECEIPT" || sType === "receipt" || descLower.includes("receipt")) {
         voucherType = "Receipt";
         if (ent.sourceId) link = `/sales/payments/${ent.sourceId}`;
-      } 
-      // Check if it's a Sales Invoice
-      else if (descLower.startsWith("invoice inv") || (descLower.includes("invoice") && !descLower.includes("auto-apply")) || ent.sourceType === "invoice") {
+      } else if (vType === "PAYMENT" || sModule === "PAYMENT" || sType === "payment" || (descLower.includes("payment") && !descLower.includes("contra"))) {
+        voucherType = "Payment";
+        if (ent.sourceId) link = `/purchases/expenses/${ent.sourceId}`;
+      } else if (vType === "CONTRA" || sModule === "CONTRA" || sType === "contra" || descLower.includes("contra")) {
+        voucherType = "Contra";
+      } else if (vType === "SALES" || sModule === "SALES" || sType === "invoice" || descLower.startsWith("invoice inv")) {
         voucherType = "Sales Invoice";
         if (ent.sourceId) link = `/sales/${ent.sourceId}`;
-      } 
-      // Check if it's a Supplier Payment / Expense (Outflow to Vendor)
-      else if (descLower.includes("expense") || ent.sourceType === "expense") {
-        voucherType = "Payment"; // Tally calls vendor payouts "Payment"
-        if (ent.sourceId) link = `/purchases/expenses/${ent.sourceId}`;
-      } 
-      // Check if it's a Purchase Bill
-      else if (descLower.includes("bill") || ent.sourceType === "bill") {
+      } else if (vType === "PURCHASE" || sModule === "PURCHASE" || sType === "bill" || descLower.includes("bill")) {
         voucherType = "Purchase";
         if (ent.sourceId) link = `/purchases/${ent.sourceId}`;
-      } 
-      // Check Returns & Credits
-      else if (descLower.includes("credit note") || ent.sourceType === "credit_note") {
+      } else if (descLower.includes("credit note") || sType === "credit_note") {
         voucherType = "Credit Note";
         if (ent.sourceId) link = `/sales/credit-notes/${ent.sourceId}`;
-      } else if (descLower.includes("debit note") || ent.sourceType === "debit_note") {
+      } else if (descLower.includes("debit note") || sType === "debit_note") {
         voucherType = "Debit Note";
         if (ent.sourceId) link = `/purchases/debit-notes/${ent.sourceId}`;
-      } 
-      // Check Cost of Sales / Inventory Stock Journals
-      else if (descLower.includes("cost of sales") || descLower.includes("opening stock") || descLower.includes("inventory adjustment")) {
+      } else if (descLower.includes("cost of sales") || descLower.includes("opening stock") || descLower.includes("inventory adjustment")) {
         voucherType = "Stock Journal";
+      } else {
+        voucherType = "Journal";
       }
 
       records.push({

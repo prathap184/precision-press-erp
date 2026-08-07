@@ -54,6 +54,7 @@ export default function DayBookPage() {
     if (voucherFilter === 'RECEIPT') return r.voucherType === 'Receipt';
     if (voucherFilter === 'PAYMENT') return r.voucherType === 'Payment';
     if (voucherFilter === 'PURCHASE') return r.voucherType === 'Purchase';
+    if (voucherFilter === 'CONTRA') return r.voucherType === 'Contra';
     if (voucherFilter === 'STOCK_JOURNAL') return r.voucherType === 'Stock Journal';
     if (voucherFilter === 'CREDIT_NOTE') return r.voucherType === 'Credit Note';
     if (voucherFilter === 'DEBIT_NOTE') return r.voucherType === 'Debit Note';
@@ -149,6 +150,7 @@ export default function DayBookPage() {
           { id: 'RECEIPT', label: 'Receipts' },
           { id: 'PAYMENT', label: 'Payments' },
           { id: 'PURCHASE', label: 'Purchases' },
+          { id: 'CONTRA', label: 'Contra' },
           { id: 'STOCK_JOURNAL', label: 'Stock Journals' },
           { id: 'CREDIT_NOTE', label: 'Credit Notes' },
           { id: 'DEBIT_NOTE', label: 'Debit Notes' },
