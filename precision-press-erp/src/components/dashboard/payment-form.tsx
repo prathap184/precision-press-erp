@@ -35,21 +35,21 @@ interface BankOption {
 }
 
 const PAYMENT_SUBTYPES = [
-  { value: "supplier_payment", label: "Supplier Payment" },
-  { value: "customer_refund", label: "Customer Refund" },
-  { value: "expense", label: "Expense Payment" },
-  { value: "salary", label: "Salary / Payroll Payout" },
-  { value: "employee_advance", label: "Employee Advance" },
-  { value: "employee_reimbursement", label: "Employee Reimbursement" },
-  { value: "loan_repayment", label: "Loan Repayment" },
-  { value: "tax_payment", label: "Tax Payment" },
+  { value: "supplier_payment", label: "Supplier Payment", mapType: "liability", code: "2100" },
+  { value: "customer_refund", label: "Customer Refund", mapType: "asset", code: "1200" },
+  { value: "expense", label: "Expense Payment", mapType: "expense" },
+  { value: "salary", label: "Salary / Payroll Payout", mapType: "expense" },
+  { value: "employee_advance", label: "Employee Advance", mapType: "asset" },
+  { value: "employee_reimbursement", label: "Employee Reimbursement", mapType: "expense" },
+  { value: "loan_repayment", label: "Loan Repayment", mapType: "liability" },
+  { value: "tax_payment", label: "Tax Payment", mapType: "liability" },
 ];
 
 export function PaymentForm() {
   const router = useRouter();
 
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paymentType, setPaymentType] = useState("customer_refund");
+  const [paymentType, setPaymentType] = useState("supplier_payment");
   const [contactId, setContactId] = useState("");
   const [bankOptions, setBankOptions] = useState<BankOption[]>([]);
   const [bankAccountId, setBankAccountId] = useState("");
@@ -126,7 +126,37 @@ export function PaymentForm() {
       .catch((err) => console.error("Failed to load initial ledger options", err));
   }, []);
 
-  // Auto-route Debit Account based on Payment Type
+  // Filtered accounts according to Payment Type mapping
+  const filteredAccounts = accounts.filter((a) => {
+    const lowerName = a.name.toLowerCase();
+    if (paymentType === "expense" || paymentType === "employee_reimbursement") {
+      return a.type === "expense" || a.code.startsWith("5");
+    }
+    if (paymentType === "salary") {
+      return (
+        a.type === "expense" &&
+        (lowerName.includes("salary") || lowerName.includes("payroll") || lowerName.includes("wages") || lowerName.includes("staff"))
+      );
+    }
+    if (paymentType === "employee_advance") {
+      return a.type === "asset" || lowerName.includes("advance");
+    }
+    if (paymentType === "loan_repayment") {
+      return (
+        a.type === "liability" &&
+        (lowerName.includes("loan") || lowerName.includes("borrowing") || lowerName.includes("payable"))
+      );
+    }
+    if (paymentType === "tax_payment") {
+      return (
+        a.type === "liability" &&
+        (lowerName.includes("tax") || lowerName.includes("gst") || lowerName.includes("tds") || lowerName.includes("duty"))
+      );
+    }
+    return true; // Fallback show all if unmatched
+  });
+
+  // Auto-select best ledger when Payment Type changes
   useEffect(() => {
     if (accounts.length === 0) return;
 
@@ -136,12 +166,8 @@ export function PaymentForm() {
     } else if (paymentType === "customer_refund") {
       const ar = accounts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable") || a.name.toLowerCase().includes("advance"));
       if (ar) setDebitAccountId(ar.id);
-    } else if (paymentType === "expense") {
-      const exp = accounts.find((a) => a.type === "expense" || a.code.startsWith("5"));
-      if (exp) setDebitAccountId(exp.id);
-    } else if (paymentType === "salary") {
-      const sal = accounts.find((a) => a.name.toLowerCase().includes("salary") || a.name.toLowerCase().includes("payroll") || a.type === "expense");
-      if (sal) setDebitAccountId(sal.id);
+    } else if (filteredAccounts.length > 0) {
+      setDebitAccountId(filteredAccounts[0].id);
     }
   }, [paymentType, accounts]);
 
@@ -352,7 +378,7 @@ export function PaymentForm() {
             <Select value={debitAccountId} onValueChange={setDebitAccountId}>
               <SelectTrigger><SelectValue placeholder="Select ledger..." /></SelectTrigger>
               <SelectContent>
-                {accounts.map((a) => (
+                {filteredAccounts.map((a) => (
                   <SelectItem key={a.id} value={a.id}>
                     {a.code} - {a.name} ({a.type})
                   </SelectItem>
