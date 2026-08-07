@@ -27,6 +27,13 @@ interface Account {
   subType?: string | null;
 }
 
+interface BankOption {
+  id: string; // chartAccountId or bankAccountId
+  name: string;
+  chartAccountId: string;
+  currencyCode: string;
+}
+
 const PAYMENT_SUBTYPES = [
   { value: "supplier_payment", label: "Supplier Payment" },
   { value: "customer_refund", label: "Customer Refund" },
@@ -44,14 +51,14 @@ export function PaymentForm() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentType, setPaymentType] = useState("supplier_payment");
   const [contactId, setContactId] = useState("");
-  const [bankAccounts, setBankAccounts] = useState<Array<{ id: string; accountName: string; chartAccountId?: string; currencyCode: string }>>([]);
+  const [bankOptions, setBankOptions] = useState<BankOption[]>([]);
   const [bankAccountId, setBankAccountId] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [debitAccountId, setDebitAccountId] = useState("");
   const [amount, setAmount] = useState("0.00");
   const [narration, setNarration] = useState("");
 
-  // Customer / Vendor advance balance panel
+  // Customer advance balance panel
   const [customerAdvance, setCustomerAdvance] = useState<number | null>(null);
   const [loadingAdvance, setLoadingAdvance] = useState(false);
 
@@ -67,24 +74,78 @@ export function PaymentForm() {
 
     Promise.all([
       fetch("/api/v1/bank-accounts", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
-      fetch("/api/v1/chart-accounts?limit=200", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
+      fetch("/api/v1/chart-accounts?limit=300", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
     ])
       .then(([bankData, acctData]) => {
-        if (bankData.bankAccounts) {
-          setBankAccounts(bankData.bankAccounts);
-          if (bankData.bankAccounts.length > 0) {
-            setBankAccountId(bankData.bankAccounts[0].id);
-          }
-        }
-        const accts = acctData.data || acctData.accounts || [];
+        const accts: Account[] = acctData.data || acctData.accounts || [];
         setAccounts(accts);
 
-        // Default Accounts Payable for supplier payment
+        // Build list of Cash & Bank accounts for "Paid From"
+        const options: BankOption[] = [];
+        const addedChartIds = new Set<string>();
+
+        // 1. From Bank Accounts API
+        if (bankData.bankAccounts && Array.isArray(bankData.bankAccounts)) {
+          bankData.bankAccounts.forEach((b: any) => {
+            const chartId = b.chartAccountId || b.id;
+            options.push({
+              id: chartId,
+              name: b.accountName,
+              chartAccountId: chartId,
+              currencyCode: b.currencyCode || "INR",
+            });
+            addedChartIds.add(chartId);
+          });
+        }
+
+        // 2. From Chart of Accounts (subType === 'bank' or cash/bank names)
+        accts.forEach((a) => {
+          if (!addedChartIds.has(a.id)) {
+            const lowerName = a.name.toLowerCase();
+            if (a.subType === "bank" || a.type === "asset" && (lowerName.includes("bank") || lowerName.includes("cash"))) {
+              options.push({
+                id: a.id,
+                name: `${a.code} - ${a.name}`,
+                chartAccountId: a.id,
+                currencyCode: "INR",
+              });
+              addedChartIds.add(a.id);
+            }
+          }
+        });
+
+        setBankOptions(options);
+
+        // Auto-select first bank/cash option if available
+        if (options.length > 0) {
+          setBankAccountId(options[0].id);
+        }
+
+        // Auto-select default debit account (Accounts Payable for supplier_payment)
         const ap = accts.find((a: Account) => a.code === "2100" || a.subType === "payable" || a.name.toLowerCase().includes("payable"));
         if (ap) setDebitAccountId(ap.id);
       })
       .catch((err) => console.error("Failed to load initial ledger options", err));
   }, []);
+
+  // Update default Debit Account when Payment Type changes
+  useEffect(() => {
+    if (accounts.length === 0) return;
+
+    if (paymentType === "supplier_payment") {
+      const ap = accounts.find((a) => a.code === "2100" || a.subType === "payable" || a.name.toLowerCase().includes("payable"));
+      if (ap) setDebitAccountId(ap.id);
+    } else if (paymentType === "customer_refund") {
+      const ar = accounts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable") || a.name.toLowerCase().includes("advance"));
+      if (ar) setDebitAccountId(ar.id);
+    } else if (paymentType === "expense") {
+      const exp = accounts.find((a) => a.type === "expense" || a.code.startsWith("5"));
+      if (exp) setDebitAccountId(exp.id);
+    } else if (paymentType === "salary") {
+      const sal = accounts.find((a) => a.name.toLowerCase().includes("salary") || a.name.toLowerCase().includes("payroll") || a.type === "expense");
+      if (sal) setDebitAccountId(sal.id);
+    }
+  }, [paymentType, accounts]);
 
   // Fetch customer advance balance when contact is selected and paymentType is customer_refund
   useEffect(() => {
@@ -115,10 +176,10 @@ export function PaymentForm() {
       toast.error("Please select the Cash / Bank account money was paid out from");
       return;
     }
-    const selectedBank = bankAccounts.find((b) => b.id === bankAccountId);
-    const creditAccountId = (selectedBank as any)?.chartAccountId;
+    const selectedBank = bankOptions.find((b) => b.id === bankAccountId);
+    const creditAccountId = selectedBank?.chartAccountId || bankAccountId;
     if (!creditAccountId) {
-      toast.error("The selected cash/bank account is not linked to a ledger account.");
+      toast.error("Please select a valid Cash/Bank account");
       return;
     }
     if (!debitAccountId) {
@@ -236,9 +297,9 @@ export function PaymentForm() {
           <Select value={bankAccountId} onValueChange={setBankAccountId}>
             <SelectTrigger><SelectValue placeholder="Select bank/cash..." /></SelectTrigger>
             <SelectContent>
-              {bankAccounts.map((b) => (
+              {bankOptions.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.accountName} ({b.currencyCode})
+                  {b.name} ({b.currencyCode})
                 </SelectItem>
               ))}
             </SelectContent>

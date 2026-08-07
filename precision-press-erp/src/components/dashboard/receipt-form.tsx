@@ -27,6 +27,13 @@ interface Account {
   subType?: string | null;
 }
 
+interface BankOption {
+  id: string;
+  name: string;
+  chartAccountId: string;
+  currencyCode: string;
+}
+
 interface InvoiceOption {
   id: string;
   invoiceNumber: string;
@@ -49,7 +56,7 @@ export function ReceiptForm() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [subType, setSubType] = useState("invoice_payment");
   const [contactId, setContactId] = useState("");
-  const [bankAccounts, setBankAccounts] = useState<Array<{ id: string; accountName: string; chartAccountId?: string; currencyCode: string }>>([]);
+  const [bankOptions, setBankOptions] = useState<BankOption[]>([]);
   const [bankAccountId, setBankAccountId] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [creditAccountId, setCreditAccountId] = useState("");
@@ -71,24 +78,71 @@ export function ReceiptForm() {
 
     Promise.all([
       fetch("/api/v1/bank-accounts", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
-      fetch("/api/v1/chart-accounts?limit=200", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
+      fetch("/api/v1/chart-accounts?limit=300", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
     ])
       .then(([bankData, acctData]) => {
-        if (bankData.bankAccounts) {
-          setBankAccounts(bankData.bankAccounts);
-          if (bankData.bankAccounts.length > 0) {
-            setBankAccountId(bankData.bankAccounts[0].id);
-          }
-        }
-        const accts = acctData.data || acctData.accounts || [];
+        const accts: Account[] = acctData.data || acctData.accounts || [];
         setAccounts(accts);
 
-        // Find default Accounts Receivable / Customer ledger
+        // Build list of Cash & Bank accounts for "Received Into"
+        const options: BankOption[] = [];
+        const addedChartIds = new Set<string>();
+
+        if (bankData.bankAccounts && Array.isArray(bankData.bankAccounts)) {
+          bankData.bankAccounts.forEach((b: any) => {
+            const chartId = b.chartAccountId || b.id;
+            options.push({
+              id: chartId,
+              name: b.accountName,
+              chartAccountId: chartId,
+              currencyCode: b.currencyCode || "INR",
+            });
+            addedChartIds.add(chartId);
+          });
+        }
+
+        accts.forEach((a) => {
+          if (!addedChartIds.has(a.id)) {
+            const lowerName = a.name.toLowerCase();
+            if (a.subType === "bank" || (a.type === "asset" && (lowerName.includes("bank") || lowerName.includes("cash")))) {
+              options.push({
+                id: a.id,
+                name: `${a.code} - ${a.name}`,
+                chartAccountId: a.id,
+                currencyCode: "INR",
+              });
+              addedChartIds.add(a.id);
+            }
+          }
+        });
+
+        setBankOptions(options);
+
+        if (options.length > 0) {
+          setBankAccountId(options[0].id);
+        }
+
         const ar = accts.find((a: Account) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable"));
         if (ar) setCreditAccountId(ar.id);
       })
       .catch((err) => console.error("Failed to load initial ledger options", err));
   }, []);
+
+  // Update default Credit Account when Subtype changes
+  useEffect(() => {
+    if (accounts.length === 0) return;
+
+    if (["invoice_payment", "advance", "on_account"].includes(subType)) {
+      const ar = accounts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable"));
+      if (ar) setCreditAccountId(ar.id);
+    } else if (subType === "security_deposit") {
+      const liab = accounts.find((a) => a.type === "liability" || a.name.toLowerCase().includes("deposit"));
+      if (liab) setCreditAccountId(liab.id);
+    } else if (subType === "loan_received") {
+      const loan = accounts.find((a) => a.type === "liability" || a.name.toLowerCase().includes("loan"));
+      if (loan) setCreditAccountId(loan.id);
+    }
+  }, [subType, accounts]);
 
   // Fetch customer outstanding invoices when contact selected
   useEffect(() => {
@@ -140,10 +194,10 @@ export function ReceiptForm() {
       toast.error("Please select the Cash / Bank account money was received into");
       return;
     }
-    const selectedBank = bankAccounts.find((b) => b.id === bankAccountId);
-    const debitAccountId = (selectedBank as any)?.chartAccountId;
+    const selectedBank = bankOptions.find((b) => b.id === bankAccountId);
+    const debitAccountId = selectedBank?.chartAccountId || bankAccountId;
     if (!debitAccountId) {
-      toast.error("The selected cash/bank account is not linked to a ledger account.");
+      toast.error("Please select a valid Cash/Bank account");
       return;
     }
     if (!creditAccountId) {
@@ -268,9 +322,9 @@ export function ReceiptForm() {
           <Select value={bankAccountId} onValueChange={setBankAccountId}>
             <SelectTrigger><SelectValue placeholder="Select bank/cash..." /></SelectTrigger>
             <SelectContent>
-              {bankAccounts.map((b) => (
+              {bankOptions.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.accountName} ({b.currencyCode})
+                  {b.name} ({b.currencyCode})
                 </SelectItem>
               ))}
             </SelectContent>
