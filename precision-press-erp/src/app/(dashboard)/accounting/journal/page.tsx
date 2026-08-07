@@ -20,12 +20,24 @@ interface Contact {
   type: string;
 }
 
+interface CostCenter {
+  id: string;
+  name: string;
+}
+
+interface Project {
+  id: string;
+  name: string;
+}
+
 export default function JournalVoucherPage() {
   const router = useRouter();
   useDocumentTitle("Accounting · New Journal Voucher");
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -35,11 +47,15 @@ export default function JournalVoucherPage() {
 
     Promise.all([
       fetch("/api/v1/accounts", { headers: { "x-organization-id": orgId } }).then((res) => res.json()),
-      fetch("/api/v1/contacts?limit=1000", { headers: { "x-organization-id": orgId } }).then((res) => res.json())
+      fetch("/api/v1/contacts?limit=1000", { headers: { "x-organization-id": orgId } }).then((res) => res.json()),
+      fetch("/api/v1/cost-centers", { headers: { "x-organization-id": orgId } }).then((res) => res.json()),
+      fetch("/api/v1/projects", { headers: { "x-organization-id": orgId } }).then((res) => res.json())
     ])
-      .then(([accountsData, contactsData]) => {
+      .then(([accountsData, contactsData, costCentersData, projectsData]) => {
         if (accountsData.accounts) setAccounts(accountsData.accounts);
         if (contactsData.data) setContacts(contactsData.data);
+        if (costCentersData.costCenters) setCostCenters(costCentersData.costCenters);
+        if (projectsData.projects) setProjects(projectsData.projects);
       })
       .catch((err) => {
         console.error("Failed to load data", err);
@@ -92,6 +108,8 @@ export default function JournalVoucherPage() {
         <JournalForm
           accounts={accounts}
           contacts={contacts}
+          costCenters={costCenters}
+          projects={projects}
           onSubmit={handleSubmit}
           loading={submitting}
           onCancel={() => router.back()}
