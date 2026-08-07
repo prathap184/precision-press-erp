@@ -34,10 +34,14 @@ const DUBBL_NAV = [
   {
     section: 'FINANCIALS',
     items: [
-      { label: 'Sales',       href: '/accounting/sales',       icon: TrendingUp },
-      { label: 'Purchases',   href: '/accounting/purchases',   icon: ShoppingCart },
-      { label: 'Accounting',  href: '/accounting/accounts',    icon: BookOpen },
-      { label: 'Tax',         href: '/accounting/tax',         icon: Receipt },
+      { label: 'Sales',            href: '/accounting/sales',                      icon: TrendingUp },
+      { label: 'Purchases',        href: '/accounting/purchases',                  icon: ShoppingCart },
+      { label: 'Accounting',       href: '/accounting/accounts',                   icon: BookOpen },
+      { label: 'Journal Registry', href: '/accounting/journal/registry',           icon: FileText },
+      { label: 'Contra Registry',  href: '/accounting/contra/registry',            icon: FileText },
+      { label: 'Receipt Registry', href: '/accounting/sales/customer-prepayments', icon: Wallet },
+      { label: 'Payment Registry', href: '/accounting/payment/registry',           icon: ArrowUpRight },
+      { label: 'Tax',              href: '/accounting/tax',                        icon: Receipt },
     ],
   },
   {

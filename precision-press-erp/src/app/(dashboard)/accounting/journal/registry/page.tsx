@@ -14,6 +14,7 @@ import { formatMoney } from "@/lib/money";
 interface Entry {
   id: string;
   entryNumber: string | null;
+  voucherNumber?: string | null;
   date: string;
   description: string;
   reference: string | null;
@@ -114,7 +115,7 @@ export default function JournalRegistryPage() {
                   filteredEntries.map((entry) => (
                     <tr key={entry.id} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3">{entry.date}</td>
-                      <td className="px-4 py-3 font-medium">{entry.entryNumber || "-"}</td>
+                      <td className="px-4 py-3 font-medium">{entry.voucherNumber || entry.entryNumber || "-"}</td>
                       <td className="px-4 py-3">{entry.reference || "-"}</td>
                       <td className="px-4 py-3 max-w-xs truncate" title={entry.description}>{entry.description}</td>
                       <td className="px-4 py-3">
@@ -126,7 +127,7 @@ export default function JournalRegistryPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-right font-medium">
-                        {formatMoney(entry.totalDebit, "INR")}
+                        ₹{(parseFloat(String(entry.totalDebit || 0))).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <Button variant="ghost" size="icon" onClick={() => toast.info("Preview not yet built")}>

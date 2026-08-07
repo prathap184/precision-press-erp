@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { journalEntry, journalLine, voucherSetting, voucherSequence } from "@/lib/db/schema";
+import { journalEntry, journalLine, voucherSetting, voucherSequence, fiscalYear } from "@/lib/db/schema";
 import { eq, sql, desc, and } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError } from "@/lib/api/response";
@@ -19,6 +19,8 @@ const lineSchema = z.object({
   currencyCode: currencyCodeSchema.default("INR"),
   exchangeRate: z.number().int().default(1000000),
   contactId: z.string().nullable().optional(),
+  costCenterId: z.string().nullable().optional(),
+  projectId: z.string().nullable().optional(),
   instrumentType: z.string().nullable().optional(),
   instrumentNo: z.string().nullable().optional(),
   instrumentDate: z.string().nullable().optional(),
@@ -33,7 +35,7 @@ const createSchema = z.object({
   date: z.string().min(1),
   description: z.string().min(1),
   reference: z.string().nullable().optional(),
-  fiscalYearId: z.string().min(1), // Required for proper sequence isolation
+  fiscalYearId: z.string().nullable().optional(), // Auto-resolved if omitted
   voucherType: z.enum(["JOURNAL", "CONTRA", "SALES", "PURCHASE", "RECEIPT", "PAYMENT"]).default("JOURNAL"),
   status: z.enum(["draft", "posted"]).default("draft"),
   subType: z.string().nullable().optional(),
@@ -141,6 +143,43 @@ export async function POST(request: Request) {
       );
     }
 
+    // Auto-resolve fiscalYearId if omitted
+    let activeFiscalYearId = parsed.fiscalYearId || null;
+    if (!activeFiscalYearId) {
+      const [activeFy] = await db
+        .select({ id: fiscalYear.id })
+        .from(fiscalYear)
+        .where(and(eq(fiscalYear.organizationId, ctx.organizationId), eq(fiscalYear.isClosed, false)))
+        .limit(1);
+
+      if (activeFy) {
+        activeFiscalYearId = activeFy.id;
+      } else {
+        const [anyFy] = await db
+          .select({ id: fiscalYear.id })
+          .from(fiscalYear)
+          .where(eq(fiscalYear.organizationId, ctx.organizationId))
+          .limit(1);
+
+        if (anyFy) {
+          activeFiscalYearId = anyFy.id;
+        } else {
+          const currentYear = new Date().getFullYear();
+          const [newFy] = await db
+            .insert(fiscalYear)
+            .values({
+              organizationId: ctx.organizationId,
+              name: `FY ${currentYear}-${currentYear + 1}`,
+              startDate: `${currentYear}-04-01`,
+              endDate: `${currentYear + 1}-03-31`,
+              isClosed: false,
+            })
+            .returning();
+          activeFiscalYearId = newFy.id;
+        }
+      }
+    }
+
     const { entry } = await db.transaction(async (tx) => {
       // 1. Get voucher settings for prefix & padding
       const [setting] = await tx
@@ -158,7 +197,7 @@ export async function POST(request: Request) {
 
       // 2. Lock and increment sequence
       const sequenceResult = await tx.execute(
-        sql`SELECT id, next_number FROM voucher_sequence WHERE organization_id = ${ctx.organizationId} AND fiscal_year_id = ${parsed.fiscalYearId} AND voucher_type = ${parsed.voucherType} FOR UPDATE`
+        sql`SELECT id, next_number FROM voucher_sequence WHERE organization_id = ${ctx.organizationId} AND fiscal_year_id = ${activeFiscalYearId} AND voucher_type = ${parsed.voucherType} FOR UPDATE`
       );
 
       const rows = Array.isArray(sequenceResult) ? sequenceResult : (sequenceResult as { rows?: unknown[] }).rows ?? [];
@@ -175,7 +214,7 @@ export async function POST(request: Request) {
       } else {
         await tx.insert(voucherSequence).values({
           organizationId: ctx.organizationId,
-          fiscalYearId: parsed.fiscalYearId,
+          fiscalYearId: activeFiscalYearId,
           voucherType: parsed.voucherType,
           nextNumber: 2,
         });
@@ -199,7 +238,7 @@ export async function POST(request: Request) {
           date: parsed.date,
           description: parsed.description,
           reference: parsed.reference || null,
-          fiscalYearId: parsed.fiscalYearId,
+          fiscalYearId: activeFiscalYearId,
           voucherType: parsed.voucherType,
           subType: parsed.subType || null,
           status: parsed.status,
@@ -216,24 +255,28 @@ export async function POST(request: Request) {
         .returning();
 
       // 4. Insert lines
+      const cleanString = (val?: string | null) => (val && val.trim() !== "" ? val.trim() : null);
+
       await tx.insert(journalLine).values(
         parsed.lines.map((l) => ({
           journalEntryId: insertedEntry.id,
           accountId: l.accountId,
-          description: l.description || null,
+          description: cleanString(l.description),
           debitAmount: l.debitAmount,
           creditAmount: l.creditAmount,
           currencyCode: l.currencyCode,
           exchangeRate: l.exchangeRate,
-          contactId: l.contactId || null,
-          instrumentType: l.instrumentType || null,
-          instrumentNo: l.instrumentNo || null,
-          instrumentDate: l.instrumentDate || null,
+          contactId: cleanString(l.contactId),
+          costCenterId: cleanString(l.costCenterId),
+          projectId: cleanString(l.projectId),
+          instrumentType: cleanString(l.instrumentType),
+          instrumentNo: cleanString(l.instrumentNo),
+          instrumentDate: cleanString(l.instrumentDate),
           // Bill-wise Details
           adjustmentType: l.adjustmentType || null,
-          referenceName: l.referenceName || null,
+          referenceName: cleanString(l.referenceName),
           referenceType: l.referenceType || null,
-          referenceId: l.referenceId || null,
+          referenceId: cleanString(l.referenceId),
         }))
       );
 

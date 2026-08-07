@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { toast } from "sonner";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
-import { Plus, Eye, Search, FileText } from "lucide-react";
+import { Plus, Eye, Search, FileText, ArrowDownLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { formatMoney } from "@/lib/money";
 
 interface Entry {
   id: string;
@@ -17,14 +16,23 @@ interface Entry {
   voucherNumber?: string | null;
   date: string;
   description: string;
+  subType?: string | null;
   reference: string | null;
   status: string;
   totalDebit: number;
 }
 
-export default function ContraRegistryPage() {
+const subTypeLabels: Record<string, string> = {
+  invoice_payment: "Invoice Payment",
+  advance: "Customer Advance",
+  on_account: "On Account",
+  security_deposit: "Security Deposit",
+  loan_received: "Loan Received",
+};
+
+export default function ReceiptRegistryPage() {
   const router = useRouter();
-  useDocumentTitle("Accounting · Contra Registry");
+  useDocumentTitle("Accounting · Receipt Registry");
 
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +42,7 @@ export default function ContraRegistryPage() {
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
 
-    fetch("/api/v1/entries?type=CONTRA", {
+    fetch("/api/v1/entries?type=RECEIPT", {
       headers: { "x-organization-id": orgId },
     })
       .then((res) => res.json())
@@ -44,8 +52,8 @@ export default function ContraRegistryPage() {
         }
       })
       .catch((err) => {
-        console.error("Failed to load entries", err);
-        toast.error("Failed to load entries");
+        console.error("Failed to load receipt entries", err);
+        toast.error("Failed to load receipt entries");
       })
       .finally(() => setLoading(false));
   }, []);
@@ -53,6 +61,7 @@ export default function ContraRegistryPage() {
   const filteredEntries = entries.filter(
     (e) =>
       e.entryNumber?.toLowerCase().includes(search.toLowerCase()) ||
+      e.voucherNumber?.toLowerCase().includes(search.toLowerCase()) ||
       e.description?.toLowerCase().includes(search.toLowerCase()) ||
       e.reference?.toLowerCase().includes(search.toLowerCase())
   );
@@ -63,14 +72,14 @@ export default function ContraRegistryPage() {
     <div className="h-full w-full py-6 space-y-6">
       <div className="px-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Contra Registry</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Receipt Registry</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            View all cash deposits, withdrawals, and bank transfers.
+            View all incoming customer payments, advance receipts, and deposits (F6).
           </p>
         </div>
-        <Button onClick={() => router.push("/accounting/contra")}>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Contra Voucher
+        <Button onClick={() => router.push("/accounting/receipt/new")} className="bg-emerald-600 hover:bg-emerald-700">
+          <ArrowDownLeft className="h-4 w-4 mr-2" />
+          New Receipt Voucher (F6)
         </Button>
       </div>
 
@@ -94,8 +103,8 @@ export default function ContraRegistryPage() {
                 <tr>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Voucher No</th>
-                  <th className="px-4 py-3">Reference</th>
-                  <th className="px-4 py-3">Narration</th>
+                  <th className="px-4 py-3">Receipt Subtype</th>
+                  <th className="px-4 py-3">Narration / Reference</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3 text-right">Amount</th>
                   <th className="px-4 py-3 text-right">Actions</th>
@@ -107,7 +116,7 @@ export default function ContraRegistryPage() {
                     <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <FileText className="h-8 w-8 text-slate-300" />
-                        <p>No contra vouchers found</p>
+                        <p>No receipt vouchers found</p>
                       </div>
                     </td>
                   </tr>
@@ -116,7 +125,9 @@ export default function ContraRegistryPage() {
                     <tr key={entry.id} className="hover:bg-muted/20 transition-colors">
                       <td className="px-4 py-3">{entry.date}</td>
                       <td className="px-4 py-3 font-medium">{entry.voucherNumber || entry.entryNumber || "-"}</td>
-                      <td className="px-4 py-3">{entry.reference || "-"}</td>
+                      <td className="px-4 py-3 font-medium text-slate-700">
+                        {subTypeLabels[entry.subType || ""] || entry.subType || "Receipt"}
+                      </td>
                       <td className="px-4 py-3 max-w-xs truncate" title={entry.description}>{entry.description}</td>
                       <td className="px-4 py-3">
                         <Badge 
@@ -126,7 +137,7 @@ export default function ContraRegistryPage() {
                           {entry.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right font-medium">
+                      <td className="px-4 py-3 text-right font-medium text-emerald-600">
                         ₹{(parseFloat(String(entry.totalDebit || 0))).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-4 py-3 text-right">
