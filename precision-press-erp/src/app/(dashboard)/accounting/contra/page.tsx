@@ -32,11 +32,7 @@ export default function ContraVoucherPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.accounts) {
-          // STRICT RULE: Contra is only for Cash & Bank
-          const contraAccounts = data.accounts.filter(
-            (a: Account) => a.type === "cash" || a.type === "bank"
-          );
-          setAccounts(contraAccounts);
+          setAccounts(data.accounts);
         }
       })
       .catch((err) => {
