@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { NAVIGATION_ITEMS, NavItem } from '@/config/navigation';
-import { Printer, Plus, ArrowLeft, LayoutDashboard, Users, TrendingUp, ShoppingCart, BookOpen, Receipt, FolderKanban, UserRound, Package, Wallet, Layers, Building2, FileText, BarChart3, ChevronLeft, Settings } from 'lucide-react';
+import { Printer, Plus, ArrowLeft, LayoutDashboard, Users, TrendingUp, ShoppingCart, BookOpen, Receipt, FolderKanban, UserRound, Package, Wallet, Layers, Building2, FileText, BarChart3, ChevronLeft, Settings, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useEffectiveUser } from '@/lib/impersonation-context';
 import { MODULE_ROUTES } from '@/types/auth';

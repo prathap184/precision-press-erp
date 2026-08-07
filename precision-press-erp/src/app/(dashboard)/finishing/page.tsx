@@ -7,8 +7,6 @@ import { StaffRoleSwitcher } from '@/components/dashboard/StaffRoleSwitcher';
 import { RoleActiveJobs } from '@/components/dashboard/RoleActiveJobs';
 import { CheckCircle2 } from 'lucide-react';
 
-export const dynamic = 'force-dynamic';
-
 export default function FinishingDashboardPage() {
   const { profile, roles } = useAuth();
 
