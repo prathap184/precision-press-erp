@@ -68,7 +68,7 @@ export function PaymentForm() {
 
   const [saving, setSaving] = useState(false);
 
-  // Fetch Bank Accounts & Chart Accounts
+  // Fetch Bank Accounts & Master Accounts
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
@@ -87,17 +87,17 @@ export function PaymentForm() {
       })
       .catch((err) => console.error("Failed to load bank accounts", err));
 
-    fetch("/api/v1/chart-accounts?limit=300", {
+    fetch("/api/v1/accounts?limit=500", {
       headers: { "x-organization-id": orgId },
     })
       .then((r) => r.json())
       .then((acctData) => {
-        const accts: Account[] = acctData.data || acctData.accounts || [];
+        const accts: Account[] = acctData.accounts || acctData.data || [];
         setAccounts(accts);
         const ar = accts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable"));
         if (ar) setDebitAccountId(ar.id);
       })
-      .catch((err) => console.error("Failed to load chart accounts", err));
+      .catch((err) => console.error("Failed to load accounts", err));
   }, []);
 
   // Auto-select default ledger when Payment Type changes while showing ALL ledgers in dropdown
