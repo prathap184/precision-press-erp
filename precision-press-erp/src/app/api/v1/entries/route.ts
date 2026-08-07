@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { journalEntry, journalLine, voucherSetting, voucherSequence, fiscalYear } from "@/lib/db/schema";
-import { eq, sql, desc, and } from "drizzle-orm";
+import { journalEntry, journalLine, voucherSetting, voucherSequence, fiscalYear, bankAccount } from "@/lib/db/schema";
+import { eq, sql, desc, and, or } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError } from "@/lib/api/response";
 import { logAudit } from "@/lib/api/audit";
@@ -279,6 +279,28 @@ export async function POST(request: Request) {
           referenceId: cleanString(l.referenceId),
         }))
       );
+
+      // 5. Automatically update live bank balances for any line affecting a Bank/Cash account
+      if (parsed.status === "posted") {
+        for (const l of parsed.lines) {
+          const netChange = l.debitAmount - l.creditAmount;
+          if (netChange !== 0) {
+            const linkedBank = await tx.query.bankAccount.findFirst({
+              where: and(
+                eq(bankAccount.organizationId, ctx.organizationId),
+                or(eq(bankAccount.chartAccountId, l.accountId), eq(bankAccount.id, l.accountId))
+              ),
+            });
+
+            if (linkedBank) {
+              await tx
+                .update(bankAccount)
+                .set({ balance: sql`${bankAccount.balance} + ${netChange}` })
+                .where(eq(bankAccount.id, linkedBank.id));
+            }
+          }
+        }
+      }
 
       return { entry: insertedEntry };
     });
