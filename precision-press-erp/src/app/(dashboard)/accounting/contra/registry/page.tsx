@@ -50,12 +50,13 @@ export default function ContraRegistryPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  const filteredEntries = entries.filter(
-    (e) =>
-      e.entryNumber?.toLowerCase().includes(search.toLowerCase()) ||
-      e.description?.toLowerCase().includes(search.toLowerCase()) ||
-      e.reference?.toLowerCase().includes(search.toLowerCase())
-  );
+  const q = search.toLowerCase();
+  const filteredEntries = entries.filter((e) => {
+    const voucherNo = String(e.voucherNumber || e.entryNumber || "").toLowerCase();
+    const desc = String(e.description || "").toLowerCase();
+    const ref = String(e.reference || "").toLowerCase();
+    return voucherNo.includes(q) || desc.includes(q) || ref.includes(q);
+  });
 
   if (loading) return <BrandLoader />;
 
