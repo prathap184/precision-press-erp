@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -56,6 +59,7 @@ interface JournalFormProps {
   contacts?: Contact[];
   costCenters?: CostCenter[];
   projects?: Project[];
+  bankAccounts?: any[];
   onSubmit: (data: {
     date: string;
     description: string;
@@ -93,6 +97,7 @@ export function JournalForm({
   contacts = [], 
   costCenters = [],
   projects = [],
+  bankAccounts = [],
   onSubmit, 
   loading, 
   initial, 
@@ -119,19 +124,8 @@ export function JournalForm({
   const diff = Math.abs(totalDebit - totalCredit);
   const isBalanced = diff < 0.0001 && totalDebit > 0;
 
-  // Filter out cash and bank accounts for journal entries
-  const filteredAccounts = accounts.filter(a => 
-    !a.name.toLowerCase().includes('cash') && 
-    !a.name.toLowerCase().includes('bank') &&
-    a.type !== 'asset' // In reality, depends on the chart setup, but we'll keep it simple or strictly filter on client side if needed. 
-    // Usually, we'd rely on a 'isBank' or 'isCash' flag. We'll show all except those with Cash/Bank in the name for now, as requested.
-  );
-  
-  // If no strict filter is available via types, we just use all accounts except those obviously cash/bank.
-  const journalAccounts = accounts.filter(a => 
-    !a.name.toLowerCase().includes('cash') && 
-    !a.name.toLowerCase().includes('bank')
-  );
+  const connectedAccounts = bankAccounts.filter(b => b.chartAccountId);
+  const unconnectedLedgers = accounts.filter(a => !connectedAccounts.some(b => b.chartAccountId === a.id));
 
   function updateLine(index: number, field: keyof Line, value: string) {
     setLines((prev) =>
@@ -304,11 +298,35 @@ export function JournalForm({
                     <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
-                    {journalAccounts.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.code} - {a.name}
-                      </SelectItem>
-                    ))}
+                    {connectedAccounts.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">🏦 Connected Bank Accounts</SelectLabel>
+                        {connectedAccounts.map((b) => (
+                          <SelectItem key={b.id} value={b.chartAccountId}>
+                            {b.accountName} {b.accountNumber ? `(...${b.accountNumber.slice(-4)})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    
+                    {connectedAccounts.length > 0 && unconnectedLedgers.length > 0 && (
+                      <SelectSeparator />
+                    )}
+
+                    {unconnectedLedgers.length > 0 && (
+                      <SelectGroup>
+                        <SelectLabel className="text-xs uppercase text-muted-foreground tracking-wider font-semibold">📋 Chart of Accounts</SelectLabel>
+                        {unconnectedLedgers.map((a) => (
+                          <SelectItem key={a.id} value={a.id}>
+                            {a.code} - {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+
+                    {accounts.length === 0 && connectedAccounts.length === 0 && (
+                      <SelectItem value="none" disabled>No accounts found</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
                 <Select

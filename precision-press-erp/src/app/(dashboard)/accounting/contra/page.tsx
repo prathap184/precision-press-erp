@@ -22,17 +22,22 @@ export default function ContraVoucherPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
 
-    fetch("/api/v1/accounts", {
-      headers: { "x-organization-id": orgId },
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.accounts) {
-          setAccounts(data.accounts);
+    Promise.all([
+      fetch("/api/v1/accounts", { headers: { "x-organization-id": orgId } }).then((res) => res.json()),
+      fetch("/api/v1/bank-accounts", { headers: { "x-organization-id": orgId } }).then((res) => res.json()),
+    ])
+      .then(([accountsData, bankAccountsData]) => {
+        if (accountsData.accounts) {
+          setAccounts(accountsData.accounts);
+        }
+        if (bankAccountsData.bankAccounts) {
+          setBankAccounts(bankAccountsData.bankAccounts);
         }
       })
       .catch((err) => {
@@ -85,6 +90,7 @@ export default function ContraVoucherPage() {
       <div className="px-6">
         <ContraForm
           accounts={accounts}
+          bankAccounts={bankAccounts}
           onSubmit={handleSubmit}
           loading={submitting}
           onCancel={() => router.back()}
