@@ -57,6 +57,20 @@
       "when": 1785080940436,
       "tag": "0007_marvelous_boom_boom",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786071354488,
+      "tag": "0008_glorious_mentallo",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786073688544,
+      "tag": "0009_messy_ravenous",
+      "breakpoints": true
     }
   ]
 }

@@ -37,6 +37,8 @@ export async function GET(request: Request) {
     const journalEntries = await db.query.journalEntry.findMany({
       where: and(
         eq(journalEntry.organizationId, ctx.organizationId),
+        eq(journalEntry.status, "posted"),
+        isNull(journalEntry.deletedAt),
         gte(journalEntry.date, dateOnlyStr),
         lte(journalEntry.date, dateOnlyStr)
       ),

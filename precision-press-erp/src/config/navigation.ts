@@ -127,6 +127,8 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   // ── Accounting Dashboard (Dubbl) ─────────────────────────────────────────
   { label: 'Dubbl Accounting', href: '#dubbl-accounting', icon: BookOpen, roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'MANAGER', 'ACDEMA'], group: 'main', subItems: [
     { label: 'Banking & Cash Drawer', href: '/accounting/banking' },
+    { label: 'Contra Voucher', href: '/accounting/contra' },
+    { label: 'Journal Voucher', href: '/accounting/journal' },
     { label: 'Chart of Accounts & Ledger', href: '/accounting/transactions' },
     { label: 'Invoices & Sales Receipts', href: '/accounting/sales' },
     { label: 'Bills & Purchases', href: '/accounting/purchases' },

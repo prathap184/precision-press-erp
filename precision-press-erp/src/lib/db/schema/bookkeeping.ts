@@ -23,8 +23,33 @@ export const accountTypeEnum = pgEnum("account_type", [
 
 export const entryStatusEnum = pgEnum("entry_status", [
   "draft",
+  "pending_approval",
+  "approved",
   "posted",
-  "void",
+  "rejected",
+  "cancelled",
+  "void", // Kept for DB compatibility, prefer cancelled instead
+]);
+
+export const voucherTypeEnum = pgEnum("voucher_type", [
+  "JOURNAL",
+  "CONTRA",
+  "SALES",
+  "PURCHASE",
+  "RECEIPT",
+  "PAYMENT",
+]);
+
+export const sourceModuleEnum = pgEnum("source_module", [
+  "MANUAL",
+  "SALES",
+  "PURCHASE",
+  "PAYMENT",
+  "RECEIPT",
+  "CONTRA",
+  "STOCK",
+  "PAYROLL",
+  "ASSET",
 ]);
 
 export const taxTypeEnum = pgEnum("tax_type", [
@@ -72,6 +97,42 @@ export const fiscalYear = pgTable("fiscal_year", {
   isClosed: boolean("is_closed").notNull().default(false),
   deletedAt: timestamp("deleted_at", { mode: "date" }),
 });
+
+// Voucher Settings
+export const voucherSetting = pgTable(
+  "voucher_setting",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
+    voucherType: voucherTypeEnum("voucher_type").notNull(),
+    prefix: text("prefix").notNull(),
+    paddingLength: integer("padding_length").notNull().default(6),
+    createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("voucher_setting_org_type_idx").on(table.organizationId, table.voucherType),
+  ]
+);
+
+// Voucher Sequence
+export const voucherSequence = pgTable(
+  "voucher_sequence",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    organizationId: uuid("organization_id").notNull().references(() => organization.id, { onDelete: "cascade" }),
+    fiscalYearId: uuid("fiscal_year_id").notNull().references(() => fiscalYear.id, { onDelete: "cascade" }),
+    voucherType: voucherTypeEnum("voucher_type").notNull(),
+    nextNumber: integer("next_number").notNull().default(1),
+  },
+  (table) => [
+    uniqueIndex("voucher_sequence_org_year_type_idx").on(
+      table.organizationId,
+      table.fiscalYearId,
+      table.voucherType
+    ),
+  ]
+);
 
 // Chart of Accounts
 export const chartAccount = pgTable(
@@ -131,17 +192,36 @@ export const journalEntry = pgTable(
     reference: text("reference"),
     status: entryStatusEnum("status").notNull().default("draft"),
     fiscalYearId: uuid("fiscal_year_id").references(() => fiscalYear.id),
-    sourceType: text("source_type"), // "invoice", "bill", "expense", "bank", "payment", "credit_note", "debit_note", "manual"
+    sourceType: text("source_type"),
+    sourceModule: sourceModuleEnum("source_module"),
     sourceId: uuid("source_id"),
+    voucherType: voucherTypeEnum("voucher_type"),
+    subType: text("sub_type"),
+    voucherPrefix: text("voucher_prefix"),
+    voucherSequence: integer("voucher_sequence"),
+    voucherNumber: text("voucher_number"),
+    postingDate: date("posting_date"),
+    isReversal: boolean("is_reversal").notNull().default(false),
     createdBy: uuid("created_by").references(() => users.id),
+    updatedBy: uuid("updated_by").references(() => users.id),
+    approvedBy: uuid("approved_by").references(() => users.id),
+    approvedAt: timestamp("approved_at", { mode: "date" }),
+    approvalRemarks: text("approval_remarks"),
+    postedBy: uuid("posted_by").references(() => users.id),
     postedAt: timestamp("posted_at", { mode: "date" }),
+    postingRemarks: text("posting_remarks"),
     voidedAt: timestamp("voided_at", { mode: "date" }),
     voidReason: text("void_reason"),
+    cancelledBy: uuid("cancelled_by").references(() => users.id),
+    cancelledAt: timestamp("cancelled_at", { mode: "date" }),
+    cancelReason: text("cancel_reason"),
     // Auto-reversing journals: if set, a mirror reversing entry is posted on this
     // date (accruals/prepayments). Self-referential links track the pair.
     autoReverseDate: date("auto_reverse_date"),
     reversedByEntryId: uuid("reversed_by_entry_id"),
     reversesEntryId: uuid("reverses_entry_id"),
+    reversedBy: uuid("reversed_by").references(() => users.id),
+    reversedAt: timestamp("reversed_at", { mode: "date" }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "date" }),
@@ -150,6 +230,10 @@ export const journalEntry = pgTable(
     uniqueIndex("journal_entry_org_number_idx").on(
       table.organizationId,
       table.entryNumber
+    ),
+    uniqueIndex("journal_entry_org_voucher_number_idx").on(
+      table.organizationId,
+      table.voucherNumber
     ),
   ]
 );
@@ -196,6 +280,10 @@ export const journalLine = pgTable("journal_line", {
   currencyCode: text("currency_code").notNull().default("INR"),
   exchangeRate: integer("exchange_rate").notNull().default(1000000), // 6 decimal places as int (1.000000 = 1000000)
   costCenterId: uuid("cost_center_id").references(() => costCenter.id),
+  contactId: uuid("contact_id"),
+  instrumentType: text("instrument_type"),
+  instrumentNo: text("instrument_no"),
+  instrumentDate: date("instrument_date"),
   // Project/job dimension (alongside cost center) for job-costing & tracking
   // reports. Plain uuid (project lives in ./projects) to avoid a schema import
   // cycle; joined by id in queries.
