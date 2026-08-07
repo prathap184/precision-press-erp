@@ -22,6 +22,11 @@ const lineSchema = z.object({
   instrumentType: z.string().nullable().optional(),
   instrumentNo: z.string().nullable().optional(),
   instrumentDate: z.string().nullable().optional(),
+  // Bill-wise Details — Phase 1
+  adjustmentType: z.enum(["NEW_REF", "AGAINST_REF", "ON_ACCOUNT", "ADVANCE", "OPENING_BALANCE"]).nullable().optional(),
+  referenceName: z.string().nullable().optional(),
+  referenceType: z.enum(["SALES_INVOICE", "PURCHASE_BILL", "SALES_ORDER", "PURCHASE_ORDER", "PROJECT", "JOB_CARD"]).nullable().optional(),
+  referenceId: z.string().nullable().optional(),
 });
 
 const createSchema = z.object({
@@ -224,6 +229,11 @@ export async function POST(request: Request) {
           instrumentType: l.instrumentType || null,
           instrumentNo: l.instrumentNo || null,
           instrumentDate: l.instrumentDate || null,
+          // Bill-wise Details
+          adjustmentType: l.adjustmentType || null,
+          referenceName: l.referenceName || null,
+          referenceType: l.referenceType || null,
+          referenceId: l.referenceId || null,
         }))
       );
 

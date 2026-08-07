@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 "use client";
 
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
@@ -31,6 +31,7 @@ import {
   Scale,
   TrendingUp,
   Repeat,
+  ArrowUpRight,
 } from "lucide-react";
 import {
   Sheet,
@@ -66,7 +67,7 @@ import { WorkflowBuilder, type WorkflowStep } from "@/components/inventory/workf
 import { HsnPicker } from "@/components/inventory/hsn-picker";
 
 
-type DrawerType = "contact" | "project" | "invoice" | "bill" | "entry" | "inventory" | "quote" | "salesReceipt" | "purchaseOrder" | "expense" | "fixedAsset" | "budget" | "employee" | "creditNote" | "recurring" | "account" | "bankAccount" | "warehouse" | "stockTake" | "category" | "transfer" | "bankTransfer" | "contractor" | "deal" | "debitNote" | "customerCredit" | "loan" | "openingBalance" | "accrualSchedule" | "revenueSchedule" | "recurringJournal";
+type DrawerType = "contact" | "project" | "invoice" | "bill" | "entry" | "inventory" | "quote" | "salesReceipt" | "purchaseOrder" | "expense" | "fixedAsset" | "budget" | "employee" | "creditNote" | "recurring" | "account" | "bankAccount" | "warehouse" | "stockTake" | "category" | "transfer" | "bankTransfer" | "contractor" | "deal" | "debitNote" | "customerCredit" | "paymentVoucher" | "loan" | "openingBalance" | "accrualSchedule" | "revenueSchedule" | "recurringJournal";
 
 interface DrawerInitialData {
   contactId?: string;
@@ -144,6 +145,7 @@ export function CreateDrawerProvider({ children }: { children: React.ReactNode }
       <DealDrawer open={activeType === "deal"} onClose={close} initialData={initialData} />
       <DebitNoteDrawer open={activeType === "debitNote"} onClose={close} />
       <CustomerCreditDrawer open={activeType === "customerCredit"} onClose={close} initialData={initialData} />
+      <PaymentVoucherDrawer open={activeType === "paymentVoucher"} onClose={close} />
       <LoanDrawer open={activeType === "loan"} onClose={close} />
       <OpeningBalanceDrawer open={activeType === "openingBalance"} onClose={close} />
       <AccrualScheduleDrawer open={activeType === "accrualSchedule"} onClose={close} />
@@ -4495,7 +4497,8 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [amount, setAmount] = useState("0.00");
   const [sourceType, setSourceType] = useState("prepayment");
-  const [settlementMode, setSettlementMode] = useState<"on_account" | "against_ref">("on_account");
+  const [settlementMode, setSettlementMode] = useState<"on_account" | "against_ref" | "new_ref">("on_account");
+  const [referenceName, setReferenceName] = useState("");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [invoices, setInvoices] = useState<Array<{ id: string; invoiceNumber: string; amountDue: number; total: number; currencyCode: string }>>([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
@@ -4508,6 +4511,7 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
     if (!open) {
       setContactId(""); setDate(new Date().toISOString().split("T")[0]); setAmount("0.00");
       setSourceType("prepayment"); setSettlementMode("on_account"); setSelectedInvoiceId("");
+      setReferenceName("");
       setInvoices([]); setBankAccountId(""); setCurrencyCode("INR"); setNotes("");
       return;
     }
@@ -4566,6 +4570,10 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
       toast.error("Please select an invoice to pay against");
       return;
     }
+    if (settlementMode === "new_ref" && !referenceName.trim()) {
+      toast.error("Please enter a Reference Name (e.g. ADV-0001)");
+      return;
+    }
     if (!bankAccountId) { toast.error("Please choose where the money was paid in"); return; }
     const cents = decimalToMinorUnits(amount, currencyCode || "INR");
     if (cents <= 0) { toast.error("Please enter an amount"); return; }
@@ -4604,13 +4612,16 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
             bankAccountId,
             currencyCode: currencyCode || undefined,
             notes: notes || null,
+            // Bill-wise Details — structured adjustment fields
+            adjustmentType: settlementMode === "new_ref" ? "NEW_REF" : "ON_ACCOUNT",
+            referenceName: settlementMode === "new_ref" ? referenceName.trim() : null,
           }),
         });
         if (!res.ok) {
           const data = await res.json();
           throw new Error(typeof data.error === "string" ? data.error : "Failed to record prepayment");
         }
-        toast.success("Receipt (On Account) recorded");
+        toast.success(settlementMode === "new_ref" ? `Advance recorded as ${referenceName}` : "Receipt (On Account) recorded");
       }
 
       onClose();
@@ -4646,15 +4657,30 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label>Ref Type (Settlement) *</Label>
-                  <Select value={settlementMode} onValueChange={(v) => setSettlementMode(v as "on_account" | "against_ref")}>
+                  <Label>Method of Adjustment *</Label>
+                  <Select value={settlementMode} onValueChange={(v) => setSettlementMode(v as "on_account" | "against_ref" | "new_ref")}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="on_account">On Account (Advance)</SelectItem>
+                      <SelectItem value="on_account">On Account (General Advance)</SelectItem>
+                      <SelectItem value="new_ref">New Ref (Named Advance — e.g. ADV-0001)</SelectItem>
                       <SelectItem value="against_ref">Agst Ref (Against Invoice)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {settlementMode === "new_ref" && (
+                  <div className="space-y-2">
+                    <Label>Reference Name *</Label>
+                    <Input
+                      value={referenceName}
+                      onChange={(e) => setReferenceName(e.target.value)}
+                      placeholder="e.g. ADV-0001, ADV-ALPHA, PROJECT-X"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      A unique name for this advance so you can track and settle it later.
+                    </p>
+                  </div>
+                )}
 
                 {settlementMode === "against_ref" && (
                   <div className="space-y-2">
@@ -4729,7 +4755,307 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
               <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes about this receipt..." rows={3} />
             </div>
           </div>
-          <DrawerFooter onClose={onClose} saving={saving} label={settlementMode === "against_ref" ? "Record Receipt" : "Record Prepayment"} />
+          <DrawerFooter onClose={onClose} saving={saving} label={settlementMode === "against_ref" ? "Record Receipt" : settlementMode === "new_ref" ? `Record Advance (${referenceName || "New Ref"})` : "Record on Account"} />
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Payment Voucher Drawer (F5) ─────────────────────────────────────────────
+// Money leaves the company: Customer Refund, Supplier Payment, Expense, Salary,
+// Employee Advance, Employee Reimbursement, Loan Repayment, Tax Payment.
+// Debit  → Customer / Vendor / Expense ledger (selected by user)
+// Credit → Cash / Bank (restricted to bank accounts only)
+function PaymentVoucherDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [paymentType, setPaymentType] = useState("customer_refund");
+  const [contactId, setContactId] = useState("");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [amount, setAmount] = useState("0.00");
+  const [adjustmentType, setAdjustmentType] = useState<"ADVANCE" | "AGAINST_REF" | "ON_ACCOUNT">("ADVANCE");
+  const [referenceName, setReferenceName] = useState("");
+  const [narration, setNarration] = useState("");
+  const [bankAccountId, setBankAccountId] = useState("");
+  const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
+  const [accounts, setAccounts] = useState<{ id: string; code: string; name: string; type: string }[]>([]);
+  const [debitAccountId, setDebitAccountId] = useState("");
+  const [currencyCode, setCurrencyCode] = useState("INR");
+  const [fiscalYears, setFiscalYears] = useState<{ id: string; name: string }[]>([]);
+  const [fiscalYearId, setFiscalYearId] = useState("");
+  const [customerAdvance, setCustomerAdvance] = useState<number | null>(null);
+  const [loadingAdvance, setLoadingAdvance] = useState(false);
+
+  const PAYMENT_SUBTYPES = [
+    { value: "customer_refund", label: "Customer Refund" },
+    { value: "supplier_payment", label: "Supplier Payment" },
+    { value: "expense", label: "Expense" },
+    { value: "salary", label: "Salary" },
+    { value: "employee_advance", label: "Employee Advance" },
+    { value: "employee_reimbursement", label: "Employee Reimbursement" },
+    { value: "loan_repayment", label: "Loan Repayment" },
+    { value: "tax_payment", label: "Tax Payment" },
+  ];
+
+  useEffect(() => {
+    if (!open) {
+      setSaving(false); setPaymentType("customer_refund"); setContactId("");
+      setDate(new Date().toISOString().split("T")[0]); setAmount("0.00");
+      setAdjustmentType("ADVANCE"); setReferenceName(""); setNarration("");
+      setBankAccountId(""); setDebitAccountId(""); setCurrencyCode("INR");
+      setCustomerAdvance(null);
+      return;
+    }
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
+    Promise.all([
+      fetch("/api/v1/bank-accounts", { headers: { "x-organization-id": orgId } }).then(r => r.json()),
+      fetch("/api/v1/chart-accounts?limit=200", { headers: { "x-organization-id": orgId } }).then(r => r.json()),
+      fetch("/api/v1/fiscal-years", { headers: { "x-organization-id": orgId } }).then(r => r.json()),
+    ]).then(([bankData, acctData, fyData]) => {
+      if (bankData.bankAccounts) setBankAccounts(bankData.bankAccounts);
+      const accts = acctData.data || acctData.accounts || [];
+      setAccounts(accts);
+      const fys = fyData.data || fyData.fiscalYears || [];
+      setFiscalYears(fys);
+      if (fys.length > 0) setFiscalYearId(fys[0].id);
+    }).catch(() => {});
+  }, [open]);
+
+  // Fetch customer advance balance when contact selected and paymentType is customer_refund
+  useEffect(() => {
+    if (paymentType !== "customer_refund" || !contactId) {
+      setCustomerAdvance(null);
+      return;
+    }
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
+    setLoadingAdvance(true);
+    fetch(`/api/v1/customer-credits?contactId=${contactId}&status=open&limit=100`, {
+      headers: { "x-organization-id": orgId },
+    }).then(r => r.json()).then(data => {
+      const credits = data.data || [];
+      const total = credits.reduce((sum: number, c: { amountRemaining: number }) => sum + c.amountRemaining, 0);
+      setCustomerAdvance(total);
+    }).catch(() => setCustomerAdvance(null)).finally(() => setLoadingAdvance(false));
+  }, [contactId, paymentType]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!debitAccountId) { toast.error("Please select the account to debit (customer / expense)"); return; }
+    if (!bankAccountId) { toast.error("Please select the cash/bank account to credit"); return; }
+    if (!fiscalYearId) { toast.error("No fiscal year found"); return; }
+    const cents = decimalToMinorUnits(amount, currencyCode || "INR");
+    if (cents <= 0) { toast.error("Please enter a valid amount"); return; }
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
+
+    // Resolve the bank account's linked chart account for the credit line
+    const bank = bankAccounts.find(b => b.id === bankAccountId);
+    const creditAccountId = (bank as any)?.chartAccountId;
+    if (!creditAccountId) {
+      toast.error("The selected bank account is not linked to a ledger. Please link it in Banking settings.");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch("/api/v1/entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-organization-id": orgId },
+        body: JSON.stringify({
+          date,
+          description: narration || `Payment - ${PAYMENT_SUBTYPES.find(p => p.value === paymentType)?.label}`,
+          fiscalYearId,
+          voucherType: "PAYMENT",
+          subType: paymentType,
+          status: "posted",
+          sourceModule: "PAYMENT",
+          lines: [
+            {
+              // Debit: money goes TO the customer/vendor/expense
+              accountId: debitAccountId,
+              debitAmount: cents,
+              creditAmount: 0,
+              currencyCode,
+              contactId: contactId || null,
+              adjustmentType: adjustmentType || null,
+              referenceName: referenceName.trim() || null,
+            },
+            {
+              // Credit: money comes FROM cash/bank
+              accountId: creditAccountId,
+              debitAmount: 0,
+              creditAmount: cents,
+              currencyCode,
+            },
+          ],
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(typeof data.error === "string" ? data.error : "Failed to record payment");
+      }
+      toast.success(`Payment Voucher posted ✓`);
+      onClose();
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to record payment");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
+      <SheetContent className="sm:max-w-lg w-full p-0 flex flex-col">
+        <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
+          <div className="flex items-center gap-3">
+            <DrawerIcon><ArrowUpRight className="size-5" /></DrawerIcon>
+            <div>
+              <SheetTitle className="text-lg">New Payment Voucher</SheetTitle>
+              <SheetDescription>Record money leaving the company (F5).</SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto space-y-6 px-4 py-4 sm:px-6 sm:py-5">
+            <div className="space-y-4">
+              <SectionLabel>Payment Details</SectionLabel>
+
+              <div className="space-y-2">
+                <Label>Payment Type *</Label>
+                <Select value={paymentType} onValueChange={setPaymentType}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_SUBTYPES.map(p => (
+                      <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(paymentType === "customer_refund" || paymentType === "supplier_payment") && (
+                <div className="space-y-2">
+                  <Label>{paymentType === "customer_refund" ? "Customer" : "Supplier"}</Label>
+                  <ContactPicker
+                    value={contactId}
+                    onChange={setContactId}
+                    type={paymentType === "customer_refund" ? "customer" : "supplier"}
+                  />
+                </div>
+              )}
+
+              {/* Customer advance balance panel */}
+              {paymentType === "customer_refund" && contactId && (
+                <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 px-4 py-3 text-sm">
+                  {loadingAdvance ? (
+                    <span className="text-muted-foreground">Loading advance balance...</span>
+                  ) : customerAdvance !== null && customerAdvance > 0 ? (
+                    <div className="flex items-center justify-between">
+                      <span className="text-amber-800 dark:text-amber-200 font-medium">Refundable Advance</span>
+                      <span className="font-mono font-bold text-amber-900 dark:text-amber-100">
+                        {formatMoney(customerAdvance, currencyCode)}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">No open advance balance for this customer.</span>
+                  )}
+                </div>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Date *</Label>
+                  <DatePicker value={date} onChange={setDate} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Amount *</Label>
+                  <CurrencyInput value={amount} onChange={setAmount} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Currency</Label>
+                <CurrencySelect value={currencyCode} onValueChange={setCurrencyCode} />
+              </div>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            <div className="space-y-4">
+              <SectionLabel>Ledger Accounts</SectionLabel>
+
+              <div className="space-y-2">
+                <Label>Debit Account (Customer / Expense / Vendor) *</Label>
+                <Select value={debitAccountId} onValueChange={setDebitAccountId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select ledger to debit..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map(a => (
+                      <SelectItem key={a.id} value={a.id}>
+                        {a.code} · {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Credit Account (Cash / Bank) *</Label>
+                <Select value={bankAccountId} onValueChange={setBankAccountId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select cash or bank account..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {bankAccounts.map(acc => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.accountName} · {acc.currencyCode}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">The cash or bank account the payment went out from.</p>
+              </div>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            <div className="space-y-4">
+              <SectionLabel>Method of Adjustment</SectionLabel>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Adjustment Type</Label>
+                  <Select value={adjustmentType} onValueChange={(v) => setAdjustmentType(v as typeof adjustmentType)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ADVANCE">Advance Refund</SelectItem>
+                      <SelectItem value="AGAINST_REF">Agst Ref (Against Reference)</SelectItem>
+                      <SelectItem value="ON_ACCOUNT">On Account</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Reference Name</Label>
+                  <Input
+                    value={referenceName}
+                    onChange={e => setReferenceName(e.target.value)}
+                    placeholder="e.g. ADV-0001, INV-00045"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="h-px bg-border" />
+
+            <div className="space-y-4">
+              <SectionLabel>Narration</SectionLabel>
+              <Textarea value={narration} onChange={e => setNarration(e.target.value)} placeholder="Narration for this payment..." rows={3} />
+            </div>
+          </div>
+          <DrawerFooter onClose={onClose} saving={saving} label="Post Payment Voucher" />
         </form>
       </SheetContent>
     </Sheet>

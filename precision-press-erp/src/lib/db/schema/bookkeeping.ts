@@ -52,6 +52,25 @@ export const sourceModuleEnum = pgEnum("source_module", [
   "ASSET",
 ]);
 
+// How a payment/receipt line settles a reference (Tally-style Bill-wise Details).
+export const adjustmentTypeEnum = pgEnum("adjustment_type", [
+  "NEW_REF",        // Creates a fresh trackable reference bucket (e.g. ADV-0001)
+  "AGAINST_REF",    // Settles against an existing named reference
+  "ON_ACCOUNT",     // Generic lump sum — no specific reference
+  "ADVANCE",        // Advance receipt or payment
+  "OPENING_BALANCE",// Migration / opening balance entry
+]);
+
+// Which entity type referenceId points to. Keeps referenceId generic across modules.
+export const referenceTypeEnum = pgEnum("reference_type", [
+  "SALES_INVOICE",
+  "PURCHASE_BILL",
+  "SALES_ORDER",
+  "PURCHASE_ORDER",
+  "PROJECT",
+  "JOB_CARD",
+]);
+
 export const taxTypeEnum = pgEnum("tax_type", [
   "sales",
   "purchase",
@@ -288,6 +307,17 @@ export const journalLine = pgTable("journal_line", {
   // reports. Plain uuid (project lives in ./projects) to avoid a schema import
   // cycle; joined by id in queries.
   projectId: uuid("project_id"),
+  // Bill-wise Details — Phase 1 structured adjustment fields.
+  // adjustmentType: how this line settles a reference (NEW_REF, AGAINST_REF, etc.)
+  // referenceName: human-readable reference label (e.g. "ADV-0001", "INV-00045")
+  // referenceType: which module referenceId belongs to (SALES_INVOICE, PROJECT, etc.)
+  // referenceId: nullable UUID pointing directly to the entity record.
+  // Outstanding balance is always CALCULATED (sum of NEW_REF minus sum of AGAINST_REF)
+  // and never stored here — it will live in a future reference_master table.
+  adjustmentType: adjustmentTypeEnum("adjustment_type"),
+  referenceName: text("reference_name"),
+  referenceType: referenceTypeEnum("reference_type"),
+  referenceId: uuid("reference_id"),
 });
 
 // Tax Rate
