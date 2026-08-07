@@ -68,7 +68,7 @@ export function PaymentForm() {
 
   const [saving, setSaving] = useState(false);
 
-  // Fetch Bank Accounts directly (Same method as Create Drawer)
+  // Fetch Bank Accounts & Chart Accounts
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
@@ -94,8 +94,8 @@ export function PaymentForm() {
       .then((acctData) => {
         const accts: Account[] = acctData.data || acctData.accounts || [];
         setAccounts(accts);
-        const ap = accts.find((a) => a.code === "2100" || a.subType === "payable" || a.name.toLowerCase().includes("payable"));
-        if (ap) setDebitAccountId(ap.id);
+        const ar = accts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable"));
+        if (ar) setDebitAccountId(ar.id);
       })
       .catch((err) => console.error("Failed to load chart accounts", err));
   }, []);
@@ -186,7 +186,18 @@ export function PaymentForm() {
       toast.error("The selected bank account is not linked to a ledger.");
       return;
     }
-    if (!debitAccountId) {
+
+    // Resolve Debit Account dynamically for Customer Refund & Supplier Payment if state was delayed
+    let resolvedDebitAccountId = debitAccountId;
+    if (paymentType === "customer_refund") {
+      const ar = accounts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable") || a.name.toLowerCase().includes("advance"));
+      if (ar) resolvedDebitAccountId = ar.id;
+    } else if (paymentType === "supplier_payment") {
+      const ap = accounts.find((a) => a.code === "2100" || a.subType === "payable" || a.name.toLowerCase().includes("payable"));
+      if (ap) resolvedDebitAccountId = ap.id;
+    }
+
+    if (!resolvedDebitAccountId) {
       toast.error("Please select the ledger account to debit");
       return;
     }
@@ -225,7 +236,7 @@ export function PaymentForm() {
           lines: [
             {
               // Debit: Money OUT to Customer/Supplier/Expense
-              accountId: debitAccountId,
+              accountId: resolvedDebitAccountId,
               debitAmount: cents,
               creditAmount: 0,
               currencyCode: "INR",

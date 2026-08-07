@@ -177,7 +177,14 @@ export function ReceiptForm() {
       toast.error("The selected bank account is not linked to a ledger.");
       return;
     }
-    if (!creditAccountId) {
+
+    let resolvedCreditAccountId = creditAccountId;
+    if (isCustomerReceipt) {
+      const ar = accounts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable"));
+      if (ar) resolvedCreditAccountId = ar.id;
+    }
+
+    if (!resolvedCreditAccountId) {
       toast.error("Please select the ledger account to credit");
       return;
     }
@@ -228,7 +235,7 @@ export function ReceiptForm() {
             },
             {
               // Credit: Money FROM Customer / Income
-              accountId: creditAccountId,
+              accountId: resolvedCreditAccountId,
               debitAmount: 0,
               creditAmount: cents,
               currencyCode: "INR",
