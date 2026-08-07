@@ -73,12 +73,13 @@ export function ReceiptForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const reqHeaders: Record<string, string> = {};
+    if (orgId) reqHeaders["x-organization-id"] = orgId;
 
     Promise.all([
-      fetch("/api/v1/bank-accounts", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
-      fetch("/api/v1/chart-accounts?limit=300", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
+      fetch("/api/v1/bank-accounts", { headers: reqHeaders }).then((r) => r.json()),
+      fetch("/api/v1/chart-accounts?limit=300", { headers: reqHeaders }).then((r) => r.json()),
     ])
       .then(([bankData, acctData]) => {
         const accts: Account[] = acctData.data || acctData.accounts || [];
@@ -93,7 +94,7 @@ export function ReceiptForm() {
             const chartId = b.chartAccountId || b.id;
             options.push({
               id: chartId,
-              name: b.accountName,
+              name: `${b.accountName} · ${b.currencyCode || "INR"}`,
               chartAccountId: chartId,
               currencyCode: b.currencyCode || "INR",
             });
@@ -107,7 +108,7 @@ export function ReceiptForm() {
             if (a.subType === "bank" || (a.type === "asset" && (lowerName.includes("bank") || lowerName.includes("cash")))) {
               options.push({
                 id: a.id,
-                name: `${a.code} - ${a.name}`,
+                name: `${a.name} · INR`,
                 chartAccountId: a.id,
                 currencyCode: "INR",
               });
@@ -151,12 +152,13 @@ export function ReceiptForm() {
       setSelectedInvoiceId("");
       return;
     }
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const reqHeaders: Record<string, string> = {};
+    if (orgId) reqHeaders["x-organization-id"] = orgId;
 
     setLoadingInvoices(true);
     fetch(`/api/v1/invoices?contactId=${contactId}&limit=100`, {
-      headers: { "x-organization-id": orgId },
+      headers: reqHeaders,
     })
       .then((r) => r.json())
       .then((data) => {
@@ -223,8 +225,9 @@ export function ReceiptForm() {
       return;
     }
 
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (orgId) reqHeaders["x-organization-id"] = orgId;
 
     setSaving(true);
     const cents = Math.round(numAmount * 100);
@@ -232,10 +235,7 @@ export function ReceiptForm() {
     try {
       const res = await fetch("/api/v1/entries", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-organization-id": orgId,
-        },
+        headers: reqHeaders,
         body: JSON.stringify({
           date,
           description: narration || `Receipt - ${RECEIPT_SUBTYPES.find((s) => s.value === subType)?.label}`,
@@ -326,9 +326,14 @@ export function ReceiptForm() {
             <SelectContent>
               {bankOptions.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.name} ({b.currencyCode})
+                  {b.name}
                 </SelectItem>
               ))}
+              {bankOptions.length === 0 && (
+                <div className="px-2 py-4 text-center text-xs text-muted-foreground">
+                  No bank or cash accounts found
+                </div>
+              )}
             </SelectContent>
           </Select>
         </div>

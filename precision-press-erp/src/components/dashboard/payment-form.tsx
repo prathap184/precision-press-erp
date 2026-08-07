@@ -49,7 +49,7 @@ export function PaymentForm() {
   const router = useRouter();
 
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paymentType, setPaymentType] = useState("supplier_payment");
+  const [paymentType, setPaymentType] = useState("customer_refund");
   const [contactId, setContactId] = useState("");
   const [bankOptions, setBankOptions] = useState<BankOption[]>([]);
   const [bankAccountId, setBankAccountId] = useState("");
@@ -69,12 +69,13 @@ export function PaymentForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const reqHeaders: Record<string, string> = {};
+    if (orgId) reqHeaders["x-organization-id"] = orgId;
 
     Promise.all([
-      fetch("/api/v1/bank-accounts", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
-      fetch("/api/v1/chart-accounts?limit=300", { headers: { "x-organization-id": orgId } }).then((r) => r.json()),
+      fetch("/api/v1/bank-accounts", { headers: reqHeaders }).then((r) => r.json()),
+      fetch("/api/v1/chart-accounts?limit=300", { headers: reqHeaders }).then((r) => r.json()),
     ])
       .then(([bankData, acctData]) => {
         const accts: Account[] = acctData.data || acctData.accounts || [];
@@ -89,7 +90,7 @@ export function PaymentForm() {
             const chartId = b.chartAccountId || b.id;
             options.push({
               id: chartId,
-              name: b.accountName,
+              name: `${b.accountName} · ${b.currencyCode || "INR"}`,
               chartAccountId: chartId,
               currencyCode: b.currencyCode || "INR",
             });
@@ -103,7 +104,7 @@ export function PaymentForm() {
             if (a.subType === "bank" || (a.type === "asset" && (lowerName.includes("bank") || lowerName.includes("cash")))) {
               options.push({
                 id: a.id,
-                name: `${a.code} - ${a.name}`,
+                name: `${a.name} · INR`,
                 chartAccountId: a.id,
                 currencyCode: "INR",
               });
@@ -150,12 +151,13 @@ export function PaymentForm() {
       setCustomerAdvance(null);
       return;
     }
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const reqHeaders: Record<string, string> = {};
+    if (orgId) reqHeaders["x-organization-id"] = orgId;
 
     setLoadingAdvance(true);
     fetch(`/api/v1/customer-credits?contactId=${contactId}&status=open&limit=100`, {
-      headers: { "x-organization-id": orgId },
+      headers: reqHeaders,
     })
       .then((r) => r.json())
       .then((data) => {
@@ -201,8 +203,9 @@ export function PaymentForm() {
       return;
     }
 
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (orgId) reqHeaders["x-organization-id"] = orgId;
 
     setSaving(true);
     const cents = Math.round(numAmount * 100);
@@ -210,10 +213,7 @@ export function PaymentForm() {
     try {
       const res = await fetch("/api/v1/entries", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-organization-id": orgId,
-        },
+        headers: reqHeaders,
         body: JSON.stringify({
           date,
           description: narration || `Payment - ${PAYMENT_SUBTYPES.find((p) => p.value === paymentType)?.label}`,
@@ -302,9 +302,14 @@ export function PaymentForm() {
             <SelectContent>
               {bankOptions.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.name} ({b.currencyCode})
+                  {b.name}
                 </SelectItem>
               ))}
+              {bankOptions.length === 0 && (
+                <div className="px-2 py-4 text-center text-xs text-muted-foreground">
+                  No bank or cash accounts found
+                </div>
+              )}
             </SelectContent>
           </Select>
         </div>
