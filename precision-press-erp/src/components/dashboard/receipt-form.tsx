@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, ArrowDownLeft, Info, Plus } from "lucide-react";
+import { Loader2, ArrowDownLeft, Info, Plus, CheckCircle2 } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 
 interface Account {
@@ -184,9 +184,11 @@ export function ReceiptForm() {
     }
   };
 
+  const isCustomerReceipt = ["invoice_payment", "advance", "on_account"].includes(subType);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!contactId) {
+    if (isCustomerReceipt && !contactId) {
       toast.error("Please select a customer");
       return;
     }
@@ -255,7 +257,7 @@ export function ReceiptForm() {
               debitAmount: 0,
               creditAmount: cents,
               currencyCode: "INR",
-              contactId,
+              contactId: contactId || null,
               adjustmentType,
               referenceName: adjustmentType === "AGAINST_REF" ? referenceName : adjustmentType === "NEW_REF" ? referenceName.trim() : null,
               referenceType: adjustmentType === "AGAINST_REF" ? "SALES_INVOICE" : null,
@@ -337,23 +339,38 @@ export function ReceiptForm() {
       {/* Customer & Ledger Selection */}
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>Received From (Customer) *</Label>
+          <Label>{isCustomerReceipt ? "Received From (Customer) *" : "Contact / Payer (Optional)"}</Label>
           <ContactPicker value={contactId} onChange={setContactId} type="customer" />
         </div>
 
-        <div className="space-y-2">
-          <Label>Credit Ledger Account *</Label>
-          <Select value={creditAccountId} onValueChange={setCreditAccountId}>
-            <SelectTrigger><SelectValue placeholder="Select ledger..." /></SelectTrigger>
-            <SelectContent>
-              {accounts.map((a) => (
-                <SelectItem key={a.id} value={a.id}>
-                  {a.code} - {a.name} ({a.type})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {isCustomerReceipt ? (
+          <div className="space-y-2">
+            <Label>Credit Ledger Account</Label>
+            <div className="p-3 bg-muted/30 border rounded-lg flex items-center justify-between text-sm">
+              <div className="flex items-center gap-2 text-slate-700 font-medium">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <span>Customer Account Statement (Auto-Credited)</span>
+              </div>
+              <span className="text-xs font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                1200 - AR
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label>Credit Ledger Account *</Label>
+            <Select value={creditAccountId} onValueChange={setCreditAccountId}>
+              <SelectTrigger><SelectValue placeholder="Select ledger..." /></SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.code} - {a.name} ({a.type})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Bill-wise Details Panel */}
@@ -445,7 +462,7 @@ export function ReceiptForm() {
             step="0.01"
             min="0"
             placeholder="0.00"
-            className="text-lg font-mono font-bold"
+            className="text-lg font-mono font-bold text-emerald-600"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
           />
