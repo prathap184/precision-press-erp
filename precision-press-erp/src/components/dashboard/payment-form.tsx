@@ -100,58 +100,22 @@ export function PaymentForm() {
       .catch((err) => console.error("Failed to load chart accounts", err));
   }, []);
 
-  // Filter accounts according to Payment Type (or return all if no filter match)
-  const filteredAccounts = accounts.filter((a) => {
-    const lowerName = a.name.toLowerCase();
-    if (paymentType === "supplier_payment") {
-      return a.code === "2100" || a.subType === "payable" || a.type === "liability" || lowerName.includes("payable");
-    }
-    if (paymentType === "customer_refund") {
-      return a.code === "1200" || a.subType === "receivable" || a.type === "asset" || a.type === "liability" || lowerName.includes("receivable") || lowerName.includes("advance");
-    }
-    if (paymentType === "expense" || paymentType === "employee_reimbursement") {
-      return a.type === "expense" || a.code.startsWith("5");
-    }
-    if (paymentType === "salary") {
-      return (
-        a.type === "expense" &&
-        (lowerName.includes("salary") || lowerName.includes("payroll") || lowerName.includes("wages") || lowerName.includes("staff"))
-      );
-    }
-    if (paymentType === "employee_advance") {
-      return a.type === "asset" || lowerName.includes("advance");
-    }
-    if (paymentType === "loan_repayment") {
-      return (
-        a.type === "liability" &&
-        (lowerName.includes("loan") || lowerName.includes("borrowing") || lowerName.includes("payable"))
-      );
-    }
-    if (paymentType === "tax_payment") {
-      return (
-        a.type === "liability" &&
-        (lowerName.includes("tax") || lowerName.includes("gst") || lowerName.includes("tds") || lowerName.includes("duty"))
-      );
-    }
-    return true;
-  });
-
-  const displayAccounts = filteredAccounts.length > 0 ? filteredAccounts : accounts;
-
-  // Auto-select best ledger when Payment Type changes
+  // Auto-select default ledger when Payment Type changes while showing ALL ledgers in dropdown
   useEffect(() => {
-    if (displayAccounts.length === 0) return;
+    if (accounts.length === 0) return;
 
     if (paymentType === "supplier_payment") {
       const ap = accounts.find((a) => a.code === "2100" || a.subType === "payable" || a.name.toLowerCase().includes("payable"));
       if (ap) setDebitAccountId(ap.id);
-      else setDebitAccountId(displayAccounts[0].id);
     } else if (paymentType === "customer_refund") {
       const ar = accounts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable") || a.name.toLowerCase().includes("advance"));
       if (ar) setDebitAccountId(ar.id);
-      else setDebitAccountId(displayAccounts[0].id);
-    } else {
-      setDebitAccountId(displayAccounts[0].id);
+    } else if (paymentType === "expense") {
+      const exp = accounts.find((a) => a.type === "expense" || a.code.startsWith("5"));
+      if (exp) setDebitAccountId(exp.id);
+    } else if (paymentType === "salary") {
+      const sal = accounts.find((a) => a.name.toLowerCase().includes("salary") || a.name.toLowerCase().includes("payroll") || a.type === "expense");
+      if (sal) setDebitAccountId(sal.id);
     }
   }, [paymentType, accounts]);
 
@@ -327,7 +291,7 @@ export function PaymentForm() {
 
       <div className="h-px bg-border my-2" />
 
-      {/* Contact & Dynamic Ledger Selection */}
+      {/* Contact & Ledger Selection */}
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>{paymentType === "customer_refund" ? "Customer *" : paymentType === "supplier_payment" ? "Supplier *" : "Contact / Payee (Optional)"}</Label>
@@ -343,7 +307,7 @@ export function PaymentForm() {
           <Select value={debitAccountId} onValueChange={setDebitAccountId}>
             <SelectTrigger><SelectValue placeholder="Select ledger..." /></SelectTrigger>
             <SelectContent>
-              {displayAccounts.map((a) => (
+              {accounts.map((a) => (
                 <SelectItem key={a.id} value={a.id}>
                   {a.code} - {a.name} ({a.type})
                 </SelectItem>
