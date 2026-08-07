@@ -44,9 +44,13 @@ export async function GET(request: Request) {
     const ctx = await getAuthContext(request);
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get("limit") || "50");
+    const type = url.searchParams.get("type");
 
     const entries = await db.query.journalEntry.findMany({
-      where: eq(journalEntry.organizationId, ctx.organizationId),
+      where: and(
+        eq(journalEntry.organizationId, ctx.organizationId),
+        type ? eq(journalEntry.voucherType, type as any) : undefined
+      ),
       orderBy: desc(journalEntry.createdAt),
       limit,
       with: {
