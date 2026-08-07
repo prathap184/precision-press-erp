@@ -96,15 +96,15 @@ export default function JournalVoucherPage() {
   if (loading) return <BrandLoader />;
 
   return (
-    <div className="mx-auto max-w-4xl py-6 space-y-6">
-      <div>
+    <div className="h-full w-full py-6 space-y-6">
+      <div className="px-6">
         <h1 className="text-2xl font-bold tracking-tight">Journal Voucher</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Record non-cash adjustments like depreciation, bad debts, and balance transfers.
         </p>
       </div>
 
-      <div className="rounded-xl border bg-card p-6">
+      <div className="px-6">
         <JournalForm
           accounts={accounts}
           contacts={contacts}

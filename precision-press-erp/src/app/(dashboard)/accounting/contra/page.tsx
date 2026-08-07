@@ -74,15 +74,15 @@ export default function ContraVoucherPage() {
   if (loading) return <BrandLoader />;
 
   return (
-    <div className="mx-auto max-w-4xl py-6 space-y-6">
-      <div>
+    <div className="h-full w-full py-6 space-y-6">
+      <div className="px-6">
         <h1 className="text-2xl font-bold tracking-tight">Contra Voucher</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Record cash deposits, cash withdrawals, and bank-to-bank transfers. (Only Cash & Bank ledgers allowed).
         </p>
       </div>
 
-      <div className="rounded-xl border bg-card p-6">
+      <div className="px-6">
         <ContraForm
           accounts={accounts}
           onSubmit={handleSubmit}
