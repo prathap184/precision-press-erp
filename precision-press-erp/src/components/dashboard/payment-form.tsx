@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, ArrowUpRight, Info, Plus, CheckCircle2 } from "lucide-react";
+import { Loader2, ArrowUpRight, Info, Plus } from "lucide-react";
 import { formatMoney } from "@/lib/money";
 
 interface Account {
@@ -100,9 +100,15 @@ export function PaymentForm() {
       .catch((err) => console.error("Failed to load chart accounts", err));
   }, []);
 
-  // Filtered accounts according to Payment Type mapping
+  // Filter accounts according to Payment Type (or return all if no filter match)
   const filteredAccounts = accounts.filter((a) => {
     const lowerName = a.name.toLowerCase();
+    if (paymentType === "supplier_payment") {
+      return a.code === "2100" || a.subType === "payable" || a.type === "liability" || lowerName.includes("payable");
+    }
+    if (paymentType === "customer_refund") {
+      return a.code === "1200" || a.subType === "receivable" || a.type === "asset" || a.type === "liability" || lowerName.includes("receivable") || lowerName.includes("advance");
+    }
     if (paymentType === "expense" || paymentType === "employee_reimbursement") {
       return a.type === "expense" || a.code.startsWith("5");
     }
@@ -130,18 +136,22 @@ export function PaymentForm() {
     return true;
   });
 
+  const displayAccounts = filteredAccounts.length > 0 ? filteredAccounts : accounts;
+
   // Auto-select best ledger when Payment Type changes
   useEffect(() => {
-    if (accounts.length === 0) return;
+    if (displayAccounts.length === 0) return;
 
     if (paymentType === "supplier_payment") {
       const ap = accounts.find((a) => a.code === "2100" || a.subType === "payable" || a.name.toLowerCase().includes("payable"));
       if (ap) setDebitAccountId(ap.id);
+      else setDebitAccountId(displayAccounts[0].id);
     } else if (paymentType === "customer_refund") {
       const ar = accounts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable") || a.name.toLowerCase().includes("advance"));
       if (ar) setDebitAccountId(ar.id);
-    } else if (filteredAccounts.length > 0) {
-      setDebitAccountId(filteredAccounts[0].id);
+      else setDebitAccountId(displayAccounts[0].id);
+    } else {
+      setDebitAccountId(displayAccounts[0].id);
     }
   }, [paymentType, accounts]);
 
@@ -168,11 +178,9 @@ export function PaymentForm() {
       .finally(() => setLoadingAdvance(false));
   }, [contactId, paymentType]);
 
-  const isDirectPartyPayment = paymentType === "customer_refund" || paymentType === "supplier_payment";
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (isDirectPartyPayment && !contactId) {
+    if ((paymentType === "customer_refund" || paymentType === "supplier_payment") && !contactId) {
       toast.error(`Please select a ${paymentType === "customer_refund" ? "customer" : "supplier"}`);
       return;
     }
@@ -187,17 +195,7 @@ export function PaymentForm() {
       return;
     }
 
-    // Resolve Debit Account dynamically for Customer Refund & Supplier Payment if state was delayed
-    let resolvedDebitAccountId = debitAccountId;
-    if (paymentType === "customer_refund") {
-      const ar = accounts.find((a) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable") || a.name.toLowerCase().includes("advance"));
-      if (ar) resolvedDebitAccountId = ar.id;
-    } else if (paymentType === "supplier_payment") {
-      const ap = accounts.find((a) => a.code === "2100" || a.subType === "payable" || a.name.toLowerCase().includes("payable"));
-      if (ap) resolvedDebitAccountId = ap.id;
-    }
-
-    if (!resolvedDebitAccountId) {
+    if (!debitAccountId) {
       toast.error("Please select the ledger account to debit");
       return;
     }
@@ -236,7 +234,7 @@ export function PaymentForm() {
           lines: [
             {
               // Debit: Money OUT to Customer/Supplier/Expense
-              accountId: resolvedDebitAccountId,
+              accountId: debitAccountId,
               debitAmount: cents,
               creditAmount: 0,
               currencyCode: "INR",
@@ -340,39 +338,19 @@ export function PaymentForm() {
           />
         </div>
 
-        {/* Hide generic Debit Ledger for direct Customer Refund & Supplier Payment */}
-        {isDirectPartyPayment ? (
-          <div className="space-y-2">
-            <Label>Debit Ledger Account</Label>
-            <div className="p-3 bg-muted/30 border rounded-lg flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-slate-700 font-medium">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span>
-                  {paymentType === "customer_refund"
-                    ? "Customer Account Statement (Auto-Debited)"
-                    : "Supplier Accounts Payable (Auto-Debited)"}
-                </span>
-              </div>
-              <span className="text-xs font-mono font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                {paymentType === "customer_refund" ? "1200 - AR" : "2100 - AP"}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            <Label>Debit Ledger Account *</Label>
-            <Select value={debitAccountId} onValueChange={setDebitAccountId}>
-              <SelectTrigger><SelectValue placeholder="Select ledger..." /></SelectTrigger>
-              <SelectContent>
-                {filteredAccounts.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.code} - {a.name} ({a.type})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        <div className="space-y-2">
+          <Label>Debit Ledger Account *</Label>
+          <Select value={debitAccountId} onValueChange={setDebitAccountId}>
+            <SelectTrigger><SelectValue placeholder="Select ledger..." /></SelectTrigger>
+            <SelectContent>
+              {displayAccounts.map((a) => (
+                <SelectItem key={a.id} value={a.id}>
+                  {a.code} - {a.name} ({a.type})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Customer Refund Advance Balance Panel */}
