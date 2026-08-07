@@ -157,18 +157,18 @@ export function ContraForm({
     if ((!isBalanced || !hasMinLines) && actionStatus !== "draft") return;
     onSubmit({
       date,
-      description,
-      reference,
+      description: description.trim() || "Contra Voucher (Bank/Cash Transfer)",
+      reference: reference.trim() || null,
       voucherType: "CONTRA",
       status: actionStatus,
       lines: lines.map((l) => ({
         accountId: l.accountId,
-        description: l.description,
+        description: l.description?.trim() || null,
         debitAmount: decimalToCents(l.debit),
         creditAmount: decimalToCents(l.credit),
-        instrumentType: l.instrumentType || undefined,
-        instrumentNo: l.instrumentNo || undefined,
-        instrumentDate: l.instrumentDate || undefined,
+        instrumentType: l.instrumentType?.trim() || null,
+        instrumentNo: l.instrumentNo?.trim() || null,
+        instrumentDate: l.instrumentDate?.trim() || null,
       })),
     });
   }

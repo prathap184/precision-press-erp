@@ -158,17 +158,17 @@ export function JournalForm({
     if (!isBalanced && actionStatus !== "draft") return;
     onSubmit({
       date,
-      description,
-      reference,
+      description: description.trim() || subType || "General Journal Voucher",
+      reference: reference.trim() || null,
       voucherType: "JOURNAL",
       subType,
       status: actionStatus,
       lines: lines.map((l) => ({
         accountId: l.accountId,
-        contactId: l.contactId || undefined,
-        costCenterId: l.costCenterId || undefined,
-        projectId: l.projectId || undefined,
-        description: l.description,
+        contactId: l.contactId || null,
+        costCenterId: l.costCenterId || null,
+        projectId: l.projectId || null,
+        description: l.description?.trim() || null,
         debitAmount: decimalToCents(l.debit),
         creditAmount: decimalToCents(l.credit),
       })),
