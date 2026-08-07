@@ -27,10 +27,10 @@ interface Account {
   subType?: string | null;
 }
 
-interface BankOption {
+interface BankAccountOption {
   id: string;
-  name: string;
-  chartAccountId: string;
+  accountName: string;
+  chartAccountId?: string;
   currencyCode: string;
 }
 
@@ -56,7 +56,7 @@ export function ReceiptForm() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [subType, setSubType] = useState("invoice_payment");
   const [contactId, setContactId] = useState("");
-  const [bankOptions, setBankOptions] = useState<BankOption[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
   const [bankAccountId, setBankAccountId] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [creditAccountId, setCreditAccountId] = useState("");
@@ -73,60 +73,34 @@ export function ReceiptForm() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
-    const reqHeaders: Record<string, string> = {};
-    if (orgId) reqHeaders["x-organization-id"] = orgId;
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
 
-    Promise.all([
-      fetch("/api/v1/bank-accounts", { headers: reqHeaders }).then((r) => r.json()),
-      fetch("/api/v1/chart-accounts?limit=300", { headers: reqHeaders }).then((r) => r.json()),
-    ])
-      .then(([bankData, acctData]) => {
+    fetch("/api/v1/bank-accounts", {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.bankAccounts && Array.isArray(data.bankAccounts)) {
+          setBankAccounts(data.bankAccounts);
+          if (data.bankAccounts.length > 0) {
+            setBankAccountId(data.bankAccounts[0].id);
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load bank accounts", err));
+
+    fetch("/api/v1/chart-accounts?limit=300", {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((r) => r.json())
+      .then((acctData) => {
         const accts: Account[] = acctData.data || acctData.accounts || [];
         setAccounts(accts);
-
-        // Build list of Cash & Bank accounts for "Received Into"
-        const options: BankOption[] = [];
-        const addedChartIds = new Set<string>();
-
-        if (bankData.bankAccounts && Array.isArray(bankData.bankAccounts)) {
-          bankData.bankAccounts.forEach((b: any) => {
-            const chartId = b.chartAccountId || b.id;
-            options.push({
-              id: chartId,
-              name: `${b.accountName} · ${b.currencyCode || "INR"}`,
-              chartAccountId: chartId,
-              currencyCode: b.currencyCode || "INR",
-            });
-            addedChartIds.add(chartId);
-          });
-        }
-
-        accts.forEach((a) => {
-          if (!addedChartIds.has(a.id)) {
-            const lowerName = a.name.toLowerCase();
-            if (a.subType === "bank" || (a.type === "asset" && (lowerName.includes("bank") || lowerName.includes("cash")))) {
-              options.push({
-                id: a.id,
-                name: `${a.name} · INR`,
-                chartAccountId: a.id,
-                currencyCode: "INR",
-              });
-              addedChartIds.add(a.id);
-            }
-          }
-        });
-
-        setBankOptions(options);
-
-        if (options.length > 0) {
-          setBankAccountId(options[0].id);
-        }
-
         const ar = accts.find((a: Account) => a.code === "1200" || a.subType === "receivable" || a.name.toLowerCase().includes("receivable"));
         if (ar) setCreditAccountId(ar.id);
       })
-      .catch((err) => console.error("Failed to load initial ledger options", err));
+      .catch((err) => console.error("Failed to load chart accounts", err));
   }, []);
 
   // Update default Credit Account when Subtype changes
@@ -152,13 +126,12 @@ export function ReceiptForm() {
       setSelectedInvoiceId("");
       return;
     }
-    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
-    const reqHeaders: Record<string, string> = {};
-    if (orgId) reqHeaders["x-organization-id"] = orgId;
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
 
     setLoadingInvoices(true);
     fetch(`/api/v1/invoices?contactId=${contactId}&limit=100`, {
-      headers: reqHeaders,
+      headers: { "x-organization-id": orgId },
     })
       .then((r) => r.json())
       .then((data) => {
@@ -198,10 +171,10 @@ export function ReceiptForm() {
       toast.error("Please select the Cash / Bank account money was received into");
       return;
     }
-    const selectedBank = bankOptions.find((b) => b.id === bankAccountId);
-    const debitAccountId = selectedBank?.chartAccountId || bankAccountId;
+    const selectedBank = bankAccounts.find((b) => b.id === bankAccountId);
+    const debitAccountId = selectedBank?.chartAccountId || selectedBank?.id;
     if (!debitAccountId) {
-      toast.error("Please select a valid Cash/Bank account");
+      toast.error("The selected bank account is not linked to a ledger.");
       return;
     }
     if (!creditAccountId) {
@@ -225,9 +198,8 @@ export function ReceiptForm() {
       return;
     }
 
-    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
-    const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
-    if (orgId) reqHeaders["x-organization-id"] = orgId;
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
 
     setSaving(true);
     const cents = Math.round(numAmount * 100);
@@ -235,7 +207,10 @@ export function ReceiptForm() {
     try {
       const res = await fetch("/api/v1/entries", {
         method: "POST",
-        headers: reqHeaders,
+        headers: {
+          "Content-Type": "application/json",
+          "x-organization-id": orgId,
+        },
         body: JSON.stringify({
           date,
           description: narration || `Receipt - ${RECEIPT_SUBTYPES.find((s) => s.value === subType)?.label}`,
@@ -324,12 +299,12 @@ export function ReceiptForm() {
           <Select value={bankAccountId} onValueChange={setBankAccountId}>
             <SelectTrigger><SelectValue placeholder="Select bank/cash..." /></SelectTrigger>
             <SelectContent>
-              {bankOptions.map((b) => (
+              {bankAccounts.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.name}
+                  {b.accountName} · {b.currencyCode || "INR"}
                 </SelectItem>
               ))}
-              {bankOptions.length === 0 && (
+              {bankAccounts.length === 0 && (
                 <div className="px-2 py-4 text-center text-xs text-muted-foreground">
                   No bank or cash accounts found
                 </div>

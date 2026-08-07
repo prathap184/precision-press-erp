@@ -27,31 +27,31 @@ interface Account {
   subType?: string | null;
 }
 
-interface BankOption {
+interface BankAccountOption {
   id: string;
-  name: string;
-  chartAccountId: string;
+  accountName: string;
+  chartAccountId?: string;
   currencyCode: string;
 }
 
 const PAYMENT_SUBTYPES = [
-  { value: "supplier_payment", label: "Supplier Payment", mapType: "liability", code: "2100" },
-  { value: "customer_refund", label: "Customer Refund", mapType: "asset", code: "1200" },
-  { value: "expense", label: "Expense Payment", mapType: "expense" },
-  { value: "salary", label: "Salary / Payroll Payout", mapType: "expense" },
-  { value: "employee_advance", label: "Employee Advance", mapType: "asset" },
-  { value: "employee_reimbursement", label: "Employee Reimbursement", mapType: "expense" },
-  { value: "loan_repayment", label: "Loan Repayment", mapType: "liability" },
-  { value: "tax_payment", label: "Tax Payment", mapType: "liability" },
+  { value: "supplier_payment", label: "Supplier Payment" },
+  { value: "customer_refund", label: "Customer Refund" },
+  { value: "expense", label: "Expense Payment" },
+  { value: "salary", label: "Salary / Payroll Payout" },
+  { value: "employee_advance", label: "Employee Advance" },
+  { value: "employee_reimbursement", label: "Employee Reimbursement" },
+  { value: "loan_repayment", label: "Loan Repayment" },
+  { value: "tax_payment", label: "Tax Payment" },
 ];
 
 export function PaymentForm() {
   const router = useRouter();
 
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [paymentType, setPaymentType] = useState("supplier_payment");
+  const [paymentType, setPaymentType] = useState("customer_refund");
   const [contactId, setContactId] = useState("");
-  const [bankOptions, setBankOptions] = useState<BankOption[]>([]);
+  const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
   const [bankAccountId, setBankAccountId] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [debitAccountId, setDebitAccountId] = useState("");
@@ -68,62 +68,36 @@ export function PaymentForm() {
 
   const [saving, setSaving] = useState(false);
 
+  // Fetch Bank Accounts directly (Same method as Create Drawer)
   useEffect(() => {
-    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
-    const reqHeaders: Record<string, string> = {};
-    if (orgId) reqHeaders["x-organization-id"] = orgId;
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
 
-    Promise.all([
-      fetch("/api/v1/bank-accounts", { headers: reqHeaders }).then((r) => r.json()),
-      fetch("/api/v1/chart-accounts?limit=300", { headers: reqHeaders }).then((r) => r.json()),
-    ])
-      .then(([bankData, acctData]) => {
+    fetch("/api/v1/bank-accounts", {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.bankAccounts && Array.isArray(data.bankAccounts)) {
+          setBankAccounts(data.bankAccounts);
+          if (data.bankAccounts.length > 0) {
+            setBankAccountId(data.bankAccounts[0].id);
+          }
+        }
+      })
+      .catch((err) => console.error("Failed to load bank accounts", err));
+
+    fetch("/api/v1/chart-accounts?limit=300", {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((r) => r.json())
+      .then((acctData) => {
         const accts: Account[] = acctData.data || acctData.accounts || [];
         setAccounts(accts);
-
-        // Build list of Cash & Bank accounts for "Paid From"
-        const options: BankOption[] = [];
-        const addedChartIds = new Set<string>();
-
-        if (bankData.bankAccounts && Array.isArray(bankData.bankAccounts)) {
-          bankData.bankAccounts.forEach((b: any) => {
-            const chartId = b.chartAccountId || b.id;
-            options.push({
-              id: chartId,
-              name: `${b.accountName} · ${b.currencyCode || "INR"}`,
-              chartAccountId: chartId,
-              currencyCode: b.currencyCode || "INR",
-            });
-            addedChartIds.add(chartId);
-          });
-        }
-
-        accts.forEach((a) => {
-          if (!addedChartIds.has(a.id)) {
-            const lowerName = a.name.toLowerCase();
-            if (a.subType === "bank" || (a.type === "asset" && (lowerName.includes("bank") || lowerName.includes("cash")))) {
-              options.push({
-                id: a.id,
-                name: `${a.name} · INR`,
-                chartAccountId: a.id,
-                currencyCode: "INR",
-              });
-              addedChartIds.add(a.id);
-            }
-          }
-        });
-
-        setBankOptions(options);
-
-        if (options.length > 0) {
-          setBankAccountId(options[0].id);
-        }
-
-        // Default to Accounts Payable for supplier_payment
-        const ap = accts.find((a: Account) => a.code === "2100" || a.subType === "payable" || a.name.toLowerCase().includes("payable"));
+        const ap = accts.find((a) => a.code === "2100" || a.subType === "payable" || a.name.toLowerCase().includes("payable"));
         if (ap) setDebitAccountId(ap.id);
       })
-      .catch((err) => console.error("Failed to load initial ledger options", err));
+      .catch((err) => console.error("Failed to load chart accounts", err));
   }, []);
 
   // Filtered accounts according to Payment Type mapping
@@ -153,7 +127,7 @@ export function PaymentForm() {
         (lowerName.includes("tax") || lowerName.includes("gst") || lowerName.includes("tds") || lowerName.includes("duty"))
       );
     }
-    return true; // Fallback show all if unmatched
+    return true;
   });
 
   // Auto-select best ledger when Payment Type changes
@@ -177,13 +151,12 @@ export function PaymentForm() {
       setCustomerAdvance(null);
       return;
     }
-    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
-    const reqHeaders: Record<string, string> = {};
-    if (orgId) reqHeaders["x-organization-id"] = orgId;
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
 
     setLoadingAdvance(true);
     fetch(`/api/v1/customer-credits?contactId=${contactId}&status=open&limit=100`, {
-      headers: reqHeaders,
+      headers: { "x-organization-id": orgId },
     })
       .then((r) => r.json())
       .then((data) => {
@@ -207,10 +180,10 @@ export function PaymentForm() {
       toast.error("Please select the Cash / Bank account money was paid out from");
       return;
     }
-    const selectedBank = bankOptions.find((b) => b.id === bankAccountId);
-    const creditAccountId = selectedBank?.chartAccountId || bankAccountId;
+    const selectedBank = bankAccounts.find((b) => b.id === bankAccountId);
+    const creditAccountId = selectedBank?.chartAccountId || selectedBank?.id;
     if (!creditAccountId) {
-      toast.error("Please select a valid Cash/Bank account");
+      toast.error("The selected bank account is not linked to a ledger.");
       return;
     }
     if (!debitAccountId) {
@@ -229,9 +202,8 @@ export function PaymentForm() {
       return;
     }
 
-    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
-    const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
-    if (orgId) reqHeaders["x-organization-id"] = orgId;
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
 
     setSaving(true);
     const cents = Math.round(numAmount * 100);
@@ -239,7 +211,10 @@ export function PaymentForm() {
     try {
       const res = await fetch("/api/v1/entries", {
         method: "POST",
-        headers: reqHeaders,
+        headers: {
+          "Content-Type": "application/json",
+          "x-organization-id": orgId,
+        },
         body: JSON.stringify({
           date,
           description: narration || `Payment - ${PAYMENT_SUBTYPES.find((p) => p.value === paymentType)?.label}`,
@@ -326,12 +301,12 @@ export function PaymentForm() {
           <Select value={bankAccountId} onValueChange={setBankAccountId}>
             <SelectTrigger><SelectValue placeholder="Select bank/cash..." /></SelectTrigger>
             <SelectContent>
-              {bankOptions.map((b) => (
+              {bankAccounts.map((b) => (
                 <SelectItem key={b.id} value={b.id}>
-                  {b.name}
+                  {b.accountName} · {b.currencyCode || "INR"}
                 </SelectItem>
               ))}
-              {bankOptions.length === 0 && (
+              {bankAccounts.length === 0 && (
                 <div className="px-2 py-4 text-center text-xs text-muted-foreground">
                   No bank or cash accounts found
                 </div>
