@@ -1,24 +1,15 @@
 import { db } from "@/lib/db";
-import { contact, bill, debitNote, payment, paymentAllocation } from "@/lib/db/schema";
+import { contact, bill, debitNote, payment, paymentAllocation, journalEntry, journalLine } from "@/lib/db/schema";
 import { eq, and, gte, lte, lt, notInArray, inArray, isNull } from "drizzle-orm";
 
 /**
  * AP-oriented supplier statement builder, shared by the REST route and the MCP
  * tool so both stay consistent.
- *
- * The statement covers the supplier side only: bills (increase what we owe),
- * debit notes (reduce what we owe), and payments made (reduce what we owe). The
- * running balance is "what we owe this supplier" — positive means we owe them.
- *
- * Debit-note APPLICATIONS are recorded as zero-cash "carrier" payments so a
- * paymentAllocation can link the note -> bill. Those carrier payments are
- * EXCLUDED here (the debit note document itself is already listed) to avoid
- * reducing the balance twice. All amounts are integer cents.
  */
 
 export interface SupplierStatementTransaction {
   date: string;
-  type: "bill" | "debit_note" | "payment";
+  type: "bill" | "debit_note" | "payment" | "journal";
   documentNumber: string;
   description: string;
   // debit reduces what we owe (payments, debit notes); credit increases it (bills)
@@ -145,8 +136,65 @@ export async function buildSupplierStatement(
     );
   openingBalance -= priorPaymentsMade.reduce((s, r) => s + r.amount, 0);
 
+  // Journal lines prior to startDate for this supplier
+  const priorJournals = await db
+    .select({
+      debitAmount: journalLine.debitAmount,
+      creditAmount: journalLine.creditAmount,
+    })
+    .from(journalLine)
+    .innerJoin(journalEntry, eq(journalLine.journalEntryId, journalEntry.id))
+    .where(
+      and(
+        eq(journalEntry.organizationId, organizationId),
+        eq(journalLine.contactId, contactId),
+        eq(journalEntry.status, "posted"),
+        lt(journalEntry.date, startDate)
+      )
+    );
+
+  for (const pj of priorJournals) {
+    // Credits increase what we owe, Debits decrease what we owe
+    openingBalance += (pj.creditAmount - pj.debitAmount);
+  }
+
   // ---------- Transactions within date range ----------
   const transactions: SupplierStatementTransaction[] = [];
+
+  // Journal entries in range for this supplier
+  const journalsInRange = await db
+    .select({
+      date: journalEntry.date,
+      voucherNumber: journalEntry.voucherNumber,
+      entryNumber: journalEntry.entryNumber,
+      entryDescription: journalEntry.description,
+      lineDescription: journalLine.description,
+      debitAmount: journalLine.debitAmount,
+      creditAmount: journalLine.creditAmount,
+    })
+    .from(journalLine)
+    .innerJoin(journalEntry, eq(journalLine.journalEntryId, journalEntry.id))
+    .where(
+      and(
+        eq(journalEntry.organizationId, organizationId),
+        eq(journalLine.contactId, contactId),
+        eq(journalEntry.status, "posted"),
+        gte(journalEntry.date, startDate),
+        lte(journalEntry.date, endDate)
+      )
+    );
+
+  for (const j of journalsInRange) {
+    transactions.push({
+      date: j.date,
+      type: "journal",
+      documentNumber: j.voucherNumber || `JV-${j.entryNumber}`,
+      description: j.lineDescription || j.entryDescription || "General Journal Entry",
+      debit: j.debitAmount,
+      credit: j.creditAmount,
+      balance: 0,
+    });
+  }
 
   const billsInRange = await db
     .select()
@@ -227,8 +275,9 @@ export async function buildSupplierStatement(
   // Sort by date, then bills first, then debit notes, then payments.
   const typePriority: Record<string, number> = {
     bill: 0,
-    debit_note: 1,
-    payment: 2,
+    journal: 1,
+    debit_note: 2,
+    payment: 3,
   };
   transactions.sort((a, b) => {
     const dateCmp = a.date.localeCompare(b.date);

@@ -8,6 +8,8 @@ import {
   debitNote,
   payment,
   paymentAllocation,
+  journalEntry,
+  journalLine,
 } from "@/lib/db/schema";
 import { eq, and, gte, lte, lt, notInArray, inArray, isNull } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
@@ -15,7 +17,7 @@ import { handleError, notFound } from "@/lib/api/response";
 
 interface StatementTransaction {
   date: string;
-  type: "invoice" | "credit_note" | "payment" | "bill" | "debit_note";
+  type: "invoice" | "credit_note" | "payment" | "bill" | "debit_note" | "journal";
   documentNumber: string;
   description: string;
   debit: number;
@@ -183,8 +185,64 @@ export async function GET(
       openingBalance += priorPaymentsMade.reduce((s, r) => s + r.amount, 0);
     }
 
+    // Journal lines prior to startDate for this contact
+    const priorJournals = await db
+      .select({
+        debitAmount: journalLine.debitAmount,
+        creditAmount: journalLine.creditAmount,
+      })
+      .from(journalLine)
+      .innerJoin(journalEntry, eq(journalLine.journalEntryId, journalEntry.id))
+      .where(
+        and(
+          eq(journalEntry.organizationId, ctx.organizationId),
+          eq(journalLine.contactId, id),
+          eq(journalEntry.status, "posted"),
+          lt(journalEntry.date, startDate)
+        )
+      );
+
+    for (const pj of priorJournals) {
+      openingBalance += (pj.debitAmount - pj.creditAmount);
+    }
+
     // ---------- Transactions within date range ----------
     const transactions: StatementTransaction[] = [];
+
+    // Journal entries in range for this contact
+    const journalsInRange = await db
+      .select({
+        date: journalEntry.date,
+        voucherNumber: journalEntry.voucherNumber,
+        entryNumber: journalEntry.entryNumber,
+        entryDescription: journalEntry.description,
+        lineDescription: journalLine.description,
+        debitAmount: journalLine.debitAmount,
+        creditAmount: journalLine.creditAmount,
+      })
+      .from(journalLine)
+      .innerJoin(journalEntry, eq(journalLine.journalEntryId, journalEntry.id))
+      .where(
+        and(
+          eq(journalEntry.organizationId, ctx.organizationId),
+          eq(journalLine.contactId, id),
+          eq(journalEntry.status, "posted"),
+          gte(journalEntry.date, startDate),
+          lte(journalEntry.date, endDate)
+        )
+      );
+
+    for (const j of journalsInRange) {
+      transactions.push({
+        date: j.date,
+        type: "journal",
+        documentNumber: j.voucherNumber || `JV-${j.entryNumber}`,
+        description: j.lineDescription || j.entryDescription || "General Journal Entry",
+        debit: j.debitAmount,
+        credit: j.creditAmount,
+        balance: 0,
+      });
+    }
 
     // Invoices in range
     if (isCustomer) {
@@ -358,9 +416,10 @@ export async function GET(
     const typePriority: Record<string, number> = {
       invoice: 0,
       bill: 0,
-      credit_note: 1,
-      debit_note: 1,
-      payment: 2,
+      journal: 1,
+      credit_note: 2,
+      debit_note: 2,
+      payment: 3,
     };
     transactions.sort((a, b) => {
       const dateCmp = a.date.localeCompare(b.date);
