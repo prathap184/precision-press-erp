@@ -60,13 +60,23 @@ export function useGlobalShortcuts() {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input, textarea, or contenteditable element
       const activeElement = document.activeElement as HTMLElement;
-      if (
-        activeElement &&
-        (activeElement.tagName === 'INPUT' ||
-          activeElement.tagName === 'TEXTAREA' ||
-          activeElement.isContentEditable)
-      ) {
-        return;
+      if (activeElement) {
+        const tagName = activeElement.tagName;
+        const role = activeElement.getAttribute('role');
+        if (
+          tagName === 'INPUT' ||
+          tagName === 'TEXTAREA' ||
+          tagName === 'SELECT' ||
+          activeElement.isContentEditable ||
+          role === 'combobox' ||
+          role === 'textbox' ||
+          role === 'searchbox' ||
+          role === 'listbox' ||
+          role === 'option' ||
+          role === 'menuitem'
+        ) {
+          return;
+        }
       }
 
       // Ignore shortcut handling when modifier keys (Ctrl, Cmd, Alt) are pressed
