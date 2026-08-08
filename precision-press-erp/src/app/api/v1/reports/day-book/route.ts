@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       const vType = (ent.voucherType || "").toUpperCase();
       const sModule = (ent.sourceModule || "").toUpperCase();
       const sType = (ent.sourceType || "").toLowerCase();
-      const descLower = (ent.description || "").toLowerCase();
+      const descLower = ((ent.description || "") + " " + (ent.reference || "")).toLowerCase();
       const ref = ent.reference || "";
 
       let voucherType = "Journal";

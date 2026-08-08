@@ -111,7 +111,7 @@ export async function GET(
       const vType = (row.voucherType || "").toUpperCase();
       const sModule = (row.sourceModule || "").toUpperCase();
       const sType = (row.sourceType || "").toLowerCase();
-      const descLower = (row.description || "").toLowerCase();
+      const descLower = ((row.description || "") + " " + (row.reference || "")).toLowerCase();
 
       let vchType = "Journal";
 
