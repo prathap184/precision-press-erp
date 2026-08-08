@@ -84,6 +84,8 @@ export async function GET(
         reference: journalEntry.reference,
         entryNumber: journalEntry.entryNumber,
         sourceType: journalEntry.sourceType,
+        sourceModule: journalEntry.sourceModule,
+        voucherType: journalEntry.voucherType,
         debit: journalLine.debitAmount,
         credit: journalLine.creditAmount,
         journalEntryId: journalEntry.id,
@@ -105,17 +107,33 @@ export async function GET(
       totalDebit += debit;
       totalCredit += credit;
 
-      // Map sourceType to Tally vch type
+      // Standard Tally Voucher Type Classification
+      const vType = (row.voucherType || "").toUpperCase();
+      const sModule = (row.sourceModule || "").toUpperCase();
+      const sType = (row.sourceType || "").toLowerCase();
+      const descLower = (row.description || "").toLowerCase();
+
       let vchType = "Journal";
-      const st = (row.sourceType ?? "").toLowerCase();
-      if (st.includes("invoice") || st.includes("sales_invoice")) vchType = "Sales";
-      else if (st.includes("receipt") || st.includes("payment_received") || st.includes("customer_payment")) vchType = "Receipt";
-      else if (st.includes("bill") || st.includes("purchase")) vchType = "Purchase";
-      else if (st.includes("payment") || st.includes("vendor_payment") || st.includes("expense")) vchType = "Payment";
-      else if (st.includes("transfer") || st.includes("contra")) vchType = "Contra";
-      else if (st.includes("credit_note")) vchType = "Credit Note";
-      else if (st.includes("debit_note")) vchType = "Debit Note";
-      else if (st.includes("cogs") || st.includes("stock")) vchType = "Stock Journal";
+
+      if (vType === "RECEIPT" || sModule === "RECEIPT" || sType === "receipt" || descLower.includes("receipt")) {
+        vchType = "Receipt";
+      } else if (vType === "PAYMENT" || sModule === "PAYMENT" || sType === "payment" || (descLower.includes("payment") && !descLower.includes("contra"))) {
+        vchType = "Payment";
+      } else if (vType === "CONTRA" || sModule === "CONTRA" || sType === "contra" || descLower.includes("contra")) {
+        vchType = "Contra";
+      } else if (vType === "SALES" || sModule === "SALES" || sType === "invoice" || descLower.startsWith("invoice inv")) {
+        vchType = "Sales Invoice";
+      } else if (vType === "PURCHASE" || sModule === "PURCHASE" || sType === "bill" || descLower.includes("bill")) {
+        vchType = "Purchase";
+      } else if (descLower.includes("credit note") || sType === "credit_note") {
+        vchType = "Credit Note";
+      } else if (descLower.includes("debit note") || sType === "debit_note") {
+        vchType = "Debit Note";
+      } else if (descLower.includes("cost of sales") || descLower.includes("opening stock") || descLower.includes("inventory adjustment")) {
+        vchType = "Stock Journal";
+      } else {
+        vchType = "Journal";
+      }
 
       return {
         date: row.date,
