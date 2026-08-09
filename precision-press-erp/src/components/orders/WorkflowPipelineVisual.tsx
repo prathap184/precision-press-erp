@@ -150,34 +150,34 @@ export function WorkflowPipelineVisual({
           const isCompleted = step.isCompleted;
           const navHref = getNavHref(step);
 
-          let bgClass = 'bg-slate-50 text-slate-400 border-slate-200';
-          let icon = <Lock size={12} className="text-slate-300 shrink-0" />;
+          let bgClass = 'bg-slate-100 text-slate-500 border-slate-300';
+          let icon = <Lock size={13} className="text-slate-400 shrink-0" />;
 
           if (isCompleted) {
-            bgClass = 'bg-emerald-50/70 text-emerald-800 border-emerald-100/80';
-            icon = <Check size={12} className="text-emerald-600 shrink-0 stroke-[3.5]" />;
+            bgClass = 'bg-emerald-50 text-emerald-900 border-emerald-300';
+            icon = <Check size={13} className="text-emerald-600 shrink-0 stroke-[3]" />;
           } else if (isCurrent) {
             if (step.status === 'IN_PROGRESS') {
-              bgClass = 'bg-blue-50 text-blue-900 border-blue-300 ring-2 ring-blue-100 ring-offset-0 animate-pulse font-black';
-              icon = <Play size={12} className="text-blue-600 fill-blue-600 shrink-0" />;
+              bgClass = 'bg-blue-100 text-blue-900 border-blue-400 ring-2 ring-blue-200 ring-offset-0 animate-pulse';
+              icon = <Play size={13} className="text-blue-700 fill-blue-700 shrink-0" />;
             } else if (step.status === 'ON_HOLD' || step.status === 'PAUSED') {
-              bgClass = 'bg-amber-50 text-amber-900 border-amber-300 ring-2 ring-amber-100 ring-offset-0 font-black';
-              icon = <AlertCircle size={12} className="text-amber-600 shrink-0" />;
+              bgClass = 'bg-amber-100 text-amber-900 border-amber-400 ring-2 ring-amber-200 ring-offset-0';
+              icon = <AlertCircle size={13} className="text-amber-700 shrink-0" />;
             } else {
-              bgClass = 'bg-sky-50 text-sky-900 border-sky-300 ring-2 ring-sky-100 ring-offset-0';
-              icon = <Clock size={12} className="text-sky-600 shrink-0" />;
+              bgClass = 'bg-sky-100 text-sky-900 border-sky-400 ring-2 ring-sky-200 ring-offset-0';
+              icon = <Clock size={13} className="text-sky-700 shrink-0" />;
             }
           }
 
           const pillContent = (
             <>
               {icon}
-              <span className="capitalize">{step.label.toLowerCase()}</span>
+              <span className="capitalize font-bold">{step.label.toLowerCase()}</span>
               {navHref && <ExternalLink size={12} className="shrink-0 opacity-60" />}
             </>
           );
 
-          const pillBase = `flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-bold tracking-wide transition-all duration-200 select-none ${bgClass}`;
+          const pillBase = `flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[12px] font-bold tracking-wide transition-all duration-200 select-none ${bgClass}`;
 
           return (
             <div key={`${step.role}-${index}`} className="flex items-center shrink-0">
@@ -197,8 +197,8 @@ export function WorkflowPipelineVisual({
 
               {index < stepsToRender.length - 1 && (
                 <ChevronRight
-                  size={16}
-                  className={`mx-1 shrink-0 ${isCompleted ? 'text-emerald-400' : 'text-slate-300'}`}
+                  size={14}
+                  className={`mx-0.5 shrink-0 ${isCompleted ? 'text-emerald-500' : 'text-slate-400'}`}
                 />
               )}
             </div>
