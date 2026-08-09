@@ -1900,12 +1900,6 @@ export async function markTiffOpened(orderId: string) {
 export async function startTiffPrint(orderId: string, notes?: string) {
   const user = await getAuthorizedUser(['ADMIN', 'MANAGER', 'PRINTER']);
   
-  const orderRef = adminDb.collection('orders').doc(orderId);
-  const orderSnap = await orderRef.get();
-  if (!orderSnap.exists) throw new Error('Order not found');
-  const orderData = orderSnap.data() as any;
-  checkStageNotCompleted('PRINTER', orderData.workflowSnapshot);
-
   const timelineEntry = {
     event: 'PRINT_STARTED',
     timestamp: new Date().toISOString(),
@@ -1913,25 +1907,7 @@ export async function startTiffPrint(orderId: string, notes?: string) {
     notes: notes || 'Print started'
   };
 
-  if (orderData.status === 'PAYMENT_VERIFIED') {
-    // Auto-assign to this printer
-    const meta = {
-      'workflow.assignedTo': user.id,
-      'workflow.assignedToName': user.name,
-      'workflow.assignedBy': user.id,
-      'workflow.assignedByName': user.name,
-      'workflow.assignedAt': admin.firestore.FieldValue.serverTimestamp()
-    };
-    await transitionOrder(orderId, 'ASSIGNED', `Assigned printer ${user.name} (auto)`, user, meta);
-  }
-
-  await advanceWorkflowSnapshotStep(orderId, 'PRINTER', 'IN_PROGRESS', user, notes || 'Started printing TIFF');
-  
-  if (orderData.status !== 'IN_PROGRESS' && orderData.status !== 'COMPLETED' && orderData.status !== 'DISPATCHED' && orderData.status !== 'DELIVERED') {
-    await transitionOrder(orderId, 'IN_PROGRESS', 'Started printing TIFF', user);
-  }
-  
-  return await orderRef.update({
+  return await fastCompleteProductionStage(orderId, notes || 'Started printing TIFF', {
     'workflow.printWorkflow.status': 'PRINT_STARTED',
     'workflow.printWorkflow.sentToPrinter': true,
     'workflow.printWorkflow.sentToPrinterAt': admin.firestore.FieldValue.serverTimestamp(),
