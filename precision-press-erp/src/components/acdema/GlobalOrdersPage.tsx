@@ -866,8 +866,8 @@ export function GlobalOrdersPage() {
                             <td className={`px-4 py-2 tabular-nums ${tdBorder}`}>
                                 <WorkflowPipelineVisual
                                       snapshot={(() => {
-                                        const dispatchMethodKey = order.dispatchInfo?.method || order.delivery?.choice || 'COUNTER';
-                                        const isDeliverySkipped = ['pickup', 'counter'].includes((dispatchMethodKey || '').toLowerCase());
+                                        const dispatchMethodKey = order.dispatchInfo?.method || (order as any).deliveryChoice || (order as any).delivery_choice || order.delivery?.choice || '';
+                                        const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes((dispatchMethodKey || '').toLowerCase());
                                         if (isDeliverySkipped && order.workflowSnapshot?.steps) {
                                           return {
                                             ...order.workflowSnapshot,
