@@ -64,7 +64,7 @@ import { CategoryPicker } from "@/components/dashboard/category-picker";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { formatMoney, decimalToCents, decimalToMinorUnits } from "@/lib/money";
 import { WorkflowBuilder, type WorkflowStep } from "@/components/inventory/workflow-builder";
-import { HsnPicker } from "@/components/inventory/hsn-picker";
+import { HsnPicker } from "@/components/inventory/inventory/hsn-picker";
 
 
 type DrawerType = "contact" | "project" | "invoice" | "bill" | "entry" | "inventory" | "quote" | "salesReceipt" | "purchaseOrder" | "expense" | "fixedAsset" | "budget" | "employee" | "creditNote" | "recurring" | "account" | "bankAccount" | "warehouse" | "stockTake" | "category" | "transfer" | "bankTransfer" | "contractor" | "deal" | "debitNote" | "customerCredit" | "paymentVoucher" | "loan" | "openingBalance" | "accrualSchedule" | "revenueSchedule" | "recurringJournal";
