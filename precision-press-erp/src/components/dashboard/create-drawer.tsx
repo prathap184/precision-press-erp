@@ -1204,6 +1204,8 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
   const [isDirectSelling, setIsDirectSelling] = useState(false);
   const [invPurchasePrice, setInvPurchasePrice] = useState("0.00");
   const [invSalePrice, setInvSalePrice] = useState("0.00");
+  const [invBaseRate, setInvBaseRate] = useState("0.00");
+  const [isWorkflowRequired, setIsWorkflowRequired] = useState(false);
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([
     { id: "1", label: "Accounts Approval", role: "ACCOUNTANT", blocking: true },
     { id: "2", label: "Design & Artwork", role: "DESIGNER", blocking: true },
@@ -1257,6 +1259,8 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
           workflowSteps: workflowSteps,
           metadata: {
             isDirectSelling: isDirectSelling,
+            isWorkflowRequired: isWorkflowRequired,
+            baseRate: Math.round(parseFloat(invBaseRate) * 100),
             eyeletPricing: {
               metal: parseFloat(eyeletMetal) || 0,
               plastic: parseFloat(eyeletPlastic) || 0,
@@ -1417,13 +1421,19 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
               <SectionLabel>Pricing</SectionLabel>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="drawer-inv-purchase">Purchase Price</Label>
+                  <Label htmlFor="drawer-inv-purchase">{isDirectSelling ? "Unit Purchase Price" : "Purchase Price"}</Label>
                   <CurrencyInput id="drawer-inv-purchase" name="purchasePrice" value={invPurchasePrice} onChange={setInvPurchasePrice} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="drawer-inv-sale">Sale Price</Label>
+                  <Label htmlFor="drawer-inv-sale">{isDirectSelling ? "Unit Sale Price" : "Sale Price"}</Label>
                   <CurrencyInput id="drawer-inv-sale" name="salePrice" value={invSalePrice} onChange={setInvSalePrice} />
                 </div>
+                {!isDirectSelling && (
+                  <div className="space-y-2">
+                    <Label htmlFor="drawer-inv-base-rate">Base Rate (₹ / Sq.Ft.)</Label>
+                    <CurrencyInput id="drawer-inv-base-rate" name="baseRate" value={invBaseRate} onChange={setInvBaseRate} />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1519,7 +1529,19 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
               </div>
             </div>
 
-            {!isDirectSelling && (
+            {isDirectSelling && (
+              <>
+                <div className="h-px bg-border" />
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <input type="checkbox" id="workflow-required" className="size-4 accent-blue-600 rounded" checked={isWorkflowRequired} onChange={(e) => setIsWorkflowRequired(e.target.checked)} />
+                    <Label htmlFor="workflow-required" className="font-medium cursor-pointer m-0">Is Workflow Required?</Label>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {(!isDirectSelling || isWorkflowRequired) && (
               <>
                 <div className="h-px bg-border" />
                 <div className="space-y-4">

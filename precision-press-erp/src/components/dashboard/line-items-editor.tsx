@@ -209,12 +209,14 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                       const item = inventoryItems.find((itm) => itm.id === v);
                       if (item) {
                         const matchingTax = item.gstRate ? taxRates.find(t => (t.rate / 100) === item.gstRate) : null;
+                        const isItemDirectSelling = item.metadata?.isDirectSelling === true;
+                        const effectiveRate = isItemDirectSelling ? item.salePrice : (item.metadata?.baseRate ?? item.salePrice);
                         const updated = [...lines];
                         updated[i] = {
                           ...updated[i],
                           inventoryItemId: item.id,
                           description: item.name,
-                          unitPrice: (item.salePrice / 100).toString(),
+                          unitPrice: (effectiveRate / 100).toString(),
                           accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
                           taxRateId: matchingTax ? matchingTax.id : updated[i].taxRateId,
                         };
