@@ -693,56 +693,13 @@ export async function transitionOrder(
   // Invoice generation is now manual (Invoice Generation module).
   // atomic_dispatch_order RPC still called for idempotency — it no longer
   // reserves an invoice number; it only updates order status.
+  // ── Dispatch: Just mark as DISPATCHED via Supabase ──────────────────────
+  // Automatic invoice generation disabled - invoices are created manually in Global Orders
   if (nextStatus === 'DISPATCHED') {
-    const parentId = orderData.baseOrderId || orderId;
-    
-    // Fix: Only update the SPECIFIC order/item being dispatched.
-    // Do NOT use .like with parentId as it auto-dispatches unfinished sibling items!
     await supabaseServer
       .from('orders')
       .update({ status: 'DISPATCHED' })
       .eq('id', orderId);
-
-    const { data: rpcResult, error: rpcError } = await supabaseServer.rpc('atomic_dispatch_order', {
-      p_order_id:   parentId,
-      p_actor_id:   user.id,
-      p_actor_name: user.name || 'Admin',
-      p_invoice_date: new Date().toISOString().split('T')[0]
-    });
-    if (rpcError) {
-      console.error(`[Workflow] atomic_dispatch_order RPC failed for ${parentId}:`, rpcError);
-      // Non-fatal: status was already set via Firestore above; log and continue.
-    } else {
-      console.log(`[Workflow] Order ${parentId} marked DISPATCHED.`);
-    }
-  }
-
-
-
-  // ── Tally Sync: Enqueue SALES_INVOICE on Dispatch ──────────────────────
-  // Only triggered when order reaches DISPATCHED status.
-  // Fire-and-forget — Tally failure must NEVER block the ERP workflow.
-  if (nextStatus === 'DISPATCHED') {
-    (async () => {
-      try {
-        // Fetch order + items for payload
-        const freshSnap = await adminDb.collection('orders').doc(orderId).get();
-        const freshOrder = freshSnap.data() as any;
-        const itemsSnap = await adminDb.collection('orders').doc(orderId).collection('items').get();
-        const items = itemsSnap.docs.map(d => d.data());
-
-        const invoicePayload = await buildSalesInvoicePayload(freshOrder, items);
-        await enqueueTallySync({
-          syncType: 'SALES_INVOICE',
-          orderId,
-          customerId: freshOrder.customerId,
-          payload: invoicePayload,
-          createdBy: user.id,
-        });
-      } catch (tallyErr: any) {
-        console.error('[transitionOrder] Tally enqueue failed (non-blocking):', tallyErr.message);
-      }
-    })();
   }
 
   return { success: true, status: nextStatus };
@@ -2163,29 +2120,7 @@ export async function fastCompleteProductionStage(orderId: string, notes?: strin
         });
 
         if (nextStatus === 'DISPATCHED') {
-          const finalSnap = await orderRef.get();
-          const finalData = finalSnap.data() as any;
-          const parentId = finalData?.baseOrderId || orderId;
           await supabaseServer.from('orders').update({ status: 'DISPATCHED' }).eq('id', orderId);
-          
-          const { error: rpcError } = await supabaseServer.rpc('atomic_dispatch_order', {
-            p_order_id: parentId,
-            p_actor_id: user.id,
-            p_actor_name: user.name || 'Admin',
-            p_invoice_date: new Date().toISOString().split('T')[0]
-          });
-          if (rpcError) console.error(`[Workflow] atomic_dispatch_order RPC failed for ${parentId}:`, rpcError);
-
-          (async () => {
-            try {
-              const itemsSnap = await adminDb.collection('orders').doc(orderId).collection('items').get();
-              const items = itemsSnap.docs.map(d => d.data());
-              const invoicePayload = await buildSalesInvoicePayload(finalData, items);
-              await enqueueTallySync({ syncType: 'SALES_INVOICE', orderId, customerId: finalData?.customerId, payload: invoicePayload, createdBy: user.id });
-            } catch (tallyErr: any) {
-              console.error('[fastCompleteProductionStage] Tally enqueue failed (non-blocking):', tallyErr.message);
-            }
-          })();
         }
       }
 
