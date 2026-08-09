@@ -200,8 +200,9 @@ export default function InventoryItemLayout({ children }: { children: React.Reac
 
   const isLowStock = item.quantityOnHand <= item.reorderPoint && item.isActive;
   const stockValue = item.quantityOnHand * item.purchasePrice;
+  const activeSalePrice = item.metadata?.isDirectSelling === false && item.metadata?.baseRate ? item.metadata.baseRate : item.salePrice;
   const margin = item.purchasePrice > 0
-    ? ((item.salePrice - item.purchasePrice) / item.purchasePrice * 100)
+    ? ((activeSalePrice - item.purchasePrice) / item.purchasePrice * 100)
     : 0;
   const stockPercent = item.reorderPoint > 0
     ? Math.min((item.quantityOnHand / (item.reorderPoint * 3)) * 100, 100)
@@ -307,7 +308,7 @@ export default function InventoryItemLayout({ children }: { children: React.Reac
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
           >
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Units on hand</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{item.metadata?.isDirectSelling === false ? "Sq.Ft on hand" : "Units on hand"}</p>
             <p className={cn(
               "mt-1.5 text-2xl font-bold font-mono tabular-nums truncate",
               isLowStock && "text-amber-600 dark:text-amber-400"
@@ -351,9 +352,9 @@ export default function InventoryItemLayout({ children }: { children: React.Reac
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
           >
-            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Selling price</p>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{item.metadata?.isDirectSelling === false ? "Base Rate" : "Selling price"}</p>
             <p className="mt-1.5 text-2xl font-bold font-mono tabular-nums truncate text-emerald-600 dark:text-emerald-400">
-              {formatMoney(item.salePrice)}
+              {formatMoney(activeSalePrice)}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">
               Cost {formatMoney(item.purchasePrice)}
@@ -373,7 +374,7 @@ export default function InventoryItemLayout({ children }: { children: React.Reac
               {item.purchasePrice > 0 ? `${margin.toFixed(1)}%` : "-"}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              {item.purchasePrice > 0 ? `${formatMoney(item.salePrice - item.purchasePrice)} per unit` : "No cost set"}
+              {item.purchasePrice > 0 ? `${formatMoney(activeSalePrice - item.purchasePrice)} per ${item.metadata?.isDirectSelling === false ? 'sq.ft' : 'unit'}` : "No cost set"}
             </p>
           </motion.div>
         </div>
