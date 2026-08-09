@@ -36,9 +36,14 @@ export async function GET(request: Request) {
     });
 
     const valuedItems = items.map((item) => {
-      const unitCost = item.purchasePrice;
-      const totalCost = item.quantityOnHand * unitCost;
-      const totalValue = item.quantityOnHand * item.salePrice;
+      // @ts-ignore
+      const metadata = item.metadata || {};
+      const isDirect = metadata.isDirectSelling !== false;
+      const activeSalePrice = isDirect ? item.salePrice : (metadata.baseRate || item.salePrice);
+      
+      const purchasePrice = item.purchasePrice;
+      const totalCost = item.quantityOnHand * purchasePrice;
+      const totalValue = item.quantityOnHand * activeSalePrice;
       const margin = totalValue - totalCost;
 
       const marginPercent = totalCost > 0
@@ -51,9 +56,10 @@ export async function GET(request: Request) {
         name: item.name,
         category: item.category,
         quantityOnHand: item.quantityOnHand,
-        unitCost,
+        purchasePrice,
+        unitCost: purchasePrice, // Keep for backward compatibility
         totalCost,
-        salePrice: item.salePrice,
+        salePrice: activeSalePrice,
         totalValue,
         margin,
         marginPercent,
@@ -75,7 +81,7 @@ export async function GET(request: Request) {
     const summary = {
       totalItems: valuedItems.length,
       totalCost: sumCost,
-      totalValue: sumValue,
+      totalRetailValue: sumValue, // Fixed key name for frontend
       totalMargin: sumCost > 0 ? ((sumValue - sumCost) / sumCost) * 100 : 0,
     };
 
