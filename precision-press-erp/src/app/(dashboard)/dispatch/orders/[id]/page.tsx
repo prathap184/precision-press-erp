@@ -166,7 +166,7 @@ export default function DispatchFinalizationPage() {
 
       const { error: dbErr } = await supabase
         .from('dispatch_details')
-        .upsert(dispatchPayload, { onConflict: 'parent_order_id' });
+        .upsert(dispatchPayload);
       if (dbErr) throw dbErr;
 
       // 2. Mark order as DISPATCHED via workflow
