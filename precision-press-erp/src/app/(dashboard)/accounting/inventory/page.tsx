@@ -75,6 +75,7 @@ interface InventoryItem {
   quantityOnHand: number;
   reorderPoint: number;
   isActive: boolean;
+  metadata?: any;
 }
 
 type FilterTab = "all" | "low_stock" | "active" | "inactive";
@@ -715,7 +716,7 @@ export default function InventoryPage() {
                 {/* Stock bar */}
                 <div className="hidden sm:flex flex-col items-end gap-1 w-24">
                   <span className={cn("text-xs font-mono tabular-nums font-medium", isLow ? "text-amber-600 dark:text-amber-400" : "")}>
-                    {item.quantityOnHand}
+                    {item.quantityOnHand} {item.metadata?.isDirectSelling === false && <span className="text-[10px] font-sans text-muted-foreground ml-0.5">sq.ft</span>}
                   </span>
                   <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                     <motion.div
@@ -729,8 +730,17 @@ export default function InventoryPage() {
 
                 {/* Prices */}
                 <div className="hidden md:flex flex-col items-end gap-0.5 w-24">
-                  <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{formatMoney(item.salePrice)}</span>
-                  <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Cost {formatMoney(item.purchasePrice)}</span>
+                  {item.metadata?.isDirectSelling === false ? (
+                    <>
+                      <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{formatMoney(item.metadata.baseRate)}</span>
+                      <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Base Rate</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{formatMoney(item.salePrice)}</span>
+                      <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Cost {formatMoney(item.purchasePrice)}</span>
+                    </>
+                  )}
                 </div>
 
                 {/* Value */}

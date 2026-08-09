@@ -1421,7 +1421,7 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
               <SectionLabel>Pricing</SectionLabel>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="drawer-inv-purchase">{isDirectSelling ? "Unit Purchase Price" : "Purchase Price"}</Label>
+                  <Label htmlFor="drawer-inv-purchase">{isDirectSelling ? "Unit Purchase Price" : "Purchase Price (per Sq.Ft)"}</Label>
                   <CurrencyInput id="drawer-inv-purchase" name="purchasePrice" value={invPurchasePrice} onChange={setInvPurchasePrice} />
                 </div>
                 <div className="space-y-2">
@@ -1443,11 +1443,11 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
               <SectionLabel>Stock</SectionLabel>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="drawer-inv-qty">Initial Quantity</Label>
+                  <Label htmlFor="drawer-inv-qty">{isDirectSelling ? "Initial Quantity" : "Initial Quantity (Sq.Ft)"}</Label>
                   <Input id="drawer-inv-qty" name="quantityOnHand" type="number" min={0} defaultValue={0} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="drawer-inv-reorder">Reorder Point</Label>
+                  <Label htmlFor="drawer-inv-reorder">{isDirectSelling ? "Reorder Point" : "Reorder Point (Sq.Ft)"}</Label>
                   <Input id="drawer-inv-reorder" name="reorderPoint" type="number" min={0} defaultValue={0} />
                 </div>
               </div>
