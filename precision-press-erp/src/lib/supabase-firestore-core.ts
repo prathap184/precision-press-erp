@@ -695,9 +695,11 @@ async function updateDoc(ref: FirestoreRef, updates: Record<string, any>) {
   }
   
   let expectedVersion: number | undefined;
+  let isExplicitExpectedVersion = false;
   if (ref.table === 'orders') {
     if (payload.expectedVersion !== undefined) {
       expectedVersion = payload.expectedVersion;
+      isExplicitExpectedVersion = true;
       delete payload.expectedVersion;
     } else if (existing.version !== undefined) {
       expectedVersion = existing.version;
@@ -724,7 +726,7 @@ async function updateDoc(ref: FirestoreRef, updates: Record<string, any>) {
   const { data, error } = await query;
   if (error) throw error;
 
-  if (ref.table === 'orders' && expectedVersion !== undefined) {
+  if (ref.table === 'orders' && expectedVersion !== undefined && isExplicitExpectedVersion) {
     if (!data || data.length === 0) {
       throw new Error('This order has been modified by another user.');
     }
