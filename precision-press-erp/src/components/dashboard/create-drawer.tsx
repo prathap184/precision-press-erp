@@ -4542,6 +4542,8 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
     if (initialData?.currency) setCurrencyCode(initialData.currency);
     if (initialData?.settlementMode) setSettlementMode(initialData.settlementMode);
     if (initialData?.notes) setNotes(initialData.notes);
+    if (initialData?.contactId) setContactId(initialData.contactId);
+    
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
     fetch("/api/v1/bank-accounts", { headers: { "x-organization-id": orgId } })

@@ -135,6 +135,8 @@ export default function CustomerPrepaymentsPage() {
     // Small delay so the page + drawer provider are fully mounted
     const t = setTimeout(() => {
       openDrawer("customerCredit", {
+        contactId: searchParams.get("customerId") || undefined,
+        contactName: searchParams.get("customerName") || undefined,
         amount,
         currency,
         settlementMode: "on_account",
@@ -143,12 +145,13 @@ export default function CustomerPrepaymentsPage() {
       // Clean the URL so refreshing won't re-open the drawer
       const url = new URL(window.location.href);
       url.searchParams.delete("openReceipt");
+      url.searchParams.delete("customerId");
       url.searchParams.delete("customerName");
       url.searchParams.delete("amount");
       url.searchParams.delete("currency");
       url.searchParams.delete("country");
       window.history.replaceState({}, "", url.toString());
-    }, 300);
+    }, 100);
 
     return () => clearTimeout(t);
   }, [searchParams, openDrawer]);
