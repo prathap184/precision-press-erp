@@ -1,5 +1,8 @@
-const dotenv = require('dotenv');
-dotenv.config({ path: '.env.local' });
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-supabase.from('transactions').select('timestamp').gte('timestamp', '"2026-07-21T00:00:00Z"').limit(1).then(res => console.log('res:', JSON.stringify(res, null, 2)));
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/precision_press_erp' }); // Try default local DB if no env
+async function run() {
+  const res = await pool.query("SELECT id, entry_number, date, description, reference, source_type, source_module, voucher_type FROM journal_entry ORDER BY created_at DESC LIMIT 10;");
+  console.log(JSON.stringify(res.rows, null, 2));
+  process.exit(0);
+}
+run().catch(console.error);

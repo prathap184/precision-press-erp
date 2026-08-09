@@ -201,7 +201,7 @@ async function autoSendRecurringInvoice(
           currencyCode: inv.currencyCode,
           lines: stockLines.map((l) => ({
             inventoryItemId: l.inventoryItemId as string,
-            quantity: l.quantity,
+            quantity: (l.sqFt && l.sqFt > 0) ? (l.sqFt * l.quantity) : l.quantity,
             warehouseId: l.warehouseId,
           })),
         },
