@@ -1467,7 +1467,7 @@ export async function advanceOrderWorkflow(orderId: string, notes?: string, meta
   } else if (nextRole === 'DISPATCH') {
     nextStatus = 'COMPLETED'; // Production is done, ready for dispatch
   } else if (nextRole === 'DELIVERY') {
-    const isDeliverySkipped = ['pickup', 'transport', 'courier', 'counter'].includes((orderData.dispatchInfo?.method || orderData.deliveryChoice || '').toLowerCase());
+    const isDeliverySkipped = ['pickup', 'counter'].includes((orderData.dispatchInfo?.method || orderData.deliveryChoice || '').toLowerCase());
     if (isDeliverySkipped) {
       nextStatus = 'DELIVERED';
       if (!metadata) metadata = {};
@@ -1738,7 +1738,7 @@ export async function dispatchOrder(orderId: string, dispatchInfo: any) {
   const currentStatus = snap.data()?.status;
   const orderData = snap.data() as any;
   
-  const isDeliverySkipped = ['pickup', 'transport', 'courier', 'counter'].includes((dispatchInfo?.method || orderData?.deliveryChoice || '').toLowerCase());
+  const isDeliverySkipped = ['pickup', 'counter'].includes((dispatchInfo?.method || orderData?.deliveryChoice || '').toLowerCase());
   
   const { dispatchProofUrl, ...restDispatchInfo } = dispatchInfo;
   
@@ -2049,7 +2049,7 @@ export async function fastCompleteProductionStage(orderId: string, notes?: strin
         } else if (nextRole === 'DISPATCH') {
           nextStatus = 'COMPLETED';
         } else if (nextRole === 'DELIVERY') {
-          const isDeliverySkipped = ['pickup', 'transport', 'courier', 'counter'].includes((freshData.dispatchInfo?.method || freshData.deliveryChoice || '').toLowerCase());
+          const isDeliverySkipped = ['pickup', 'counter'].includes((freshData.dispatchInfo?.method || freshData.deliveryChoice || '').toLowerCase());
           if (isDeliverySkipped) {
             nextStatus = 'DELIVERED';
             mergedUpdateData['workflow.deliveredAt'] = admin.firestore.FieldValue.serverTimestamp();

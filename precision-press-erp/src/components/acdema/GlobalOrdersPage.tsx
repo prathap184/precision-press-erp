@@ -867,7 +867,7 @@ export function GlobalOrdersPage() {
                                 <WorkflowPipelineVisual
                                       snapshot={(() => {
                                         const dispatchMethodKey = order.dispatchInfo?.method || order.delivery?.choice || 'COUNTER';
-                                        const isDeliverySkipped = ['pickup', 'transport', 'courier', 'counter'].includes((dispatchMethodKey || '').toLowerCase());
+                                        const isDeliverySkipped = ['pickup', 'counter'].includes((dispatchMethodKey || '').toLowerCase());
                                         if (isDeliverySkipped && order.workflowSnapshot?.steps) {
                                           return {
                                             ...order.workflowSnapshot,
