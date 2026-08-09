@@ -817,7 +817,11 @@ export function GlobalOrdersPage() {
 
                       return (
                         <React.Fragment key={order.id}>
-
+                          {isFirstOfGroup && idx > 0 && (
+                            <tr aria-hidden="true">
+                              <td colSpan={5} className="py-1.5 bg-transparent border-0" />
+                            </tr>
+                          )}
                           <tr id={`order-row-${order.id}`} className={`${isHighlighted ? 'bg-indigo-50 shadow-inner transition-all duration-1000' : rowBg + ' transition-colors'} group`}>
                             <td className={`px-4 py-2 tabular-nums ${tdBorder}`}>
                               <div className="flex items-center gap-2.5">
