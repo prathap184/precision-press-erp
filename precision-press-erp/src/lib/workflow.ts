@@ -1900,20 +1900,56 @@ export async function markTiffOpened(orderId: string) {
 export async function startTiffPrint(orderId: string, notes?: string) {
   const user = await getAuthorizedUser(['ADMIN', 'MANAGER', 'PRINTER']);
   
-  const timelineEntry = {
-    event: 'PRINT_STARTED',
-    timestamp: new Date().toISOString(),
-    user: user.id,
-    notes: notes || 'Print started'
-  };
+  const MAX_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const orderRef = adminDb.collection('orders').doc(orderId);
+      const orderSnap = await orderRef.get();
+      if (!orderSnap.exists) throw new Error('Order not found');
+      const orderData = orderSnap.data() as any;
+      checkStageNotCompleted('PRINTER', orderData.workflowSnapshot);
 
-  return await fastCompleteProductionStage(orderId, notes || 'Started printing TIFF', {
-    'workflow.printWorkflow.status': 'PRINT_STARTED',
-    'workflow.printWorkflow.sentToPrinter': true,
-    'workflow.printWorkflow.sentToPrinterAt': admin.firestore.FieldValue.serverTimestamp(),
-    'workflow.printWorkflow.sentToPrinterBy': user.id,
-    'workflow.printWorkflow.timeline': admin.firestore.FieldValue.arrayUnion(timelineEntry)
-  });
+      const timelineEntry = {
+        event: 'PRINT_STARTED',
+        timestamp: new Date().toISOString(),
+        user: user.id,
+        notes: notes || 'Print started'
+      };
+
+      if (orderData.status === 'PAYMENT_VERIFIED') {
+        // Auto-assign to this printer
+        const meta = {
+          'workflow.assignedTo': user.id,
+          'workflow.assignedToName': user.name,
+          'workflow.assignedBy': user.id,
+          'workflow.assignedByName': user.name,
+          'workflow.assignedAt': admin.firestore.FieldValue.serverTimestamp()
+        };
+        await transitionOrder(orderId, 'ASSIGNED', `Assigned printer ${user.name} (auto)`, user, meta);
+      }
+
+      await advanceWorkflowSnapshotStep(orderId, 'PRINTER', 'IN_PROGRESS', user, notes || 'Started printing TIFF');
+      
+      if (orderData.status !== 'IN_PROGRESS' && orderData.status !== 'COMPLETED' && orderData.status !== 'DISPATCHED' && orderData.status !== 'DELIVERED') {
+        await transitionOrder(orderId, 'IN_PROGRESS', 'Started printing TIFF', user);
+      }
+      
+      return await orderRef.update({
+        'workflow.printWorkflow.status': 'PRINT_STARTED',
+        'workflow.printWorkflow.sentToPrinter': true,
+        'workflow.printWorkflow.sentToPrinterAt': admin.firestore.FieldValue.serverTimestamp(),
+        'workflow.printWorkflow.sentToPrinterBy': user.id,
+        'workflow.printWorkflow.timeline': admin.firestore.FieldValue.arrayUnion(timelineEntry)
+      });
+    } catch (err: any) {
+      const isVersionConflict = err?.message?.includes('modified by another user') || err?.message?.includes('version');
+      if (isVersionConflict && attempt < MAX_RETRIES) {
+        await new Promise(res => setTimeout(res, 100 * attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
 }
 
 export async function completeTiffPrint(
@@ -2014,140 +2050,152 @@ export async function removeWorkflowAttachment(orderId: string, url: string) {
 export async function fastCompleteProductionStage(orderId: string, notes?: string, customUpdateData?: any) {
   const user = await getAuthorizedUser(['ADMIN', 'MANAGER', 'DESIGNER', 'PRINTER', 'DELIVERY', 'SUPPORT']);
 
-  let transitionSideEffects = { nextStatus: null as OrderStatus | null };
-  const orderRef = adminDb.collection('orders').doc(orderId);
+  const MAX_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      let transitionSideEffects = { nextStatus: null as OrderStatus | null };
+      const orderRef = adminDb.collection('orders').doc(orderId);
 
-  await adminDb.runTransaction(async (transaction) => {
-    const freshSnap = await transaction.get(orderRef);
-    if (!freshSnap.exists) throw new Error('Order not found');
-    const freshData = freshSnap.data() as any;
-    const role = freshData.currentWorkflowRole || user.role;
+      await adminDb.runTransaction(async (transaction) => {
+        const freshSnap = await transaction.get(orderRef);
+        if (!freshSnap.exists) throw new Error('Order not found');
+        const freshData = freshSnap.data() as any;
+        const role = freshData.currentWorkflowRole || user.role;
 
-    let mergedUpdateData: any = {
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    };
-    
-    if (customUpdateData) {
-      mergedUpdateData = { ...mergedUpdateData, ...customUpdateData };
-    }
-    
-    let increments: any = null;
-
-    // 1. Calculate Workflow Advance (Snapshot)
-    if (freshData?.workflowSnapshot?.steps) {
-      const snapUpdateData = calculateWorkflowAdvance(freshData.workflowSnapshot, role, 'COMPLETED', user.id, notes || 'Advanced workflow step');
-      if (Object.keys(snapUpdateData).length > 0) {
-        mergedUpdateData = { ...mergedUpdateData, ...snapUpdateData };
-      }
-    }
-
-    // 2. Determine Next Status based on new workflow role
-    const nextRole = mergedUpdateData.currentWorkflowRole !== undefined ? mergedUpdateData.currentWorkflowRole : freshData.currentWorkflowRole;
-    let nextStatus: OrderStatus = freshData.status;
-
-    if (nextRole === 'DESIGNER') {
-      nextStatus = 'DESIGNING';
-    } else if (nextRole === 'PRINTER' || nextRole === 'PASTING' || nextRole === 'FINISHING') {
-      nextStatus = 'IN_PROGRESS';
-    } else if (nextRole === 'DISPATCH') {
-      nextStatus = 'COMPLETED'; // Production is done, ready for dispatch
-    } else if (nextRole === 'DELIVERY') {
-      const isDeliverySkipped = ['pickup', 'transport', 'courier', 'counter'].includes((freshData.dispatchInfo?.method || freshData.deliveryChoice || '').toLowerCase());
-      if (isDeliverySkipped) {
-        nextStatus = 'DELIVERED';
-        mergedUpdateData['workflow.deliveredAt'] = admin.firestore.FieldValue.serverTimestamp();
-      } else {
-        nextStatus = 'DISPATCHED';
-      }
-    } else if (!nextRole) {
-      if (role === 'DESIGNER') {
-        nextStatus = 'DESIGN_READY';
-      } else if (role === 'MANAGER' || role === 'MANAGER_SIGN_OFF' || role === 'MANAGER SIGN-OFF') {
-        nextStatus = 'ASSIGNED';
-      } else if (freshData.status === 'ASSIGNED' || freshData.status === 'IN_PROGRESS') {
-        nextStatus = 'COMPLETED';
-      } else if (freshData.status === 'COMPLETED') {
-        nextStatus = 'DISPATCHED';
-      } else if (freshData.status === 'DISPATCHED' || freshData.status === 'IN_TRANSIT') {
-        nextStatus = 'DELIVERED';
-      }
-    }
-
-    // 3. Calculate Transition Order Updates if status changed
-    if (nextStatus !== freshData.status) {
-      const transCalc = calculateTransitionOrderUpdates(
-        orderId,
-        freshData,
-        nextStatus,
-        notes || 'Advanced workflow step',
-        user,
-        {}
-      );
-
-      mergedUpdateData = { ...mergedUpdateData, ...transCalc.updateData };
-      transitionSideEffects.nextStatus = nextStatus;
-
-      increments = {};
-      if (STATUS_STATS_MAPPING[freshData.status]) {
-        STATUS_STATS_MAPPING[freshData.status].forEach(path => { increments[path] = -1; });
-      }
-      if (STATUS_STATS_MAPPING[nextStatus]) {
-        STATUS_STATS_MAPPING[nextStatus].forEach(path => { increments[path] = 1; });
-      }
-    }
-
-    // 4. Update the Order
-    transaction.update(orderRef, mergedUpdateData);
-
-    // 5. Update Stats
-    if (increments && Object.keys(increments).length > 0) {
-      await updateStatsIncrementally(transaction, increments);
-    }
-  });
-
-  // 6. Execute Side Effects outside of transaction
-  const nextStatus = transitionSideEffects.nextStatus;
-  if (nextStatus) {
-    const actionLabel = notes || 'Advanced workflow step';
-    await logActivity({ userId: user.id, role: user.role, action: actionLabel, meta: { orderId, nextStatus } });
-    
-    // We fetch again to get accurate state for audit log, though not strictly required, it's safer.
-    const finalSnap = await orderRef.get();
-    const finalData = finalSnap.data() as any;
-    
-    await writeAuditLog({
-      actedAs: user.id,
-      actedAsType: 'ROLE',
-      actionType: 'ORDER_TRANSITION',
-      entityType: 'ORDER',
-      entityId: orderId,
-      beforeState: { status: 'UNKNOWN' }, // Omitting complex before state for fast path
-      afterState: { status: nextStatus },
-      meta: { actionLabel, orderId, nextStatus }
-    });
-
-    if (nextStatus === 'DISPATCHED') {
-      const parentId = finalData?.baseOrderId || orderId;
-      await supabaseServer.from('orders').update({ status: 'DISPATCHED' }).eq('id', orderId);
-      
-      const { error: rpcError } = await supabaseServer.rpc('atomic_dispatch_order', {
-        p_order_id: parentId,
-        p_actor_id: user.id,
-        p_actor_name: user.name || 'Admin',
-        p_invoice_date: new Date().toISOString().split('T')[0]
-      });
-      if (rpcError) console.error(`[Workflow] atomic_dispatch_order RPC failed for ${parentId}:`, rpcError);
-
-      (async () => {
-        try {
-          const itemsSnap = await adminDb.collection('orders').doc(orderId).collection('items').get();
-          const items = itemsSnap.docs.map(d => d.data());
-          const invoicePayload = await buildSalesInvoicePayload(finalData, items);
-          await enqueueTallySync({ syncType: 'SALES_INVOICE', orderId, customerId: finalData?.customerId, payload: invoicePayload, createdBy: user.id });
-        } catch (tallyErr: any) {
-          console.error('[fastCompleteProductionStage] Tally enqueue failed (non-blocking):', tallyErr.message);
+        let mergedUpdateData: any = {
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        
+        if (customUpdateData) {
+          mergedUpdateData = { ...mergedUpdateData, ...customUpdateData };
         }
-      })();
+        
+        let increments: any = null;
+
+        // 1. Calculate Workflow Advance (Snapshot)
+        if (freshData?.workflowSnapshot?.steps) {
+          const snapUpdateData = calculateWorkflowAdvance(freshData.workflowSnapshot, role, 'COMPLETED', user.id, notes || 'Advanced workflow step');
+          if (Object.keys(snapUpdateData).length > 0) {
+            mergedUpdateData = { ...mergedUpdateData, ...snapUpdateData };
+          }
+        }
+
+        // 2. Determine Next Status based on new workflow role
+        const nextRole = mergedUpdateData.currentWorkflowRole !== undefined ? mergedUpdateData.currentWorkflowRole : freshData.currentWorkflowRole;
+        let nextStatus: OrderStatus = freshData.status;
+
+        if (nextRole === 'DESIGNER') {
+          nextStatus = 'DESIGNING';
+        } else if (nextRole === 'PRINTER' || nextRole === 'PASTING' || nextRole === 'FINISHING') {
+          nextStatus = 'IN_PROGRESS';
+        } else if (nextRole === 'DISPATCH') {
+          nextStatus = 'COMPLETED';
+        } else if (nextRole === 'DELIVERY') {
+          const isDeliverySkipped = ['pickup', 'transport', 'courier', 'counter'].includes((freshData.dispatchInfo?.method || freshData.deliveryChoice || '').toLowerCase());
+          if (isDeliverySkipped) {
+            nextStatus = 'DELIVERED';
+            mergedUpdateData['workflow.deliveredAt'] = admin.firestore.FieldValue.serverTimestamp();
+          } else {
+            nextStatus = 'DISPATCHED';
+          }
+        } else if (!nextRole) {
+          if (role === 'DESIGNER') {
+            nextStatus = 'DESIGN_READY';
+          } else if (role === 'MANAGER' || role === 'MANAGER_SIGN_OFF' || role === 'MANAGER SIGN-OFF') {
+            nextStatus = 'ASSIGNED';
+          } else if (freshData.status === 'ASSIGNED' || freshData.status === 'IN_PROGRESS') {
+            nextStatus = 'COMPLETED';
+          } else if (freshData.status === 'COMPLETED') {
+            nextStatus = 'DISPATCHED';
+          } else if (freshData.status === 'DISPATCHED' || freshData.status === 'IN_TRANSIT') {
+            nextStatus = 'DELIVERED';
+          }
+        }
+
+        // 3. Calculate Transition Order Updates if status changed
+        if (nextStatus !== freshData.status) {
+          const transCalc = calculateTransitionOrderUpdates(
+            orderId,
+            freshData,
+            nextStatus,
+            notes || 'Advanced workflow step',
+            user,
+            {}
+          );
+
+          mergedUpdateData = { ...mergedUpdateData, ...transCalc.updateData };
+          transitionSideEffects.nextStatus = nextStatus;
+
+          increments = {};
+          if (STATUS_STATS_MAPPING[freshData.status]) {
+            STATUS_STATS_MAPPING[freshData.status].forEach(path => { increments[path] = -1; });
+          }
+          if (STATUS_STATS_MAPPING[nextStatus]) {
+            STATUS_STATS_MAPPING[nextStatus].forEach(path => { increments[path] = 1; });
+          }
+        }
+
+        // 4. Update the Order
+        transaction.update(orderRef, mergedUpdateData);
+
+        // 5. Update Stats
+        if (increments && Object.keys(increments).length > 0) {
+          await updateStatsIncrementally(transaction, increments);
+        }
+      });
+
+      // 6. Execute Side Effects outside of transaction
+      const nextStatus = transitionSideEffects.nextStatus;
+      if (nextStatus) {
+        const actionLabel = notes || 'Advanced workflow step';
+        await logActivity({ userId: user.id, role: user.role, action: actionLabel, meta: { orderId, nextStatus } });
+        
+        await writeAuditLog({
+          actedAs: user.id,
+          actedAsType: 'ROLE',
+          actionType: 'ORDER_TRANSITION',
+          entityType: 'ORDER',
+          entityId: orderId,
+          beforeState: { status: 'UNKNOWN' },
+          afterState: { status: nextStatus },
+          meta: { actionLabel, orderId, nextStatus }
+        });
+
+        if (nextStatus === 'DISPATCHED') {
+          const finalSnap = await orderRef.get();
+          const finalData = finalSnap.data() as any;
+          const parentId = finalData?.baseOrderId || orderId;
+          await supabaseServer.from('orders').update({ status: 'DISPATCHED' }).eq('id', orderId);
+          
+          const { error: rpcError } = await supabaseServer.rpc('atomic_dispatch_order', {
+            p_order_id: parentId,
+            p_actor_id: user.id,
+            p_actor_name: user.name || 'Admin',
+            p_invoice_date: new Date().toISOString().split('T')[0]
+          });
+          if (rpcError) console.error(`[Workflow] atomic_dispatch_order RPC failed for ${parentId}:`, rpcError);
+
+          (async () => {
+            try {
+              const itemsSnap = await adminDb.collection('orders').doc(orderId).collection('items').get();
+              const items = itemsSnap.docs.map(d => d.data());
+              const invoicePayload = await buildSalesInvoicePayload(finalData, items);
+              await enqueueTallySync({ syncType: 'SALES_INVOICE', orderId, customerId: finalData?.customerId, payload: invoicePayload, createdBy: user.id });
+            } catch (tallyErr: any) {
+              console.error('[fastCompleteProductionStage] Tally enqueue failed (non-blocking):', tallyErr.message);
+            }
+          })();
+        }
+      }
+
+      return { success: true, nextStatus };
+    } catch (err: any) {
+      const isVersionConflict = err?.message?.includes('modified by another user') || err?.message?.includes('version');
+      if (isVersionConflict && attempt < MAX_RETRIES) {
+        await new Promise(res => setTimeout(res, 100 * attempt));
+        continue;
+      }
+      throw err;
     }
   }
 
