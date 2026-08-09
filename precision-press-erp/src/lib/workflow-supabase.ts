@@ -1418,7 +1418,7 @@ export async function dispatchOrder(
 
   await supabase
     .from('dispatches')
-    .upsert(dispatchRecord, { onConflict: 'orderId' });
+    .upsert(dispatchRecord);
 
   let transitionResult;
   if (usesDynamicWorkflow) {
