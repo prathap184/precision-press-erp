@@ -739,7 +739,6 @@ export function GlobalOrdersPage() {
                     <th className="px-4 py-3 text-slate-800" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Node ID</th>
                     <th className="px-4 py-3 text-slate-800" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Identity</th>
                     <th className="px-4 py-3 text-slate-800 min-w-[550px]" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Operational Status</th>
-                    <th className="px-4 py-3 text-slate-800" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Dispatch</th>
                     <th className="px-4 py-3 text-slate-800 text-right" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Settlement</th>
                     <th className="px-4 py-3 text-slate-800 text-center" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Action</th>
                   </tr>
@@ -882,12 +881,6 @@ export function GlobalOrdersPage() {
                                       })()}</p>
                                     </div>
                                   )}
-                            </td>
-                            <td className={`px-4 py-2 tabular-nums ${tdBorder}`}>
-                              <div className="flex items-center gap-1.5">
-                                <Truck size={12} className="text-slate-500" />
-                                <p className="text-slate-700" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 500, lineHeight: '22px' }}>{order.dispatchInfo?.method || 'Standard'}</p>
-                              </div>
                             </td>
                             <td className={`px-4 py-2 text-right tabular-nums ${tdBorder}`}>
                               <p className="text-slate-900" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '16px', fontWeight: 700, lineHeight: '24px' }}>₹{amount.toLocaleString()}</p>
