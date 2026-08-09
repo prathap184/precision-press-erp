@@ -323,22 +323,22 @@ export function GlobalOrdersPage() {
       // Collect all IDs that appear as a parent/base in any child order
       const parentOrderIdSet = new Set(
         allOrders
-          .map(o => (o as any).parent_order_id || (o as any).baseOrderId)
+          .map(o => {
+            const wf = (() => { try { return typeof (o as any).workflow === 'string' ? JSON.parse((o as any).workflow) : ((o as any).workflow || {}); } catch { return {}; } })();
+            return (o as any).parent_order_id || (o as any).baseOrderId || wf?.baseOrderId;
+          })
           .filter(Boolean)
       );
       const visible = allOrders.filter(o => {
-        const parentId = (o as any).parent_order_id || (o as any).baseOrderId;
+        // baseOrderId lives inside workflow{} in Firestore for child orders
+        const wfObj = (() => { try { return typeof (o as any).workflow === 'string' ? JSON.parse((o as any).workflow) : ((o as any).workflow || {}); } catch { return {}; } })();
+        const parentId = (o as any).parent_order_id || (o as any).baseOrderId || wfObj?.baseOrderId;
         const hasParent = !!parentId;
         // This order is referenced as a parent by at least one child
         const isUmbrellaParent = parentOrderIdSet.has(o.id);
         
         // Check groupOrderIds on the workflow (the parent stores child IDs here)
-        let hasGroupChildren = false;
-        try {
-          const wf = typeof o.workflow === 'string' ? JSON.parse(o.workflow) : (o.workflow || {});
-          // Fix: use > 0 not > 1 — hide parent even if it has only 1 child
-          hasGroupChildren = Array.isArray(wf?.groupOrderIds) && wf.groupOrderIds.length > 0;
-        } catch(e) {}
+        const hasGroupChildren = Array.isArray(wfObj?.groupOrderIds) && wfObj.groupOrderIds.length > 0;
         
         if (hasParent) return true;                           // always show child orders
         if (isUmbrellaParent || hasGroupChildren) return false; // hide parent orders
