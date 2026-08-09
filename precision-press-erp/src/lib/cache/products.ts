@@ -38,7 +38,7 @@ export async function getCachedProduct(productId: string) {
         id: row.sku || row.code || row.id,
         name: row.name,
         category: row.category,
-        baseRate: row.sale_price || row.base_rate,
+        baseRate: meta.isDirectSelling ? ((row.sale_price != null) ? (Number(row.sale_price) / 100) : row.base_rate) : ((meta.baseRate != null) ? (Number(meta.baseRate) / 100) : ((row.sale_price != null) ? (Number(row.sale_price) / 100) : row.base_rate)),
         printerCategory: meta.printerCategory || row.printer_category,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
