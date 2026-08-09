@@ -36,6 +36,7 @@ interface ValuationItem {
   totalCost: number;
   totalValue: number;
   marginPercent: number;
+  isDirectSelling?: boolean;
 }
 
 interface ValuationSummary {
@@ -410,6 +411,7 @@ export default function InventoryValuationPage() {
                   </td>
                   <td className="px-4 py-3 text-right font-mono tabular-nums">
                     {item.quantityOnHand}
+                    {item.isDirectSelling === false && <span className="text-[10px] text-muted-foreground ml-1">sq.ft</span>}
                   </td>
                   <td className="px-4 py-3 text-right font-mono tabular-nums">
                     {formatMoney(item.purchasePrice)}
