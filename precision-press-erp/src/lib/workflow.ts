@@ -1454,21 +1454,34 @@ async function advanceWorkflowSnapshotStep(
   user: { id: string },
   notes?: string
 ) {
-  try {
-    const orderRef = adminDb.collection('orders').doc(orderId);
-    await adminDb.runTransaction(async (transaction) => {
-      const freshSnap = await transaction.get(orderRef);
-      if (!freshSnap.exists) return;
-      const freshData = freshSnap.data() as any;
-      if (freshData?.workflowSnapshot?.steps) {
-        const updateData = calculateWorkflowAdvance(freshData.workflowSnapshot, role, status, user.id, notes);
-        if (Object.keys(updateData).length > 0) {
-          transaction.update(orderRef, updateData);
+  const MAX_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const orderRef = adminDb.collection('orders').doc(orderId);
+      await adminDb.runTransaction(async (transaction) => {
+        const freshSnap = await transaction.get(orderRef);
+        if (!freshSnap.exists) return;
+        const freshData = freshSnap.data() as any;
+        if (freshData?.workflowSnapshot?.steps) {
+          const updateData = calculateWorkflowAdvance(freshData.workflowSnapshot, role, status, user.id, notes);
+          if (Object.keys(updateData).length > 0) {
+            transaction.update(orderRef, updateData);
+          }
         }
+      });
+      return; // success
+    } catch (err: any) {
+      const isVersionConflict = err?.message?.includes('modified by another user') || err?.message?.includes('version');
+      if (isVersionConflict && attempt < MAX_RETRIES) {
+        // Brief backoff before retrying with fresh data
+        await new Promise(res => setTimeout(res, 150 * attempt));
+        console.warn(`[advanceWorkflowSnapshotStep] Version conflict on attempt ${attempt}, retrying...`);
+        continue;
       }
-    });
-  } catch (err) {
-    console.warn('[advanceWorkflowSnapshotStep] Failed:', err);
+      console.warn('[advanceWorkflowSnapshotStep] Failed:', err);
+      // Non-version errors or exhausted retries — don't throw, let caller continue
+      return;
+    }
   }
 }
 
