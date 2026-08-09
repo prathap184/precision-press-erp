@@ -567,8 +567,6 @@ function calculateTransitionOrderUpdates(
 
   if (expectedVersion !== undefined) {
     updateData.expectedVersion = expectedVersion;
-  } else if (orderData.version !== undefined) {
-    updateData.expectedVersion = orderData.version;
   }
 
   // Strip undefined values to prevent Firestore errors
@@ -1930,7 +1928,10 @@ export async function startTiffPrint(orderId: string, notes?: string) {
 
       await advanceWorkflowSnapshotStep(orderId, 'PRINTER', 'IN_PROGRESS', user, notes || 'Started printing TIFF');
       
-      if (orderData.status !== 'IN_PROGRESS' && orderData.status !== 'COMPLETED' && orderData.status !== 'DISPATCHED' && orderData.status !== 'DELIVERED') {
+      const freshSnap = await orderRef.get();
+      const freshData = freshSnap.data() as any;
+
+      if (freshData?.status !== 'IN_PROGRESS' && freshData?.status !== 'COMPLETED' && freshData?.status !== 'DISPATCHED' && freshData?.status !== 'DELIVERED') {
         await transitionOrder(orderId, 'IN_PROGRESS', 'Started printing TIFF', user);
       }
       
@@ -1944,7 +1945,7 @@ export async function startTiffPrint(orderId: string, notes?: string) {
     } catch (err: any) {
       const isVersionConflict = err?.message?.includes('modified by another user') || err?.message?.includes('version');
       if (isVersionConflict && attempt < MAX_RETRIES) {
-        await new Promise(res => setTimeout(res, 100 * attempt));
+        await new Promise(res => setTimeout(res, 150 * attempt));
         continue;
       }
       throw err;
