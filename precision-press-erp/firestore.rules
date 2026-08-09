@@ -3,8 +3,12 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Only authenticated users with a Firebase role claim can read.
+    // All writes are performed exclusively via the Firebase Admin SDK on the server
+    // (Admin SDK bypasses these rules), so client writes are blocked entirely.
     match /{document=**} {
-      allow read, write: if true;
+      allow read: if request.auth != null && request.auth.token.role != null;
+      allow write: if false;
     }
   }
 }

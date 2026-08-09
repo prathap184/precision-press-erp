@@ -13,6 +13,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { timingSafeEqual } from 'crypto';
 import { getPendingTallySyncEvents, markTallySyncInFlight } from '@/lib/actions/tally-sync';
 
 function verifyConnectorSecret(req: NextRequest): boolean {
@@ -22,7 +23,15 @@ function verifyConnectorSecret(req: NextRequest): boolean {
     console.error('[TallyConnector] TALLY_CONNECTOR_SECRET is not set in environment.');
     return false;
   }
-  return secret === expected;
+  if (!secret) return false;
+  // Use timing-safe comparison to prevent timing oracle attacks
+  try {
+    const secretBuf   = Buffer.from(secret);
+    const expectedBuf = Buffer.from(expected);
+    return secretBuf.length === expectedBuf.length && timingSafeEqual(secretBuf, expectedBuf);
+  } catch {
+    return false;
+  }
 }
 
 export async function GET(req: NextRequest) {

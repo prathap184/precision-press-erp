@@ -13,11 +13,15 @@ export async function POST(req: NextRequest) {
 
 async function handleProcess(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
-  // Simple token security (or bypass in local development)
   const cronSecret = process.env.CRON_SECRET;
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    // Optionally enforce secret in production
-    // return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Security: require CRON_SECRET in all environments
+  if (!cronSecret) {
+    console.error('[Jobs Route] CRON_SECRET env var is not set — blocking all requests');
+    return NextResponse.json({ error: 'Server misconfiguration: job queue secret not configured.' }, { status: 500 });
+  }
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const results: any[] = [];

@@ -62,6 +62,14 @@ const CATEGORIES = [
 ];
 
 export async function GET() {
+  // Security: block this endpoint in production — development only
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json(
+      { error: 'This endpoint is only available in development mode.' },
+      { status: 403 }
+    );
+  }
+
   try {
     for (const cat of CATEGORIES) {
       await supabaseServer.from('categories').upsert(cat, { onConflict: 'id' });
