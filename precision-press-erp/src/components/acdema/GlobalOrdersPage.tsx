@@ -92,19 +92,32 @@ export function GlobalOrdersPage() {
 
     const cleanId = order.id.replace('ORD-', '');
     const parentId = cleanId.split('-')[0];
+    const isChildOrder = cleanId.includes('-item');
 
     const match = invoicesList.find((inv: any) => {
       if (!inv.reference) return false;
       const ref = String(inv.reference);
-      return (
-        ref === parentId ||
-        ref === order.id ||
-        ref === cleanId ||
-        ref === `ORDER #${parentId}` ||
-        ref === `#${parentId}` ||
-        ref.includes(parentId) ||
-        ref.includes(order.id)
-      );
+      // Comma-separated list of specific order IDs (new format)
+      const refParts = ref.split(',').map((r: string) => r.trim());
+      // Specific match: check if this exact child order ID is in the reference
+      if (refParts.includes(cleanId) || refParts.includes(order.id)) return true;
+      // For standalone (non-child) orders: match by direct ID or parent ID
+      if (!isChildOrder) {
+        return (
+          ref === parentId ||
+          ref === order.id ||
+          ref === cleanId ||
+          ref === `ORDER #${parentId}` ||
+          ref === `#${parentId}`
+        );
+      }
+      // For child orders: only match if all parts of the reference are siblings of this order
+      // (old invoices that stored only parent ID — match only if ref is purely the parent ID)
+      if (ref === parentId || ref === `ORDER #${parentId}` || ref === `#${parentId}`) {
+        // Old-style: parent reference only — treat as invoiced (backward compat)
+        return true;
+      }
+      return false;
     });
 
     if (match) {
@@ -194,8 +207,9 @@ export function GlobalOrdersPage() {
 
       if (totalDeliveryCharge > 0) allMappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: totalDeliveryCharge.toFixed(2), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
 
-      const parentRef = (firstOrder as any).parent_order_id || (firstOrder as any).baseOrderId || firstOrder.id.replace('ORD-', '').split('-')[0];
-      openDrawer('invoice', { reference: parentRef, contactId, lines: allMappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
+      // Use specific invoiced order IDs as reference (comma-separated) so only selected items are marked invoiced
+      const specificRef = ordersToProcess.map((o: any) => o.id.replace('ORD-', '')).join(',');
+      openDrawer('invoice', { reference: specificRef, contactId, lines: allMappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
       setSiblingsModal(null);
       setTimeout(() => fetchInvoices(), 3000);
     } catch (err) {
