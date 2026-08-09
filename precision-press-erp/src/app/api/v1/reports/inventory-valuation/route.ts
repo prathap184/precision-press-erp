@@ -63,6 +63,7 @@ export async function GET(request: Request) {
         totalValue,
         margin,
         marginPercent,
+        isDirectSelling: isDirect,
       };
     });
 

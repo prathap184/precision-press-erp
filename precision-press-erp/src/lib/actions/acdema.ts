@@ -224,7 +224,12 @@ export async function createAcdemaProxyOrder(payload: ProxyOrderPayload): Promis
           .maybeSingle();
           
         const currentStock = Number(prodData?.stock_quantity || 0);
-        const newStock = currentStock - item.quantity;
+        
+        // For non-direct sales, sqft includes quantity. For direct sales, sqft is 0 or undefined.
+        const sqft = Number((item as any).specs?.sqft || 0);
+        const deductQty = sqft > 0 ? sqft : item.quantity;
+
+        const newStock = currentStock - deductQty;
         
         await supabaseServer.from('inventory_item')
           .update({ stock_quantity: newStock })
@@ -234,9 +239,9 @@ export async function createAcdemaProxyOrder(payload: ProxyOrderPayload): Promis
           .insert({
             product_id: item.productId,
             movement_type: 'OUTWARD',
-            quantity: item.quantity,
+            quantity: deductQty,
             reference_id: baseId,
-            remarks: `Order placed via Proxy. Order ID: ${baseId}`,
+            remarks: `Order placed via Proxy. Order ID: ${baseId} (Qty: ${item.quantity}${sqft > 0 ? `, SqFt: ${sqft}` : ''})`,
             created_by: user.id
           });
       }
