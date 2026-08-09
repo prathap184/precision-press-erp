@@ -712,17 +712,32 @@ const USE_V2_WORKFLOW = true;
 
 function buildWorkflowSnapshot(
   productData: any,
-  isAcdemaUser: boolean = false
+  isAcdemaUser: boolean = false,
+  deliveryChoice?: string
 ): OrderWorkflowSnapshot {
   const configuredSteps = Array.isArray(productData?.workflowSteps) ? productData.workflowSteps : [];
   
   const fallbackSteps = [
     { id: 'accountant', label: 'Payment Verification', role: 'ACCOUNTANT', description: 'Verify payment', blocking: true },
     { id: 'printer', label: 'Print Queue', role: 'PRINTER', description: 'Printing stage', blocking: true },
+    { id: 'dispatch', label: 'Dispatch', role: 'DISPATCH', description: 'Dispatch stage', blocking: true },
   ];
 
-  const sourceSteps = configuredSteps.length > 0 ? configuredSteps : fallbackSteps;
+  const sourceSteps = [...(configuredSteps.length > 0 ? configuredSteps : fallbackSteps)];
   
+  // If delivery choice requires delivery (DOOR, COURIER, TRANSPORT), ensure Delivery step exists
+  const isDeliveryRequired = ['door', 'door_delivery', 'courier', 'transport'].includes((deliveryChoice || '').toLowerCase());
+  const hasDeliveryStep = sourceSteps.some((step: any) => step.role === 'DELIVERY');
+  if (isDeliveryRequired && !hasDeliveryStep) {
+    sourceSteps.push({
+      id: 'delivery',
+      label: 'Delivery',
+      role: 'DELIVERY',
+      description: 'Customer delivery stage',
+      blocking: true
+    });
+  }
+
   let startIdx = 0;
   if (isAcdemaUser) {
     const printerIdx = sourceSteps.findIndex((step: any) => step.role === 'PRINTER');
@@ -897,7 +912,7 @@ async function executeOrderPlacementTx(
   const isAcdemaUser = user.role === 'ACDEMA' || user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
   const firstItem = payload.items[0];
   const firstProduct = products.find(p => p.id === String(firstItem?.productId || firstItem?.id || '').trim());
-  let parentWorkflowSnapshot = buildWorkflowSnapshot(firstProduct, isAcdemaUser);
+  let parentWorkflowSnapshot = buildWorkflowSnapshot(firstProduct, isAcdemaUser, payload.deliveryChoice);
 
   const isCreditPayment = customerData.type === 'CREDIT' || payload.paymentMethod === 'CREDIT' || payload.paymentMode === 'CREDIT';
 
@@ -1093,7 +1108,7 @@ async function executeOrderPlacementTx(
       // ────────────────────────────────────────────────────────────────────────
 
       const childProduct = products.find(p => p.id === String(item.productId || item.id || '').trim());
-      const childWorkflowSnapshot = buildWorkflowSnapshot(childProduct, isAcdemaUser);
+      const childWorkflowSnapshot = buildWorkflowSnapshot(childProduct, isAcdemaUser, payload.deliveryChoice);
 
       if ((user.role === 'ACDEMA' && payload.paymentMethod !== 'UPI' && payload.paymentMode !== 'UPI') || isCreditPayment) {
         if (childWorkflowSnapshot && Array.isArray(childWorkflowSnapshot.steps)) {
