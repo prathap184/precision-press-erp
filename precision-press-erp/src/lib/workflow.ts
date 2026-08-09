@@ -609,10 +609,13 @@ export async function transitionOrder(
   const orderData = orderSnap.data() as any;
   const currentStatus = orderData.status as OrderStatus;
 
-  // Use the pure "brain" to calculate the updates
+  // If expectedVersion was not explicitly passed, use fresh snapshot version to avoid conflict in chained calls
+  const freshSnap = expectedVersion !== undefined ? orderSnap : await orderRef.get();
+  const freshData = (freshSnap.data() as any) || orderData;
+
   const { updateData } = calculateTransitionOrderUpdates(
     orderId,
-    orderData,
+    freshData,
     nextStatus,
     actionLabel,
     user,
