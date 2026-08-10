@@ -46,6 +46,8 @@ const createSchema = z.object({
   // 'credit_note' source, whose cash/AR side is posted elsewhere.
   bankAccountId: z.string().nullable().optional(),
   depositAccountId: z.string().nullable().optional(),
+  adjustmentType: z.enum(["NEW_REF", "ON_ACCOUNT"]).optional(),
+  referenceName: z.string().nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,7 +185,7 @@ export async function POST(request: Request) {
       }
 
       const entryNumber = await getNextEntryNumber(ctx.organizationId, tx);
-      const recRef = `REC-${entryNumber}`;
+      const recRef = parsed.referenceName || `REC-${entryNumber}`;
       const description = `Customer Receipt ${recRef}`;
       const [entry] = await tx
         .insert(journalEntry)
