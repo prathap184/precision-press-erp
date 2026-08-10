@@ -156,6 +156,17 @@ export function GlobalOrdersPage() {
       let inventory: any[] = [];
       try { const ir = await fetch('/api/v1/inventory?limit=1000', { headers }); if (ir.ok) { const id2 = await ir.json(); inventory = id2.data || []; } } catch {}
 
+      let defaultSalesAccountId = '';
+      try {
+        const ar = await fetch('/api/v1/chart-accounts?type=revenue', { headers });
+        if (ar.ok) {
+          const ad = await ar.json();
+          const salesAcc = ad.accounts?.find((a: any) => a.name.toLowerCase().includes('sales') || a.name.toLowerCase().includes('revenue')) || ad.accounts?.[0];
+          if (salesAcc) defaultSalesAccountId = salesAcc.id;
+        }
+      } catch {}
+
+
       const parseJson = (val: any) => { if (typeof val === 'string') { try { return JSON.parse(val); } catch { return null; } } return val; };
 
       const allMappedLines: any[] = [];
@@ -191,11 +202,11 @@ export function GlobalOrdersPage() {
           if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
           const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
           const totalFinish = parseFloat(finishAmount || '0');
-          return { description: desc, quantity: qty.toString(), unitPrice: baseRate.toFixed(2), accountId: '', taxRateId: matchedTax?.id ?? '', inventoryItemId: matchedInventory?.id ?? '', width: widthFt > 0 ? widthFt.toString() : '', length: heightFt > 0 ? heightFt.toString() : '', sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '', finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : '' };
+          return { description: desc, quantity: qty.toString(), unitPrice: baseRate.toFixed(2), accountId: defaultSalesAccountId, taxRateId: matchedTax?.id ?? '', inventoryItemId: matchedInventory?.id ?? '', width: widthFt > 0 ? widthFt.toString() : '', length: heightFt > 0 ? heightFt.toString() : '', sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '', finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : '' };
         });
 
         if (mappedLines.length === 0) {
-          mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+          mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: defaultSalesAccountId, taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
         }
         allMappedLines.push(...mappedLines);
 
@@ -206,7 +217,7 @@ export function GlobalOrdersPage() {
         }
       }
 
-      if (totalDeliveryCharge > 0) allMappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: totalDeliveryCharge.toFixed(2), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+      if (totalDeliveryCharge > 0) allMappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: totalDeliveryCharge.toFixed(2), accountId: defaultSalesAccountId, taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
 
       // Use specific invoiced order IDs as reference (comma-separated) so only selected items are marked invoiced
       const specificRef = ordersToProcess.map((o: any) => o.id.replace('ORD-', '')).join(',');
