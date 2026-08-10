@@ -32,7 +32,8 @@ export default function DashboardRootLayout({
   const isManagerWorkspacePage = pathname.startsWith('/manager/orders');
   const isPrinterWorkspacePage = pathname.startsWith('/printer/orders') || pathname === '/printer';
   const isProxyOrderPage = pathname.startsWith('/proxy-order') || pathname.startsWith('/admin/orders/proxy') || pathname.startsWith('/acdema');
-  const displaySidebarExpanded = (isGlobalOrdersPage || isAcdemaViewPage || isAccountantLedgerPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage) ? false : isSidebarExpanded;
+  const isAccountingDashboard = pathname.startsWith('/accounting');
+  const displaySidebarExpanded = (isGlobalOrdersPage || isAcdemaViewPage || isAccountantLedgerPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isAccountingDashboard) ? false : isSidebarExpanded;
   const mainPadding = isAccountantLedgerPage ? 'p-3 lg:p-4' : 'p-4 lg:p-6';
 
   return (
