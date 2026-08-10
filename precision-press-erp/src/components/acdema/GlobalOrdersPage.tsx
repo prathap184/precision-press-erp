@@ -882,21 +882,8 @@ export function GlobalOrdersPage() {
                                       allowNavigation={true}
                                     />
                                   {((order.status === 'DELIVERED') || (order.workflow?.['deliveredAt']) || (order.currentWorkflowLabel === 'COMPLETED') || ((order.workflowSnapshot?.currentStepIndex ?? -1) >= (order.workflowSnapshot?.steps?.length ?? 0))) && (
-                                    <div className="mt-3 rounded-md bg-emerald-50 border border-emerald-100 p-3 text-emerald-700">
+                                    <div className="mt-2 text-emerald-700">
                                       <p className="text-sm font-black">ORDER COMPLETED</p>
-                                      <p className="text-xs">All workflow stages are completed. No further actions are required.</p>
-                                      <p className="text-[11px] font-medium mt-1">Completed on {(() => {
-                                        const completedAt = (order.workflow?.['deliveredAt'] as any) || (() => {
-                                          const steps = order.workflowSnapshot?.steps ?? [];
-                                          return steps.length ? steps[steps.length - 1]?.completedAt : undefined;
-                                        })();
-                                        if (!completedAt) return '—';
-                                        const parsed = (completedAt as any).seconds 
-                                          ? new Date((completedAt as any).seconds * 1000) 
-                                          : new Date(completedAt as any);
-                                        if (Number.isNaN(parsed.getTime())) return '—';
-                                        return parsed.toLocaleDateString('en-IN');
-                                      })()}</p>
                                     </div>
                                   )}
                             </td>

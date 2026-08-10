@@ -144,7 +144,7 @@ export function WorkflowPipelineVisual({
 
   if (detailed) {
     return (
-      <div className={`flex flex-wrap items-center gap-y-1.5 gap-x-0.5 ${className}`}>
+      <div className={`flex flex-nowrap items-center gap-x-0.5 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none'] max-w-full pb-1 ${className}`}>
         {stepsToRender.map((step, index) => {
           const isCurrent = step.isCurrent;
           const isCompleted = step.isCompleted;
@@ -155,29 +155,29 @@ export function WorkflowPipelineVisual({
 
           if (isCompleted) {
             bgClass = 'bg-emerald-50 text-emerald-900 border-emerald-300';
-            icon = <Check size={13} className="text-emerald-600 shrink-0 stroke-[3]" />;
+            icon = <Check size={16} className="text-emerald-600 shrink-0 stroke-[3]" />;
           } else if (isCurrent) {
             if (step.status === 'IN_PROGRESS') {
               bgClass = 'bg-blue-100 text-blue-900 border-blue-400 ring-2 ring-blue-200 ring-offset-0 animate-pulse';
-              icon = <Play size={13} className="text-blue-700 fill-blue-700 shrink-0" />;
+              icon = <Play size={16} className="text-blue-700 fill-blue-700 shrink-0" />;
             } else if (step.status === 'ON_HOLD' || step.status === 'PAUSED') {
               bgClass = 'bg-amber-100 text-amber-900 border-amber-400 ring-2 ring-amber-200 ring-offset-0';
-              icon = <AlertCircle size={13} className="text-amber-700 shrink-0" />;
+              icon = <AlertCircle size={16} className="text-amber-700 shrink-0" />;
             } else {
               bgClass = 'bg-sky-100 text-sky-900 border-sky-400 ring-2 ring-sky-200 ring-offset-0';
-              icon = <Clock size={13} className="text-sky-700 shrink-0" />;
+              icon = <Clock size={16} className="text-sky-700 shrink-0" />;
             }
           }
 
           const pillContent = (
             <>
               {icon}
-              <span className="capitalize font-bold">{step.label.toLowerCase()}</span>
-              {navHref && <ExternalLink size={12} className="shrink-0 opacity-60" />}
+              <span className="capitalize font-black">{step.label.toLowerCase()}</span>
+              {navHref && <ExternalLink size={14} className="shrink-0 opacity-60" />}
             </>
           );
 
-          const pillBase = `flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[12px] font-bold tracking-wide transition-all duration-200 select-none ${bgClass}`;
+          const pillBase = `flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-[14px] font-black tracking-wide transition-all duration-200 select-none shadow-sm ${bgClass}`;
 
           return (
             <div key={`${step.role}-${index}`} className="flex items-center shrink-0">
@@ -197,8 +197,8 @@ export function WorkflowPipelineVisual({
 
               {index < stepsToRender.length - 1 && (
                 <ChevronRight
-                  size={14}
-                  className={`mx-0.5 shrink-0 ${isCompleted ? 'text-emerald-500' : 'text-slate-400'}`}
+                  size={16}
+                  className={`mx-1 shrink-0 ${isCompleted ? 'text-emerald-500' : 'text-slate-400'}`}
                 />
               )}
             </div>
