@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
-import { journalEntry, journalLine, voucherSetting, voucherSequence, fiscalYear, bankAccount } from "@/lib/db/schema";
+import { journalEntry, journalLine, voucherSetting, voucherSequence, fiscalYear, bankAccount, bankTransaction } from "@/lib/db/schema";
 import { eq, sql, desc, and, or } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError } from "@/lib/api/response";
@@ -282,6 +283,9 @@ export async function POST(request: Request) {
 
       // 5. Automatically update live bank balances for any line affecting a Bank/Cash account
       if (parsed.status === "posted") {
+        const transferGroupId = parsed.voucherType === "CONTRA" ? randomUUID() : undefined;
+        const insertedBankTxs = [];
+
         for (const l of parsed.lines) {
           const netChange = l.debitAmount - l.creditAmount;
           if (netChange !== 0) {
@@ -297,8 +301,35 @@ export async function POST(request: Request) {
                 .update(bankAccount)
                 .set({ balance: sql`${bankAccount.balance} + ${netChange}` })
                 .where(eq(bankAccount.id, linkedBank.id));
+
+              // If it's a CONTRA voucher, insert a reconciled bankTransaction so it appears in the bank dashboard
+              if (parsed.voucherType === "CONTRA") {
+                const [bt] = await tx.insert(bankTransaction).values({
+                  bankAccountId: linkedBank.id,
+                  date: parsed.date,
+                  description: parsed.description,
+                  reference: parsed.reference || null,
+                  amount: netChange,
+                  currencyCode: linkedBank.currencyCode,
+                  status: "reconciled",
+                  sourceType: "contra",
+                  journalEntryId: insertedEntry.id,
+                  transferGroupId,
+                }).returning();
+                insertedBankTxs.push(bt);
+              }
             }
           }
+        }
+
+        // Pair the two sides of a CONTRA transfer
+        if (parsed.voucherType === "CONTRA" && insertedBankTxs.length === 2) {
+          await tx.update(bankTransaction)
+            .set({ transferTransactionId: insertedBankTxs[1].id })
+            .where(eq(bankTransaction.id, insertedBankTxs[0].id));
+          await tx.update(bankTransaction)
+            .set({ transferTransactionId: insertedBankTxs[0].id })
+            .where(eq(bankTransaction.id, insertedBankTxs[1].id));
         }
       }
 

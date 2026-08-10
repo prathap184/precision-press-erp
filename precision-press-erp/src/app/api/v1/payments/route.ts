@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { payment, paymentAllocation, invoice, bill, bankAccount, bankTransaction } from "@/lib/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, notInArray, inArray } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError } from "@/lib/api/response";
@@ -53,6 +53,24 @@ export async function GET(request: Request) {
 
     if (contactId) {
       conditions.push(eq(payment.contactId, contactId));
+    }
+
+    // Exclude carrier payments — these are zero-cash internal rows created when
+    // a customer credit (prepayment) or credit/debit note is applied to an invoice.
+    // They must not appear in the Payments list as if real cash was received.
+    const carrierRows = await db
+      .selectDistinct({ paymentId: paymentAllocation.paymentId })
+      .from(paymentAllocation)
+      .innerJoin(payment, eq(paymentAllocation.paymentId, payment.id))
+      .where(
+        and(
+          eq(payment.organizationId, ctx.organizationId),
+          inArray(paymentAllocation.documentType, ["prepayment", "credit_note", "debit_note"])
+        )
+      );
+    const carrierIds = carrierRows.map((r) => r.paymentId);
+    if (carrierIds.length) {
+      conditions.push(notInArray(payment.id, carrierIds));
     }
 
     const payments = await db.query.payment.findMany({

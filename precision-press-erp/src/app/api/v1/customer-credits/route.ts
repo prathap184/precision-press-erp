@@ -96,7 +96,7 @@ export async function GET(request: Request) {
       orderBy: orderFn(sortCol),
       limit,
       offset,
-      with: { contact: true },
+      with: { contact: true, journalEntry: { columns: { reference: true, entryNumber: true } } },
     });
 
     const [countResult] = await db

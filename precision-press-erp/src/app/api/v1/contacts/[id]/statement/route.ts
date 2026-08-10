@@ -56,6 +56,11 @@ export async function GET(
     // (so a paymentAllocation can link note -> document). They must NOT be counted
     // as cash in the statement — the credit/debit note document itself is already
     // included — otherwise the application reduces the balance twice.
+    // Credit/debit-note AND prepayment-application carriers must be excluded.
+    // "prepayment" documentType is set when a customer credit (advance receipt)
+    // is applied to an invoice — the original REC-x already appears on the
+    // statement; the carrier PAY-xxx must NOT appear again or the balance is
+    // understated (looks like customer paid twice).
     const carrierPaymentRows = await db
       .selectDistinct({ paymentId: paymentAllocation.paymentId })
       .from(paymentAllocation)
@@ -64,7 +69,7 @@ export async function GET(
         and(
           eq(payment.organizationId, ctx.organizationId),
           eq(payment.contactId, id),
-          inArray(paymentAllocation.documentType, ["credit_note", "debit_note"])
+          inArray(paymentAllocation.documentType, ["credit_note", "debit_note", "prepayment"])
         )
       );
     const carrierPaymentIds = carrierPaymentRows.map((r) => r.paymentId);

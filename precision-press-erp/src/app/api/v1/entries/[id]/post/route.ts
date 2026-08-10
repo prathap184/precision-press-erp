@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { db } from "@/lib/db";
-import { journalEntry } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { journalEntry, bankAccount, bankTransaction } from "@/lib/db/schema";
+import { eq, and, sql, or } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError } from "@/lib/api/response";
@@ -39,15 +40,74 @@ export async function POST(
     // finalized straight into a period that has since been locked or closed.
     await assertNotLocked(ctx.organizationId, entry.date, ctx);
 
-    await db
-      .update(journalEntry)
-      .set({
-        status: "posted",
-        postedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(journalEntry.id, id))
-      .returning();
+    await db.transaction(async (tx) => {
+      await tx
+        .update(journalEntry)
+        .set({
+          status: "posted",
+          postedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(journalEntry.id, id));
+
+      const full = await tx.query.journalEntry.findFirst({
+        where: eq(journalEntry.id, id),
+        with: {
+          lines: {
+            with: { account: true },
+          },
+        },
+      });
+
+      if (full) {
+        const transferGroupId = full.voucherType === "CONTRA" ? randomUUID() : undefined;
+        const insertedBankTxs = [];
+
+        for (const l of full.lines) {
+          const netChange = l.debitAmount - l.creditAmount;
+          if (netChange !== 0) {
+            const linkedBank = await tx.query.bankAccount.findFirst({
+              where: and(
+                eq(bankAccount.organizationId, ctx.organizationId),
+                or(eq(bankAccount.chartAccountId, l.accountId), eq(bankAccount.id, l.accountId))
+              ),
+            });
+
+            if (linkedBank) {
+              await tx
+                .update(bankAccount)
+                .set({ balance: sql`${bankAccount.balance} + ${netChange}` })
+                .where(eq(bankAccount.id, linkedBank.id));
+
+              if (full.voucherType === "CONTRA") {
+                const [bt] = await tx.insert(bankTransaction).values({
+                  bankAccountId: linkedBank.id,
+                  date: full.date,
+                  description: full.description,
+                  reference: full.reference || null,
+                  amount: netChange,
+                  currencyCode: linkedBank.currencyCode,
+                  status: "reconciled",
+                  sourceType: "contra",
+                  journalEntryId: full.id,
+                  transferGroupId,
+                }).returning();
+                insertedBankTxs.push(bt);
+              }
+            }
+          }
+        }
+
+        if (full.voucherType === "CONTRA" && insertedBankTxs.length === 2) {
+          await tx.update(bankTransaction)
+            .set({ transferTransactionId: insertedBankTxs[1].id })
+            .where(eq(bankTransaction.id, insertedBankTxs[0].id));
+          await tx.update(bankTransaction)
+            .set({ transferTransactionId: insertedBankTxs[0].id })
+            .where(eq(bankTransaction.id, insertedBankTxs[1].id));
+        }
+      }
+    });
 
     const full = await db.query.journalEntry.findFirst({
       where: eq(journalEntry.id, id),

@@ -34,6 +34,7 @@ interface CustomerCredit {
   sourceType: string;
   currencyCode: string;
   contact: { name: string } | null;
+  journalEntry?: { reference: string | null; entryNumber: string } | null;
 }
 
 const statusColors: Record<string, string> = {
@@ -61,6 +62,16 @@ const sourceLabels: Record<string, string> = {
 
 function buildColumns(): Column<CustomerCredit>[] {
   return [
+    {
+      key: "reference",
+      header: "Reference",
+      className: "w-32",
+      render: (r) => (
+        <span className="font-mono text-sm">
+          {r.journalEntry?.reference || r.journalEntry?.entryNumber || "-"}
+        </span>
+      ),
+    },
     {
       key: "date",
       header: "Date",

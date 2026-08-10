@@ -158,11 +158,12 @@ export function GlobalOrdersPage() {
 
       let defaultSalesAccountId = '';
       try {
-        const ar = await fetch('/api/v1/chart-accounts?type=revenue', { headers });
+        const ar = await fetch('/api/v1/accounts?type=revenue', { headers });
         if (ar.ok) {
           const ad = await ar.json();
           const accts = ad.data || ad.accounts || [];
-          const salesAcc = accts.find((a: any) => a.name.toLowerCase().includes('sales') || a.name.toLowerCase().includes('revenue')) || accts[0];
+          const revenueAccts = accts.filter((a: any) => a.type === 'revenue');
+          const salesAcc = revenueAccts.find((a: any) => a.name.toLowerCase().includes('sales') || a.name.toLowerCase().includes('revenue')) || revenueAccts[0];
           if (salesAcc) defaultSalesAccountId = salesAcc.id;
         }
       } catch {}

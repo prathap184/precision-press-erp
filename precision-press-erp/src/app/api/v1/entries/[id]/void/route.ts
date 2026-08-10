@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { journalEntry } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { journalEntry, bankTransaction, bankAccount } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError } from "@/lib/api/response";
@@ -53,31 +53,55 @@ export async function POST(
     // is locked or in a closed fiscal year.
     await assertNotLocked(ctx.organizationId, entry.date, ctx);
 
-    // Reverse the entry by posting a mirror (debit/credit swapped) and marking
-    // the original "reversed", keeping BOTH posted so reports net the pair to
-    // zero. Previously this just flipped status to "void", which silently
-    // deleted the amount from every report (even closed periods) with no
-    // offsetting record — the opposite of what the UI promised.
-    await db.transaction(async (tx) => {
-      await reverseJournalEntry(
-        { organizationId: ctx.organizationId, userId: ctx.userId },
-        {
-          entryId: id,
-          date: entry.date,
-          description: `Reversal of entry #${entry.entryNumber}${reason ? ` — ${reason}` : ""}`,
-          reference: entry.reference,
-          sourceType: "manual_reversal",
-          sourceId: entry.id,
-        },
-        tx
-      );
-      // Stamp the original as reversed (reverseJournalEntry already set
-      // reversedByEntryId; this records why and when).
-      await tx
-        .update(journalEntry)
-        .set({ voidedAt: new Date(), voidReason: reason, updatedAt: new Date() })
-        .where(eq(journalEntry.id, id));
-    });
+      // Reverse the entry by posting a mirror (debit/credit swapped) and marking
+      // the original "reversed", keeping BOTH posted so reports net the pair to
+      // zero. Previously this just flipped status to "void", which silently
+      // deleted the amount from every report (even closed periods) with no
+      // offsetting record — the opposite of what the UI promised.
+      await db.transaction(async (tx) => {
+        await reverseJournalEntry(
+          { organizationId: ctx.organizationId, userId: ctx.userId },
+          {
+            entryId: id,
+            date: entry.date,
+            description: `Reversal of entry #${entry.entryNumber}${reason ? ` — ${reason}` : ""}`,
+            reference: entry.reference,
+            sourceType: "manual_reversal",
+            sourceId: entry.id,
+          },
+          tx
+        );
+        // Stamp the original as reversed (reverseJournalEntry already set
+        // reversedByEntryId; this records why and when).
+        await tx
+          .update(journalEntry)
+          .set({ voidedAt: new Date(), voidReason: reason, updatedAt: new Date() })
+          .where(eq(journalEntry.id, id));
+
+        // If it was a CONTRA voucher, delete its auto-generated bank transactions
+        // and revert the live bank account balances so they stay in sync.
+        if (entry.voucherType === "CONTRA") {
+          const bts = await tx.query.bankTransaction.findMany({
+            where: eq(bankTransaction.journalEntryId, id)
+          });
+          
+          if (bts.length > 0) {
+            // First unlink transfer relationships to avoid foreign key errors
+            await tx.update(bankTransaction)
+              .set({ transferTransactionId: null })
+              .where(eq(bankTransaction.journalEntryId, id));
+              
+            await tx.delete(bankTransaction)
+              .where(eq(bankTransaction.journalEntryId, id));
+
+            for (const bt of bts) {
+              await tx.update(bankAccount)
+                .set({ balance: sql`${bankAccount.balance} - ${bt.amount}` })
+                .where(eq(bankAccount.id, bt.bankAccountId));
+            }
+          }
+        }
+      });
 
     const full = await db.query.journalEntry.findFirst({
       where: eq(journalEntry.id, id),

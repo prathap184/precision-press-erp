@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice, organization, payment, paymentAllocation } from "@/lib/db/schema";
-import { eq, and, isNull, ne, inArray } from "drizzle-orm";
+import { invoice, organization, payment, paymentAllocation, customerCredit } from "@/lib/db/schema";
+import { eq, and, isNull, ne, inArray, lte, gt } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError } from "@/lib/api/response";
 import type { Statement } from "@/lib/reports/statement-export";
@@ -90,6 +90,47 @@ export async function GET(request: Request) {
         );
       }
     }
+
+    // Fetch customer credits (prepayments)
+    const credits = await db.query.customerCredit.findMany({
+      where: and(
+        eq(customerCredit.organizationId, ctx.organizationId),
+        isNull(customerCredit.deletedAt),
+        ne(customerCredit.status, "void"),
+        ...(isHistorical ? [lte(customerCredit.date, asAtStr)] : [gt(customerCredit.amountRemaining, 0)])
+      ),
+      with: { contact: true, journalEntry: { columns: { reference: true, entryNumber: true } } },
+    });
+
+    const openByCredit = new Map<string, number>();
+    if (isHistorical && credits.length > 0) {
+      for (const cr of credits) openByCredit.set(cr.id, cr.originalAmount);
+      const allocations = await db
+        .select({
+          documentId: paymentAllocation.documentId,
+          amount: paymentAllocation.amount,
+          paymentDate: payment.date,
+        })
+        .from(paymentAllocation)
+        .innerJoin(payment, eq(paymentAllocation.paymentId, payment.id))
+        .where(
+          and(
+            eq(paymentAllocation.documentType, "prepayment"),
+            inArray(
+              paymentAllocation.documentId,
+              credits.map((c) => c.id)
+            ),
+            isNull(payment.deletedAt)
+          )
+        );
+      for (const a of allocations) {
+        if (a.paymentDate > asAtStr) continue;
+        openByCredit.set(
+          a.documentId,
+          (openByCredit.get(a.documentId) ?? 0) - a.amount
+        );
+      }
+    }
     const buckets: AgingBucket[] = [
       { label: "Current", total: 0, count: 0, invoices: [] },
       { label: "1-30 days", total: 0, count: 0, invoices: [] },
@@ -131,6 +172,29 @@ export async function GET(request: Request) {
       buckets[bucketIdx].invoices.push(entry);
       buckets[bucketIdx].total += amountDue;
       buckets[bucketIdx].count += 1;
+    }
+
+    for (const cr of credits) {
+      const amountDue = isHistorical
+        ? (openByCredit.get(cr.id) ?? cr.originalAmount)
+        : cr.amountRemaining;
+      
+      if (amountDue <= 0) continue;
+
+      const entry = {
+        id: cr.id,
+        invoiceNumber: String(cr.journalEntry?.reference || cr.journalEntry?.entryNumber || "Advance"),
+        contactName: cr.contact?.name || "Unknown",
+        dueDate: cr.date,
+        amountDue: -amountDue, // Negative because it reduces the customer's AR balance
+        daysOverdue: 0,
+      };
+
+      // Prepayments don't have a due date; they are unapplied cash on account.
+      // So they reduce the "Current" bucket by default.
+      buckets[0].invoices.push(entry);
+      buckets[0].total -= amountDue;
+      buckets[0].count += 1;
     }
 
     const grandTotal = buckets.reduce((sum, b) => sum + b.total, 0);
