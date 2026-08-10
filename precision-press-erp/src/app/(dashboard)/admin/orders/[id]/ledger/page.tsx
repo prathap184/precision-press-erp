@@ -158,12 +158,25 @@ export default function OrderLedgerPage() {
 
                     // Try to get name from staffMap using completedBy UID, fallback to logs, then role
                     let actorName = '';
+                    
+                    let proxyName = '';
+                    try {
+                      const proxy = typeof order?.proxyExecutor === 'string' ? JSON.parse(order.proxyExecutor) : order?.proxyExecutor;
+                      proxyName = order?.proxyName || proxy?.name || proxy?.displayName;
+                    } catch (e) {}
+
                     if (step.completedBy && staffMap[step.completedBy]) {
                       actorName = staffMap[step.completedBy];
+                    } else if (step.completedBy && step.completedBy !== 'STAFF_PROXY' && step.completedBy !== 'SYSTEM' && !step.completedBy.match(/^[0-9a-fA-F]{8}-/)) {
+                      actorName = step.completedBy;
                     } else if (latestLog?.userName) {
                       actorName = latestLog.userName;
+                    } else if (latestLog?.meta?.userName) {
+                      actorName = latestLog.meta.userName;
                     } else if (latestLog?.userEmail) {
                       actorName = latestLog.userEmail.split('@')[0];
+                    } else if (proxyName) {
+                      actorName = proxyName;
                     } else {
                       actorName = step.role; // Better to show the role than a UUID
                     }

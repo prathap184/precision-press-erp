@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { collection, getCountFromServer, limit, onSnapshot, orderBy, query, where, getDoc, doc } from '@/lib/supabase-firestore-shim';
 import { db } from '@/lib/firebase';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { RoleGuard } from '@/lib/role-guard';
 import { Order } from '@/types/models';
 import { OrderThumbnail } from '@/components/orders/OrderThumbnail';
@@ -43,6 +43,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 };
 
 export function GlobalOrdersPage() {
+  const pathname = usePathname();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -899,7 +900,12 @@ export function GlobalOrdersPage() {
                             <td className={`px-4 py-2 text-center tabular-nums ${tdBorder}`}>
                               <div className="flex flex-row items-center justify-end gap-2 flex-wrap">
                                 <Link
-                                  href={`/acdema/orders/${order.id}`}
+                                  href={(() => {
+                                    if (pathname?.startsWith('/admin')) return `/admin/orders/${order.id}/ledger`;
+                                    if (pathname?.startsWith('/printer')) return `/printer/orders/${order.id}`;
+                                    if (pathname?.startsWith('/delivarypartner')) return `/delivarypartner/orders/${order.id}`;
+                                    return `/acdema/orders/${order.id}`;
+                                  })()}
                                   className="inline-flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm group-hover:scale-105 shrink-0"
                                   title="View Order Details"
                                 >
