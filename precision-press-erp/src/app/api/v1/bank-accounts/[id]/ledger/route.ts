@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bankAccount, journalEntry, journalLine, chartAccount } from "@/lib/db/schema";
-import { eq, and, gte, lt, lte, asc } from "drizzle-orm";
+import { eq, and, gte, lt, lte, asc, ne } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError, notFound } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
@@ -45,8 +45,28 @@ export async function GET(
 
     const accountId = account.chartAccountId;
 
-    // 2. Opening balance = sum of all journal lines for this account BEFORE the from date
+    // 2a. Opening balance = ALL opening_balance journal entries (regardless of date)
     let openingBalance = 0;
+    const openingBalanceLines = await db
+      .select({
+        debit: journalLine.debitAmount,
+        credit: journalLine.creditAmount,
+      })
+      .from(journalLine)
+      .innerJoin(journalEntry, eq(journalLine.journalEntryId, journalEntry.id))
+      .where(
+        and(
+          eq(journalLine.accountId, accountId),
+          eq(journalEntry.organizationId, ctx.organizationId),
+          eq(journalEntry.sourceType, "opening_balance")
+        )
+      );
+
+    for (const row of openingBalanceLines) {
+      openingBalance += (row.debit ?? 0) - (row.credit ?? 0);
+    }
+
+    // 2b. Also add regular entries BEFORE the from date (excluding opening_balance)
     if (from) {
       const priorLines = await db
         .select({
@@ -59,7 +79,8 @@ export async function GET(
           and(
             eq(journalLine.accountId, accountId),
             eq(journalEntry.organizationId, ctx.organizationId),
-            lt(journalEntry.date, new Date(from))
+            lt(journalEntry.date, new Date(from)),
+            ne(journalEntry.sourceType, "opening_balance")
           )
         );
 
@@ -68,10 +89,11 @@ export async function GET(
       }
     }
 
-    // 3. Fetch journal lines within date range
+    // 3. Fetch journal lines within date range (excluding opening_balance entries)
     const conditions = [
       eq(journalLine.accountId, accountId),
       eq(journalEntry.organizationId, ctx.organizationId),
+      ne(journalEntry.sourceType, "opening_balance"),
     ];
 
     if (from) conditions.push(gte(journalEntry.date, new Date(from)));

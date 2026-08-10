@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { journalEntry, journalLine } from "@/lib/db/schema";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { journalEntry, journalLine, bankAccount } from "@/lib/db/schema";
+import { eq, and, isNull, sql, or } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError, validationError, created, ok } from "@/lib/api/response";
@@ -127,6 +127,28 @@ export async function POST(request: Request) {
         creditAmount: b.creditAmount,
       }))
     );
+
+    // Also update bankAccount.balance for any bank/cash account linked to this opening balance
+    for (const b of parsed.balances) {
+      const netChange = b.debitAmount - b.creditAmount;
+      if (netChange !== 0) {
+        const linkedBank = await db.query.bankAccount.findFirst({
+          where: and(
+            eq(bankAccount.organizationId, ctx.organizationId),
+            or(
+              eq(bankAccount.chartAccountId, b.accountId),
+              eq(bankAccount.id, b.accountId)
+            )
+          ),
+        });
+        if (linkedBank) {
+          await db
+            .update(bankAccount)
+            .set({ balance: sql`${bankAccount.balance} + ${netChange}` })
+            .where(eq(bankAccount.id, linkedBank.id));
+        }
+      }
+    }
 
     // Fetch the full entry with lines
     const full = await db.query.journalEntry.findFirst({

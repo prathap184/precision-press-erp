@@ -212,8 +212,12 @@ export default function BankingPage() {
     );
   }
 
-  const positiveBalance = accounts.filter((a) => a.balance > 0).reduce((s, a) => s + a.balance, 0);
-  const negativeBalance = accounts.filter((a) => a.balance < 0).reduce((s, a) => s + Math.abs(a.balance), 0);
+  const bankBalance = accounts
+    .filter((a) => ["checking", "savings", "credit_card", "loan", "investment"].includes(a.accountType))
+    .reduce((s, a) => s + a.balance, 0);
+  const cashBalance = accounts
+    .filter((a) => a.accountType === "cash" || a.accountType === "other")
+    .reduce((s, a) => s + a.balance, 0);
   const currencies = [...new Set(accounts.map((a) => a.currencyCode))];
   const maxBalance = Math.max(...accounts.map((a) => Math.abs(a.balance)), 1);
 
@@ -247,20 +251,20 @@ export default function BankingPage() {
         </div>
         <div>
           <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-            <ArrowDownLeft className="size-3 text-emerald-500" />
-            Money In
+            <Landmark className="size-3 text-blue-500" />
+            Bank Total
           </p>
-          <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-            {showBalances ? formatMoney(positiveBalance) : "********"}
+          <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+            {showBalances ? formatMoney(bankBalance) : "********"}
           </p>
         </div>
         <div>
           <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-            <ArrowUpRight className="size-3 text-red-500" />
-            Money Out
+            <Banknote className="size-3 text-amber-500" />
+            Cash Total
           </p>
-          <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-red-600 dark:text-red-400">
-            {showBalances ? formatMoney(negativeBalance) : "********"}
+          <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+            {showBalances ? formatMoney(cashBalance) : "********"}
           </p>
         </div>
         <div>
