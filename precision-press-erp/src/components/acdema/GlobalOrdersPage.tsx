@@ -161,7 +161,8 @@ export function GlobalOrdersPage() {
         const ar = await fetch('/api/v1/chart-accounts?type=revenue', { headers });
         if (ar.ok) {
           const ad = await ar.json();
-          const salesAcc = ad.accounts?.find((a: any) => a.name.toLowerCase().includes('sales') || a.name.toLowerCase().includes('revenue')) || ad.accounts?.[0];
+          const accts = ad.data || ad.accounts || [];
+          const salesAcc = accts.find((a: any) => a.name.toLowerCase().includes('sales') || a.name.toLowerCase().includes('revenue')) || accts[0];
           if (salesAcc) defaultSalesAccountId = salesAcc.id;
         }
       } catch {}
