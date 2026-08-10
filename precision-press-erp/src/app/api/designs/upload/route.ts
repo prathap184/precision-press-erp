@@ -51,6 +51,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Too many upload requests. Please try again later.' }, { status: 429 });
     }
 
+    // ─── Authentication Check ────────────────────────────────────────────────
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Unauthorized. Please log in.' }, { status: 401 });
+    }
+    
+    try {
+      const { adminAuth } = await import('@/lib/firebase-admin');
+      const idToken = authHeader.split('Bearer ')[1];
+      await adminAuth.verifyIdToken(idToken);
+    } catch (e) {
+      return NextResponse.json({ error: 'Invalid or expired token.' }, { status: 401 });
+    }
+
     const formData = await req.formData();
     const file = formData.get('file') as File;
 

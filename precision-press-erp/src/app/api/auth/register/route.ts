@@ -62,7 +62,33 @@ export async function POST(request: Request) {
     const body = (await request.json()) as RegisterBody;
     const email = body.email?.trim();
     const password = body.password?.trim();
-    const role = body.role?.trim() || 'CUSTOMER';
+    const requestedRole = body.role?.trim() || 'CUSTOMER';
+    
+    // Default to CUSTOMER for public signups
+    let role = 'CUSTOMER';
+    
+    // If an authorization token is provided, check if an Admin is making this request
+    const authHeader = request.headers.get('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        // Need to import adminAuth from '@/lib/firebase-admin' for this to work
+        const { adminAuth } = await import('@/lib/firebase-admin');
+        const idToken = authHeader.split('Bearer ')[1];
+        const decoded = await adminAuth.verifyIdToken(idToken);
+        
+        // Securely fetch caller's true role from DB
+        const { supabaseAdmin } = await import('@/lib/supabase-admin');
+        const { data: caller } = await supabaseAdmin.from('profiles').select('role').eq('id', decoded.uid).single();
+        
+        if (caller?.role === 'ADMIN' || caller?.role === 'SUPER_ADMIN' || caller?.role === 'OWNER') {
+          // Caller is an admin creating an account, allow the requested role
+          role = requestedRole;
+        }
+      } catch (e) {
+        // Ignore auth error, just treat as a public signup (forces CUSTOMER role)
+      }
+    }
+
     const name = body.name?.trim() || 'User';
     const printerCategory = role === 'PRINTER' ? (body.printerCategory?.trim() || undefined) : undefined;
 
