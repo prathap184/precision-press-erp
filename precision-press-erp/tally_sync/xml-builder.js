@@ -388,9 +388,8 @@ function buildFetchMastersXML(companyName) {
 </ENVELOPE>`;
 }
 
-}
-
 // ─── MASTER ROUTER ────────────────────────────────────────────────────────────
+
 
 function buildXML(syncType, payload) {
   switch (syncType) {
