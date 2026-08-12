@@ -142,6 +142,8 @@ async function processEvent(event) {
 
     // ── Special handling for FETCH_MASTERS (Export Data) ──
     if (syncType === 'FETCH_MASTERS') {
+      // 🔍 DEBUG: Show first 800 chars of raw XML so we can see the actual structure
+      log('INFO', `🔍 RAW TALLY XML (first 800 chars):\n${rawResponse.substring(0, 800)}`);
       const ledgerRegex = /<LEDGER NAME="([^"]*)"[^>]*>([\s\S]*?)<\/LEDGER>/gi;
       const ledgers = [];
       let match;
