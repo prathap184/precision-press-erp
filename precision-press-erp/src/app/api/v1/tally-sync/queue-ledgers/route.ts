@@ -5,14 +5,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Get the last 5 successful FETCH_MASTERS entries
+    // Get the last 5 successful FETCH_MASTERS entries with non-null tallyResponse
     // We pick the BEST one — the one where ledgers have non-empty parent fields
     const { data, error } = await supabaseServer
       .from('tally_sync_queue')
       .select('tallyResponse, processedAt, lastAttemptAt, createdAt')
       .eq('syncType', 'FETCH_MASTERS')
       .eq('status', 'SUCCESS')
-      .order('lastAttemptAt', { ascending: false })
+      .not('tallyResponse', 'is', null)
+      .order('createdAt', { ascending: false })
       .limit(5);
 
     if (error) throw error;
