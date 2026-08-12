@@ -152,7 +152,7 @@ export async function markTallySyncResult({
   try {
     const { data: existing, error: fetchErr } = await supabaseServer
       .from('tally_sync_queue')
-      .select('retryCount, maxRetries, syncType, orderId, paymentId, refId')
+      .select('retryCount, maxRetries, syncType, orderId, paymentId, refId, payload')
       .eq('id', eventId)
       .single();
 
@@ -204,7 +204,9 @@ export async function markTallySyncResult({
             // ── Insert into new staging tables ──
             try {
               const ledgers = (tallyResponse as any)?.json?.ledgers || [];
-              if (ledgers.length > 0) {
+              const orgId = existing.payload?.organizationId;
+              
+              if (ledgers.length > 0 && orgId) {
                 const contacts = [];
                 const banks = [];
                 const accounts = [];
@@ -219,6 +221,7 @@ export async function markTallySyncResult({
                   // Bank Accounts
                   if (parent.toLowerCase().includes('bank')) {
                     banks.push({
+                      organization_id: orgId,
                       tally_ledger_name: name,
                       tally_ledger_group: parent,
                       account_name: name,
@@ -229,6 +232,7 @@ export async function markTallySyncResult({
                   // Customers & Suppliers
                   else if (parent === 'Sundry Debtors' || parent === 'Sundry Creditors') {
                     contacts.push({
+                      organization_id: orgId,
                       tally_ledger_name: name,
                       tally_ledger_group: parent,
                       name: name,
@@ -240,6 +244,7 @@ export async function markTallySyncResult({
                   // Other Chart of Accounts
                   else {
                     accounts.push({
+                      organization_id: orgId,
                       tally_ledger_name: name,
                       tally_group: parent,
                       name: name,

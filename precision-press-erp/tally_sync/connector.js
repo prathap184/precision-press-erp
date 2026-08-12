@@ -149,6 +149,7 @@ async function processEvent(event) {
         const gstinMatch = ledgerBody.match(/<PARTYGSTIN>([^<]*)<\/PARTYGSTIN>/i);
         const stateMatch = ledgerBody.match(/<LEDSTATENAME>([^<]*)<\/LEDSTATENAME>/i);
         const balMatch = ledgerBody.match(/<OPENINGBALANCE>([^<]*)<\/OPENINGBALANCE>/i);
+        const closingBalMatch = ledgerBody.match(/<CLOSINGBALANCE>([^<]*)<\/CLOSINGBALANCE>/i);
 
         const aliases = [];
         const nameListMatch = ledgerBody.match(/<NAME\.LIST>([\s\S]*?)<\/NAME\.LIST>/i);
@@ -167,6 +168,7 @@ async function processEvent(event) {
           aliases,
           parent: parentMatch ? parentMatch[1] : '',
           openingBalance: balMatch ? balMatch[1].trim() : '0',
+          closingBalance: closingBalMatch ? closingBalMatch[1].trim() : '0',
           gstin: gstinMatch ? gstinMatch[1] : '',
           state: stateMatch ? stateMatch[1] : '',
         });

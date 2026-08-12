@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
-  Loader2, Download, AlertCircle, Building2, Users,
-  Landmark, RefreshCw, UploadCloud, FileCheck2,
+  Loader2, Download, Building2, Users,
+  Landmark, RefreshCw, FileCheck2, DatabaseZap
 } from 'lucide-react';
 
 interface TallyLedger {
+  id:             string;
   name:           string;
   parent:         string;
   openingBalance: string;
@@ -30,13 +31,10 @@ function formatINR(val: string | number) {
 
 export default function TallyMastersReviewPage() {
   const router   = useRouter();
-  const fileRef  = useRef<HTMLInputElement>(null);
 
-  const [stage,    setStage]    = useState<'upload' | 'review'>('upload');
-  const [parsing,  setParsing]  = useState(false);
+  const [stage,    setStage]    = useState<'connect' | 'polling' | 'review'>('connect');
   const [syncing,  setSyncing]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string>('');
 
   const [contacts, setContacts] = useState<TallyLedger[]>([]);
   const [banks,    setBanks]    = useState<TallyLedger[]>([]);
@@ -49,63 +47,106 @@ export default function TallyMastersReviewPage() {
   const [cutoverDate, setCutoverDate] = useState(() =>
     new Date().toISOString().split('T')[0]
   );
+  
+  const [eventId, setEventId] = useState<string | null>(null);
 
-  // ─── Upload & parse ────────────────────────────────────────────────────────
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // ─── 1. Trigger Fetch from Tally ───────────────────────────────────────────
+  async function handlePullFromTally() {
+    const orgId = localStorage.getItem('activeOrgId') || '';
+    if (!orgId) {
+      alert('No active organization found. Please log in again.');
+      return;
+    }
 
-    setFileName(file.name);
-    setParsing(true);
+    setStage('polling');
     setError(null);
 
     try {
-      const form = new FormData();
-      form.append('master', file);
-
-      const res    = await fetch('/api/v1/tally-sync/parse-xml', { method: 'POST', body: form });
+      const res = await fetch('/api/v1/tally-sync/trigger-fetch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizationId: orgId }),
+      });
       const result = await res.json();
 
       if (!result.success) {
-        setError(result.error ?? 'Failed to parse file.');
-        return;
+        throw new Error(result.error);
       }
 
-      setContacts(result.contacts);
-      setBanks(result.banks);
-      setAccounts(result.accounts);
-
-      setSelectedContacts(result.contacts.map((c: TallyLedger) => c.name));
-      setSelectedBanks(result.banks.map((b: TallyLedger) => b.name));
-      setSelectedAccounts(result.accounts.map((a: TallyLedger) => a.name));
-
-      setStage('review');
+      setEventId(result.eventId);
     } catch (err: any) {
       setError(err.message);
-    } finally {
-      setParsing(false);
+      setStage('connect');
     }
   }
 
-  // ─── Sync to staging tables ───────────────────────────────────────────────
+  // ─── 2. Poll for Status ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (stage !== 'polling' || !eventId) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/v1/tally-sync/poll-fetch?eventId=${eventId}`);
+        const result = await res.json();
+
+        if (result.status === 'SUCCESS') {
+          clearInterval(interval);
+          fetchStagedData();
+        } else if (result.status === 'FAILED') {
+          clearInterval(interval);
+          setError(result.error || 'Sync failed in connector');
+          setStage('connect');
+        }
+      } catch (err) {
+        console.error('Polling error', err);
+      }
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [stage, eventId]);
+
+  // ─── 3. Fetch Staged Data ─────────────────────────────────────────────────
+  async function fetchStagedData() {
+    const orgId = localStorage.getItem('activeOrgId') || '';
+    try {
+      const res = await fetch(`/api/v1/tally-sync/staging?organizationId=${orgId}`);
+      const result = await res.json();
+
+      if (result.success) {
+        setContacts(result.contacts);
+        setBanks(result.banks);
+        setAccounts(result.accounts);
+
+        setSelectedContacts(result.contacts.map((c: TallyLedger) => c.id));
+        setSelectedBanks(result.banks.map((b: TallyLedger) => b.id));
+        setSelectedAccounts(result.accounts.map((a: TallyLedger) => a.id));
+
+        setStage('review');
+      } else {
+        setError(result.error);
+        setStage('connect');
+      }
+    } catch (err: any) {
+      setError(err.message);
+      setStage('connect');
+    }
+  }
+
+  // ─── 4. Push to ERP Database ──────────────────────────────────────────────
   async function handleSync() {
     setSyncing(true);
     try {
       const orgId = localStorage.getItem('activeOrgId') || '';
-      if (!orgId) {
-        alert('No active organization found. Please log in again.');
-        return;
-      }
-
+      
       const payload = {
-        contacts: contacts.filter(c => selectedContacts.includes(c.name)),
-        banks:    banks.filter(b => selectedBanks.includes(b.name)),
-        accounts: accounts.filter(a => selectedAccounts.includes(a.name)),
+        contactIds: selectedContacts,
+        bankIds: selectedBanks,
+        accountIds: selectedAccounts,
         organizationId: orgId,
         cutoverDate,
       };
 
-      const res    = await fetch('/api/v1/tally-sync/import-json', {
+      const res = await fetch('/api/v1/tally-sync/import-erp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -113,7 +154,7 @@ export default function TallyMastersReviewPage() {
       const result = await res.json();
 
       if (result.success) {
-        alert(`✅ Successfully saved ${result.count} records to staging tables!`);
+        alert(`✅ Successfully imported ${result.count} records into the ERP! Opening balance invoices have been generated.`);
         router.push('/tally-masters');
       } else {
         alert('❌ Sync failed: ' + result.error);
@@ -128,82 +169,56 @@ export default function TallyMastersReviewPage() {
   const totalSelected = selectedContacts.length + selectedBanks.length + selectedAccounts.length;
   const totalFound    = contacts.length + banks.length + accounts.length;
 
-  // ─── UPLOAD SCREEN ─────────────────────────────────────────────────────────
-  if (stage === 'upload') {
+  // ─── CONNECT SCREEN ────────────────────────────────────────────────────────
+  if (stage === 'connect' || stage === 'polling') {
     return (
       <div className="p-6 max-w-2xl mx-auto space-y-6">
         <div>
           <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
-            Tally Masters Import
+            Sync Masters from Tally
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            Upload your Master.xml exported from Tally to import ledgers into the ERP staging area.
+            Make sure your TallyPrime is running and the Local Connector is active on your PC.
           </p>
         </div>
 
-        {/* Drop zone */}
-        <Card
-          className={`border-2 border-dashed cursor-pointer transition-colors hover:border-emerald-400 hover:bg-emerald-50/30
-            ${parsing ? 'border-emerald-400 bg-emerald-50/30' : 'border-slate-300'}`}
-          onClick={() => !parsing && fileRef.current?.click()}
-        >
-          <CardContent className="flex flex-col items-center py-16 gap-4">
-            {parsing ? (
+        {error && (
+          <div className="p-4 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+
+        <Card>
+          <CardContent className="flex flex-col items-center py-16 gap-6">
+            {stage === 'polling' ? (
               <>
                 <Loader2 className="h-14 w-14 text-emerald-500 animate-spin" />
-                <p className="font-semibold text-slate-700">Parsing <span className="text-emerald-700">{fileName}</span>…</p>
-                <p className="text-sm text-slate-400">Reading ledgers from your Tally export</p>
+                <div className="text-center">
+                  <p className="font-semibold text-slate-700 text-lg">Communicating with Tally...</p>
+                  <p className="text-sm text-slate-400 mt-1">The connector is fetching your Customers, Suppliers, and Accounts.</p>
+                </div>
               </>
             ) : (
               <>
-                <UploadCloud className="h-14 w-14 text-slate-300" />
-                <div className="text-center">
-                  <p className="font-bold text-slate-700 text-lg">Click to upload Master.xml</p>
-                  <p className="text-sm text-slate-400 mt-1">Exported from Tally Prime → Export → Masters → XML</p>
+                <div className="p-4 bg-blue-50 rounded-full">
+                  <DatabaseZap className="h-10 w-10 text-blue-600" />
                 </div>
-                <Badge variant="outline" className="text-xs text-slate-500">
-                  Accepts .xml files
-                </Badge>
+                <div className="text-center">
+                  <p className="font-bold text-slate-700 text-xl">Ready to Pull</p>
+                  <p className="text-sm text-slate-500 mt-2 max-w-sm mx-auto">
+                    Click the button below to request the latest master data directly from your Tally software. No manual upload needed.
+                  </p>
+                </div>
+                <Button onClick={handlePullFromTally} size="lg" className="bg-blue-600 hover:bg-blue-700">
+                  <Download className="mr-2 h-5 w-5" />
+                  Pull Customers / Suppliers from Tally
+                </Button>
+                
+                <Button variant="link" className="text-slate-400" onClick={fetchStagedData}>
+                  View existing staged data
+                </Button>
               </>
             )}
-          </CardContent>
-        </Card>
-
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".xml"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-
-        {/* Error */}
-        {error && (
-          <Card className="border-red-200 bg-red-50">
-            <CardContent className="flex items-start gap-3 py-4">
-              <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
-              <div>
-                <p className="font-semibold text-red-800 text-sm">Could not parse file</p>
-                <p className="text-red-700 text-sm mt-0.5">{error}</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* How to export */}
-        <Card className="bg-slate-50 border-slate-200">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold text-slate-700">How to export Master.xml from Tally</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ol className="list-decimal pl-4 space-y-1.5 text-sm text-slate-600">
-              <li>Open <strong>Tally Prime</strong> → Gateway of Tally</li>
-              <li>Press <kbd className="bg-white border rounded px-1.5 py-0.5 font-mono text-xs">E</kbd> for Export</li>
-              <li>Select <strong>Masters</strong></li>
-              <li>Set Format → <strong>XML</strong></li>
-              <li>Click <strong>Export</strong> — save the file anywhere</li>
-              <li>Upload that file above ↑</li>
-            </ol>
           </CardContent>
         </Card>
       </div>
@@ -213,24 +228,22 @@ export default function TallyMastersReviewPage() {
   // ─── REVIEW SCREEN ─────────────────────────────────────────────────────────
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-1">
             <FileCheck2 className="h-5 w-5 text-emerald-600" />
-            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Review Tally Import</h1>
+            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Review Tally Masters</h1>
           </div>
           <p className="text-slate-500 text-sm">
-            File: <span className="font-mono text-slate-700">{fileName}</span> — {totalFound} ledgers found.
-            Select the records you want to sync, then click <strong>Sync</strong>.
+            {totalFound} ledgers found from Tally. Select the records you want to push to the live database.
           </p>
         </div>
 
         <div className="flex items-end gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-              Cutover / Opening Balance Date
+              Opening Balance Date
             </label>
             <Input
               type="date"
@@ -246,13 +259,13 @@ export default function TallyMastersReviewPage() {
           >
             {syncing
               ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              : <Download className="w-4 h-4 mr-2" />}
-            Sync {totalSelected} Records
+              : <DatabaseZap className="w-4 h-4 mr-2" />}
+            Push to Database
           </Button>
           <Button
             variant="ghost" size="sm"
             className="h-9"
-            onClick={() => { setStage('upload'); setError(null); }}
+            onClick={() => { setStage('connect'); setError(null); }}
           >
             <RefreshCw className="w-4 h-4" />
           </Button>
@@ -302,10 +315,10 @@ export default function TallyMastersReviewPage() {
             <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base">Customers &amp; Suppliers</CardTitle>
-                <CardDescription>Opening balance from your Tally Master.xml</CardDescription>
+                <CardDescription>Select records to create live contacts + opening balance invoices.</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setSelectedContacts(contacts.map(c => c.name))}>All</Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedContacts(contacts.map(c => c.id))}>All</Button>
                 <Button size="sm" variant="outline" onClick={() => setSelectedContacts([])}>None</Button>
               </div>
             </CardHeader>
@@ -313,21 +326,21 @@ export default function TallyMastersReviewPage() {
               <div className="divide-y max-h-[600px] overflow-y-auto">
                 {contacts.map(c => {
                   const bal        = parseFloat(c.closingBalance);
-                  const isSelected = selectedContacts.includes(c.name);
-                  const isCustomer = c.parent?.toLowerCase() === 'sundry debtors';
+                  const isSelected = selectedContacts.includes(c.id);
+                  const isCustomer = c.type === 'customer';
                   const balColor   = bal > 0 ? (isCustomer ? 'text-emerald-600' : 'text-rose-600') : 'text-slate-400';
                   return (
                     <div
-                      key={c.name}
+                      key={c.id}
                       className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}
                       onClick={() => setSelectedContacts(prev =>
-                        prev.includes(c.name) ? prev.filter(n => n !== c.name) : [...prev, c.name]
+                        prev.includes(c.id) ? prev.filter(n => n !== c.id) : [...prev, c.id]
                       )}
                     >
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={checked =>
-                          setSelectedContacts(prev => checked ? [...prev, c.name] : prev.filter(n => n !== c.name))
+                          setSelectedContacts(prev => checked ? [...prev, c.id] : prev.filter(n => n !== c.id))
                         }
                         onClick={e => e.stopPropagation()}
                       />
@@ -364,10 +377,10 @@ export default function TallyMastersReviewPage() {
             <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base">Bank &amp; Cash Accounts</CardTitle>
-                <CardDescription>Opening balance will be set in the ERP staging area</CardDescription>
+                <CardDescription>Will be created in your ERP Chart of Accounts.</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setSelectedBanks(banks.map(b => b.name))}>All</Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedBanks(banks.map(b => b.id))}>All</Button>
                 <Button size="sm" variant="outline" onClick={() => setSelectedBanks([])}>None</Button>
               </div>
             </CardHeader>
@@ -375,20 +388,20 @@ export default function TallyMastersReviewPage() {
               <div className="divide-y max-h-[600px] overflow-y-auto">
                 {banks.map(b => {
                   const bal        = parseFloat(b.closingBalance);
-                  const isSelected = selectedBanks.includes(b.name);
-                  const isCash     = b.type === 'cash';
+                  const isSelected = selectedBanks.includes(b.id);
+                  const isCash     = b.name.toLowerCase().includes('cash');
                   return (
                     <div
-                      key={b.name}
+                      key={b.id}
                       className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}
                       onClick={() => setSelectedBanks(prev =>
-                        prev.includes(b.name) ? prev.filter(n => n !== b.name) : [...prev, b.name]
+                        prev.includes(b.id) ? prev.filter(n => n !== b.id) : [...prev, b.id]
                       )}
                     >
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={checked =>
-                          setSelectedBanks(prev => checked ? [...prev, b.name] : prev.filter(n => n !== b.name))
+                          setSelectedBanks(prev => checked ? [...prev, b.id] : prev.filter(n => n !== b.id))
                         }
                         onClick={e => e.stopPropagation()}
                       />
@@ -428,26 +441,26 @@ export default function TallyMastersReviewPage() {
                 <CardDescription>All other ledgers — expenses, income, duties, etc.</CardDescription>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => setSelectedAccounts(accounts.map(a => a.name))}>All</Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedAccounts(accounts.map(a => a.id))}>All</Button>
                 <Button size="sm" variant="outline" onClick={() => setSelectedAccounts([])}>None</Button>
               </div>
             </CardHeader>
             <CardContent className="p-0">
               <div className="divide-y max-h-[600px] overflow-y-auto">
                 {accounts.map(a => {
-                  const isSelected = selectedAccounts.includes(a.name);
+                  const isSelected = selectedAccounts.includes(a.id);
                   return (
                     <div
-                      key={a.name}
+                      key={a.id}
                       className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-amber-50/40' : ''}`}
                       onClick={() => setSelectedAccounts(prev =>
-                        prev.includes(a.name) ? prev.filter(n => n !== a.name) : [...prev, a.name]
+                        prev.includes(a.id) ? prev.filter(n => n !== a.id) : [...prev, a.id]
                       )}
                     >
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={checked =>
-                          setSelectedAccounts(prev => checked ? [...prev, a.name] : prev.filter(n => n !== a.name))
+                          setSelectedAccounts(prev => checked ? [...prev, a.id] : prev.filter(n => n !== a.id))
                         }
                         onClick={e => e.stopPropagation()}
                       />

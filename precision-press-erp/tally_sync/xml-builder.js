@@ -358,17 +358,26 @@ function buildFetchMastersXML(companyName) {
   return `
 <ENVELOPE>
     <HEADER>
-        <TALLYREQUEST>Export Data</TALLYREQUEST>
+        <VERSION>1</VERSION>
+        <TALLYREQUEST>Export</TALLYREQUEST>
+        <TYPE>Data</TYPE>
+        <ID>MyLedgerCollection</ID>
     </HEADER>
     <BODY>
-        <EXPORTDATA>
-            <REQUESTDESC>
-                <REPORTNAME>List of Accounts</REPORTNAME>
-                <STATICVARIABLES>
-                    <SVCURRENTCOMPANY>${sanitize(finalCompanyName)}</SVCURRENTCOMPANY>
-                </STATICVARIABLES>
-            </REQUESTDESC>
-        </EXPORTDATA>
+        <DESC>
+            <STATICVARIABLES>
+                <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+                <SVCURRENTCOMPANY>${sanitize(finalCompanyName)}</SVCURRENTCOMPANY>
+            </STATICVARIABLES>
+            <TDL>
+                <TDLMESSAGE>
+                    <COLLECTION NAME="MyLedgerCollection">
+                        <TYPE>Ledger</TYPE>
+                        <FETCH>Name, Parent, OpeningBalance, ClosingBalance, PartyGSTIN, LedStateName</FETCH>
+                    </COLLECTION>
+                </TDLMESSAGE>
+            </TDL>
+        </DESC>
     </BODY>
 </ENVELOPE>`;
 }
