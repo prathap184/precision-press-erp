@@ -77,7 +77,7 @@ export default function TallyMastersReviewPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/v1/tally-sync/queue-ledgers');
+      const res = await fetch(`/api/v1/tally-sync/queue-ledgers?_t=${Date.now()}`);
       const data = await res.json();
       if (!data.success) throw new Error(data.error || 'Failed to load');
       setLedgers((data.ledgers || []).map((l: TallyLedger) => ({
