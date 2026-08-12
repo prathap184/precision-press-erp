@@ -1,0 +1,86 @@
+import { NextResponse } from 'next/server';
+import { supabaseServer } from '@/lib/supabase-server';
+import { auth } from '@/lib/auth';
+
+export async function POST(req: Request) {
+  try {
+    const session = await auth();
+    const organizationId = session?.user?.organizationId;
+
+    if (!organizationId) {
+      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const { ledger } = await req.json();
+    // ledger = { name, parent, gstin, state, openingBalance, closingBalance }
+
+    if (!ledger?.name) {
+      return NextResponse.json({ success: false, error: 'Ledger name is required' }, { status: 400 });
+    }
+
+    const parent = (ledger.parent || '').toLowerCase().replace(/&amp;/g, '&');
+    const isCustomer  = ledger.parent === 'Sundry Debtors';
+    const isSupplier  = ledger.parent === 'Sundry Creditors';
+    const isBank      = ledger.parent === 'Bank Accounts';
+    const isCash      = ledger.parent === 'Cash-in-Hand';
+
+    // ── Route to correct table ────────────────────────────────────────────────
+
+    if (isCustomer || isSupplier) {
+      // → contact_tally
+      const { error } = await supabaseServer
+        .from('contact_tally')
+        .upsert({
+          organization_id:    organizationId,
+          tally_ledger_name:  ledger.name,
+          tally_ledger_group: ledger.parent,
+          name:               ledger.name,
+          type:               isCustomer ? 'customer' : 'supplier',
+          tax_number:         ledger.gstin || null,
+          import_status:      'pending',
+        }, { onConflict: 'tally_ledger_name' });
+
+      if (error) throw error;
+
+      return NextResponse.json({ success: true, table: 'contact_tally', type: isCustomer ? 'customer' : 'supplier' });
+    }
+
+    if (isBank || isCash) {
+      // → bank_account_tally
+      const isCashType = isCash || ledger.name.toLowerCase().includes('cash');
+      const { error } = await supabaseServer
+        .from('bank_account_tally')
+        .upsert({
+          organization_id: organizationId,
+          tally_ledger_name: ledger.name,
+          account_name: ledger.name,
+          account_type: isCashType ? 'cash' : 'checking',
+          import_status: 'pending',
+        }, { onConflict: 'tally_ledger_name' });
+
+      if (error) throw error;
+
+      return NextResponse.json({ success: true, table: 'bank_account_tally', type: isCashType ? 'cash' : 'bank' });
+    }
+
+    // Everything else → contact_tally with type = 'other' (as chart of accounts)
+    const { error } = await supabaseServer
+      .from('contact_tally')
+      .upsert({
+        organization_id:    organizationId,
+        tally_ledger_name:  ledger.name,
+        tally_ledger_group: ledger.parent,
+        name:               ledger.name,
+        type:               'other',
+        import_status:      'pending',
+      }, { onConflict: 'tally_ledger_name' });
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, table: 'contact_tally', type: 'other' });
+
+  } catch (error: any) {
+    console.error('sync-ledger error:', error);
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
