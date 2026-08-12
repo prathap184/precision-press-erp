@@ -1,15 +1,27 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getTallyMastersFromFiles, TallyLedger } from '@/lib/actions/tally-xml-parser';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import { Loader2, Download, AlertCircle, Building2, Users, Landmark, RefreshCw } from 'lucide-react';
+import {
+  Loader2, Download, AlertCircle, Building2, Users,
+  Landmark, RefreshCw, UploadCloud, FileCheck2,
+} from 'lucide-react';
+
+interface TallyLedger {
+  name:           string;
+  parent:         string;
+  openingBalance: string;
+  closingBalance: string;
+  gstin:          string;
+  state:          string;
+  type?:          string;
+}
 
 function formatINR(val: string | number) {
   const n = Math.abs(parseFloat(String(val)) || 0);
@@ -17,139 +29,204 @@ function formatINR(val: string | number) {
 }
 
 export default function TallyMastersReviewPage() {
-  const router = useRouter();
-  const [loading, setLoading]   = useState(true);
-  const [syncing, setSyncing]   = useState(false);
-  const [error, setError]       = useState<string | null>(null);
+  const router   = useRouter();
+  const fileRef  = useRef<HTMLInputElement>(null);
+
+  const [stage,    setStage]    = useState<'upload' | 'review'>('upload');
+  const [parsing,  setParsing]  = useState(false);
+  const [syncing,  setSyncing]  = useState(false);
+  const [error,    setError]    = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string>('');
+
   const [contacts, setContacts] = useState<TallyLedger[]>([]);
-  const [banks, setBanks]       = useState<TallyLedger[]>([]);
+  const [banks,    setBanks]    = useState<TallyLedger[]>([]);
   const [accounts, setAccounts] = useState<TallyLedger[]>([]);
 
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
-  const [selectedBanks, setSelectedBanks]       = useState<string[]>([]);
+  const [selectedBanks,    setSelectedBanks]    = useState<string[]>([]);
   const [selectedAccounts, setSelectedAccounts] = useState<string[]>([]);
 
   const [cutoverDate, setCutoverDate] = useState(() =>
     new Date().toISOString().split('T')[0]
   );
 
-  useEffect(() => { fetchData(); }, []);
+  // ─── Upload & parse ────────────────────────────────────────────────────────
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  async function fetchData() {
-    setLoading(true);
+    setFileName(file.name);
+    setParsing(true);
     setError(null);
+
     try {
-      const result = await getTallyMastersFromFiles();
-      if (result.error) { setError(result.error); return; }
+      const form = new FormData();
+      form.append('master', file);
+
+      const res    = await fetch('/api/v1/tally-sync/parse-xml', { method: 'POST', body: form });
+      const result = await res.json();
+
+      if (!result.success) {
+        setError(result.error ?? 'Failed to parse file.');
+        return;
+      }
 
       setContacts(result.contacts);
       setBanks(result.banks);
       setAccounts(result.accounts);
 
-      // auto-select all
-      setSelectedContacts(result.contacts.map(c => c.name));
-      setSelectedBanks(result.banks.map(b => b.name));
-      setSelectedAccounts(result.accounts.map(a => a.name));
-    } catch (e: any) {
-      setError(e.message);
+      setSelectedContacts(result.contacts.map((c: TallyLedger) => c.name));
+      setSelectedBanks(result.banks.map((b: TallyLedger) => b.name));
+      setSelectedAccounts(result.accounts.map((a: TallyLedger) => a.name));
+
+      setStage('review');
+    } catch (err: any) {
+      setError(err.message);
     } finally {
-      setLoading(false);
+      setParsing(false);
     }
   }
 
-  const totalSelected = selectedContacts.length + selectedBanks.length + selectedAccounts.length;
-
+  // ─── Sync to staging tables ───────────────────────────────────────────────
   async function handleSync() {
     setSyncing(true);
     try {
-      const orgId = typeof window !== 'undefined'
-        ? (localStorage.getItem('activeOrgId') || '')
-        : '';
-
+      const orgId = localStorage.getItem('activeOrgId') || '';
       if (!orgId) {
         alert('No active organization found. Please log in again.');
-        setSyncing(false);
         return;
       }
 
       const payload = {
-        contacts:      contacts.filter(c => selectedContacts.includes(c.name)),
-        banks:         banks.filter(b => selectedBanks.includes(b.name)),
-        accounts:      accounts.filter(a => selectedAccounts.includes(a.name)),
+        contacts: contacts.filter(c => selectedContacts.includes(c.name)),
+        banks:    banks.filter(b => selectedBanks.includes(b.name)),
+        accounts: accounts.filter(a => selectedAccounts.includes(a.name)),
         organizationId: orgId,
         cutoverDate,
       };
 
-      const res = await fetch('/api/v1/tally-sync/import-json', {
-        method:  'POST',
+      const res    = await fetch('/api/v1/tally-sync/import-json', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(payload),
+        body: JSON.stringify(payload),
       });
       const result = await res.json();
 
       if (result.success) {
-        alert(`✅ Successfully imported ${result.count} records into the ERP!`);
+        alert(`✅ Successfully saved ${result.count} records to staging tables!`);
         router.push('/tally-masters');
       } else {
         alert('❌ Sync failed: ' + result.error);
       }
-    } catch (e: any) {
-      alert('Error: ' + e.message);
+    } catch (err: any) {
+      alert('Error: ' + err.message);
     } finally {
       setSyncing(false);
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[500px]">
-        <div className="text-center">
-          <Loader2 className="h-10 w-10 animate-spin text-emerald-600 mx-auto mb-3" />
-          <p className="text-slate-500 font-medium">Reading Tally export files…</p>
-        </div>
-      </div>
-    );
-  }
+  const totalSelected = selectedContacts.length + selectedBanks.length + selectedAccounts.length;
+  const totalFound    = contacts.length + banks.length + accounts.length;
 
-  if (error) {
+  // ─── UPLOAD SCREEN ─────────────────────────────────────────────────────────
+  if (stage === 'upload') {
     return (
-      <div className="p-6 max-w-2xl mx-auto">
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="flex flex-col items-center py-12 gap-4">
-            <AlertCircle className="h-12 w-12 text-red-500" />
-            <h3 className="font-bold text-lg text-red-800">Could not read Tally export files</h3>
-            <p className="text-red-700 text-sm text-center">{error}</p>
-            <div className="bg-white border border-red-200 rounded-lg p-4 text-sm text-slate-700 w-full">
-              <p className="font-semibold mb-2">How to fix:</p>
-              <ol className="list-decimal pl-4 space-y-1">
-                <li>Open Tally Prime → Gateway of Tally → Display More Reports → Group Summary</li>
-                <li>Select <strong>Sundry Debtors</strong>, press <strong>Alt+E</strong>, export as XML</li>
-                <li>Do same for <strong>Sundry Creditors</strong> and <strong>Bank Accounts</strong></li>
-                <li>Save all files in <code className="bg-slate-100 px-1 rounded">C:\Users\jprat\OneDrive\Pictures\ta;lly\</code></li>
-              </ol>
-            </div>
-            <Button onClick={fetchData} variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" /> Try Again
-            </Button>
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">
+            Tally Masters Import
+          </h1>
+          <p className="text-slate-500 mt-1 text-sm">
+            Upload your Master.xml exported from Tally to import ledgers into the ERP staging area.
+          </p>
+        </div>
+
+        {/* Drop zone */}
+        <Card
+          className={`border-2 border-dashed cursor-pointer transition-colors hover:border-emerald-400 hover:bg-emerald-50/30
+            ${parsing ? 'border-emerald-400 bg-emerald-50/30' : 'border-slate-300'}`}
+          onClick={() => !parsing && fileRef.current?.click()}
+        >
+          <CardContent className="flex flex-col items-center py-16 gap-4">
+            {parsing ? (
+              <>
+                <Loader2 className="h-14 w-14 text-emerald-500 animate-spin" />
+                <p className="font-semibold text-slate-700">Parsing <span className="text-emerald-700">{fileName}</span>…</p>
+                <p className="text-sm text-slate-400">Reading ledgers from your Tally export</p>
+              </>
+            ) : (
+              <>
+                <UploadCloud className="h-14 w-14 text-slate-300" />
+                <div className="text-center">
+                  <p className="font-bold text-slate-700 text-lg">Click to upload Master.xml</p>
+                  <p className="text-sm text-slate-400 mt-1">Exported from Tally Prime → Export → Masters → XML</p>
+                </div>
+                <Badge variant="outline" className="text-xs text-slate-500">
+                  Accepts .xml files
+                </Badge>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xml"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
+        {/* Error */}
+        {error && (
+          <Card className="border-red-200 bg-red-50">
+            <CardContent className="flex items-start gap-3 py-4">
+              <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-red-800 text-sm">Could not parse file</p>
+                <p className="text-red-700 text-sm mt-0.5">{error}</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* How to export */}
+        <Card className="bg-slate-50 border-slate-200">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold text-slate-700">How to export Master.xml from Tally</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ol className="list-decimal pl-4 space-y-1.5 text-sm text-slate-600">
+              <li>Open <strong>Tally Prime</strong> → Gateway of Tally</li>
+              <li>Press <kbd className="bg-white border rounded px-1.5 py-0.5 font-mono text-xs">E</kbd> for Export</li>
+              <li>Select <strong>Masters</strong></li>
+              <li>Set Format → <strong>XML</strong></li>
+              <li>Click <strong>Export</strong> — save the file anywhere</li>
+              <li>Upload that file above ↑</li>
+            </ol>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const totalPending = contacts.length + banks.length + accounts.length;
-
+  // ─── REVIEW SCREEN ─────────────────────────────────────────────────────────
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Review Tally Import</h1>
-          <p className="text-slate-500 mt-1 text-sm">
-            Data read from your Tally export files. Select records and click Sync to import them into the ERP.
+          <div className="flex items-center gap-3 mb-1">
+            <FileCheck2 className="h-5 w-5 text-emerald-600" />
+            <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Review Tally Import</h1>
+          </div>
+          <p className="text-slate-500 text-sm">
+            File: <span className="font-mono text-slate-700">{fileName}</span> — {totalFound} ledgers found.
+            Select the records you want to sync, then click <strong>Sync</strong>.
           </p>
         </div>
+
         <div className="flex items-end gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
           <div>
             <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
@@ -172,7 +249,11 @@ export default function TallyMastersReviewPage() {
               : <Download className="w-4 h-4 mr-2" />}
             Sync {totalSelected} Records
           </Button>
-          <Button variant="ghost" size="sm" onClick={fetchData} className="h-9">
+          <Button
+            variant="ghost" size="sm"
+            className="h-9"
+            onClick={() => { setStage('upload'); setError(null); }}
+          >
             <RefreshCw className="w-4 h-4" />
           </Button>
         </div>
@@ -182,7 +263,7 @@ export default function TallyMastersReviewPage() {
       <div className="grid grid-cols-3 gap-4">
         {[
           { icon: Users,    label: 'Customers & Suppliers', count: contacts.length, color: 'text-blue-600',   bg: 'bg-blue-50'   },
-          { icon: Landmark, label: 'Bank Accounts',         count: banks.length,    color: 'text-purple-600', bg: 'bg-purple-50' },
+          { icon: Landmark, label: 'Bank / Cash Accounts',  count: banks.length,    color: 'text-purple-600', bg: 'bg-purple-50' },
           { icon: Building2,label: 'Chart of Accounts',     count: accounts.length, color: 'text-amber-600',  bg: 'bg-amber-50'  },
         ].map(({ icon: Icon, label, count, color, bg }) => (
           <Card key={label} className="border-0 shadow-sm">
@@ -199,209 +280,189 @@ export default function TallyMastersReviewPage() {
         ))}
       </div>
 
-      {totalPending === 0 ? (
-        <Card className="border-dashed bg-slate-50">
-          <CardContent className="flex flex-col items-center py-16">
-            <AlertCircle className="w-12 h-12 text-slate-300 mb-4" />
-            <h3 className="text-lg font-semibold text-slate-900">No records found</h3>
-            <p className="text-slate-500 mt-1 text-sm">Check that Master.xml is in the Tally export folder.</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Tabs defaultValue="contacts">
-          <TabsList className="mb-4 bg-slate-100">
-            <TabsTrigger value="contacts">
-              Customers &amp; Suppliers
-              <Badge variant="secondary" className="ml-2 bg-white">{contacts.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="banks">
-              Bank Accounts
-              <Badge variant="secondary" className="ml-2 bg-white">{banks.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="accounts">
-              Chart of Accounts
-              <Badge variant="secondary" className="ml-2 bg-white">{accounts.length}</Badge>
-            </TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="contacts">
+        <TabsList className="mb-4 bg-slate-100">
+          <TabsTrigger value="contacts">
+            Customers &amp; Suppliers
+            <Badge variant="secondary" className="ml-2 bg-white">{contacts.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="banks">
+            Bank / Cash
+            <Badge variant="secondary" className="ml-2 bg-white">{banks.length}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="accounts">
+            Chart of Accounts
+            <Badge variant="secondary" className="ml-2 bg-white">{accounts.length}</Badge>
+          </TabsTrigger>
+        </TabsList>
 
-          {/* ── CONTACTS ── */}
-          <TabsContent value="contacts">
-            <Card>
-              <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Customers &amp; Suppliers</CardTitle>
-                  <CardDescription>Balances are the current ending balance from Tally</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setSelectedContacts(contacts.map(c => c.name))}>All</Button>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedContacts([])}>None</Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y max-h-[600px] overflow-y-auto">
-                  {contacts.map(c => {
-                    const bal = parseFloat(c.closingBalance);
-                    const isSelected = selectedContacts.includes(c.name);
-                    const isCustomer = c.parent === 'Sundry Debtors';
-                    const balColor = bal > 0
-                      ? isCustomer ? 'text-emerald-600' : 'text-rose-600'
-                      : 'text-slate-400';
-                    return (
-                      <div
-                        key={c.name}
-                        className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}
-                        onClick={() => setSelectedContacts(prev =>
-                          prev.includes(c.name) ? prev.filter(n => n !== c.name) : [...prev, c.name]
-                        )}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={checked =>
-                            setSelectedContacts(prev =>
-                              checked ? [...prev, c.name] : prev.filter(n => n !== c.name)
-                            )
-                          }
-                          onClick={e => e.stopPropagation()}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-slate-900 truncate">{c.name}</p>
-                            <Badge
-                              variant="outline"
-                              className={`capitalize text-xs shrink-0 ${isCustomer ? 'border-blue-300 text-blue-700' : 'border-orange-300 text-orange-700'}`}
-                            >
-                              {isCustomer ? 'Customer' : 'Supplier'}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-0.5">
-                            Group: {c.parent}
-                            {c.gstin && <span className="ml-3 font-mono">GSTIN: {c.gstin}</span>}
-                          </p>
+        {/* ── CONTACTS ── */}
+        <TabsContent value="contacts">
+          <Card>
+            <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Customers &amp; Suppliers</CardTitle>
+                <CardDescription>Opening balance from your Tally Master.xml</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setSelectedContacts(contacts.map(c => c.name))}>All</Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedContacts([])}>None</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y max-h-[600px] overflow-y-auto">
+                {contacts.map(c => {
+                  const bal        = parseFloat(c.closingBalance);
+                  const isSelected = selectedContacts.includes(c.name);
+                  const isCustomer = c.parent?.toLowerCase() === 'sundry debtors';
+                  const balColor   = bal > 0 ? (isCustomer ? 'text-emerald-600' : 'text-rose-600') : 'text-slate-400';
+                  return (
+                    <div
+                      key={c.name}
+                      className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-emerald-50/40' : ''}`}
+                      onClick={() => setSelectedContacts(prev =>
+                        prev.includes(c.name) ? prev.filter(n => n !== c.name) : [...prev, c.name]
+                      )}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={checked =>
+                          setSelectedContacts(prev => checked ? [...prev, c.name] : prev.filter(n => n !== c.name))
+                        }
+                        onClick={e => e.stopPropagation()}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-slate-900 truncate">{c.name}</p>
+                          <Badge
+                            variant="outline"
+                            className={`capitalize text-xs shrink-0 ${isCustomer ? 'border-blue-300 text-blue-700' : 'border-orange-300 text-orange-700'}`}
+                          >
+                            {isCustomer ? 'Customer' : 'Supplier'}
+                          </Badge>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-0.5">Ending Balance</p>
-                          <p className={`font-mono font-bold text-base ${balColor}`}>
-                            {formatINR(c.closingBalance)}
-                          </p>
-                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          Group: {c.parent}
+                          {c.gstin && <span className="ml-3 font-mono">GSTIN: {c.gstin}</span>}
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-0.5">Opening Balance</p>
+                        <p className={`font-mono font-bold text-base ${balColor}`}>{formatINR(c.closingBalance)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* ── BANKS ── */}
-          <TabsContent value="banks">
-            <Card>
-              <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Bank Accounts</CardTitle>
-                  <CardDescription>Opening balance will be set in the ERP</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setSelectedBanks(banks.map(b => b.name))}>All</Button>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedBanks([])}>None</Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y max-h-[600px] overflow-y-auto">
-                  {banks.map(b => {
-                    const bal = parseFloat(b.closingBalance);
-                    const isSelected = selectedBanks.includes(b.name);
-                    const isCash = (b as any).type === 'cash';
-                    return (
-                      <div
-                        key={b.name}
-                        className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}
-                        onClick={() => setSelectedBanks(prev =>
-                          prev.includes(b.name) ? prev.filter(n => n !== b.name) : [...prev, b.name]
-                        )}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={checked =>
-                            setSelectedBanks(prev =>
-                              checked ? [...prev, b.name] : prev.filter(n => n !== b.name)
-                            )
-                          }
-                          onClick={e => e.stopPropagation()}
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <Landmark className={`w-4 h-4 shrink-0 ${isCash ? 'text-amber-500' : 'text-purple-500'}`} />
-                            <p className="font-semibold text-slate-900">{b.name}</p>
-                            <Badge
-                              variant="outline"
-                              className={`text-xs ${isCash ? 'border-amber-300 text-amber-700' : 'border-purple-300 text-purple-700'}`}
-                            >
-                              {isCash ? 'Cash / Wallet' : 'Bank'}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-slate-500 mt-0.5">Tally Group: {b.parent}</p>
+        {/* ── BANKS ── */}
+        <TabsContent value="banks">
+          <Card>
+            <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Bank &amp; Cash Accounts</CardTitle>
+                <CardDescription>Opening balance will be set in the ERP staging area</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setSelectedBanks(banks.map(b => b.name))}>All</Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedBanks([])}>None</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y max-h-[600px] overflow-y-auto">
+                {banks.map(b => {
+                  const bal        = parseFloat(b.closingBalance);
+                  const isSelected = selectedBanks.includes(b.name);
+                  const isCash     = b.type === 'cash';
+                  return (
+                    <div
+                      key={b.name}
+                      className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-purple-50/40' : ''}`}
+                      onClick={() => setSelectedBanks(prev =>
+                        prev.includes(b.name) ? prev.filter(n => n !== b.name) : [...prev, b.name]
+                      )}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={checked =>
+                          setSelectedBanks(prev => checked ? [...prev, b.name] : prev.filter(n => n !== b.name))
+                        }
+                        onClick={e => e.stopPropagation()}
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Landmark className={`w-4 h-4 shrink-0 ${isCash ? 'text-amber-500' : 'text-purple-500'}`} />
+                          <p className="font-semibold text-slate-900">{b.name}</p>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs ${isCash ? 'border-amber-300 text-amber-700' : 'border-purple-300 text-purple-700'}`}
+                          >
+                            {isCash ? 'Cash / Wallet' : 'Bank'}
+                          </Badge>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-0.5">Opening Balance</p>
-                          <p className={`font-mono font-bold text-base ${bal > 0 ? (isCash ? 'text-amber-700' : 'text-purple-700') : 'text-slate-400'}`}>
-                            {formatINR(b.closingBalance)}
-                          </p>
-                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">Tally Group: {b.parent}</p>
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-slate-400 uppercase tracking-wider font-semibold mb-0.5">Opening Balance</p>
+                        <p className={`font-mono font-bold text-base ${bal > 0 ? (isCash ? 'text-amber-700' : 'text-purple-700') : 'text-slate-400'}`}>
+                          {formatINR(b.closingBalance)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-          {/* ── CHART OF ACCOUNTS ── */}
-          <TabsContent value="accounts">
-            <Card>
-              <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">Chart of Accounts</CardTitle>
-                  <CardDescription>All other ledgers — expenses, income, duties, etc.</CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setSelectedAccounts(accounts.map(a => a.name))}>All</Button>
-                  <Button size="sm" variant="outline" onClick={() => setSelectedAccounts([])}>None</Button>
-                </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y max-h-[600px] overflow-y-auto">
-                  {accounts.map(a => {
-                    const isSelected = selectedAccounts.includes(a.name);
-                    return (
-                      <div
-                        key={a.name}
-                        className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-amber-50/40' : ''}`}
-                        onClick={() => setSelectedAccounts(prev =>
-                          prev.includes(a.name) ? prev.filter(n => n !== a.name) : [...prev, a.name]
-                        )}
-                      >
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={checked =>
-                            setSelectedAccounts(prev =>
-                              checked ? [...prev, a.name] : prev.filter(n => n !== a.name)
-                            )
-                          }
-                          onClick={e => e.stopPropagation()}
-                        />
-                        <div className="flex-1">
-                          <p className="font-semibold text-slate-900">{a.name}</p>
-                          <p className="text-xs text-slate-500 font-mono mt-0.5">Group: {a.parent}</p>
-                        </div>
+        {/* ── CHART OF ACCOUNTS ── */}
+        <TabsContent value="accounts">
+          <Card>
+            <CardHeader className="pb-3 border-b flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Chart of Accounts</CardTitle>
+                <CardDescription>All other ledgers — expenses, income, duties, etc.</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setSelectedAccounts(accounts.map(a => a.name))}>All</Button>
+                <Button size="sm" variant="outline" onClick={() => setSelectedAccounts([])}>None</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y max-h-[600px] overflow-y-auto">
+                {accounts.map(a => {
+                  const isSelected = selectedAccounts.includes(a.name);
+                  return (
+                    <div
+                      key={a.name}
+                      className={`flex items-center gap-4 px-5 py-4 hover:bg-slate-50 cursor-pointer transition-colors ${isSelected ? 'bg-amber-50/40' : ''}`}
+                      onClick={() => setSelectedAccounts(prev =>
+                        prev.includes(a.name) ? prev.filter(n => n !== a.name) : [...prev, a.name]
+                      )}
+                    >
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={checked =>
+                          setSelectedAccounts(prev => checked ? [...prev, a.name] : prev.filter(n => n !== a.name))
+                        }
+                        onClick={e => e.stopPropagation()}
+                      />
+                      <div className="flex-1">
+                        <p className="font-semibold text-slate-900">{a.name}</p>
+                        <p className="text-xs text-slate-500 font-mono mt-0.5">Group: {a.parent}</p>
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
