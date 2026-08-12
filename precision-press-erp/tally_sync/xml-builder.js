@@ -361,7 +361,7 @@ function buildFetchMastersXML(companyName) {
     <HEADER>
         <VERSION>1</VERSION>
         <TALLYREQUEST>Export</TALLYREQUEST>
-        <TYPE>Data</TYPE>
+        <TYPE>Collection</TYPE>
         <ID>MyLedgerCollection</ID>
     </HEADER>
     <BODY>
