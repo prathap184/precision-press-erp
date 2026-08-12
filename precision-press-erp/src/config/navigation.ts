@@ -115,6 +115,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   { label: 'Payment Approvals',    href: '/accountant/payments',    icon: ReceiptIndianRupee,   roles: ['ACCOUNTANT'],                                                         group: 'main'    },
   { label: 'Accounts Ledger',      href: '/accountant/ledger',      icon: Activity,             roles: ['ACCOUNTANT'],                                                         group: 'main'    },
   { label: 'Tally Dashboard',      href: '/tally',                  icon: Activity,             roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'ACDEMA'],                                 group: 'main'    },
+  { label: 'Tally Masters',        href: '/tally-masters',          icon: Users,                roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'ACDEMA'],                                 group: 'main'    },
   { label: 'Accountant Tally',     href: '/accountant-tally',       icon: Calculator,           roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'ACDEMA'],                                 group: 'main'    },
   { label: 'Sales Register',       href: '/sales-register',         icon: FileText,             roles: ['ACCOUNTANT'],                       group: 'main'    },
   { label: 'Receipt Register',     href: '/receipt-register',       icon: ClipboardList,        roles: ['ACCOUNTANT'],                       group: 'main'    },

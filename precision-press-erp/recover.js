@@ -1,1 +1,0 @@
-const fs = require('fs'); const content = fs.readFileSync('.next/server/app/(dashboard)/admin/invoice-generation/[customerId]/[parentOrderId]/page.js', 'utf8'); const m = content.match(/eval\(([\s\S]*?)\)/); if (m) { fs.writeFileSync('recovered_page.tsx', m[1]); console.log('Found source code, length:', m[1].length); } else { console.log('Not found'); }

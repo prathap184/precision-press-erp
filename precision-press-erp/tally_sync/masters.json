@@ -1,0 +1,447 @@
+{
+  "fetchedAt": "2026-08-11T09:18:01.530Z",
+  "companyName": "Auravionx",
+  "totalLedgers": 32,
+  "customers": [
+    {
+      "name": "admain",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "cust",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Customer Refund",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "jayy",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Precision Customer",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Ram",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Test Customer XML",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "User",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    }
+  ],
+  "suppliers": [
+    {
+      "name": "BM MARKETING",
+      "aliases": [],
+      "parent": "Sundry Creditors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Test Supplier XML",
+      "aliases": [],
+      "parent": "Sundry Creditors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    }
+  ],
+  "banks": [
+    {
+      "name": "Bank Account",
+      "aliases": [],
+      "parent": "Bank Accounts",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "ICICI Bank",
+      "aliases": [],
+      "parent": "Bank Accounts",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "SBI",
+      "aliases": [],
+      "parent": "Bank Accounts",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    }
+  ],
+  "cash": [
+    {
+      "name": "Cash",
+      "aliases": [],
+      "parent": "Cash-in-Hand",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Prathap",
+      "aliases": [],
+      "parent": "Cash-in-Hand",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "UPI / Paytm",
+      "aliases": [],
+      "parent": "Cash-in-Hand",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    }
+  ],
+  "allLedgers": [
+    {
+      "name": "Profit &amp; Loss A/c",
+      "aliases": [],
+      "parent": "",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "admain",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Advance Payment",
+      "aliases": [],
+      "parent": "Loans &amp; Advances (Asset)",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Asset Purchase",
+      "aliases": [],
+      "parent": "Indirect Expenses",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Bank Account",
+      "aliases": [],
+      "parent": "Bank Accounts",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "BM MARKETING",
+      "aliases": [],
+      "parent": "Sundry Creditors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Cash",
+      "aliases": [],
+      "parent": "Cash-in-Hand",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "CGST",
+      "aliases": [],
+      "parent": "Duties &amp; Taxes",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "cust",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Customer Refund",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Delivery Charges",
+      "aliases": [],
+      "parent": "Indirect Expenses",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Employee",
+      "aliases": [],
+      "parent": "Current Liabilities",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Expense",
+      "aliases": [],
+      "parent": "Indirect Expenses",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "HDFC Bank",
+      "aliases": [],
+      "parent": "Capital Account",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "ICICI Bank",
+      "aliases": [],
+      "parent": "Bank Accounts",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "IGST",
+      "aliases": [],
+      "parent": "Duties &amp; Taxes",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "jayy",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Other",
+      "aliases": [],
+      "parent": "Indirect Expenses",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Output CGST",
+      "aliases": [],
+      "parent": "Duties &amp; Taxes",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Output IGST",
+      "aliases": [],
+      "parent": "Duties &amp; Taxes",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Output SGST",
+      "aliases": [],
+      "parent": "Duties &amp; Taxes",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Pj",
+      "aliases": [],
+      "parent": "Capital Account",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Prathap",
+      "aliases": [],
+      "parent": "Cash-in-Hand",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Precision Customer",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Ram",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "Sales",
+      "aliases": [],
+      "parent": "Sales Accounts",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "SBI",
+      "aliases": [],
+      "parent": "Bank Accounts",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "SGST",
+      "aliases": [],
+      "parent": "Duties &amp; Taxes",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Test Customer XML",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "Test Supplier XML",
+      "aliases": [],
+      "parent": "Sundry Creditors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    },
+    {
+      "name": "UPI / Paytm",
+      "aliases": [],
+      "parent": "Cash-in-Hand",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "No"
+    },
+    {
+      "name": "User",
+      "aliases": [],
+      "parent": "Sundry Debtors",
+      "openingBalance": "0",
+      "gstin": "",
+      "state": "",
+      "isBillWise": "Yes"
+    }
+  ]
+}

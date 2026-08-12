@@ -1095,3 +1095,31 @@ export async function triggerPushAllJournal(createdBy: string = 'admin'): Promis
     return { success: false, queued: 0, error: err.message };
   }
 }
+
+// ─── Fetch Tally Masters from Queue ───────────────────────────────────────────
+
+export async function getTallyMastersFromQueue(): Promise<{
+  fetchedAt: string | null;
+  ledgers: any[];
+}> {
+  try {
+    const { data, error } = await supabaseServer
+      .from('tally_sync_queue')
+      .select('tallyResponse, processedAt')
+      .eq('syncType', 'FETCH_MASTERS')
+      .eq('status', 'SUCCESS')
+      .order('processedAt', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error || !data || !data.tallyResponse) {
+      return { fetchedAt: null, ledgers: [] };
+    }
+
+    const ledgers = (data.tallyResponse as any)?.json?.ledgers || [];
+    return { fetchedAt: data.processedAt, ledgers };
+  } catch (err) {
+    console.error('Failed to get tally masters from queue:', err);
+    return { fetchedAt: null, ledgers: [] };
+  }
+}
