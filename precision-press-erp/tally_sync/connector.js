@@ -70,10 +70,15 @@ async function markResult(eventId, status, tallyResponse, error) {
 async function pushToTally(xmlString) {
   const res = await axios.post(TALLY_URL, xmlString, {
     headers: { 'Content-Type': 'text/xml; charset=utf-8' },
-    timeout: 30000,
-    responseType: 'text',
+    timeout: 60000,
+    responseType: 'arraybuffer',
   });
-  return res.data;
+  
+  let text = res.data.toString('utf8');
+  if (text.includes('\u0000')) {
+    text = text.replace(/\0/g, '');
+  }
+  return text;
 }
 
 function parseTallyResponse(rawXml) {
@@ -174,7 +179,12 @@ async function processEvent(event) {
         });
       }
 
-      log('SUCCESS', `✅ ${id} → Tally exported ${ledgers.length} ledgers`);
+      if (ledgers.length === 0) {
+        log('WARN', `⚠️ Tally returned 0 ledgers. Raw Response preview: ${rawResponse.substring(0, 300)}`);
+      } else {
+        log('SUCCESS', `✅ ${id} → Tally exported ${ledgers.length} ledgers`);
+      }
+      
       await markResult(id, 'SUCCESS', {
         status: 'Accepted',
         json: { ledgers },

@@ -367,7 +367,7 @@ function buildFetchMastersXML(companyName) {
         <DESC>
             <STATICVARIABLES>
                 <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-                <SVCURRENTCOMPANY>${sanitize(finalCompanyName)}</SVCURRENTCOMPANY>
+                ${finalCompanyName ? `<SVCURRENTCOMPANY>${sanitize(finalCompanyName)}</SVCURRENTCOMPANY>` : ''}
             </STATICVARIABLES>
             <TDL>
                 <TDLMESSAGE>
