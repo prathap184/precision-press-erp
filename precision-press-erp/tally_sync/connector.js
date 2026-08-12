@@ -144,13 +144,19 @@ async function processEvent(event) {
     if (syncType === 'FETCH_MASTERS') {
       // 🔍 DEBUG: Show first 800 chars of raw XML so we can see the actual structure
       log('INFO', `🔍 RAW TALLY XML (first 800 chars):\n${rawResponse.substring(0, 800)}`);
-      const ledgerRegex = /<LEDGER NAME="([^"]*)"[^>]*>([\s\S]*?)<\/LEDGER>/gi;
+      
+      // Match either <LEDGER NAME="...">...</LEDGER> OR <LEDGER>...<NAME>...</NAME>...</LEDGER>
+      const ledgerRegex = /<LEDGER(?: NAME="([^"]*)")?[^>]*>([\s\S]*?)<\/LEDGER>/gi;
       const ledgers = [];
       let match;
 
       while ((match = ledgerRegex.exec(rawResponse)) !== null) {
-        const ledgerName = match[1];
         const ledgerBody = match[2];
+        let ledgerName = match[1]; // from NAME attribute
+        if (!ledgerName) {
+           const nameMatch = ledgerBody.match(/<NAME>([^<]*)<\/NAME>/i);
+           ledgerName = nameMatch ? nameMatch[1].replace(/&amp;/g, '&') : 'Unknown';
+        }
 
         const parentMatch = ledgerBody.match(/<PARENT>([^<]*)<\/PARENT>/i);
         const gstinMatch = ledgerBody.match(/<PARTYGSTIN>([^<]*)<\/PARTYGSTIN>/i);

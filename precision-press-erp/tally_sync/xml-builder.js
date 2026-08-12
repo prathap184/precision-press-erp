@@ -358,33 +358,62 @@ function buildFetchMastersXML(companyName) {
 
   return `
 <ENVELOPE>
-    <HEADER>
-        <VERSION>1</VERSION>
-        <TALLYREQUEST>Export</TALLYREQUEST>
-        <TYPE>Collection</TYPE>
-        <ID>AllLedgers</ID>
-    </HEADER>
-    <BODY>
-        <DESC>
-            <STATICVARIABLES>
-                <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-                ${finalCompanyName ? `<SVCURRENTCOMPANY>${sanitize(finalCompanyName)}</SVCURRENTCOMPANY>` : ''}
-            </STATICVARIABLES>
-            <TDL>
-                <TDLMESSAGE>
-                    <COLLECTION NAME="AllLedgers" ISMODIFY="No" ISINITIALIZE="Yes">
-                        <TYPE>Ledger</TYPE>
-                        <NATIVEMETHOD>Name</NATIVEMETHOD>
-                        <NATIVEMETHOD>Parent</NATIVEMETHOD>
-                        <NATIVEMETHOD>OpeningBalance</NATIVEMETHOD>
-                        <NATIVEMETHOD>ClosingBalance</NATIVEMETHOD>
-                        <NATIVEMETHOD>PartyGSTIN</NATIVEMETHOD>
-                        <NATIVEMETHOD>LedStateName</NATIVEMETHOD>
-                    </COLLECTION>
-                </TDLMESSAGE>
-            </TDL>
-        </DESC>
-    </BODY>
+  <HEADER>
+    <VERSION>1</VERSION>
+    <TALLYREQUEST>Export</TALLYREQUEST>
+    <TYPE>Data</TYPE>
+    <ID>LedgerMaster</ID>
+  </HEADER>
+  <BODY>
+    <DESC>
+      <STATICVARIABLES>
+        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+        ${finalCompanyName ? `<SVCURRENTCOMPANY>${sanitize(finalCompanyName)}</SVCURRENTCOMPANY>` : ''}
+      </STATICVARIABLES>
+      <TDL>
+        <TDLMESSAGE>
+          <REPORT NAME="LedgerMaster">
+            <FORMS>LedgerMaster</FORMS>
+          </REPORT>
+          <FORM NAME="LedgerMaster">
+            <PARTS>LedgerMaster</PARTS>
+          </FORM>
+          <PART NAME="LedgerMaster">
+            <LINES>LedgerMaster</LINES>
+            <REPEAT>LedgerMaster : AllLedgers</REPEAT>
+            <SCROLLED>Vertical</SCROLLED>
+          </PART>
+          <LINE NAME="LedgerMaster">
+            <XMLTAG>"LEDGER"</XMLTAG>
+            <FIELDS>LName, LParent, LOpBal, LClBal, LGSTIN</FIELDS>
+          </LINE>
+          <FIELD NAME="LName">
+            <SET>$Name</SET>
+            <XMLTAG>"NAME"</XMLTAG>
+          </FIELD>
+          <FIELD NAME="LParent">
+            <SET>$Parent</SET>
+            <XMLTAG>"PARENT"</XMLTAG>
+          </FIELD>
+          <FIELD NAME="LOpBal">
+            <SET>$OpeningBalance</SET>
+            <XMLTAG>"OPENINGBALANCE"</XMLTAG>
+          </FIELD>
+          <FIELD NAME="LClBal">
+            <SET>$ClosingBalance</SET>
+            <XMLTAG>"CLOSINGBALANCE"</XMLTAG>
+          </FIELD>
+          <FIELD NAME="LGSTIN">
+            <SET>$PartyGSTIN</SET>
+            <XMLTAG>"PARTYGSTIN"</XMLTAG>
+          </FIELD>
+          <COLLECTION NAME="AllLedgers">
+            <TYPE>Ledger</TYPE>
+          </COLLECTION>
+        </TDLMESSAGE>
+      </TDL>
+    </DESC>
+  </BODY>
 </ENVELOPE>`;
 }
 
