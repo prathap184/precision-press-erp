@@ -183,6 +183,9 @@ async function processEvent(event) {
         log('WARN', `⚠️ Tally returned 0 ledgers. Raw Response preview: ${rawResponse.substring(0, 300)}`);
       } else {
         log('SUCCESS', `✅ ${id} → Tally exported ${ledgers.length} ledgers`);
+        // 🔍 DEBUG: Print all unique parent group names so we know how to filter
+        const uniqueParents = [...new Set(ledgers.map(l => l.parent))].sort();
+        log('INFO', `📋 Parent groups found in Tally: ${JSON.stringify(uniqueParents)}`);
       }
       
       await markResult(id, 'SUCCESS', {
