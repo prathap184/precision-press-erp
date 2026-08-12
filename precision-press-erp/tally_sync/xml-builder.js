@@ -361,8 +361,8 @@ function buildFetchMastersXML(companyName) {
     <HEADER>
         <VERSION>1</VERSION>
         <TALLYREQUEST>Export</TALLYREQUEST>
-        <TYPE>Data</TYPE>
-        <ID>List of Accounts</ID>
+        <TYPE>Collection</TYPE>
+        <ID>AllLedgers</ID>
     </HEADER>
     <BODY>
         <DESC>
@@ -370,9 +370,24 @@ function buildFetchMastersXML(companyName) {
                 <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
                 ${finalCompanyName ? `<SVCURRENTCOMPANY>${sanitize(finalCompanyName)}</SVCURRENTCOMPANY>` : ''}
             </STATICVARIABLES>
+            <TDL>
+                <TDLMESSAGE>
+                    <COLLECTION NAME="AllLedgers" ISMODIFY="No" ISINITIALIZE="Yes">
+                        <TYPE>Ledger</TYPE>
+                        <NATIVEMETHOD>Name</NATIVEMETHOD>
+                        <NATIVEMETHOD>Parent</NATIVEMETHOD>
+                        <NATIVEMETHOD>OpeningBalance</NATIVEMETHOD>
+                        <NATIVEMETHOD>ClosingBalance</NATIVEMETHOD>
+                        <NATIVEMETHOD>PartyGSTIN</NATIVEMETHOD>
+                        <NATIVEMETHOD>LedStateName</NATIVEMETHOD>
+                    </COLLECTION>
+                </TDLMESSAGE>
+            </TDL>
         </DESC>
     </BODY>
 </ENVELOPE>`;
+}
+
 }
 
 // ─── MASTER ROUTER ────────────────────────────────────────────────────────────
