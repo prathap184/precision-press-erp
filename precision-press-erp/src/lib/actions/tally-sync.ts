@@ -200,6 +200,69 @@ export async function markTallySyncResult({
           case 'CONTRA_VOUCHER': 
             tableName = 'contra_entries'; 
             break;
+          case 'FETCH_MASTERS':
+            // ── Insert into new staging tables ──
+            try {
+              const ledgers = (tallyResponse as any)?.json?.ledgers || [];
+              if (ledgers.length > 0) {
+                const contacts = [];
+                const banks = [];
+                const accounts = [];
+
+                for (const l of ledgers) {
+                  const name = l.name || '';
+                  const parent = l.parent || '';
+                  const openingBalance = l.openingBalance || '0';
+                  const gstin = l.gstin || '';
+                  const state = l.state || '';
+
+                  // Bank Accounts
+                  if (parent.toLowerCase().includes('bank')) {
+                    banks.push({
+                      tally_ledger_name: name,
+                      tally_ledger_group: parent,
+                      account_name: name,
+                      account_type: 'bank',
+                      balance: openingBalance,
+                    });
+                  } 
+                  // Customers & Suppliers
+                  else if (parent === 'Sundry Debtors' || parent === 'Sundry Creditors') {
+                    contacts.push({
+                      tally_ledger_name: name,
+                      tally_ledger_group: parent,
+                      name: name,
+                      type: parent === 'Sundry Debtors' ? 'customer' : 'supplier',
+                      tally_opening_balance: openingBalance,
+                      tax_number: gstin,
+                    });
+                  } 
+                  // Other Chart of Accounts
+                  else {
+                    accounts.push({
+                      tally_ledger_name: name,
+                      tally_group: parent,
+                      name: name,
+                      code: name.replace(/[^A-Z0-9]/ig, "_").toUpperCase(),
+                      type: 'expense', // default, can be reviewed in UI
+                    });
+                  }
+                }
+
+                if (contacts.length > 0) {
+                  await supabaseServer.from('contact_tally').upsert(contacts, { onConflict: 'tally_ledger_name' });
+                }
+                if (banks.length > 0) {
+                  await supabaseServer.from('bank_account_tally').upsert(banks, { onConflict: 'tally_ledger_name' });
+                }
+                if (accounts.length > 0) {
+                  await supabaseServer.from('chart_account_tally').upsert(accounts, { onConflict: 'tally_ledger_name' });
+                }
+              }
+            } catch (e) {
+              console.error(`[TallyQueue] Failed to insert staging records for FETCH_MASTERS:`, e);
+            }
+            break;
         }
 
         if (tableName) {
