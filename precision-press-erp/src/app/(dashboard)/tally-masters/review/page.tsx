@@ -275,12 +275,20 @@ export default function TallyMastersReviewPage() {
                       )}
                     </div>
 
-                    {/* Opening balance */}
-                    <div className="text-right shrink-0 hidden md:block">
-                      <p className="text-xs text-slate-400 uppercase font-semibold">Opening Bal</p>
-                      <p className="text-sm font-mono text-slate-700">
-                        ₹{Math.abs(parseFloat(l.openingBalance) || 0).toLocaleString('en-IN')}
-                      </p>
+                    {/* Balances */}
+                    <div className="flex gap-6 shrink-0 hidden md:flex">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400 uppercase font-semibold">Opening</p>
+                        <p className="text-sm font-mono text-slate-700">
+                          ₹{Math.abs(parseFloat((l.openingBalance || '0').replace(/,/g, '')) || 0).toLocaleString('en-IN')}
+                        </p>
+                      </div>
+                      <div className="text-right w-24">
+                        <p className="text-xs text-slate-400 uppercase font-semibold">Closing</p>
+                        <p className="text-sm font-mono text-slate-900 font-bold">
+                          ₹{Math.abs(parseFloat((l.closingBalance || '0').replace(/,/g, '')) || 0).toLocaleString('en-IN')}
+                        </p>
+                      </div>
                     </div>
 
                     {/* Sync button */}

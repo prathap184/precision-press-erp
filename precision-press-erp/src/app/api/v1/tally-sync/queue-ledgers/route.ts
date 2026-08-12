@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseServer } from '@/lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     // Get the last 5 successful FETCH_MASTERS entries
@@ -22,10 +24,29 @@ export async function GET() {
       });
     }
 
+    // Helper to safely parse the payload
+    const getLedgers = (response: any) => {
+      if (!response) return [];
+      try {
+        let parsed = response;
+        if (typeof parsed === 'string') {
+          parsed = JSON.parse(parsed);
+        }
+        // If it was double stringified
+        if (typeof parsed === 'string') {
+          parsed = JSON.parse(parsed);
+        }
+        return parsed?.json?.ledgers || [];
+      } catch (e) {
+        console.error('Error parsing tallyResponse', e);
+        return [];
+      }
+    };
+
     // Find the best entry: prefer one where ledgers have non-empty parent fields
     let best = data[0];
     for (const row of data) {
-      const ledgers = (row.tallyResponse as any)?.json?.ledgers || [];
+      const ledgers = getLedgers(row.tallyResponse);
       const hasParents = ledgers.some((l: any) => l.parent && l.parent.trim() !== '');
       if (hasParents) {
         best = row;
@@ -33,7 +54,7 @@ export async function GET() {
       }
     }
 
-    const ledgers = (best.tallyResponse as any)?.json?.ledgers || [];
+    const ledgers = getLedgers(best.tallyResponse);
     const fetchedAt = best.lastAttemptAt || best.processedAt || best.createdAt;
 
     return NextResponse.json({
