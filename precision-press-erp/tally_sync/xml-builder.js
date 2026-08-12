@@ -355,14 +355,14 @@ function buildSupplierLedgerXML(payload) {
 
 function buildFetchMastersXML(companyName) {
   const finalCompanyName = companyName || process.env.TALLY_COMPANY_NAME || '';
-  
+
   return `
 <ENVELOPE>
     <HEADER>
         <VERSION>1</VERSION>
         <TALLYREQUEST>Export</TALLYREQUEST>
-        <TYPE>Collection</TYPE>
-        <ID>MyLedgerCollection</ID>
+        <TYPE>Data</TYPE>
+        <ID>List of Accounts</ID>
     </HEADER>
     <BODY>
         <DESC>
@@ -370,14 +370,6 @@ function buildFetchMastersXML(companyName) {
                 <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
                 ${finalCompanyName ? `<SVCURRENTCOMPANY>${sanitize(finalCompanyName)}</SVCURRENTCOMPANY>` : ''}
             </STATICVARIABLES>
-            <TDL>
-                <TDLMESSAGE>
-                    <COLLECTION NAME="MyLedgerCollection" ISMODIFY="No" ISINITIALIZE="Yes">
-                        <TYPE>Ledger</TYPE>
-                        <FETCH>Name, Parent, OpeningBalance, ClosingBalance, PartyGSTIN, LedStateName</FETCH>
-                    </COLLECTION>
-                </TDLMESSAGE>
-            </TDL>
         </DESC>
     </BODY>
 </ENVELOPE>`;
