@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 // Revalidate occasionally, but masters don't change every second
-export const revalidate = 60;
+export const revalidate = 0; // Always fetch fresh data
 
 export default async function TallyMastersPage() {
   const { fetchedAt, ledgers } = await getTallyMastersFromQueue();
@@ -20,8 +20,17 @@ export default async function TallyMastersPage() {
   const customers = ledgers.filter((l) => l.parent === 'Sundry Debtors');
   const suppliers = ledgers.filter((l) => l.parent === 'Sundry Creditors');
   const banks = ledgers.filter((l) => l.parent === 'Bank Accounts');
-  const cash = ledgers.filter((l) => l.parent === 'Cash-in-hand' || l.parent === 'Cash-in-Hand');
-  const taxes = ledgers.filter((l) => l.parent.toLowerCase().includes('tax') || l.parent.toLowerCase().includes('duties'));
+  const cash = ledgers.filter((l) => l.parent === 'Cash-in-Hand');
+  const taxes = ledgers.filter((l) => {
+    const p = (l.parent || '').toLowerCase().replace(/&amp;/g, '&');
+    return p.includes('tax') || p.includes('duties');
+  });
+  const knownParents = ['Sundry Debtors','Sundry Creditors','Bank Accounts','Cash-in-Hand'];
+  const others = ledgers.filter((l) => {
+    if (!l.parent) return false;
+    const p = (l.parent || '').toLowerCase().replace(/&amp;/g, '&');
+    return !knownParents.includes(l.parent) && !p.includes('tax') && !p.includes('duties');
+  });
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-8">
@@ -60,6 +69,7 @@ export default async function TallyMastersPage() {
         <LedgerSection title="Bank Accounts" ledgers={banks} emptyText="No bank accounts found in Tally." />
         <LedgerSection title="Taxes & Duties" ledgers={taxes} emptyText="No tax ledgers found in Tally." />
         <LedgerSection title="Cash Accounts" ledgers={cash} emptyText="No cash accounts found in Tally." />
+        {others.length > 0 && <LedgerSection title="Other Ledgers" ledgers={others} emptyText="" />}
       </div>
     </div>
   );
