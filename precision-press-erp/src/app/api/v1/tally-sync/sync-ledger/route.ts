@@ -96,7 +96,7 @@ export async function POST(req: Request) {
 
     if (isCustomer || isSupplier) {
       // → contact_tally
-      await saveContactTally({
+      const payload: any = {
         organization_id:        organizationId,
         tally_ledger_name:      ledger.name,
         tally_ledger_group:     ledger.parent,
@@ -110,9 +110,11 @@ export async function POST(req: Request) {
         billing_country:        'India',
         tally_opening_balance:  openVal,
         tally_closing_balance:  closingVal,
-        imported_contact_id:    aliasId,
         import_status:          'pending',
-      });
+      };
+      if (aliasId) payload.imported_contact_id = aliasId;
+
+      await saveContactTally(payload);
 
       return NextResponse.json({ success: true, table: 'contact_tally', type: isCustomer ? 'customer' : 'supplier' });
     }
@@ -120,22 +122,24 @@ export async function POST(req: Request) {
     if (isBank || isCash) {
       // → bank_account_tally
       const isCashType = isCash || ledger.name.toLowerCase().includes('cash');
-      await saveBankTally({
-        organization_id:          organizationId,
-        tally_ledger_name:        ledger.name,
-        account_name:             ledger.name,
-        account_type:             isCashType ? 'cash' : 'checking',
-        balance:                  closingVal,
-        tally_closing_balance:    closingVal,
-        imported_bank_account_id: aliasId,
-        import_status:            'pending',
-      });
+      const payload: any = {
+        organization_id:    organizationId,
+        tally_ledger_name:  ledger.name,
+        account_name:       ledger.name,
+        account_type:       isCashType ? 'cash' : 'checking',
+        balance:            closingVal,
+        tally_closing_balance: closingVal,
+        import_status:      'pending',
+      };
+      if (aliasId) payload.imported_bank_account_id = aliasId;
+
+      await saveBankTally(payload);
 
       return NextResponse.json({ success: true, table: 'bank_account_tally', type: isCashType ? 'cash' : 'bank' });
     }
 
     // Everything else → contact_tally with type = 'other' (as chart of accounts)
-    await saveContactTally({
+    const payload: any = {
       organization_id:        organizationId,
       tally_ledger_name:      ledger.name,
       tally_ledger_group:     ledger.parent,
@@ -143,9 +147,11 @@ export async function POST(req: Request) {
       type:                   'other',
       tally_opening_balance:  openVal,
       tally_closing_balance:  closingVal,
-      imported_contact_id:    aliasId,
       import_status:          'pending',
-    });
+    };
+    if (aliasId) payload.imported_contact_id = aliasId;
+
+    await saveContactTally(payload);
 
     return NextResponse.json({ success: true, table: 'contact_tally', type: 'other' });
 
