@@ -89,6 +89,9 @@ export async function POST(req: Request) {
     };
 
     const closingVal = parseBal(ledger.closingBalance || ledger.openingBalance);
+    const aliasId = (ledger.aliases && Array.isArray(ledger.aliases) && ledger.aliases.length > 0)
+      ? ledger.aliases[0]
+      : null;
 
     if (isCustomer || isSupplier) {
       // → contact_tally
@@ -105,6 +108,7 @@ export async function POST(req: Request) {
         billing_state:          ledger.state || null,
         billing_country:        'India',
         tally_opening_balance:  closingVal,
+        imported_contact_id:    aliasId,
         import_status:          'pending',
       });
 
@@ -115,12 +119,13 @@ export async function POST(req: Request) {
       // → bank_account_tally
       const isCashType = isCash || ledger.name.toLowerCase().includes('cash');
       await saveBankTally({
-        organization_id:    organizationId,
-        tally_ledger_name:  ledger.name,
-        account_name:       ledger.name,
-        account_type:       isCashType ? 'cash' : 'checking',
-        balance:            closingVal,
-        import_status:      'pending',
+        organization_id:          organizationId,
+        tally_ledger_name:        ledger.name,
+        account_name:             ledger.name,
+        account_type:             isCashType ? 'cash' : 'checking',
+        balance:                  closingVal,
+        imported_bank_account_id: aliasId,
+        import_status:            'pending',
       });
 
       return NextResponse.json({ success: true, table: 'bank_account_tally', type: isCashType ? 'cash' : 'bank' });
@@ -134,6 +139,7 @@ export async function POST(req: Request) {
       name:                   ledger.name,
       type:                   'other',
       tally_opening_balance:  closingVal,
+      imported_contact_id:    aliasId,
       import_status:          'pending',
     });
 
