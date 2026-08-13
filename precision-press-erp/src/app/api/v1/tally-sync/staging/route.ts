@@ -1,34 +1,50 @@
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase-server";
+import { auth } from "@/lib/auth";
 
-export async function GET(req: Request) {
+export const dynamic = 'force-dynamic';
+
+async function getOrgId(req: Request) {
   const { searchParams } = new URL(req.url);
-  const organizationId = searchParams.get("organizationId");
-
-  if (!organizationId) {
-    return NextResponse.json(
-      { success: false, error: "Missing organizationId" },
-      { status: 400 }
-    );
-  }
+  let orgId = searchParams.get("organizationId");
+  if (orgId) return orgId;
 
   try {
+    const session = await auth();
+    if (session?.user?.organizationId) return session.user.organizationId;
+  } catch (e) {
+    // Ignore auth error
+  }
+
+  const { data: org } = await supabaseServer
+    .from('organization')
+    .select('id')
+    .limit(1)
+    .maybeSingle();
+
+  return org?.id || '00000000-0000-0000-0000-000000000002';
+}
+
+export async function GET(req: Request) {
+  try {
+    const organizationId = await getOrgId(req);
+
     const [contactsRes, banksRes, accountsRes] = await Promise.all([
       supabaseServer
         .from("contact_tally")
         .select("*")
         .eq("organization_id", organizationId)
-        .eq("import_status", "pending"),
+        .order("created_at", { ascending: false }),
       supabaseServer
         .from("bank_account_tally")
         .select("*")
         .eq("organization_id", organizationId)
-        .eq("import_status", "pending"),
+        .order("created_at", { ascending: false }),
       supabaseServer
         .from("chart_account_tally")
         .select("*")
         .eq("organization_id", organizationId)
-        .eq("import_status", "pending"),
+        .order("created_at", { ascending: false }),
     ]);
 
     if (contactsRes.error) throw contactsRes.error;
@@ -37,32 +53,48 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       success: true,
-      contacts: contactsRes.data.map(c => ({
-        id: c.staging_id,
-        name: c.name,
-        parent: c.tally_ledger_group,
-        openingBalance: c.tally_opening_balance || "0",
-        closingBalance: c.tally_opening_balance || "0", // Staging doesn't differentiate currently
-        gstin: c.tax_number,
-        type: c.type,
-      })),
-      banks: banksRes.data.map(b => ({
-        id: b.staging_id,
-        name: b.account_name,
-        parent: b.tally_ledger_group,
-        openingBalance: b.balance || "0",
-        closingBalance: b.balance || "0",
-        type: b.account_type,
-      })),
-      accounts: accountsRes.data.map(a => ({
-        id: a.staging_id,
-        name: a.name,
-        parent: a.tally_group,
-        openingBalance: "0",
-        closingBalance: "0",
-        type: a.type,
-      })),
+      contacts: contactsRes.data || [],
+      banks: banksRes.data || [],
+      accounts: accountsRes.data || [],
     });
+  } catch (err: any) {
+    return NextResponse.json(
+      { success: false, error: err.message },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const { table, stagingId, updates } = await req.json();
+
+    if (!table || !stagingId || !updates) {
+      return NextResponse.json(
+        { success: false, error: "table, stagingId, and updates are required" },
+        { status: 400 }
+      );
+    }
+
+    const validTables = ['contact_tally', 'bank_account_tally', 'chart_account_tally'];
+    if (!validTables.includes(table)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid staging table name" },
+        { status: 400 }
+      );
+    }
+
+    const { error } = await supabaseServer
+      .from(table)
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('staging_id', stagingId);
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err.message },
