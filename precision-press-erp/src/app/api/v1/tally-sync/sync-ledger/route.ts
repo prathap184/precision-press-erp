@@ -88,6 +88,7 @@ export async function POST(req: Request) {
       return Math.abs(parseFloat(String(balStr).replace(/,/g, '')) || 0);
     };
 
+    const openVal = parseBal(ledger.openingBalance);
     const closingVal = parseBal(ledger.closingBalance || ledger.openingBalance);
     const aliasId = (ledger.aliases && Array.isArray(ledger.aliases) && ledger.aliases.length > 0)
       ? ledger.aliases[0]
@@ -107,7 +108,8 @@ export async function POST(req: Request) {
         state:                  ledger.state || null,
         billing_state:          ledger.state || null,
         billing_country:        'India',
-        tally_opening_balance:  closingVal,
+        tally_opening_balance:  openVal,
+        tally_closing_balance:  closingVal,
         imported_contact_id:    aliasId,
         import_status:          'pending',
       });
@@ -124,6 +126,7 @@ export async function POST(req: Request) {
         account_name:             ledger.name,
         account_type:             isCashType ? 'cash' : 'checking',
         balance:                  closingVal,
+        tally_closing_balance:    closingVal,
         imported_bank_account_id: aliasId,
         import_status:            'pending',
       });
@@ -138,7 +141,8 @@ export async function POST(req: Request) {
       tally_ledger_group:     ledger.parent,
       name:                   ledger.name,
       type:                   'other',
-      tally_opening_balance:  closingVal,
+      tally_opening_balance:  openVal,
+      tally_closing_balance:  closingVal,
       imported_contact_id:    aliasId,
       import_status:          'pending',
     });

@@ -147,6 +147,7 @@ export async function importSelectedMasters({
             credit_limit: c.credit_limit || 0,
             tally_ledger_name: c.tally_ledger_name || c.name,
             tally_opening_balance: c.tally_opening_balance || 0,
+            tally_closing_balance: c.tally_closing_balance || c.tally_opening_balance || 0,
           })
           .select('id')
           .single();
