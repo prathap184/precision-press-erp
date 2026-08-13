@@ -133,16 +133,20 @@ export async function importSelectedMasters({
             name: c.name,
             email: c.email,
             phone: c.phone,
-            tax_number: c.tax_number,
-            type: c.type,
-            payment_terms_days: c.payment_terms_days,
+            tax_number: c.tax_number || c.gstin,
+            gstin: c.gstin || c.tax_number,
+            gst_number: c.gst_number || c.gstin || c.tax_number,
+            type: c.type || 'customer',
+            payment_terms_days: c.payment_terms_days || 30,
             addresses: c.addresses,
+            state: c.state || c.billing_state,
+            billing_state: c.billing_state || c.state,
+            billing_country: c.billing_country || 'India',
             notes: c.notes,
-            currency_code: c.currency_code,
-            credit_limit: c.credit_limit,
-            tally_ledger_name: c.tally_ledger_name,
-            tally_opening_balance: c.tally_opening_balance,
-            // Include other custom fields here if needed
+            currency_code: c.currency_code || 'INR',
+            credit_limit: c.credit_limit || 0,
+            tally_ledger_name: c.tally_ledger_name || c.name,
+            tally_opening_balance: c.tally_opening_balance || 0,
           })
           .select('id')
           .single();
