@@ -57,60 +57,64 @@ export const Header = () => {
   };
 
   return (
-    <header className="h-16 px-4 md:px-6 bg-[var(--google-card)] border-b border-[var(--google-border)] sticky top-0 z-40 flex items-center justify-between">
-      <div className="flex items-center gap-6">
-        <button className={`${controlSize} rounded-full flex items-center justify-center text-slate-300 hover:bg-slate-50 hover:text-primary transition-all`}>
-          <ArrowLeft size={isAccountantPage ? 16 : 18} />
+    <header className="h-16 px-4 md:px-6 bg-white/30 backdrop-blur-2xl border-b border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] sticky top-0 z-40 flex items-center justify-between transition-all">
+      <div className="flex items-center gap-4">
+        <button 
+          onClick={() => window.history.back()}
+          className="w-9 h-9 rounded-2xl bg-white/40 border border-white/60 shadow-sm flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-white/70 hover:scale-105 transition-all backdrop-blur-md"
+          title="Back"
+        >
+          <ArrowLeft size={16} />
         </button>
         <div>
-          <h2 className="text-xl text-[var(--google-text)] font-normal">{getPageTitle()}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <span className={`${subtitleSize} font-black text-on-surface-variant/30 uppercase tracking-widest`}>PIXEL MARKETING Intelligence / Terminal Alpha</span>
+          <h2 className="text-base md:text-lg font-bold text-slate-900 tracking-tight leading-tight">{getPageTitle()}</h2>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs font-medium text-slate-500">Pixel Marketing Intelligence / Terminal Alpha</span>
           </div>
         </div>
       </div>
 
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:block">
-        <div className="px-5 py-2 rounded-full bg-emerald-50/80 backdrop-blur-md border border-emerald-100 flex items-center gap-2.5 shadow-sm">
+        <div className="px-4 py-1.5 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20 flex items-center gap-2 shadow-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
-          <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest">
+          <span className="text-xs font-semibold text-emerald-800">
             You are now {getCurrentDashboardRole()}
           </span>
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2 px-6 border-r border-slate-100">
-          <button className={`${controlSize} rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-primary transition-all relative`}>
-            <Bell size={isAccountantPage ? 16 : 18} />
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white" />
+      <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 pr-3 border-r border-white/60">
+          <button className="w-9 h-9 rounded-2xl bg-white/40 border border-white/50 shadow-sm flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-white/70 hover:scale-105 transition-all backdrop-blur-md relative" title="Notifications">
+            <Bell size={16} />
+            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white" />
           </button>
-          <button className={`${controlSize} rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-primary transition-all`}>
-            <History size={isAccountantPage ? 16 : 18} />
+          <button className="w-9 h-9 rounded-2xl bg-white/40 border border-white/50 shadow-sm flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-white/70 hover:scale-105 transition-all backdrop-blur-md" title="History">
+            <History size={16} />
           </button>
-          <button className={`${controlSize} rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-primary transition-all`}>
-            <Printer size={isAccountantPage ? 16 : 18} />
+          <button className="w-9 h-9 rounded-2xl bg-white/40 border border-white/50 shadow-sm flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-white/70 hover:scale-105 transition-all backdrop-blur-md" title="Print View">
+            <Printer size={16} />
           </button>
         </div>
 
-        <div className="flex items-center gap-2 px-4 border-r border-slate-100">
+        <div className="flex items-center gap-2 pr-3 border-r border-white/60">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2.5 px-4 h-11.5 rounded-lg text-[11px] font-semibold text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-2xl text-xs font-semibold text-slate-700 bg-white/40 border border-white/50 hover:bg-red-50/80 hover:text-red-600 hover:border-red-200 transition-all backdrop-blur-md shadow-sm"
           >
-            <span className="w-7 h-7 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 group-hover:bg-red-100 transition-colors">
-              <LogOut size={13} className="text-red-400" strokeWidth={2.5} />
+            <span className="w-5 h-5 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0 text-red-500">
+              <LogOut size={12} strokeWidth={2.5} />
             </span>
-            Terminate Session
+            <span className="hidden sm:inline">Terminate Session</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-4 group cursor-pointer">
-          <div className="text-right">
-            <p className="text-[10px] font-black text-primary uppercase tracking-tight leading-none">{profile?.displayName || 'User'}</p>
-            <p className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-widest mt-1">
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="text-right hidden sm:block">
+            <p className="text-xs font-semibold text-slate-900 leading-tight">{profile?.displayName || 'User'}</p>
+            <p className="text-[11px] font-semibold text-blue-600 mt-0.5">
               {effectiveRole}
-              {simulatedRole && <span className="ml-2 text-blue-500 font-black italic">(Simulated)</span>}
+              {simulatedRole && <span className="ml-1 text-indigo-500 italic">(Simulated)</span>}
             </p>
           </div>
           {(simulatedRole || viewMode === 'CUSTOMER') && (
@@ -119,12 +123,12 @@ export const Header = () => {
                 setSimulatedRole?.(null);
                 stopImpersonation?.();
               }}
-              className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[9px] font-black uppercase tracking-wider hover:bg-blue-100 transition-colors"
+              className="px-2.5 py-1 bg-blue-50/90 text-blue-700 border border-blue-200/70 rounded-xl text-xs font-semibold hover:bg-blue-100 transition-colors backdrop-blur-md shadow-sm"
             >
-              Reset to Admin
+              Reset
             </button>
           )}
-          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-100 shadow-sm transition-all group-hover:border-primary">
+          <div className="w-9 h-9 rounded-2xl overflow-hidden border-2 border-white/80 shadow-md shadow-slate-200/50 transition-all group-hover:border-blue-400 flex-shrink-0">
             <img 
               src={profile?.photoURL || "https://lh3.googleusercontent.com/aida-public/AB6AXuDIdsZJmMIcfuo3EcXr6pT7aNYYnoNb4dKD9ME5x-hfF2XXJdBtxdLrV_fjg8OFL5MSNj4oYMa0-N3ikxBMuQrbC5uXM0ltnvuW47cMIjdZgTE--pwqGcI0jtEvrQGWFArYQfOzqTNoNYmOwp1S4MrvT3FGs-kDIWSdYj3AzWAFWVYGRYdQgcUJJZHR0UuyCmK3YFeqi-YWTlc3Sr3RrB-1glgiyTDYJVZT4pXdLQWYnEQe4r9mYmg3587f2Twzabb33BwHJhP4xZ4"} 
               alt={profile?.displayName || "Profile"} 

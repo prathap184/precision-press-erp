@@ -169,15 +169,35 @@ export function WorkflowPipelineVisual({
             }
           }
 
+const SHORT_STEP_LABELS: Record<string, string> = {
+  'Accounts Approval': 'Accounts',
+  'Design & Artwork': 'Design',
+  'Manager Sign-Off': 'Manager',
+  'Printing': 'Print',
+  'Pasting': 'Pasting',
+  'Finishing': 'Finishing',
+  'Dispatch': 'Dispatch',
+  'Delivery': 'Delivery',
+  'ACCOUNTANT': 'Accounts',
+  'DESIGNER': 'Design',
+  'MANAGER': 'Manager',
+  'PRINTER': 'Print',
+  'PASTING': 'Pasting',
+  'FINISHING': 'Finishing',
+  'DISPATCH': 'Dispatch',
+  'DELIVERY': 'Delivery',
+};
+
+          const displayLabel = SHORT_STEP_LABELS[step.label] || SHORT_STEP_LABELS[step.role] || step.label;
           const pillContent = (
             <>
               {icon}
-              <span className="capitalize font-bold">{step.label.toLowerCase()}</span>
-              {navHref && <ExternalLink size={10} className="shrink-0 opacity-60" />}
+              <span className="font-semibold text-slate-800 whitespace-nowrap text-[11px]">{displayLabel}</span>
+              {navHref && <ExternalLink size={9} className="shrink-0 opacity-60 ml-0.5" />}
             </>
           );
 
-          const pillBase = `flex items-center gap-1 px-2 py-1 rounded border text-[11px] font-bold tracking-wide transition-all duration-200 select-none shadow-sm ${bgClass}`;
+          const pillBase = `w-[85px] h-[24px] flex items-center justify-center gap-1.5 px-2 rounded-md border text-[11px] font-semibold tracking-normal transition-all duration-200 select-none shadow-sm ${bgClass}`;
 
           return (
             <div key={`${step.role}-${index}`} className="flex items-center shrink-0">
@@ -185,19 +205,19 @@ export function WorkflowPipelineVisual({
                 <Link
                   href={navHref}
                   className={`${pillBase} hover:brightness-95 hover:scale-105 cursor-pointer`}
-                  title={`Open ${step.label} dashboard for this order`}
+                  title={`Open ${step.label} (${step.role})`}
                 >
                   {pillContent}
                 </Link>
               ) : (
-                <div className={pillBase} title={`${step.role}: ${step.status.replace(/_/g, ' ')}`}>
+                <div className={pillBase} title={`${step.label} (${step.role}): ${step.status.replace(/_/g, ' ')}`}>
                   {pillContent}
                 </div>
               )}
 
               {index < stepsToRender.length - 1 && (
                 <ChevronRight
-                  size={12}
+                  size={10}
                   className={`mx-0.5 shrink-0 ${isCompleted ? 'text-emerald-500' : 'text-slate-400'}`}
                 />
               )}

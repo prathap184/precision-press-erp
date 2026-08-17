@@ -48,11 +48,12 @@ export const OrderThumbnail = ({
   const shownPermissionErrorRef = useRef(false);
   
   const dims = {
-    sm: 'w-14 h-14 rounded-xl',
-    md: 'w-20 h-20 rounded-2xl',
-    lg: 'w-32 h-32 rounded-[2rem]',
-    full: 'w-full h-full rounded-[2.5rem]'
-  }[size];
+    xs: 'w-7 h-7 rounded-md',
+    sm: 'w-9 h-9 rounded-lg',
+    md: 'w-12 h-12 rounded-xl',
+    lg: 'w-24 h-24 rounded-2xl',
+    full: 'w-full h-full rounded-2xl'
+  }[size as string] || 'w-9 h-9 rounded-lg';
 
   useEffect(() => {
     const fetchItem = async () => {

@@ -554,83 +554,87 @@ export function GlobalOrdersPage() {
         </div>
 
         <div className="w-full relative z-10">
-          <section className="relative z-50 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 mb-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-900 rounded text-white">
-              <ClipboardList size={18} />
-            </div>
-            <div>
-              <h1 className="text-sm font-black text-slate-900 uppercase tracking-wider">Global Order Registry</h1>
-              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight opacity-70">Unified Print Operations Oversight</p>
-            </div>
-          </div>
-
-          <div className="inline-flex rounded-2xl border border-slate-200 bg-slate-50 p-1 self-start lg:self-auto flex-wrap gap-1">
-            <button
-              type="button"
-              onClick={() => setTab('global')}
-              className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition ${
-                tab === 'global' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <ClipboardList size={13} /> Global Orders ({totalStats.total || orders.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('stage')}
-              className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition ${
-                tab === 'stage' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <AlertCircle size={13} /> At My Stage ({stageOrders.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('completed')}
-              className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition ${
-                tab === 'completed' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <CheckCircle size={13} /> Completed At My Stage ({completedStageOrders.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('completed_by_me')}
-              className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition ${
-                tab === 'completed_by_me' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <CheckCircle size={13} /> Completed By Me ({completedByMeOrders.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('worked_by_me')}
-              className={`inline-flex items-center gap-2 rounded-xl px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] transition ${
-                tab === 'worked_by_me' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Activity size={13} /> Recent Orders Worked By Me ({workedByMeOrders.length})
-            </button>
-          </div>
-
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded border border-slate-200">
-            {[
-              { label: 'Total', value: totalStats.total, color: 'text-slate-600', icon: Package },
-              { label: 'Active', value: totalStats.active, color: 'text-indigo-600', icon: Activity },
-              { label: 'Done', value: totalStats.completed, color: 'text-emerald-600', icon: CheckCircle },
-            ].map((stat) => (
-              <div key={stat.label} className="bg-white px-4 py-1.5 rounded flex items-center gap-3 min-w-[100px] border border-slate-200/50 shadow-sm">
-                <stat.icon size={12} className={stat.color} />
-                <div className="leading-none">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{stat.label}</p>
-                  <p className={`text-xs font-black ${stat.color}`}>{stat.value}</p>
-                </div>
+          <section className="relative z-50 rounded-2xl bg-white/50 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] backdrop-blur-2xl border border-white/60 mb-3 flex items-center justify-between gap-3 overflow-x-auto scrollbar-hide">
+            {/* LEFT: TITLE */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="p-1.5 bg-slate-900 rounded-lg text-white">
+                <ClipboardList size={14} />
               </div>
-            ))}
-          </div>
-        </section>
+              <div>
+                <h1 className="text-xs font-bold text-slate-900 tracking-tight leading-tight whitespace-nowrap">Global Order Registry</h1>
+              </div>
+            </div>
 
-        <div className="relative z-40 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 mb-6 flex gap-4 flex-col md:flex-row">
+            {/* CENTER: SINGLE LINE COMPACT TABS */}
+            <div className="flex items-center gap-1 bg-slate-100/90 p-0.5 rounded-xl border border-slate-200/80 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setTab('global')}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
+                  tab === 'global' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <ClipboardList size={12} /> Global ({totalStats.total || orders.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('stage')}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
+                  tab === 'stage' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <AlertCircle size={12} /> At My Stage ({stageOrders.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('completed')}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
+                  tab === 'completed' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <CheckCircle size={12} /> Completed Stage ({completedStageOrders.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('completed_by_me')}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
+                  tab === 'completed_by_me' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <CheckCircle size={12} /> By Me ({completedByMeOrders.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setTab('worked_by_me')}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
+                  tab === 'worked_by_me' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <Activity size={12} /> Recent ({workedByMeOrders.length})
+              </button>
+            </div>
+
+            {/* RIGHT: INLINE METRICS */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <div className="bg-white px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-slate-200/60 shadow-sm text-xs font-bold text-slate-700">
+                <Package size={12} className="text-slate-500" />
+                <span className="text-[10px] text-slate-400 font-semibold uppercase">Total</span>
+                <span className="text-slate-900">{totalStats.total}</span>
+              </div>
+              <div className="bg-white px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-slate-200/60 shadow-sm text-xs font-bold text-indigo-700">
+                <Activity size={12} className="text-indigo-500" />
+                <span className="text-[10px] text-indigo-400 font-semibold uppercase">Active</span>
+                <span>{totalStats.active}</span>
+              </div>
+              <div className="bg-white px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-slate-200/60 shadow-sm text-xs font-bold text-emerald-700">
+                <CheckCircle size={12} className="text-emerald-500" />
+                <span className="text-[10px] text-emerald-400 font-semibold uppercase">Done</span>
+                <span>{totalStats.completed}</span>
+              </div>
+            </div>
+          </section>
+
+        <div className="relative z-40 rounded-2xl bg-white/50 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] backdrop-blur-2xl border border-white/60 mb-3 flex gap-2.5 items-center">
           <div className="flex-1 relative group">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
             <input
@@ -638,7 +642,7 @@ export function GlobalOrdersPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search manifest by ID, Customer, Phone..."
-              className="w-full bg-white border border-slate-200 rounded px-10 py-2 text-xs font-bold text-slate-800 outline-none focus:border-indigo-600 transition-all shadow-sm"
+              className="w-full h-8 bg-white border border-slate-200 rounded-lg pl-9 pr-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-600 transition-all shadow-sm"
             />
           </div>
 
@@ -649,13 +653,13 @@ export function GlobalOrdersPage() {
                 type="button"
                 onClick={() => setRoleDropdownOpen(v => !v)}
                 onBlur={() => setTimeout(() => setRoleDropdownOpen(false), 150)}
-                className={`h-9 flex items-center gap-2 rounded border px-3 text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`h-8 flex items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-all ${
                   selectedRoleFilter
-                    ? 'border-blue-400 bg-blue-600 text-white shadow-md'
-                    : 'border-slate-200 bg-white text-slate-600 hover:border-slate-400'
+                    ? 'border-blue-400 bg-blue-600 text-white shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                 }`}
               >
-                <Filter size={11} />
+                <Filter size={12} />
                 {selectedRoleFilter
                   ? (ALL_WORKFLOW_ROLES.find(r => r.id === selectedRoleFilter)?.label ?? selectedRoleFilter)
                   : 'All Stages'}
@@ -665,19 +669,19 @@ export function GlobalOrdersPage() {
               {roleDropdownOpen && (
                 <div className="absolute right-0 top-full mt-1.5 z-[9999] w-52 rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
                   <div className="px-3 py-2 bg-slate-50 border-b border-slate-100">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Filter by Stage</p>
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Filter by Stage</p>
                   </div>
                   <div className="p-1.5 space-y-0.5">
                     <button
                       type="button"
                       onMouseDown={(e) => { e.preventDefault(); setSelectedRoleFilter(null); setRoleDropdownOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-black text-left transition-colors ${
+                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors ${
                         !selectedRoleFilter ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-50'
                       }`}
                     >
                       <span className="w-2 h-2 rounded-full bg-slate-400 flex-shrink-0" />
                       All Stages
-                      <span className="ml-auto text-[9px] font-bold opacity-60">{activeOrders.length}</span>
+                      <span className="ml-auto text-xs font-bold opacity-60">{activeOrders.length}</span>
                     </button>
                     {roleFilterOptions.map(roleOpt => {
                       const count = activeOrders.filter(o => {
@@ -690,14 +694,14 @@ export function GlobalOrdersPage() {
                           key={roleOpt.id}
                           type="button"
                           onMouseDown={(e) => { e.preventDefault(); setSelectedRoleFilter(roleOpt.id); setRoleDropdownOpen(false); }}
-                          className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[11px] font-black text-left transition-colors ${
+                          className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-left transition-colors ${
                             selectedRoleFilter === roleOpt.id ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'
                           }`}
                         >
                           <span className={`w-2 h-2 rounded-full flex-shrink-0 ${selectedRoleFilter === roleOpt.id ? 'bg-white' : roleOpt.color}`} />
                           {roleOpt.label}
                           {count > 0 && (
-                            <span className={`ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                            <span className={`ml-auto text-xs font-bold px-1.5 py-0.5 rounded-full ${
                               selectedRoleFilter === roleOpt.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
                             }`}>{count}</span>
                           )}
@@ -710,12 +714,12 @@ export function GlobalOrdersPage() {
             </div>
           )}
 
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <button 
               onClick={() => setShowDatePicker(!showDatePicker)}
-              className={`px-4 h-11 bg-white border rounded text-[10px] font-bold uppercase tracking-wider text-slate-600 hover:border-slate-900 transition-all flex items-center gap-2 ${dateRange.start || dateRange.end ? 'border-indigo-600 text-indigo-600 bg-indigo-50' : 'border-slate-200'}`}
+              className={`px-2.5 h-8 bg-white border rounded-lg text-xs font-semibold text-slate-700 hover:border-slate-300 transition-all flex items-center gap-1.5 ${dateRange.start || dateRange.end ? 'border-indigo-600 text-indigo-600 bg-indigo-50' : 'border-slate-200'}`}
             >
-              <Calendar size={14} />
+              <Calendar size={12} />
               {dateRange.start && dateRange.end 
                 ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}` 
                 : dateRange.start ? `From ${dateRange.start.toLocaleDateString()}`
@@ -727,29 +731,29 @@ export function GlobalOrdersPage() {
               <div className="absolute right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-50 w-72 flex flex-col gap-3">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Select Range</span>
-                  <button onClick={() => { setDateRange({start: null, end: null}); setShowDatePicker(false); }} className="text-[10px] text-slate-400 hover:text-red-500 uppercase font-bold tracking-widest transition-colors">Clear</button>
+                  <button onClick={() => { setDateRange({start: null, end: null}); setShowDatePicker(false); }} className="text-xs text-slate-400 hover:text-red-500 font-bold transition-colors">Clear</button>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Start Date</label>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">Start Date</label>
                   <input 
                     type="date" 
-                    className="w-full border border-slate-200 rounded p-2 text-sm outline-none focus:border-indigo-500"
+                    className="w-full border border-slate-200 rounded-lg p-2 text-xs outline-none focus:border-indigo-500"
                     value={dateRange.start ? dateRange.start.toISOString().split('T')[0] : ''}
                     onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value ? new Date(e.target.value) : null }))}
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">End Date</label>
+                  <label className="text-xs font-semibold text-slate-500 block mb-1">End Date</label>
                   <input 
                     type="date" 
-                    className="w-full border border-slate-200 rounded p-2 text-sm outline-none focus:border-indigo-500"
+                    className="w-full border border-slate-200 rounded-lg p-2 text-xs outline-none focus:border-indigo-500"
                     value={dateRange.end ? dateRange.end.toISOString().split('T')[0] : ''}
                     onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value ? new Date(e.target.value) : null }))}
                   />
                 </div>
                 <button 
                   onClick={() => setShowDatePicker(false)}
-                  className="mt-2 w-full bg-slate-900 text-white rounded py-2 text-[10px] font-bold uppercase tracking-widest hover:bg-slate-800 transition-colors"
+                  className="mt-1 w-full bg-slate-900 text-white rounded-lg py-2 text-xs font-bold hover:bg-slate-800 transition-colors"
                 >
                   Apply Filter
                 </button>
@@ -758,32 +762,32 @@ export function GlobalOrdersPage() {
           </div>
         </div>
 
-        <div className="relative z-30 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
-          <div className="bg-white/40 rounded-2xl border border-white/60 shadow-sm overflow-hidden backdrop-blur-md">
+        <div className="relative z-30 rounded-3xl bg-white/30 p-3.5 shadow-[0_8px_30px_rgb(0,0,0,0.02)] backdrop-blur-2xl border border-white/50">
+          <div className="bg-white/20 rounded-2xl border border-white/40 shadow-sm overflow-hidden backdrop-blur-xl">
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-left">
                  <thead>
-                  <tr className="bg-slate-100 border-b-2 border-slate-300">
-                    <th className="px-4 py-3 text-slate-800 text-sm font-bold">Node ID</th>
-                    <th className="px-4 py-3 text-slate-800 text-sm font-bold">Identity</th>
-                    <th className="px-4 py-3 text-slate-800 min-w-[650px] text-sm font-bold">Operational Status</th>
-                    <th className="px-4 py-3 text-slate-800 text-right text-sm font-bold">Settlement</th>
-                    <th className="px-4 py-3 text-slate-800 text-center text-sm font-bold">Action</th>
+                  <tr className="bg-white/40 border-b border-white/60 backdrop-blur-md">
+                    <th className="px-3 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-left w-[145px]">Node ID</th>
+                    <th className="px-3 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-left w-[280px]">Identity</th>
+                    <th className="px-3 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-left">Operational Status</th>
+                    <th className="px-4 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-right w-[110px]">Settlement</th>
+                    <th className="px-3 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-center w-[180px]">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y-0">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="py-20 text-center tabular-nums">
+                      <td colSpan={5} className="py-20 text-center tabular-nums">
                         <div className="flex flex-col items-center gap-2">
-                          <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Synchronizing Registry...</p>
+                          <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
+                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Synchronizing Registry...</p>
                         </div>
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-20 text-center tabular-nums">
+                      <td colSpan={5} className="py-20 text-center tabular-nums">
                         <p className="text-xs font-bold text-slate-400 uppercase italic tracking-widest">No matching records found</p>
                       </td>
                     </tr>
@@ -824,94 +828,172 @@ export function GlobalOrdersPage() {
 
                       const isFirstOfGroup = idx === 0 || filtered[idx - 1].id.replace('ORD-', '').split('-')[0] !== parentOrderNum;
                       const isEvenGroup = groupIdx % 2 === 0;
-                      const rowBg = isEvenGroup ? 'bg-white hover:bg-slate-50' : 'bg-slate-100/90 hover:bg-slate-200/80';
+                      const rowBg = isEvenGroup ? 'bg-white/30 hover:bg-white/50 backdrop-blur-md' : 'bg-white/10 hover:bg-white/30 backdrop-blur-md';
                       const tdBorder = isLastItemOfGroup
-                        ? 'border-b-[4px] border-slate-950 shadow-sm'
-                        : 'border-b border-dashed border-slate-300';
+                        ? 'border-b-[3px] border-white shadow-[0_1px_4px_rgba(255,255,255,0.5)]'
+                        : 'border-b-0';
+
+                      const isOrderCompleted = (order.status === 'DELIVERED') || 
+                        Boolean(order.workflow?.['deliveredAt']) || 
+                        (order.currentWorkflowLabel === 'COMPLETED') || 
+                        ((order.workflowSnapshot?.currentStepIndex ?? -1) >= (order.workflowSnapshot?.steps?.length ?? 0));
 
                       return (
                         <React.Fragment key={order.id}>
-                          {isFirstOfGroup && idx > 0 && (
-                            <tr aria-hidden="true">
-                              <td colSpan={5} className="py-1.5 bg-transparent border-0" />
-                            </tr>
-                          )}
-                          <tr id={`order-row-${order.id}`} className={`${isHighlighted ? 'bg-indigo-50 shadow-inner transition-all duration-1000' : rowBg + ' transition-colors'} group`}>
-                            <td className={`px-4 py-2 tabular-nums ${tdBorder}`}>
-                              <div className="flex items-center gap-2.5">
-                                {isDesignerStepActive ? (
-                                  <Link 
-                                    href={`/designer/orders/${order.id}?returnTo=/acdema/orders`}
-                                    className="hover:brightness-90 transition-all cursor-pointer"
-                                    title="Open creative studio workstation"
-                                  >
-                                    {thumbnail}
-                                  </Link>
-                                ) : (
-                                  thumbnail
-                                )}
+                          <tr id={`order-row-${order.id}`} className={`${isHighlighted ? 'bg-indigo-50/90 shadow-inner transition-all duration-1000' : rowBg + ' transition-colors'} group`}>
+                            <td className={`px-3 py-1.5 align-middle text-left tabular-nums ${tdBorder}`}>
+                              <div className="flex items-center gap-2">
+                                <div className="relative shrink-0">
+                                  {isDesignerStepActive ? (
+                                    <Link 
+                                      href={`/designer/orders/${order.id}?returnTo=/acdema/orders`}
+                                      className="hover:brightness-90 transition-all cursor-pointer block"
+                                      title="Open creative studio workstation"
+                                    >
+                                      {thumbnail}
+                                    </Link>
+                                  ) : (
+                                    thumbnail
+                                  )}
+                                  {isOrderCompleted && (
+                                    <div className="absolute inset-0 bg-emerald-950/20 backdrop-blur-[0.5px] rounded-lg flex items-center justify-center pointer-events-none">
+                                      <span className="border border-emerald-400/80 bg-emerald-600/90 text-white text-[7px] font-black uppercase tracking-tighter px-1 py-0.2 rounded -rotate-12 shadow-sm whitespace-nowrap">
+                                        COMPLETED
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                                 <div className="flex flex-col justify-center">
-                                  <p className="text-slate-900 font-mono text-sm font-semibold leading-tight">#{order.id.replace('ORD-', '')}</p>
-                                  <p className="text-slate-500 text-xs">{date}</p>
+                                  <div className="flex items-center gap-1.5">
+                                    <p className="text-slate-900 font-mono text-xs font-semibold leading-tight">#{order.id.replace('ORD-', '')}</p>
+                                    {isOrderCompleted && (
+                                      <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-300 text-[8.5px] font-extrabold uppercase tracking-tight shadow-sm">
+                                        ✓ Done
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-slate-500 text-[11px] font-normal mt-0.5">{date}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className={`px-4 py-2 tabular-nums ${tdBorder}`}>
+                            <td className={`px-3 py-1.5 align-middle text-left tabular-nums ${tdBorder}`}>
                               <div className="flex flex-col justify-center">
-                                <div className="flex items-center gap-2">
-                                  <p className="text-slate-900 text-sm font-semibold">{order.customerSnapshot?.name || 'Guest'}</p>
-                                  <p className="text-slate-500 text-[13px]">{order.customerSnapshot?.phone || 'No phone'}</p>
-                                </div>
-                                <div className="flex items-center gap-2 mt-0.5">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-slate-900 text-xs font-bold leading-tight">{order.customerSnapshot?.name || 'Guest'}</p>
+                                  <p className="text-slate-500 text-[11px] font-normal">{order.customerSnapshot?.phone || 'No phone'}</p>
                                   {order.proxyExecutor && (
-                                    <span className="inline-block px-1.5 py-[1px] rounded bg-indigo-50 border border-indigo-100 text-[10px] font-bold text-indigo-600 uppercase tracking-widest break-all">
+                                    <span className="inline-block px-1.5 py-0.2 rounded bg-indigo-50 border border-indigo-200 text-[10.5px] font-semibold text-indigo-700">
                                       Proxy: {(() => {
                                         const proxy = typeof order.proxyExecutor === 'string' ? JSON.parse(order.proxyExecutor) : order.proxyExecutor;
                                         return order.proxyName || proxy?.name || (proxy?.role === 'ACDEMA' ? 'AcDema Support' : 'Admin');
                                       })()}
                                     </span>
                                   )}
-                                  <div className="text-slate-600 truncate max-w-[180px] text-[13px] font-medium">
+                                </div>
+                                <div className="mt-0.5">
+                                  <span 
+                                    className="text-slate-900 text-xs font-semibold tracking-normal inline-block truncate max-w-[280px]"
+                                    title={order.items?.map(i => i.productName).join(', ') || order.workflow?.printWorkflow?.tiffFileName || 'Custom Print'}
+                                  >
                                     {order.items?.map(i => i.productName).join(', ') || order.workflow?.printWorkflow?.tiffFileName || 'Custom Print'}
-                                  </div>
+                                  </span>
                                 </div>
                               </div>
                             </td>
-                            <td className={`px-4 py-2 tabular-nums ${tdBorder}`}>
+                            <td className={`px-3 py-1.5 align-middle text-left tabular-nums ${tdBorder}`}>
+                              <div className="relative inline-flex items-center">
                                 <WorkflowPipelineVisual
-                                      snapshot={(() => {
-                                        const dispatchMethodKey = order.dispatchInfo?.method || (order as any).deliveryChoice || (order as any).delivery_choice || order.delivery?.choice || '';
-                                        const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes((dispatchMethodKey || '').toLowerCase());
-                                        if (isDeliverySkipped && order.workflowSnapshot?.steps) {
-                                          return {
-                                            ...order.workflowSnapshot,
-                                            steps: order.workflowSnapshot.steps.filter((s: any) => s.role !== 'DELIVERY')
-                                          };
-                                        }
-                                        return order.workflowSnapshot;
-                                      })()}
-                                      orderId={order.id}
-                                      detailed={true}
-                                      filterByRoles={false}
-                                      allowNavigation={true}
-                                    />
-                                  {((order.status === 'DELIVERED') || (order.workflow?.['deliveredAt']) || (order.currentWorkflowLabel === 'COMPLETED') || ((order.workflowSnapshot?.currentStepIndex ?? -1) >= (order.workflowSnapshot?.steps?.length ?? 0))) && (
-                                    <div className="mt-2 text-emerald-700">
-                                      <p className="text-sm font-black">ORDER COMPLETED</p>
+                                  snapshot={(() => {
+                                    const dispatchMethodKey = order.dispatchInfo?.method || (order as any).deliveryChoice || (order as any).delivery_choice || order.delivery?.choice || '';
+                                    const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes((dispatchMethodKey || '').toLowerCase());
+                                    if (isDeliverySkipped && order.workflowSnapshot?.steps) {
+                                      return {
+                                        ...order.workflowSnapshot,
+                                        steps: order.workflowSnapshot.steps.filter((s: any) => s.role !== 'DELIVERY')
+                                      };
+                                    }
+                                    return order.workflowSnapshot;
+                                  })()}
+                                  orderId={order.id}
+                                  detailed={true}
+                                  filterByRoles={false}
+                                  allowNavigation={true}
+                                />
+                                {isOrderCompleted && (
+                                  <div className="absolute inset-0 bg-emerald-950/15 backdrop-blur-[1px] rounded-lg border border-emerald-400/40 flex items-center justify-center pointer-events-none shadow-sm z-10">
+                                    <div className="flex items-center gap-1.5 px-3 py-0.5 rounded-md bg-emerald-600/95 text-white font-black text-[10.5px] uppercase tracking-widest shadow-md border border-emerald-300 -rotate-1">
+                                      <CheckCircle size={12} className="text-white" />
+                                      <span>ORDER COMPLETED</span>
                                     </div>
-                                  )}
-                            </td>
-                            <td className={`px-4 py-2 text-right tabular-nums ${tdBorder}`}>
-                              <p className="text-slate-900 text-base font-bold">₹{amount.toLocaleString()}</p>
-                              <div className="flex items-center justify-end gap-1 mt-0.5">
-                                <div className={`w-1.5 h-1.5 rounded-full ${order.paymentStatus === 'VERIFIED' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                <p className={`uppercase text-xs font-semibold ${order.paymentStatus === 'VERIFIED' ? 'text-emerald-600' : 'text-amber-500'}`}>
-                                  {order.paymentStatus === 'VERIFIED' ? 'Verified' : 'Pending'}
-                                </p>
+                                  </div>
+                                )}
                               </div>
                             </td>
-                            <td className={`px-4 py-2 text-center tabular-nums ${tdBorder}`}>
-                              <div className="flex flex-row items-center justify-end gap-2 flex-wrap">
+                            <td className={`px-4 py-1.5 align-middle text-right tabular-nums ${tdBorder}`}>
+                              <div className="flex flex-col items-end justify-center">
+                                <p className="text-slate-900 text-sm font-bold leading-tight">₹{amount.toLocaleString()}</p>
+                                <div className="flex items-center justify-end gap-1 mt-0.5">
+                                  <div className={`w-1.5 h-1.5 rounded-full ${order.paymentStatus === 'VERIFIED' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                  <p className={`text-[11px] font-semibold ${order.paymentStatus === 'VERIFIED' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                    {order.paymentStatus === 'VERIFIED' ? 'Verified' : 'Pending'}
+                                  </p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className={`px-3 py-1.5 align-middle text-center tabular-nums ${tdBorder}`}>
+                              <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                                {(() => {
+                                  const matchedInvoice = getInvoiceForOrder(order);
+                                  if (matchedInvoice || (order as any).is_invoice_generated || (order as any).isInvoiceGenerated) {
+                                    const invNum = matchedInvoice?.number || (order as any).invoice_number || (order as any).invoiceNumber || 'Invoiced';
+                                    const invId = matchedInvoice?.id || (order as any).invoice_id || (order as any).invoiceId;
+                                    return (
+                                      <button
+                                        className="text-center text-[11px] font-semibold text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg py-1 px-2 inline-flex items-center justify-center gap-1 shadow-sm hover:bg-emerald-100 transition-colors cursor-pointer"
+                                        title={`Invoice #${invNum}`}
+                                        onClick={() => {
+                                          if (invId) {
+                                            window.location.href = `http://40.81.236.61:3000/sales/${invId}`;
+                                          } else {
+                                            window.location.href = `http://40.81.236.61:3000/accounting/sales`;
+                                          }
+                                        }}
+                                      >
+                                        <CheckCircle size={10} className="text-emerald-600" />
+                                        {invNum}
+                                      </button>
+                                    );
+                                  }
+                                  return (
+                                    <button
+                                      disabled={processingOrderId === order.id || modalProcessing}
+                                      onClick={() => {
+                                        const parentId = order.id.replace('ORD-', '').split('-')[0];
+                                        const siblings = filtered.filter((o: any) => o.id.replace('ORD-', '').split('-')[0] === parentId);
+                                        if (siblings.length > 1) {
+                                          setSiblingsModal({ orders: siblings, parentId });
+                                          setSelectedSiblingIds(new Set([order.id]));
+                                          return;
+                                        }
+                                        handleInvoiceMultiple([order]);
+                                      }}
+                                      className="text-center text-[11px] font-semibold text-indigo-700 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-lg py-1 px-2 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                                      title="Generate Invoice"
+                                    >
+                                      {processingOrderId === order.id ? <Loader2 size={10} className="animate-spin" /> : <FileText size={10} />}
+                                      Invoice
+                                    </button>
+                                  );
+                                })()}
+                                <button
+                                  disabled={processingOrderId === order.id}
+                                  onClick={() => handleReceipt(order)}
+                                  className="text-center text-[11px] font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-lg py-1 px-2 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                                  title="Record Customer Prepayment"
+                                >
+                                  {processingOrderId === order.id ? <Loader2 size={10} className="animate-spin" /> : null}
+                                  Receipt
+                                </button>
                                 <Link
                                   href={(() => {
                                     if (pathname?.startsWith('/admin')) return `/admin/orders/${order.id}/ledger`;
@@ -919,65 +1001,11 @@ export function GlobalOrdersPage() {
                                     if (pathname?.startsWith('/delivarypartner')) return `/delivarypartner/orders/${order.id}`;
                                     return `/acdema/orders/${order.id}`;
                                   })()}
-                                  className="inline-flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm group-hover:scale-105 shrink-0"
+                                  className="inline-flex items-center justify-center w-7 h-7 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-900 hover:text-white hover:border-slate-900 transition-all shadow-sm group-hover:scale-105 shrink-0 ml-0.5"
                                   title="View Order Details"
                                 >
-                                  <ArrowRight size={14} />
+                                  <ArrowRight size={13} />
                                 </Link>
-                                <div className="flex flex-row items-center gap-1.5 flex-wrap justify-end">
-                                   {(() => {
-                                     const matchedInvoice = getInvoiceForOrder(order);
-                                     if (matchedInvoice || (order as any).is_invoice_generated || (order as any).isInvoiceGenerated) {
-                                       const invNum = matchedInvoice?.number || (order as any).invoice_number || (order as any).invoiceNumber || 'Invoiced';
-                                       const invId = matchedInvoice?.id || (order as any).invoice_id || (order as any).invoiceId;
-                                       return (
-                                         <button
-                                           className="w-full text-center text-[10px] font-black uppercase tracking-widest text-emerald-700 border border-emerald-300 bg-emerald-50 rounded py-1 inline-flex items-center justify-center gap-1 shadow-sm hover:bg-emerald-100 transition-colors cursor-pointer"
-                                           title={`Invoice #${invNum}`}
-                                           onClick={() => {
-                                             if (invId) {
-                                               window.location.href = `http://40.81.236.61:3000/sales/${invId}`;
-                                             } else {
-                                               window.location.href = `http://40.81.236.61:3000/accounting/sales`;
-                                             }
-                                           }}
-                                         >
-                                           <CheckCircle size={9} className="text-emerald-600" />
-                                           {invNum}
-                                         </button>
-                                       );
-                                     }
-                                     return (
-                                       <button
-                                         disabled={processingOrderId === order.id || modalProcessing}
-                                         onClick={() => {
-                                           const parentId = order.id.replace('ORD-', '').split('-')[0];
-                                           const siblings = filtered.filter((o: any) => o.id.replace('ORD-', '').split('-')[0] === parentId);
-                                           if (siblings.length > 1) {
-                                             setSiblingsModal({ orders: siblings, parentId });
-                                             setSelectedSiblingIds(new Set([order.id]));
-                                             return;
-                                           }
-                                           handleInvoiceMultiple([order]);
-                                         }}
-                                         className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-indigo-600 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1"
-                                         title="Generate Invoice"
-                                       >
-                                         {processingOrderId === order.id ? <Loader2 size={9} className="animate-spin" /> : <FileText size={9} />}
-                                         Invoice
-                                       </button>
-                                     );
-                                   })()}
-                                  <button
-                                    disabled={processingOrderId === order.id}
-                                    onClick={() => handleReceipt(order)}
-                                    className="w-full text-center text-[10px] font-bold uppercase tracking-widest text-emerald-600 border border-emerald-200 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded py-1 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1"
-                                    title="Record Customer Prepayment"
-                                  >
-                                    {processingOrderId === order.id ? <Loader2 size={9} className="animate-spin" /> : null}
-                                    Receipt
-                                  </button>
-                                </div>
                               </div>
                             </td>
                           </tr>
