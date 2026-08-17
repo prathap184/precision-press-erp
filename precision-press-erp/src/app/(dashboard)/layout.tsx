@@ -34,7 +34,7 @@ export default function DashboardRootLayout({
   const isProxyOrderPage = pathname.startsWith('/proxy-order') || pathname.startsWith('/admin/orders/proxy') || pathname.startsWith('/acdema');
   const isAccountingDashboard = pathname.startsWith('/accounting');
   const displaySidebarExpanded = (isGlobalOrdersPage || isAcdemaViewPage || isAccountantLedgerPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isAccountingDashboard) ? false : isSidebarExpanded;
-  const mainPadding = isAccountantLedgerPage ? 'p-3 lg:p-4' : 'p-4 lg:p-6';
+  const mainPadding = (isGlobalOrdersPage || isAcdemaViewPage) ? 'p-2.5 md:p-3.5' : isAccountantLedgerPage ? 'p-3 lg:p-4' : 'p-4 lg:p-6';
 
   return (
     <RoleGuard allowedRoles={['ADMIN', 'CUSTOMER', 'DESIGNER', 'SUPER_ADMIN', 'PRINTER', 'MANAGER', 'ACCOUNTANT', 'DISPATCH', 'SUPPORT', 'DELIVERY', 'ACDEMA', 'PASTING', 'FINISHING']}>

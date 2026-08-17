@@ -541,16 +541,20 @@ export function GlobalOrdersPage() {
 
   return (
     <RoleGuard allowedRoles={['ACDEMA', 'ADMIN', 'SUPER_ADMIN']}>
-      <div className="font-sans text-slate-800 bg-[#d4d4d8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none">
-        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-          {/* Grid Pattern */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
-
-          {/* Abstract Shapes */}
-          <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-400/40 blur-[140px] pointer-events-none animate-pulse"></div>
-          <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-fuchsia-400/40 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-cyan-400/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+      <div className="w-full font-sans text-slate-800 relative z-10 min-h-[calc(100vh-4rem)]">
+        {/* Full-width Ambient Pink / Lavender / Rose Atmospheric Glow */}
+        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(ellipse at 15% 15%, rgba(244, 114, 182, 0.28) 0%, rgba(216, 180, 254, 0.32) 30%, rgba(192, 132, 252, 0.18) 60%, transparent 100%), radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.22) 0%, rgba(168, 85, 247, 0.20) 40%, rgba(147, 197, 253, 0.15) 70%, transparent 100%), radial-gradient(circle at 50% 50%, rgba(244, 114, 182, 0.12) 0%, transparent 60%), linear-gradient(135deg, #fdf2f8 0%, #faf5ff 35%, #f5f3ff 70%, #eff6ff 100%)'
+            }}
+          />
+          <div className="absolute inset-0 bg-[radial-gradient(#d8b4fe_1px,transparent_1px)] [background-size:24px_24px] opacity-35"></div>
+          {/* Subtle Pink Glowing Ambient Orbs */}
+          <div className="absolute -top-[10%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-pink-400/25 blur-[120px]"></div>
+          <div className="absolute -bottom-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-purple-400/25 blur-[120px]"></div>
+          <div className="absolute top-[30%] right-[20%] w-[35vw] h-[35vw] rounded-full bg-fuchsia-300/20 blur-[100px]"></div>
         </div>
 
         <div className="w-full relative z-10">

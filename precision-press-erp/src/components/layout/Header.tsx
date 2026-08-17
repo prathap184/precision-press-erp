@@ -57,19 +57,19 @@ export const Header = () => {
   };
 
   return (
-    <header className="h-16 px-4 md:px-6 bg-white/30 backdrop-blur-2xl border-b border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] sticky top-0 z-40 flex items-center justify-between transition-all">
-      <div className="flex items-center gap-4">
+    <header className="h-14 mx-3 md:mx-4 mt-2.5 mb-1 px-4 md:px-5 bg-white/40 backdrop-blur-2xl border border-white/60 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.02)] sticky top-2 z-40 flex items-center justify-between transition-all">
+      <div className="flex items-center gap-3">
         <button 
           onClick={() => window.history.back()}
-          className="w-9 h-9 rounded-2xl bg-white/40 border border-white/60 shadow-sm flex items-center justify-center text-slate-600 hover:text-blue-600 hover:bg-white/70 hover:scale-105 transition-all backdrop-blur-md"
+          className="w-8 h-8 rounded-xl bg-white/60 border border-white/70 shadow-sm flex items-center justify-center text-slate-700 hover:text-blue-600 hover:bg-white hover:scale-105 transition-all backdrop-blur-md cursor-pointer shrink-0"
           title="Back"
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={15} />
         </button>
         <div>
-          <h2 className="text-base md:text-lg font-bold text-slate-900 tracking-tight leading-tight">{getPageTitle()}</h2>
+          <h2 className="text-sm md:text-base font-bold text-slate-900 tracking-tight leading-tight">{getPageTitle()}</h2>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs font-medium text-slate-500">Pixel Marketing Intelligence / Terminal Alpha</span>
+            <span className="text-[11px] font-medium text-slate-500">Pixel Marketing Intelligence / Terminal Alpha</span>
           </div>
         </div>
       </div>
