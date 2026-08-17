@@ -764,11 +764,11 @@ export function GlobalOrdersPage() {
               <table className="w-full border-collapse text-left">
                  <thead>
                   <tr className="bg-slate-100 border-b-2 border-slate-300">
-                    <th className="px-4 py-3 text-slate-800" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Node ID</th>
-                    <th className="px-4 py-3 text-slate-800" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Identity</th>
-                    <th className="px-4 py-3 text-slate-800 min-w-[550px]" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Operational Status</th>
-                    <th className="px-4 py-3 text-slate-800 text-right" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Settlement</th>
-                    <th className="px-4 py-3 text-slate-800 text-center" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 700, lineHeight: '22px' }}>Action</th>
+                    <th className="px-4 py-3 text-slate-800 text-sm font-bold">Node ID</th>
+                    <th className="px-4 py-3 text-slate-800 text-sm font-bold">Identity</th>
+                    <th className="px-4 py-3 text-slate-800 min-w-[650px] text-sm font-bold">Operational Status</th>
+                    <th className="px-4 py-3 text-slate-800 text-right text-sm font-bold">Settlement</th>
+                    <th className="px-4 py-3 text-slate-800 text-center text-sm font-bold">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y-0">
@@ -851,16 +851,16 @@ export function GlobalOrdersPage() {
                                   thumbnail
                                 )}
                                 <div className="flex flex-col justify-center">
-                                  <p className="text-slate-900 font-mono" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 600, lineHeight: '18px' }}>#{order.id.replace('ORD-', '')}</p>
-                                  <p className="text-slate-500" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '12px', fontWeight: 400, lineHeight: '16px' }}>{date}</p>
+                                  <p className="text-slate-900 font-mono text-sm font-semibold leading-tight">#{order.id.replace('ORD-', '')}</p>
+                                  <p className="text-slate-500 text-xs">{date}</p>
                                 </div>
                               </div>
                             </td>
                             <td className={`px-4 py-2 tabular-nums ${tdBorder}`}>
                               <div className="flex flex-col justify-center">
                                 <div className="flex items-center gap-2">
-                                  <p className="text-slate-900" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '14px', fontWeight: 600, lineHeight: '20px' }}>{order.customerSnapshot?.name || 'Guest'}</p>
-                                  <p className="text-slate-500" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '13px', fontWeight: 400, lineHeight: '20px' }}>{order.customerSnapshot?.phone || 'No phone'}</p>
+                                  <p className="text-slate-900 text-sm font-semibold">{order.customerSnapshot?.name || 'Guest'}</p>
+                                  <p className="text-slate-500 text-[13px]">{order.customerSnapshot?.phone || 'No phone'}</p>
                                 </div>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {order.proxyExecutor && (
@@ -871,7 +871,7 @@ export function GlobalOrdersPage() {
                                       })()}
                                     </span>
                                   )}
-                                  <div className="text-slate-600 truncate max-w-[180px]" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '13px', fontWeight: 500 }}>
+                                  <div className="text-slate-600 truncate max-w-[180px] text-[13px] font-medium">
                                     {order.items?.map(i => i.productName).join(', ') || order.workflow?.printWorkflow?.tiffFileName || 'Custom Print'}
                                   </div>
                                 </div>
@@ -902,10 +902,10 @@ export function GlobalOrdersPage() {
                                   )}
                             </td>
                             <td className={`px-4 py-2 text-right tabular-nums ${tdBorder}`}>
-                              <p className="text-slate-900" style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '16px', fontWeight: 700, lineHeight: '24px' }}>₹{amount.toLocaleString()}</p>
+                              <p className="text-slate-900 text-base font-bold">₹{amount.toLocaleString()}</p>
                               <div className="flex items-center justify-end gap-1 mt-0.5">
                                 <div className={`w-1.5 h-1.5 rounded-full ${order.paymentStatus === 'VERIFIED' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                <p className={`uppercase ${order.paymentStatus === 'VERIFIED' ? 'text-emerald-600' : 'text-amber-500'}`} style={{ fontFamily: '"Inter", "Segoe UI", sans-serif', fontSize: '12px', fontWeight: 600 }}>
+                                <p className={`uppercase text-xs font-semibold ${order.paymentStatus === 'VERIFIED' ? 'text-emerald-600' : 'text-amber-500'}`}>
                                   {order.paymentStatus === 'VERIFIED' ? 'Verified' : 'Pending'}
                                 </p>
                               </div>

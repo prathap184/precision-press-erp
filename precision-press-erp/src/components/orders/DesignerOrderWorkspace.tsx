@@ -1010,9 +1010,20 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
   }
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 bg-gradient-to-br from-[#ecd9fa]/65 via-[#f4f2f8]/90 to-[#daf4fc]/65 rounded-[2.5rem] shadow-inner space-y-6 animate-in fade-in duration-200 pb-8 min-h-screen">
+    <div className="font-sans text-slate-800 bg-gradient-to-br from-[#cad6fa] via-[#d4e4fc] to-[#bce1f8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none overflow-hidden pb-12">
+      {/* Dynamic Glassmorphism Background with glowing orbs */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-[#93c5fd]/30 blur-[140px] pointer-events-none animate-pulse"></div>
+        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#c4b5fd]/30 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-[#a5f3fc]/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+      </div>
+
+      {/* ONE Master Glass Container */}
+      <div className="relative z-10 rounded-[2.5rem] bg-white/60 backdrop-blur-xl shadow-lg border border-white/50 p-6 md:p-8 space-y-8">
       {/* Header Panel */}
-      <section className="bg-white/50 backdrop-blur-xl border border-white/50 rounded-3xl overflow-hidden shadow-lg">
+      <section className="w-full">
         <div className="px-5 py-4 flex flex-row items-center justify-between gap-4 flex-wrap md:flex-nowrap">
           <div className="flex flex-row items-center gap-3 min-w-0">
             <span className="p-2 bg-purple-100/80 text-purple-700 rounded-xl shrink-0 hidden sm:inline-flex">
@@ -1125,7 +1136,7 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
       {currentStep && (
         <div className="space-y-6">
           {mode === 'READ_ONLY' && (
-            <div className="rounded-3xl border border-blue-200 bg-blue-50/50 p-5 flex items-start gap-3 shadow-md">
+            <div className="rounded-2xl bg-blue-50/60 p-4 flex items-start gap-3 border border-blue-100">
               <span className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5">
                 <span className="material-symbols-outlined text-lg leading-none">visibility</span>
               </span>
@@ -1138,7 +1149,7 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
           )}
 
           {isDesignApproved && mode !== 'READ_ONLY' && (
-            <div className="rounded-2xl border border-emerald-200/50 bg-emerald-50/50 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
+            <div className="rounded-2xl bg-emerald-50/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-emerald-100">
               <div>
                 <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-600">Design Approved</p>
                 <p className="text-[14px] font-medium text-emerald-900 mt-1">Customer approved this design. It is ready to be handed to manager stage.</p>
@@ -1154,7 +1165,7 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
             </div>
           )}
 
-          <OrderItemDesignBoxes orderId={order.id} items={displayItems} loadingItems={loadingItems} order={order} onSendToCustomer={() => openAction('pause')} mode={mode} />
+          
         </div>
       )}
 
@@ -1162,12 +1173,27 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
       <OrderDetailsPanel 
         order={order} 
         role="DESIGNER" 
-        className="bg-white/60 backdrop-blur-lg border border-white/50 shadow-lg rounded-3xl text-slate-800"
+        className="text-slate-800 w-full"
       />
+
+      {/* Customer Notes */}
+      <div className="w-full rounded-2xl bg-slate-50/80 p-4 border border-slate-200/80 flex items-center gap-3">
+        <span className="material-symbols-outlined text-purple-400">notes</span>
+        <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">Customer Notes:</span>
+        <span className="text-sm font-medium text-slate-700">{order.notes || order.customerNotes || "No customer notes provided."}</span>
+      </div>
+
+      {/* Main Designer Content (Item Workspaces) */}
+      {currentStep && (
+        <div className="w-full">
+          <OrderItemDesignBoxes orderId={order.id} items={displayItems} loadingItems={loadingItems} order={order} onSendToCustomer={() => openAction('pause')} mode={mode} />
+        </div>
+      )}
+  
 
       {/* Attachments & Files Section */}
       {designerStep && (
-        <div className="bg-white/50 backdrop-blur-xl border border-white/50 rounded-3xl p-6 shadow-lg">
+        <div className="w-full pt-4 border-t border-slate-200/60">
           <WorkflowAttachments 
             orderId={order.id}
             currentStep={designerStep}
@@ -1175,6 +1201,7 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
           />
         </div>
       )}
+      </div>
 
       {/* Action Modal for Designer */}
       {actionMode && selectedOrder && (

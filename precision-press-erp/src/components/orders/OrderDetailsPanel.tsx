@@ -127,64 +127,78 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
   const method = delivery?.choice || 'PICKUP';
 
   return (
-    <div className={className || "bg-white rounded-md shadow-sm border border-slate-200 text-slate-800"}>
-      
-      {/* Top Section: Customer & Logistics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border-b border-slate-200">
-        
+    <div className={className || "space-y-8 text-slate-800"}>
+      {/* Top Grid: Customer & Logistics (No separate background cards) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Customer Column */}
-        <div className="space-y-3 border-r border-slate-100 pr-4">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-[10px] font-black tracking-[0.15em] text-slate-500 uppercase">Customer</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Customer</h3>
             {order.proxyExecutor && (
-              <span className="text-[9px] text-blue-500 font-bold">Placed By: {order.proxyExecutor.name}</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">
+                Placed By: {order.proxyExecutor.name}
+              </span>
             )}
           </div>
           
-          <div className="bg-slate-50 border border-slate-200 rounded px-3 py-2 flex items-center">
-            <span className="text-xs font-medium text-slate-700 w-full truncate">
-              {customer?.displayName || customer?.name || 'Walk-in Customer'}
-            </span>
-          </div>
-          
-          <div className="bg-slate-50 border border-slate-200 rounded px-3 py-2 flex items-center text-xs text-slate-500 gap-4">
-            <span><strong className="text-slate-400 font-medium">PHONE:</strong> {customer?.phone || 'No phone'}</span>
-            <span className="border-l border-slate-300 pl-4"><strong className="text-slate-400 font-medium">BUSINESS:</strong> {(customer as any)?.businessName || 'No business'}</span>
+          <div className="space-y-3">
+            <div className="flex h-12 w-full items-center rounded-xl bg-slate-50/80 px-4 border border-slate-200/80">
+              <span className="material-symbols-outlined text-slate-400 text-lg mr-2">search</span>
+              <span className="text-sm font-bold text-slate-800 w-full truncate">
+                {customer?.displayName || customer?.name || 'Walk-in Customer'}
+              </span>
+            </div>
+            
+            <div className="rounded-xl bg-slate-50/80 p-3 text-xs font-medium text-slate-600 border border-slate-200/80 flex items-center gap-4">
+              <span><strong className="text-slate-400 font-bold uppercase text-[10px] mr-1">Phone:</strong> {customer?.phone || 'No phone'}</span>
+              <span className="border-l border-slate-200 pl-4"><strong className="text-slate-400 font-bold uppercase text-[10px] mr-1">Business:</strong> {(customer as any)?.businessName || 'No business'}</span>
+            </div>
           </div>
         </div>
 
         {/* Logistics Column */}
-        <div className="space-y-3 pl-2">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-[10px] font-black tracking-[0.15em] text-slate-500 uppercase">Logistics Configuration</h3>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Logistics Configuration</h3>
           </div>
           
-          <div className="flex w-full border border-slate-200 rounded overflow-hidden">
-            {['PICKUP', 'DOOR', 'COURIER', 'TRANSPORT'].map((type) => {
-              // Map the raw delivery choice (which could be PICKUP, DOOR_DELIVERY, etc.) to the 4 UI buttons
-              const isSelected = 
-                (type === 'PICKUP' && method === 'PICKUP') ||
-                (type === 'DOOR' && method === 'DOOR_DELIVERY') ||
-                (type === 'COURIER' && method === 'COURIER') ||
-                (type === 'TRANSPORT' && method === 'TRANSPORT');
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              {['PICKUP', 'DOOR', 'COURIER', 'TRANSPORT'].map((type) => {
+                const isSelected = 
+                  (type === 'PICKUP' && method === 'PICKUP') ||
+                  (type === 'DOOR' && method === 'DOOR_DELIVERY') ||
+                  (type === 'COURIER' && method === 'COURIER') ||
+                  (type === 'TRANSPORT' && method === 'TRANSPORT');
 
-              return (
-                <div key={type} className={`flex-1 text-center py-2 text-[10px] font-black uppercase tracking-wider border-r last:border-0 border-slate-200 ${isSelected ? 'bg-[#0B1528] text-white' : 'bg-white text-slate-600'}`}>
-                  {type}
-                </div>
-              );
-            })}
-          </div>
-          
-          <div className="bg-blue-50/50 border border-blue-200 border-dashed rounded px-3 py-3 flex items-center justify-center text-center">
-            <span className="text-xs font-bold text-blue-600 truncate w-full uppercase">
+                return (
+                  <div
+                    key={type}
+                    className={`flex-1 rounded-xl py-2.5 text-center text-[10px] font-black uppercase tracking-widest transition-all ${
+                      isSelected
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-slate-50 text-slate-500 border border-slate-200/80'
+                    }`}
+                  >
+                    {type}
+                  </div>
+                );
+              })}
+            </div>
+            
+            <div className="rounded-xl bg-slate-50/80 p-3 text-xs font-bold text-blue-600 border border-slate-200 border-dashed text-center uppercase">
               {delivery?.address || 'Self Pickup'}
-            </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Ledger Table Section */}
+      {/* Order Items Table Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</h3>
+        </div>
+
       <div className="w-full overflow-x-auto">
         <table className="w-full text-left text-xs border-collapse min-w-[900px]">
           <thead>
@@ -342,7 +356,7 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
           Dense Ledger View with per-item print routing
         </div>
       </div>
-
+    </div>
     </div>
   );
 }

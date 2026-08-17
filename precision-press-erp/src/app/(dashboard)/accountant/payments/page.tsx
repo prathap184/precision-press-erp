@@ -21,6 +21,8 @@ import {
   Building2, CreditCard, FileText, User, Check, Layers
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, collection, query, where, getDocs, limit as firestoreLimit } from '@/lib/supabase-firestore-shim';
 import { GlobalStats } from '@/types/stats';
 
 // ─── Display maps ──────────────────────────────────────────────────────────────
@@ -89,15 +91,172 @@ function PaymentModal({
     if (payment.id.startsWith('V-CREDIT-')) return;
     const fetchSummary = async () => {
       try {
-        if (payment.baseOrderId) {
-          const res = await getGroupOrderSummary(payment.baseOrderId);
-          setOrderSummary(res);
-        } else if (payment.orderId) {
-          const res = await getOrderSummary(payment.orderId);
+        const isChildItem = Boolean(payment.orderId && payment.orderId.includes('-item'));
+        const targetId = isChildItem ? payment.orderId : (payment.orderId || payment.baseOrderId);
+        const baseId = payment.orderId ? payment.orderId.split('-item')[0] : (payment.baseOrderId || '');
+        
+        let res: any = null;
+
+        // 1. If child item, query the child order first
+        if (isChildItem && targetId) {
+          try {
+            const snap = await getDoc(doc(db, 'orders', targetId));
+            if (snap.exists()) {
+              const ord = snap.data() as any;
+              let itemObj: any = null;
+              if (ord.items) {
+                const parsed = typeof ord.items === 'string' ? JSON.parse(ord.items) : ord.items;
+                itemObj = Array.isArray(parsed) ? parsed[0] : parsed;
+              }
+              if (!itemObj && baseId) {
+                const matchIdx = targetId.match(/-item(\d+)/);
+                if (matchIdx) {
+                  const idx = parseInt(matchIdx[1], 10) - 1;
+                  const parentSnap = await getDoc(doc(db, 'orders', baseId));
+                  if (parentSnap.exists()) {
+                    const pData = parentSnap.data() as any;
+                    const pItems = typeof pData.items === 'string' ? JSON.parse(pData.items) : pData.items;
+                    if (Array.isArray(pItems) && pItems[idx]) itemObj = pItems[idx];
+                  }
+                }
+              }
+
+              const itemAmt = ord.item_amount ?? ord.amounts?.productTotal ?? ord.amounts?.subTotal ?? itemObj?.pricingSnapshot?.subTotal ?? itemObj?.subTotal ?? itemObj?.amount ?? 0;
+              const finishAmt = ord.amounts?.eyeletsTotal ?? 0;
+              const logAmt = ord.allocated_logistics_amount ?? ord.amounts?.deliveryCharges ?? ord.amounts?.transport ?? 0;
+              const cgstAmt = ord.cgst_amount ?? ord.amounts?.cgst ?? 0;
+              const sgstAmt = ord.sgst_amount ?? ord.amounts?.sgst ?? 0;
+              const igstAmt = ord.igst_amount ?? ord.amounts?.igst ?? 0;
+              const grandTotalAmt = ord.grand_total_snapshot ?? ord.amounts?.grandTotal ?? (itemAmt + finishAmt + logAmt + cgstAmt + sgstAmt + igstAmt);
+
+              res = {
+                grandTotal: grandTotalAmt,
+                amounts: ord.amounts || {},
+                items: [{
+                  orderId: targetId,
+                  productName: ord.productName || itemObj?.productName || itemObj?.name || 'Order Item',
+                  quantity: itemObj?.specs?.quantity || itemObj?.quantity || 1,
+                  amount: itemAmt,
+                }],
+                baseValue: itemAmt,
+                finishValue: finishAmt,
+                logistics: logAmt,
+                igst: igstAmt,
+                cgst: cgstAmt,
+                sgst: sgstAmt,
+              };
+            }
+          } catch (e) {}
+
+          // Fallback Supabase for child item
+          if (!res) {
+            const { data: ord } = await supabase
+              .from('orders')
+              .select('*')
+              .eq('id', targetId)
+              .single();
+
+            if (ord) {
+              let itemObj: any = null;
+              if (ord.items) {
+                const parsed = typeof ord.items === 'string' ? JSON.parse(ord.items) : ord.items;
+                itemObj = Array.isArray(parsed) ? parsed[0] : parsed;
+              }
+              const itemAmt = ord.item_amount ?? ord.amounts?.productTotal ?? ord.amounts?.subTotal ?? itemObj?.pricingSnapshot?.subTotal ?? itemObj?.subTotal ?? itemObj?.amount ?? 0;
+              const finishAmt = ord.amounts?.eyeletsTotal ?? 0;
+              const logAmt = ord.allocated_logistics_amount ?? ord.amounts?.deliveryCharges ?? ord.amounts?.transport ?? 0;
+              const cgstAmt = ord.cgst_amount ?? ord.amounts?.cgst ?? 0;
+              const sgstAmt = ord.sgst_amount ?? ord.amounts?.sgst ?? 0;
+              const igstAmt = ord.igst_amount ?? ord.amounts?.igst ?? 0;
+              const grandTotalAmt = ord.grand_total_snapshot ?? ord.amounts?.grandTotal ?? (itemAmt + finishAmt + logAmt + cgstAmt + sgstAmt + igstAmt);
+
+              res = {
+                grandTotal: grandTotalAmt,
+                amounts: ord.amounts || {},
+                items: [{
+                  orderId: targetId,
+                  productName: ord.productName || itemObj?.productName || itemObj?.name || 'Order Item',
+                  quantity: itemObj?.specs?.quantity || itemObj?.quantity || 1,
+                  amount: itemAmt,
+                }],
+                baseValue: itemAmt,
+                finishValue: finishAmt,
+                logistics: logAmt,
+                igst: igstAmt,
+                cgst: cgstAmt,
+                sgst: sgstAmt,
+              };
+            }
+          }
+        }
+
+        // 2. Parent / Base Order Lookup (non-child order)
+        if (!res && targetId) {
+          try {
+            const snap = await getDoc(doc(db, 'orders', targetId));
+            if (snap.exists()) {
+              const ord = snap.data() as any;
+              let parsedItems: any[] = [];
+              if (ord.items) {
+                parsedItems = typeof ord.items === 'string' ? JSON.parse(ord.items) : ord.items;
+              }
+              res = {
+                grandTotal: ord.amounts?.grandTotal || ord.totalAmount || payment.amount,
+                amounts: ord.amounts || {},
+                items: parsedItems,
+                baseValue: ord.amounts?.productTotal ?? ord.amounts?.subTotal ?? 0,
+                finishValue: ord.amounts?.eyeletsTotal ?? 0,
+                logistics: ord.amounts?.deliveryCharges ?? ord.amounts?.transport ?? 0,
+                igst: ord.amounts?.igst ?? 0,
+                cgst: ord.amounts?.cgst ?? 0,
+                sgst: ord.amounts?.sgst ?? 0,
+              };
+            }
+          } catch (e) {}
+        }
+
+        // 3. Server actions
+        if (!res && payment.baseOrderId && !isChildItem) {
+          res = await getGroupOrderSummary(payment.baseOrderId);
+        }
+        if (!res && targetId) {
+          res = await getOrderSummary(targetId);
+        }
+
+        // 4. Supabase fallback
+        if (!res && targetId) {
+          const { data: ord } = await supabase
+            .from('orders')
+            .select('*')
+            .or(`id.eq.${targetId},id.eq.${baseId}`)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (ord) {
+            let parsedItems: any[] = [];
+            if (ord.items) {
+              parsedItems = typeof ord.items === 'string' ? JSON.parse(ord.items) : ord.items;
+            }
+            res = {
+              grandTotal: ord.amounts?.grandTotal || ord.totalAmount || payment.amount,
+              amounts: ord.amounts || {},
+              items: parsedItems,
+              baseValue: ord.amounts?.productTotal ?? ord.amounts?.subTotal ?? 0,
+              finishValue: ord.amounts?.eyeletsTotal ?? 0,
+              logistics: ord.amounts?.deliveryCharges ?? ord.amounts?.transport ?? 0,
+              igst: ord.amounts?.igst ?? 0,
+              cgst: ord.amounts?.cgst ?? 0,
+              sgst: ord.amounts?.sgst ?? 0,
+            };
+          }
+        }
+
+        if (res) {
           setOrderSummary(res);
         }
       } catch (e) {
-        console.error(e);
+        console.error('Failed to load order summary:', e);
       } finally {
         setLoadingSummary(false);
       }
@@ -112,7 +271,7 @@ function PaymentModal({
       const fetchedItems = orderSummary.items ? orderSummary.items.map((it: any) => ({
         orderId: payment.orderId || payment.baseOrderId || '',
         productName: it.productName || it.name || 'Order Item',
-        quantity: it.quantity || 1,
+        quantity: it.specs?.quantity || it.quantity || 1,
         amount: it.pricingSnapshot?.subTotal || it.subTotal || it.amount || 0,
       })) : [];
 
@@ -121,20 +280,30 @@ function PaymentModal({
         : fetchedItems;
 
       return {
-        items: items,
-        baseValue: orderSummary.baseValue ?? orderSummary.amounts?.productTotal ?? 0,
+        items: items.length > 0 ? items : [{
+          orderId: payment.orderId || payment.baseOrderId || '',
+          productName: 'Order Items',
+          quantity: 1,
+          amount: orderSummary.amounts?.productTotal || orderSummary.amounts?.subTotal || orderSummary.grandTotal || payment.amount
+        }],
+        baseValue: orderSummary.baseValue ?? orderSummary.amounts?.productTotal ?? orderSummary.amounts?.subTotal ?? 0,
         finishValue: orderSummary.finishValue ?? orderSummary.amounts?.eyeletsTotal ?? 0,
         logistics: orderSummary.logistics ?? orderSummary.amounts?.deliveryCharges ?? orderSummary.amounts?.transport ?? 0,
         igst: orderSummary.igst ?? orderSummary.amounts?.igst ?? 0,
         cgst: orderSummary.cgst ?? orderSummary.amounts?.cgst ?? 0,
         sgst: orderSummary.sgst ?? orderSummary.amounts?.sgst ?? 0,
-        grandTotal: orderSummary.grandTotal || payment.amount
+        grandTotal: orderSummary.grandTotal || orderSummary.amounts?.grandTotal || payment.amount
       };
     }
     // Fallback if not loaded
     return {
-      items: payment.itemBreakdown || [],
-      baseValue: 0, finishValue: 0, logistics: 0, gst: 0, igst: 0, cgst: 0, sgst: 0,
+      items: payment.itemBreakdown && payment.itemBreakdown.length > 0 ? payment.itemBreakdown : [{
+        orderId: payment.orderId || payment.baseOrderId || '',
+        productName: 'Order Items',
+        quantity: 1,
+        amount: payment.amount
+      }],
+      baseValue: payment.amount, finishValue: 0, logistics: 0, gst: 0, igst: 0, cgst: 0, sgst: 0,
       grandTotal: payment.amount
     };
   })();
@@ -494,29 +663,152 @@ export default function AccountantPaymentsPage() {
   // Auto-select payment if orderId is in query parameters
   useEffect(() => {
     const orderIdParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('orderId') : null;
-    if (orderIdParam && (pendingPayments.length > 0 || allPayments.length > 0)) {
-      const baseIdParam = orderIdParam.split('-item')[0];
-      const isMatch = (p: PaymentRecord) => {
-        return (
-          p.orderId === orderIdParam ||
-          p.baseOrderId === orderIdParam ||
-          p.orderId === baseIdParam ||
-          p.baseOrderId === baseIdParam ||
-          (Array.isArray(p.orderIds) && p.orderIds.includes(orderIdParam)) ||
-          (Array.isArray(p.itemBreakdown) && p.itemBreakdown.some(item => item.orderId === orderIdParam))
-        );
-      };
+    if (!orderIdParam) return;
 
-      const match = pendingPayments.find(isMatch);
-      if (match) {
-        setSelected(match);
-      } else {
-        const matchAll = allPayments.find(isMatch);
-        if (matchAll) {
-          setSelected(matchAll);
-        }
-      }
+    const baseIdParam = orderIdParam.split('-item')[0];
+    const isMatch = (p: PaymentRecord) => {
+      return (
+        p.orderId === orderIdParam ||
+        p.baseOrderId === orderIdParam ||
+        p.orderId === baseIdParam ||
+        p.baseOrderId === baseIdParam ||
+        (Array.isArray(p.orderIds) && p.orderIds.includes(orderIdParam)) ||
+        (Array.isArray(p.itemBreakdown) && p.itemBreakdown.some(item => item.orderId === orderIdParam))
+      );
+    };
+
+    const match = pendingPayments.find(isMatch);
+    if (match) {
+      setSelected(match);
+      return;
     }
+
+    const matchAll = allPayments.find(isMatch);
+    if (matchAll) {
+      setSelected(matchAll);
+      return;
+    }
+
+    // Fallback: If not found in payment records (e.g. ACDEMA proxy order), query db / Supabase directly
+    const loadProxyOrderAsPayment = async () => {
+      try {
+        let ord: any = null;
+        const isChild = Boolean(orderIdParam && orderIdParam.includes('-item'));
+
+        // 1. Direct Firestore lookup - target orderIdParam first
+        try {
+          const snap = await getDoc(doc(db, 'orders', orderIdParam));
+          if (snap.exists()) {
+            ord = { id: snap.id, ...snap.data() };
+          }
+        } catch (e) {}
+
+        if (!ord && !isChild && baseIdParam) {
+          try {
+            const baseSnap = await getDoc(doc(db, 'orders', baseIdParam));
+            if (baseSnap.exists()) {
+              ord = { id: baseSnap.id, ...baseSnap.data() };
+            }
+          } catch (e) {}
+        }
+
+        // 2. Direct Supabase lookup
+        if (!ord) {
+          const { data } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('id', orderIdParam)
+            .single();
+          if (data) ord = data;
+        }
+
+        if (ord) {
+          let itemObj: any = null;
+          let parsedItems: any[] = [];
+          if (ord.items) {
+            parsedItems = typeof ord.items === 'string' ? JSON.parse(ord.items) : ord.items;
+            itemObj = Array.isArray(parsedItems) ? parsedItems[0] : parsedItems;
+          }
+
+          if (isChild && !itemObj && baseIdParam) {
+            const matchIdx = orderIdParam.match(/-item(\d+)/);
+            if (matchIdx) {
+              const idx = parseInt(matchIdx[1], 10) - 1;
+              try {
+                const parentSnap = await getDoc(doc(db, 'orders', baseIdParam));
+                if (parentSnap.exists()) {
+                  const pData = parentSnap.data() as any;
+                  const pItems = typeof pData.items === 'string' ? JSON.parse(pData.items) : pData.items;
+                  if (Array.isArray(pItems) && pItems[idx]) itemObj = pItems[idx];
+                }
+              } catch (e) {}
+            }
+          }
+
+          const childGrandTotal = isChild
+            ? (ord.grand_total_snapshot ?? ord.amounts?.grandTotal ?? ord.amounts?.total ?? (ord.item_amount ? ord.item_amount + (ord.allocated_logistics_amount || 0) + (ord.cgst_amount || 0) + (ord.sgst_amount || 0) + (ord.igst_amount || 0) : 0))
+            : (ord.amounts?.grandTotal || 0);
+
+          const itemAmt = isChild
+            ? (ord.item_amount ?? ord.amounts?.productTotal ?? ord.amounts?.subTotal ?? itemObj?.pricingSnapshot?.subTotal ?? itemObj?.subTotal ?? childGrandTotal)
+            : (ord.amounts?.productTotal ?? ord.amounts?.subTotal ?? childGrandTotal);
+
+          const itemBreakdown = isChild
+            ? [{
+                orderId: ord.id,
+                productName: ord.productName || itemObj?.productName || itemObj?.name || 'Order Item',
+                quantity: itemObj?.specs?.quantity || itemObj?.quantity || 1,
+                amount: itemAmt,
+              }]
+            : (parsedItems || []).map((it: any) => ({
+                orderId: ord.id,
+                productName: it.productName || it.name || 'Order Item',
+                quantity: it.specs?.quantity || it.quantity || 1,
+                amount: it.pricingSnapshot?.subTotal || it.subTotal || it.amount || 0,
+              }));
+
+          let proxyStaff = '';
+          if (ord.proxyExecutor) {
+            try {
+              const proxy = typeof ord.proxyExecutor === 'string' ? JSON.parse(ord.proxyExecutor) : ord.proxyExecutor;
+              proxyStaff = ord.proxyName || proxy?.name || proxy?.displayName || '';
+            } catch (e) {}
+          }
+
+          const syntheticPayment: PaymentRecord = {
+            id: `PROXY-${ord.id.replace('ORD-', '')}`,
+            orderId: ord.id,
+            baseOrderId: isChild ? '' : baseIdParam,
+            itemBreakdown: itemBreakdown.length > 0 ? itemBreakdown : [{
+              orderId: ord.id,
+              productName: ord.productName || 'Order Item',
+              quantity: 1,
+              amount: childGrandTotal,
+            }],
+            userId: ord.customerId || '',
+            paymentMode: ord.payment?.method || ord.paymentMethod || 'PROXY_SETTLEMENT',
+            amount: childGrandTotal,
+            ourBankAccount: 'DIRECT_SETTLEMENT',
+            depositDate: ord.createdAt ? (typeof ord.createdAt === 'object' && ord.createdAt.seconds ? new Date(ord.createdAt.seconds * 1000).toISOString() : new Date(ord.createdAt).toISOString()) : new Date().toISOString(),
+            depositBank: 'Cash / Credit Settlement',
+            branchName: proxyStaff ? `Booked by ${proxyStaff}` : 'Staff Proxy Booking',
+            proofDriveLink: '',
+            remarks: `Staff Proxy Order booked for ${ord.customerSnapshot?.displayName || ord.customerSnapshot?.name || 'Customer'}.`,
+            depositRefNo: ord.id,
+            status: 'APPROVED',
+            customerName: ord.customerSnapshot?.displayName || ord.customerSnapshot?.name || 'Customer',
+            createdAt: ord.createdAt ? (typeof ord.createdAt === 'object' && ord.createdAt.seconds ? new Date(ord.createdAt.seconds * 1000).toISOString() : new Date(ord.createdAt).toISOString()) : new Date().toISOString(),
+            approvedAt: ord.createdAt ? (typeof ord.createdAt === 'object' && ord.createdAt.seconds ? new Date(ord.createdAt.seconds * 1000).toISOString() : new Date(ord.createdAt).toISOString()) : new Date().toISOString(),
+          };
+
+          setSelected(syntheticPayment);
+        }
+      } catch (err) {
+        console.error('Failed to load proxy order payment summary:', err);
+      }
+    };
+
+    loadProxyOrderAsPayment();
   }, [pendingPayments, allPayments]);
 
   // ── Actions ──────────────────────────────────────────────────────────────────

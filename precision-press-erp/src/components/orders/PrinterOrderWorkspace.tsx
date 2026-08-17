@@ -498,43 +498,13 @@ export function PrinterOrderWorkspace({
   );
 
   const inner = (
-    <div className="space-y-6 animate-in fade-in duration-200">
-      {mode === 'READ_ONLY' && (
-        <div className="rounded-3xl border border-blue-200 bg-blue-50/50 p-5 flex items-start gap-3 shadow-md text-slate-800">
-          <span className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5">
-            <span className="material-symbols-outlined text-lg leading-none">visibility</span>
-          </span>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-600">Read Only Mode</p>
-            <p className="text-[14px] font-bold text-blue-900 mt-1">This stage has already been completed.</p>
-            <p className="text-[12px] text-blue-700/80 mt-0.5 font-medium">Uploads and workflow actions are disabled for this stage.</p>
-          </div>
-        </div>
-      )}
-
-      {/* 📄 Job Specification Sheet Card 📄 */}
-      <div className="bg-white/50 backdrop-blur-xl border border-white/50 rounded-3xl p-5 shadow-lg">
-        {jobSpecSection}
-      </div>
-
-      {/* ── Full Booking Details ── */}
-      <OrderDetailsPanel 
-        order={order} 
-        role="PRINTER" 
-        items={items} 
-        className="bg-white/60 backdrop-blur-lg border border-white/50 shadow-lg rounded-3xl text-slate-800"
-      />
-
-      {/* ── Enterprise MES Workflow Timeline ── */}
-      <div className="bg-white/50 backdrop-blur-xl border border-white/50 rounded-3xl p-5 shadow-lg">
-        <WorkflowTimeline orderId={orderId} />
-      </div>
-      
-      { !hideHeader && (
-        <section className="bg-white/50 backdrop-blur-xl border border-white/50 rounded-3xl overflow-hidden shadow-lg p-5">
+    <div className="space-y-8 animate-in fade-in duration-200">
+      {/* Top Header Card */}
+      {!hideHeader && (
+        <section className="w-full">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
             <div className="flex items-start gap-4 min-w-0">
-              <div className="w-16 h-16 shrink-0 overflow-hidden rounded-2xl border border-white/60 bg-white/40 shadow-sm">
+              <div className="w-16 h-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/60 shadow-sm">
                 <OrderThumbnail orderId={order.id} order={order as any} size="full" />
               </div>
               <div className="min-w-0 flex-1 pt-0.5">
@@ -544,14 +514,17 @@ export function PrinterOrderWorkspace({
                     {STATUS_LABELS[order.status] || order.status}
                   </span>
                 </div>
-                <h1 className="mt-2 text-[18px] font-black tracking-tight text-slate-900 leading-none truncate">
+                <h1 className="mt-2 text-[18px] md:text-[20px] font-black tracking-tight text-slate-900 leading-none truncate">
                   {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
                 </h1>
+                <p className="text-[11px] text-slate-500 font-medium mt-1">
+                  Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
+                </p>
               </div>
             </div>
 
             <div className="lg:justify-self-end w-full max-w-[300px] ml-auto space-y-3">
-              <div className="rounded-2xl border border-cyan-100 bg-cyan-50/45 backdrop-blur-sm p-3.5 shadow-sm">
+              <div className="rounded-2xl border border-cyan-100/80 bg-cyan-50/60 p-3.5 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-[9px] font-black uppercase tracking-wider text-cyan-900">TIFF Path</p>
                   <span className="text-cyan-700 cursor-pointer hover:text-cyan-950 transition-colors" onClick={copyPath} title="Copy TIFF Path">
@@ -563,11 +536,18 @@ export function PrinterOrderWorkspace({
               </div>
 
               <div className="flex items-center gap-2 justify-end">
+                <button 
+                  type="button"
+                  onClick={() => router.push(backHref)} 
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/80 backdrop-blur-md px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow transition-all duration-200"
+                >
+                  <ChevronLeft size={12} /> Back
+                </button>
                 {tiffReady && (
                   <button
                     type="button"
                     onClick={openTiff}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-cyan-600 px-4 h-9 text-[10px] font-black uppercase tracking-widest text-white hover:bg-cyan-750 shadow transition-all duration-200"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-cyan-600 px-4 h-9 text-[10px] font-black uppercase tracking-widest text-white hover:bg-cyan-700 shadow transition-all duration-200"
                   >
                     <ExternalLink size={12} /> Open
                   </button>
@@ -579,7 +559,7 @@ export function PrinterOrderWorkspace({
                   className={`inline-flex items-center justify-center gap-1.5 rounded-full px-4 h-9 text-[10px] font-black uppercase tracking-widest text-white transition-all shadow duration-200 ${
                     mode === 'READ_ONLY' || isCompleted
                       ? 'bg-slate-200 text-slate-500 cursor-not-allowed border-slate-300 opacity-80'
-                      : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-50'
+                      : 'bg-slate-900 hover:bg-slate-800 disabled:opacity-50'
                   }`}
                 >
                   {processing ? (
@@ -599,36 +579,65 @@ export function PrinterOrderWorkspace({
         </section>
       )}
 
-      {/* ── TIFF Timeline Card ── */}
-      <div className="bg-white/50 backdrop-blur-xl border border-white/50 rounded-3xl p-5 shadow-lg">
+      {mode === 'READ_ONLY' && (
+        <div className="rounded-2xl bg-blue-50/60 p-4 flex items-start gap-3 border border-blue-100 text-slate-800">
+          <span className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5">
+            <span className="material-symbols-outlined text-lg leading-none">visibility</span>
+          </span>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-600">Read Only Mode</p>
+            <p className="text-[14px] font-bold text-blue-900 mt-1">This stage has already been completed.</p>
+            <p className="text-[12px] text-blue-700/80 mt-0.5 font-medium">Uploads and workflow actions are disabled for this stage.</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Full Booking Details ── */}
+      <OrderDetailsPanel 
+        order={order} 
+        role="PRINTER" 
+        items={items} 
+        className="text-slate-800 w-full"
+      />
+
+      {/* Customer Notes */}
+      <div className="w-full rounded-2xl bg-slate-50/80 p-4 border border-slate-200/80 flex items-center gap-3">
+        <span className="material-symbols-outlined text-purple-400">notes</span>
+        <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">Customer Notes:</span>
+        <span className="text-sm font-medium text-slate-700">{order.notes || order.customerNotes || "No customer notes provided."}</span>
+      </div>
+
+      {/* 📄 Job Specification Sheet Section 📄 */}
+      <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
+        {jobSpecSection}
+      </div>
+
+      {/* ── Enterprise MES Workflow Timeline ── */}
+      <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
+        <WorkflowTimeline orderId={orderId} />
+      </div>
+
+      {/* ── TIFF Timeline Section ── */}
+      <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
         {tiffTimelineSection}
       </div>
     </div>
   );
 
-  if (!framed) return inner;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#ecd9fa]/65 via-[#f4f2f8]/90 to-[#daf4fc]/65 p-4 md:p-6 lg:p-8 flex flex-col items-center justify-start w-full">
-      <div className="w-full overflow-hidden rounded-3xl border border-white/50 bg-white/40 backdrop-blur-xl shadow-[0_18px_60px_rgba(15,23,42,0.12)] flex flex-col flex-1">
-        <div className="flex h-12 items-center justify-between border-b border-slate-300/40 bg-white/30 backdrop-blur-md px-5 text-[12px] font-black text-slate-800 uppercase tracking-widest">
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 bg-blue-100/80 text-blue-700 rounded-lg">
-              <Printer size={14} />
-            </span>
-            <span>Order Details</span>
-          </div>
-          <span className="uppercase tracking-[0.2em] font-black text-[12px] text-slate-650 hidden sm:inline">Hindustan Enterprises</span>
-          <button 
-            type="button" 
-            onClick={() => router.push(backHref)}
-            className="w-7 h-7 rounded-full bg-white/60 hover:bg-white/80 border border-slate-200/50 flex items-center justify-center text-slate-600 hover:text-slate-800 transition-all shadow-sm" 
-            aria-label="Close"
-          >
-            <X size={14} />
-          </button>
-        </div>
-        <div className="p-4 md:p-6 flex-1 flex flex-col">{inner}</div>
+    <div className="font-sans text-slate-800 bg-gradient-to-br from-[#cad6fa] via-[#d4e4fc] to-[#bce1f8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none overflow-hidden pb-12">
+      {/* Dynamic Glassmorphism Background with glowing orbs */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-[#93c5fd]/30 blur-[140px] pointer-events-none animate-pulse"></div>
+        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#c4b5fd]/30 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-[#a5f3fc]/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+      </div>
+
+      {/* ONE Master Glass Container */}
+      <div className="relative z-10 rounded-[2.5rem] bg-white/60 backdrop-blur-xl shadow-lg border border-white/50 p-6 md:p-8 space-y-8">
+        {inner}
       </div>
     </div>
   );

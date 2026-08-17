@@ -228,107 +228,126 @@ export function StagePhotoWorkspace({
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-200 pb-6">
-      {mode === 'READ_ONLY' && (
-        <div className="rounded-3xl border border-blue-200 bg-blue-50/50 p-5 flex items-start gap-3 shadow-md">
-          <span className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5">
-            <span className="material-symbols-outlined text-lg leading-none">visibility</span>
-          </span>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-600">Read Only Mode</p>
-            <p className="text-[14px] font-bold text-blue-900 mt-1">This stage has already been completed.</p>
-            <p className="text-[12px] text-blue-700/80 mt-0.5 font-medium">Uploads and workflow actions are disabled for this stage.</p>
-          </div>
-        </div>
-      )}
+    <div className="font-sans text-slate-800 bg-gradient-to-br from-[#cad6fa] via-[#d4e4fc] to-[#bce1f8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none overflow-hidden pb-12">
+      {/* Dynamic Glassmorphism Background with glowing orbs */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-[#93c5fd]/30 blur-[140px] pointer-events-none animate-pulse"></div>
+        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#c4b5fd]/30 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-[#a5f3fc]/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+      </div>
 
-      <section className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-5 md:p-6 flex flex-col gap-5">
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">{stageLabel}</p>
-              <h1 className="mt-2 text-[28px] font-bold font-black tracking-tight text-slate-900 truncate">
-                Order #{order.id.replace('ORD-', '')} {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
-              </h1>
-              <p className="mt-2 text-sm text-slate-500 max-w-2xl">{stageDescription}</p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-600">
-                  {order.status}
-                </span>
-                {currentStep?.label && (
-                  <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-blue-700">
-                    Current: {currentStep.label}
+      {/* ONE Master Glass Container */}
+      <div className="relative z-10 rounded-[2.5rem] bg-white/60 backdrop-blur-xl shadow-lg border border-white/50 p-6 md:p-8 space-y-8">
+        {mode === 'READ_ONLY' && (
+          <div className="rounded-2xl bg-blue-50/60 p-4 flex items-start gap-3 border border-blue-100 text-slate-800">
+            <span className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5">
+              <span className="material-symbols-outlined text-lg leading-none">visibility</span>
+            </span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-600">Read Only Mode</p>
+              <p className="text-[14px] font-bold text-blue-900 mt-1">This stage has already been completed.</p>
+              <p className="text-[12px] text-blue-700/80 mt-0.5 font-medium">Uploads and workflow actions are disabled for this stage.</p>
+            </div>
+          </div>
+        )}
+
+        <section className="w-full">
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">{stageLabel}</p>
+                <h1 className="mt-2 text-[20px] md:text-[24px] font-black tracking-tight text-slate-900 truncate">
+                  Order #{order.id.replace('ORD-', '')} — {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
+                </h1>
+                <p className="mt-1 text-xs text-slate-500 max-w-2xl">{stageDescription}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center rounded-full border border-slate-200/50 bg-slate-50/50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-slate-600">
+                    {order.status}
                   </span>
-                )}
+                  {currentStep?.label && (
+                    <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-blue-700">
+                      Current: {currentStep.label}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0 lg:items-end">
+                <Link href={backHref} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/80 backdrop-blur-md px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow transition-all duration-200">
+                  {backLabel}
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleWorkDone}
+                  disabled={processing || (!photoOptional && !photoUrl) || photoUploading || mode === 'READ_ONLY'}
+                  className={`inline-flex items-center justify-center gap-2 rounded-full px-5 h-9 text-[10px] font-black uppercase tracking-widest text-white transition-all shadow duration-200 ${
+                    mode === 'READ_ONLY' || isCompleted ? 'bg-slate-200 text-slate-500 cursor-not-allowed border-slate-300 opacity-80' : 'bg-slate-900 hover:bg-slate-800 disabled:opacity-50'
+                  }`}
+                >
+                  {processing ? <Loader2 className="animate-spin" size={13} /> : mode === 'READ_ONLY' ? <CheckCircle size={13} className="text-slate-400" /> : isCompleted ? <CheckCircle size={13} /> : <Play size={13} />}
+                  {mode === 'READ_ONLY' ? 'Already Completed' : isCompleted ? 'Completed' : 'Work Done'}
+                </button>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 lg:items-end">
-              <Link href={backHref} className="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-slate-700 hover:bg-slate-50">
-                {backLabel}
-              </Link>
-              <button
-                type="button"
-                onClick={handleWorkDone}
-                disabled={processing || (!photoOptional && !photoUrl) || photoUploading || mode === 'READ_ONLY'}
-                className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-all ${
-                  mode === 'READ_ONLY' || isCompleted ? 'bg-slate-200 text-slate-500 cursor-not-allowed border-slate-300 opacity-80' : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-50'
-                }`}
-              >
-                {processing ? <Loader2 className="animate-spin" size={14} /> : mode === 'READ_ONLY' ? <CheckCircle size={14} className="text-slate-400" /> : isCompleted ? <CheckCircle size={14} /> : <Play size={14} />}
-                {mode === 'READ_ONLY' ? 'Already Completed' : isCompleted ? 'Completed' : 'Work Done'}
-              </button>
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
+              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Upload Photo</p>
+                <label className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed bg-white px-4 py-5 text-xs font-bold text-slate-700 transition-colors shadow-sm ${
+                  mode === 'READ_ONLY'
+                    ? 'border-slate-300 bg-slate-100/50 cursor-not-allowed opacity-75'
+                    : 'border-blue-200 hover:bg-blue-50 cursor-pointer'
+                }`}>
+                  <Upload size={14} />
+                  {photoUploading ? 'Uploading...' : mode === 'READ_ONLY' ? 'Uploads disabled (completed)' : 'Choose stage photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={photoUploading || mode === 'READ_ONLY'}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handlePhotoUpload(file);
+                    }}
+                  />
+                </label>
+                {photoError && <p className="text-xs font-bold text-red-600">{photoError}</p>}
+                {photoUrl && (
+                  <a href={photoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-700 hover:underline">
+                    <ExternalLink size={11} />
+                    Open uploaded photo
+                  </a>
+                )}
+              </div>
+
+              <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Stage Requirement</p>
+                <p className="text-xs font-semibold text-slate-700">
+                  {photoOptional ? 'You can optionally upload a stage photo before pressing Work Done to complete this stage.' : 'Upload the stage photo first, then press Work Done to move the order forward.'}
+                </p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase">Role: {role}</p>
+              </div>
             </div>
           </div>
+        </section>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Upload Photo</p>
-              <label className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed bg-white px-4 py-6 text-sm font-bold text-slate-700 transition-colors ${
-                mode === 'READ_ONLY'
-                  ? 'border-slate-300 bg-slate-100/50 cursor-not-allowed opacity-75'
-                  : 'border-blue-200 hover:bg-blue-50 cursor-pointer'
-              }`}>
-                <Upload size={16} />
-                {photoUploading ? 'Uploading...' : mode === 'READ_ONLY' ? 'Uploads disabled (completed)' : 'Choose stage photo'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  disabled={photoUploading || mode === 'READ_ONLY'}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void handlePhotoUpload(file);
-                  }}
-                />
-              </label>
-              {photoError && <p className="text-xs font-bold text-red-600">{photoError}</p>}
-              {photoUrl && (
-                <a href={photoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-widest text-blue-700 hover:underline">
-                  <ExternalLink size={12} />
-                  Open uploaded photo
-                </a>
-              )}
-            </div>
+        {/* ── Full Booking Details (OrderDetailsPanel at top) ── */}
+        <OrderDetailsPanel order={order} role={role} className="text-slate-800 w-full" />
 
-            <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Stage Requirement</p>
-              <p className="text-sm font-semibold text-slate-700">
-                {photoOptional ? 'You can optionally upload a stage photo before pressing Work Done to complete this stage.' : 'Upload the stage photo first, then press Work Done to move the order forward.'}
-              </p>
-              <p className="text-[11px] text-slate-500">Role: {role}</p>
-            </div>
-          </div>
+        {/* Customer Notes */}
+        <div className="w-full rounded-2xl bg-slate-50/80 p-4 border border-slate-200/80 flex items-center gap-3">
+          <span className="material-symbols-outlined text-purple-400">notes</span>
+          <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">Customer Notes:</span>
+          <span className="text-sm font-medium text-slate-700">{order.notes || order.customerNotes || "No customer notes provided."}</span>
         </div>
-      </section>
 
-      {/* ── Production Timeline ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm p-6">
-        <WorkflowTimeline orderId={orderId} />
+        {/* ── Production Timeline ── */}
+        <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
+          <WorkflowTimeline orderId={orderId} />
+        </div>
       </div>
-
-      {/* ── Full Booking Details ── */}
-      <OrderDetailsPanel order={order} role={role} />
     </div>
   );
 }
