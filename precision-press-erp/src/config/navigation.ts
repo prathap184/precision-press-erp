@@ -73,17 +73,8 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   // ] },
 
   // ── Admin / Super Admin ─────────────────────────────────────────────
-  // { label: 'Job Queue',            href: '/admin/job-queue',        icon: Activity,             roles: ['ADMIN', 'SUPER_ADMIN'],                                               group: 'main'    },
-  { label: 'Management',           href: '#management',             icon: Users,                roles: ['ADMIN', 'SUPER_ADMIN', 'ACDEMA'],                                               group: 'main', subItems: [
-    { label: 'Product Management', href: '/admin/products' },
-    { label: 'Staff Management', href: '/admin/staff' },
-    { label: 'Customer Management', href: '/admin/customers' },
-    { label: 'Supplier Ledgers', href: '/admin/suppliers' },
-    { label: 'Bank Accounts', href: '/admin/bank-accounts' },
-  ] },
-  { label: 'Supplier Ledgers',     href: '/admin/suppliers',        icon: Building2,            roles: ['ACCOUNTANT'],                                 group: 'main'    },
-  { label: 'GST PAGE',             href: '#gst-page',               icon: FileSpreadsheet,      roles: ['ADMIN', 'SUPER_ADMIN', 'ACDEMA'],                                               group: 'main', subItems: [
-    { label: 'GST Details', href: '/admin/gst-info' },
+  { label: 'Staff Management',     href: '/admin/staff',            icon: Users,                roles: ['ADMIN', 'SUPER_ADMIN', 'ACDEMA'],                                     group: 'main' },
+  { label: 'GST PAGE',             href: '#gst-page',               icon: FileSpreadsheet,      roles: ['ADMIN', 'SUPER_ADMIN', 'ACDEMA'],                                     group: 'main', subItems: [
     { label: 'HSN Master', href: '/admin/hsn-master' },
     { label: 'GST & Invoice Settings', href: '/admin/settings/gst-invoice' },
   ] },
@@ -105,18 +96,10 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   // { label: 'All Assigned Orders',  href: '/printer/orders',         icon: Activity,             roles: ['PRINTER'],                                                            group: 'main'    },
   { label: 'Pasting Dashboard',    href: '/pasting',                icon: ClipboardList,        roles: ['PASTING'],                                                            group: 'main'    },
   { label: 'Finishing Dashboard',  href: '/finishing',              icon: CheckCircle,          roles: ['FINISHING'],                                                          group: 'main'    },
-  { label: 'Company Finance',      href: '#company',                icon: Building2,            roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'ACDEMA'],                                 group: 'main', subItems: [
-    { label: 'Day Book', href: '/accountant/day-book' },
-    { label: 'Cash Ledger', href: '/accountant/cash-ledger' },
-    { label: 'Bank Ledgers', href: '/accountant/bank-ledger' },
-    { label: 'Bank Accounts Control', href: '/admin/bank-accounts' },
-  ] },
   { label: 'Approved Payments',    href: '/accountant',             icon: Activity,             roles: ['ACCOUNTANT'],                                                         group: 'main'    },
   { label: 'Payment Approvals',    href: '/accountant/payments',    icon: ReceiptIndianRupee,   roles: ['ACCOUNTANT'],                                                         group: 'main'    },
   { label: 'Accounts Ledger',      href: '/accountant/ledger',      icon: Activity,             roles: ['ACCOUNTANT'],                                                         group: 'main'    },
-  { label: 'Tally Dashboard',      href: '/tally',                  icon: Activity,             roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'ACDEMA'],                                 group: 'main'    },
-  { label: 'Tally Masters',        href: '/tally-masters',          icon: Users,                roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'ACDEMA'],                                 group: 'main'    },
-  { label: 'Accountant Tally',     href: '/accountant-tally',       icon: Calculator,           roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'ACDEMA'],                                 group: 'main'    },
+  { label: 'Tally Masters',        href: '/tally-masters',          icon: Users,                roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'ACDEMA'],                       group: 'main'    },
   { label: 'Sales Register',       href: '/sales-register',         icon: FileText,             roles: ['ACCOUNTANT'],                       group: 'main'    },
   { label: 'Receipt Register',     href: '/receipt-register',       icon: ClipboardList,        roles: ['ACCOUNTANT'],                       group: 'main'    },
   { label: 'Receipt Entry (Payment)', href: '/receipt-entry',       icon: Wallet,               roles: ['ACCOUNTANT'],                       group: 'main'    },
