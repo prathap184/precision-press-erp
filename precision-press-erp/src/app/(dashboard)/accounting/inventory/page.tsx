@@ -20,6 +20,7 @@ import {
   PowerOff,
   Tag,
   Loader2,
+  Plus,
 } from "lucide-react";
 import {
   AreaChart,
@@ -559,6 +560,10 @@ export default function InventoryPage() {
               </Tabs>
 
               <div className="flex items-center gap-2">
+                <Button size="sm" className="h-8 text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm" onClick={() => openDrawer("inventory")}>
+                  <Plus className="size-3.5" />
+                  <span>Add Stock Item</span>
+                </Button>
                 <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => setSelectMode(true)}>
                   Select
                 </Button>
