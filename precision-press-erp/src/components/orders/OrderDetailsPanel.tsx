@@ -321,31 +321,7 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
         </table>
       </div>
 
-      {/* Documents Action Bar (Not shown to PRINTER role) */}
-      {role !== 'PRINTER' && (
-        <div className="p-4 bg-white border-t border-slate-200">
-          <div className="flex items-center gap-2 mb-3">
-            <FileText className="w-3.5 h-3.5 text-purple-600" />
-            <h3 className="text-[10px] font-black tracking-[0.15em] text-slate-500 uppercase">Documents</h3>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <a href={`/documents/invoice/${order.id}/print`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors">
-              <Printer size={12} /> Tax Invoice
-            </a>
-            
-            {(order.status === 'DISPATCHED' || order.status === 'DELIVERED') && (
-              <a href={`/documents/challan/${order.id}/print`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors">
-                <Truck size={12} /> Delivery Challan
-              </a>
-            )}
 
-            {/* If we don't have payments array directly, we use the modified route that queries it */}
-            <a href={`/documents/receipt/${order.id}/print`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-md text-[10px] font-bold uppercase tracking-widest transition-colors">
-              <IndianRupee size={12} /> Receipt Voucher
-            </a>
-          </div>
-        </div>
-      )}
 
       {/* Bottom Footer Row */}
       <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-between items-center">

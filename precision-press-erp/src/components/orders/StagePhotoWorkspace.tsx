@@ -337,11 +337,16 @@ export function StagePhotoWorkspace({
         <OrderDetailsPanel order={order} role={role} className="text-slate-800 w-full" />
 
         {/* Customer Notes */}
-        <div className="w-full rounded-2xl bg-slate-50/80 p-4 border border-slate-200/80 flex items-center gap-3">
-          <span className="material-symbols-outlined text-purple-400">notes</span>
-          <span className="text-[10px] font-black tracking-widest text-slate-500 uppercase">Customer Notes:</span>
-          <span className="text-sm font-medium text-slate-700">{order.notes || order.customerNotes || "No customer notes provided."}</span>
-        </div>
+        {(() => {
+          const notesContent = order.productionNotes || (order as any).production_notes || order.notes || order.customerNotes || (order as any).customer_notes || (order as any).remarks || (order as any).metadata?.notes || (order as any).metadata?.productionNotes || (order as any).additionalNotes;
+          return (
+            <div className={`w-full rounded-2xl p-4 border flex items-center gap-3 ${notesContent ? 'bg-amber-50/80 border-amber-200/80 shadow-sm' : 'bg-slate-50/80 border-slate-200/80'}`}>
+              <span className={`material-symbols-outlined ${notesContent ? 'text-amber-600' : 'text-purple-400'}`}>notes</span>
+              <span className={`text-[10px] font-black tracking-widest uppercase ${notesContent ? 'text-amber-800' : 'text-slate-500'}`}>Customer Notes:</span>
+              <span className={`text-sm font-semibold ${notesContent ? 'text-slate-900' : 'text-slate-500'}`}>{notesContent || "No customer notes provided."}</span>
+            </div>
+          );
+        })()}
 
         {/* ── Production Timeline ── */}
         <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
