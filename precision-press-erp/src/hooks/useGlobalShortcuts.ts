@@ -159,18 +159,6 @@ export function useGlobalShortcuts() {
           e.preventDefault();
           router.push('/reports/day-book');
           closeMenu();
-        } else if (key === 'g') {
-          e.preventDefault();
-          router.push('/reports/general-ledger');
-          closeMenu();
-        } else if (key === 'c') {
-          e.preventDefault();
-          router.push('/contacts?type=customer');
-          closeMenu();
-        } else if (key === 's') {
-          e.preventDefault();
-          router.push('/contacts?type=supplier');
-          closeMenu();
         } else if (key === 'a') {
           e.preventDefault();
           setMenuState('ACCOUNT_BOOKS');

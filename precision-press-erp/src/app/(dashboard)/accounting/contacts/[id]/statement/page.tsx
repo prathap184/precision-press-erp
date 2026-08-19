@@ -309,7 +309,7 @@ export default function ContactStatementPage() {
                             </Badge>
                           </td>
                           <td className="px-3 py-2 font-mono text-xs">{tx.documentNumber}</td>
-                          <td className="px-3 py-2 text-muted-foreground">{tx.description}</td>
+                          <td className="px-3 py-2 font-mono text-xs">{tx.description}</td>
                           <td className="px-3 py-2 text-right font-mono tabular-nums">
                             {tx.debit ? formatMoney(tx.debit) : "-"}
                           </td>

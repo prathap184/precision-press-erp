@@ -84,18 +84,6 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 router.push('/reports/day-book');
                 closeMenu();
               }} />
-              <ShortcutItem hotkey="G" label="General Ledger" onClick={() => {
-                router.push('/reports/general-ledger');
-                closeMenu();
-              }} />
-              <ShortcutItem hotkey="C" label="Customer Ledger" onClick={() => {
-                router.push('/contacts?type=customer');
-                closeMenu();
-              }} />
-              <ShortcutItem hotkey="S" label="Supplier Ledger" onClick={() => {
-                router.push('/contacts?type=supplier');
-                closeMenu();
-              }} />
               <ShortcutItem hotkey="A" label="Account Books" hasChildren onClick={() => setMenuState('ACCOUNT_BOOKS')} />
             </div>
           )}
