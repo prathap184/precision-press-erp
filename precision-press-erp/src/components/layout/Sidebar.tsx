@@ -162,13 +162,13 @@ function AccountingSidebar({ isExpanded, isHovered }: { isExpanded: boolean; isH
                     className={cn(
                       'group relative flex items-center transition-all duration-200 overflow-hidden whitespace-nowrap cursor-pointer text-left',
                       visualExpanded 
-                        ? 'mx-2.5 px-3.5 py-2.5 rounded-2xl gap-3 text-xs' 
+                        ? 'mx-2.5 px-3.5 py-2.5 rounded-2xl gap-3 text-[16px]' 
                         : 'w-11 h-11 mx-auto rounded-2xl justify-center',
                       isActive
                         ? visualExpanded 
                           ? 'bg-white/60 text-blue-700 font-bold border border-white/70 shadow-sm backdrop-blur-md'
                           : 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-2 ring-white/50'
-                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/40 font-medium'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-white/40 font-semibold'
                     )}
                   >
                     <span className={cn(
@@ -177,9 +177,9 @@ function AccountingSidebar({ isExpanded, isHovered }: { isExpanded: boolean; isH
                         ? (isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-700')
                         : (isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700')
                     )}>
-                      <item.icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
+                      <item.icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
                     </span>
-                    {visualExpanded && <span className="tracking-tight flex-1 truncate">{item.label}</span>}
+                    {visualExpanded && <span className="tracking-tight flex-1 truncate font-semibold text-[16px]">{item.label}</span>}
                     
                     {/* Tooltip on collapsed */}
                     {!visualExpanded && (
@@ -334,9 +334,9 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
             ? (visuallyActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-700')
             : (visuallyActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-700')
         )}>
-          <item.icon size={18} strokeWidth={visuallyActive ? 2.2 : 1.8} />
+          <item.icon size={20} strokeWidth={visuallyActive ? 2.2 : 1.8} />
         </span>
-        {visualExpanded && <span className="tracking-tight flex-1 truncate">{item.label}</span>}
+        {visualExpanded && <span className="tracking-tight flex-1 truncate font-semibold text-[16px]">{item.label}</span>}
         {!visualExpanded && (
           <div className="absolute left-[54px] px-2.5 py-1 bg-slate-900/90 backdrop-blur-md text-white text-[11px] font-bold rounded-xl shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-150 z-50 translate-x-1 group-hover:translate-x-0">
             {item.label}
@@ -348,13 +348,13 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
     const className = cn(
       'group relative flex items-center transition-all duration-200 overflow-hidden whitespace-nowrap cursor-pointer text-left',
       visualExpanded 
-        ? 'mx-2.5 px-3.5 py-2.5 rounded-2xl gap-3 text-xs' 
+        ? 'mx-2.5 px-3.5 py-2.5 rounded-2xl gap-3 text-[16px]' 
         : 'w-11 h-11 mx-auto rounded-2xl justify-center',
       visuallyActive
         ? visualExpanded 
           ? 'bg-white/60 text-blue-700 font-bold border border-white/70 shadow-sm backdrop-blur-md'
           : 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 ring-2 ring-white/50'
-        : 'text-slate-600 hover:text-slate-900 hover:bg-white/40 font-medium'
+        : 'text-slate-600 hover:text-slate-900 hover:bg-white/40 font-semibold'
     );
 
     if (hasSubItems) {
@@ -387,13 +387,13 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
                     href={subHref}
                     scroll={false}
                     className={cn(
-                      "py-1.5 px-3 text-[11px] whitespace-nowrap transition-colors rounded-xl font-medium flex items-center gap-2",
+                      "py-2 px-3 text-[14px] whitespace-nowrap transition-colors rounded-xl font-semibold flex items-center gap-2.5",
                       isThisSubActive 
                         ? "text-blue-700 font-bold bg-white/60 border border-white/60 backdrop-blur-md shadow-sm" 
-                        : "text-slate-500 hover:text-slate-800 hover:bg-white/40"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-white/40"
                     )}
                   >
-                    <span className={cn("w-1.5 h-1.5 rounded-full", isThisSubActive ? "bg-blue-600" : "bg-slate-300")} />
+                    <span className={cn("w-2 h-2 rounded-full shrink-0", isThisSubActive ? "bg-blue-600" : "bg-slate-400/80")} />
                     <span>{sub.label}</span>
                   </Link>
                 );
@@ -472,12 +472,12 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
         <Link
           href="/proxy-order"
           className={cn(
-            'flex items-center font-bold text-xs uppercase tracking-wider transition-all overflow-hidden whitespace-nowrap group relative',
+            'flex items-center font-black text-[14px] uppercase tracking-wider transition-all overflow-hidden whitespace-nowrap group relative',
             'bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:scale-[1.02] active:scale-95',
             visualExpanded ? 'px-4 py-3 rounded-2xl gap-3 justify-start' : 'px-0 justify-center w-11 h-11 rounded-2xl mx-auto'
           )}
         >
-          <Plus size={18} strokeWidth={2.5} className="flex-shrink-0" />
+          <Plus size={19} strokeWidth={3} className="flex-shrink-0" />
           {visualExpanded && <span>New Print Job</span>}
           {!visualExpanded && (
             <div className="absolute left-[54px] px-2.5 py-1 bg-slate-900/90 backdrop-blur-md text-white text-[11px] font-bold rounded-xl shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-150 z-50 translate-x-1 group-hover:translate-x-0">

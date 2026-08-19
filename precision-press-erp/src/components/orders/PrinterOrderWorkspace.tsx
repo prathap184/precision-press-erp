@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, where } from '@/lib/supabase-firestore-shim';
-import { Loader2, Printer, ExternalLink, Play, CheckCircle, ChevronLeft, Package, FileType, Copy, FileText, AlertTriangle, Clock, X } from 'lucide-react';
+import { Loader2, Printer, ExternalLink, Play, CheckCircle, ChevronLeft, Package, FileType, Copy, FileText, AlertTriangle, Clock, X, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 import { db } from '@/lib/firebase';
@@ -140,7 +140,7 @@ export function PrinterOrderWorkspace({
   const tiffInfo = tiffPath ? inspectTiffPath(tiffPath) : null;
   const tiffReady = Boolean(tiffPath && isValidTiffPath(tiffPath));
   const fileName = tiffInfo?.fileName || getFileNameFromPath(tiffPath);
-  const pathLabel = tiffInfo?.networkRoot || tiffInfo?.normalizedPath || tiffPath || 'â€”';
+  const pathLabel = tiffInfo?.networkRoot || tiffInfo?.normalizedPath || tiffPath || '—';
 
   const rawCustomerDesignFiles = Array.isArray(order?.workflow?.customerDesignFiles)
     ? order.workflow.customerDesignFiles
@@ -362,8 +362,8 @@ export function PrinterOrderWorkspace({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#ecd9fa]/65 via-[#f4f2f8]/90 to-[#daf4fc]/65">
-        <div className="text-center space-y-4 p-8 rounded-3xl bg-white/40 backdrop-blur-md border border-white/50 shadow-lg">
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="text-center space-y-4">
           <Loader2 className="mx-auto animate-spin text-blue-600" size={40} />
           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-600/60">Loading printer order...</p>
         </div>
@@ -373,8 +373,8 @@ export function PrinterOrderWorkspace({
 
   if (error || !order) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-4 text-center bg-gradient-to-br from-[#ecd9fa]/65 via-[#f4f2f8]/90 to-[#daf4fc]/65">
-        <div className="max-w-md space-y-6 p-8 rounded-3xl bg-white/40 backdrop-blur-md border border-white/50 shadow-lg">
+      <div className="flex min-h-[50vh] items-center justify-center px-4 text-center">
+        <div className="max-w-md space-y-6">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-400">
             <Printer size={28} />
           </div>
@@ -398,37 +398,37 @@ export function PrinterOrderWorkspace({
   }
 
   const tiffTimelineSection = (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-blue-600">
+    <div className="rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
+      <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+        <div className="flex items-center gap-2 text-blue-700">
           <Clock size={16} />
-          <h3 className="text-[14px] font-black uppercase tracking-wider">TIFF Timeline</h3>
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">TIFF Timeline</h3>
         </div>
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{printWorkflow?.timeline?.length || 0} events</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{printWorkflow?.timeline?.length || 0} events</p>
       </div>
-      <div className="rounded-2xl border border-white/50 bg-white/40 backdrop-blur-md p-4 space-y-4">
+      <div className="rounded-2xl border border-white/80 bg-white/70 backdrop-blur-md p-4 space-y-4 shadow-2xs">
         {printWorkflow?.timeline?.length ? (
           printWorkflow.timeline.map((entry: PrintWorkflowTimelineEntry, index: number) => (
             <div key={`${entry.event}-${index}`} className="flex items-start gap-3">
-              <div className="mt-1 h-2.5 w-2.5 rounded-full bg-amber-500 shrink-0 shadow-sm animate-pulse" />
+              <div className="mt-1 h-2.5 w-2.5 rounded-full bg-blue-600 shrink-0 shadow-2xs" />
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">{entry.event.replace(/_/g, ' ')}</p>
-                <p className="text-[13px] font-bold text-slate-800 mt-0.5">{entry.notes || 'Manager assigned TIFF to printer queue'}</p>
+                <p className="text-[13px] font-black text-slate-900 mt-0.5">{entry.notes || 'Manager assigned TIFF to printer queue'}</p>
               </div>
             </div>
           ))
         ) : (
-          <div className="text-[11px] text-slate-500 italic">No TIFF timeline events yet.</div>
+          <div className="text-xs font-bold text-slate-500 italic">No TIFF timeline events yet.</div>
         )}
       </div>
     </div>
   );
 
   const jobSpecSection = (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 text-blue-600">
-        <FileText size={16} />
-        <h3 className="text-[14px] font-black uppercase tracking-wider">Job Specification Sheet</h3>
+    <div className="rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
+      <div className="flex items-center gap-2 pb-3 border-b border-slate-200/80">
+        <FileText size={16} className="text-blue-700" />
+        <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">Job Specification Sheet</h3>
       </div>
 
       {itemsLoading ? (
@@ -436,17 +436,17 @@ export function PrinterOrderWorkspace({
           <Loader2 className="animate-spin" size={24} />
         </div>
       ) : uniqueDisplayItems.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white/40 backdrop-blur-md px-6 py-8 text-center text-[14px] text-slate-500">
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white/40 backdrop-blur-md px-6 py-8 text-center text-xs font-bold text-slate-600">
           No item details were found for this order.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-white/50 bg-white/40 backdrop-blur-md shadow-sm">
-          <table className="w-full min-w-[700px] text-[13px] border-collapse">
+        <div className="overflow-x-auto rounded-2xl border border-slate-200/80 bg-white/90 shadow-2xs">
+          <table className="w-full min-w-[700px] text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-100/50 border-b border-white/60 text-[10px] font-black uppercase tracking-wider text-slate-650">
-                <th className="p-3.5 text-left border-r border-white/45">Item</th>
-                <th className="p-3.5 text-left border-r border-white/45">Project</th>
-                <th className="p-3.5 text-left border-r border-white/45">Tiff Path</th>
+              <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-black uppercase tracking-wider text-slate-700">
+                <th className="p-3.5 text-left border-r border-slate-200/80">Item</th>
+                <th className="p-3.5 text-left border-r border-slate-200/80">Project</th>
+                <th className="p-3.5 text-left border-r border-slate-200/80">Tiff Path</th>
                 <th className="p-3.5 text-center">Qty</th>
               </tr>
             </thead>
@@ -457,36 +457,37 @@ export function PrinterOrderWorkspace({
                 const itemReady = Boolean(itemTiffPath && isValidTiffPath(itemTiffPath));
 
                 return (
-                  <tr key={item.id} className="border-b border-white/40 last:border-b-0 hover:bg-white/30 transition-colors">
-                    <td className="p-3.5 align-top border-r border-white/45">
-                      <div className="font-bold text-slate-900">{(item as any).productName || item.productName || `Item ${item.id}`}</div>
-                      <div className="text-[10px] text-slate-500 mt-1">{`Size: ${(item as any).width ?? item.specs?.width ?? 0} x ${(item as any).height ?? item.specs?.height ?? 0} ${(item as any).widthUnit ?? item.specs?.widthUnit ?? 'FT'}`}</div>
+                  <tr key={item.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3.5 align-top border-r border-slate-100">
+                      <div className="font-black text-slate-900">{(item as any).productName || item.productName || `Item ${item.id}`}</div>
+                      <div className="text-[11px] font-bold text-slate-500 mt-1">{`Size: ${(item as any).width ?? item.specs?.width ?? 0} x ${(item as any).height ?? item.specs?.height ?? 0} ${(item as any).widthUnit ?? item.specs?.widthUnit ?? 'FT'}`}</div>
                     </td>
-                    <td className="p-3.5 align-top border-r border-white/45 text-slate-650 italic font-medium">{item.projectName || '—'}</td>
-                    <td className="p-3.5 align-top border-r border-white/45">
+                    <td className="p-3.5 align-top border-r border-slate-100 text-slate-800 font-bold">{item.projectName || '—'}</td>
+                    <td className="p-3.5 align-top border-r border-slate-100">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex-1">
-                          <p className="font-mono text-[12px] font-semibold text-slate-900 break-all">{itemFileName}</p>
-                          <p className="text-[10px] text-slate-500 mt-1.5 break-all font-mono bg-white/50 px-2 py-1.5 rounded-lg border border-slate-200/40">{itemTiffPath || 'No TIFF path assigned'}</p>
+                          <p className="font-mono text-xs font-black text-slate-900 break-all">{itemFileName}</p>
+                          <p className="text-[10px] text-slate-600 mt-1.5 break-all font-mono bg-white px-2 py-1.5 rounded-lg border border-slate-200 shadow-2xs">{itemTiffPath || 'No TIFF path assigned'}</p>
                         </div>
                         {itemReady && (
                           <button
                             type="button"
                             onClick={async () => {
+                              toast.loading('Opening TIFF...', { id: item.id });
                               const opened = await openTiffInSystem(itemTiffPath);
-                              if (!opened) {
-                                const fileUrl = normalizeTiffPathToFileUrl(itemTiffPath);
-                                window.open(fileUrl, '_blank');
-                              }
+                              if (!opened) window.open(normalizeTiffPathToFileUrl(itemTiffPath), '_blank');
+                              toast.success('TIFF opened.', { id: item.id });
                             }}
-                            className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-cyan-600 px-3.5 py-1.5 text-[9px] font-black uppercase tracking-wider text-white hover:bg-cyan-750 hover:shadow-sm transition-all whitespace-nowrap shadow"
+                            className="inline-flex items-center gap-1 rounded-full bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-white shadow-2xs transition-all shrink-0"
                           >
                             <ExternalLink size={10} /> Open
                           </button>
                         )}
                       </div>
                     </td>
-                    <td className="p-3.5 text-center align-top tabular-nums font-bold text-slate-800">{(item as any).quantity ?? item.specs?.quantity ?? 1}</td>
+                    <td className="p-3.5 align-top text-center font-black text-slate-900">
+                      {item.specs?.quantity || (item as any).quantity || 1}
+                    </td>
                   </tr>
                 );
               })}
@@ -497,49 +498,56 @@ export function PrinterOrderWorkspace({
     </div>
   );
 
-  const inner = (
-    <div className="space-y-8 animate-in fade-in duration-200">
-      {/* Top Header Card */}
-      {!hideHeader && (
-        <section className="w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
-            <div className="flex items-start gap-4 min-w-0">
-              <div className="w-16 h-16 shrink-0 overflow-hidden rounded-2xl border border-slate-200/60 bg-white/60 shadow-sm">
-                <OrderThumbnail orderId={order.id} order={order as any} size="full" />
-              </div>
-              <div className="min-w-0 flex-1 pt-0.5">
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">Order #{order.id.replace('ORD-', '')}</p>
-                  <span className="inline-flex items-center rounded-full border border-slate-200/50 bg-slate-50/50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-slate-600">
-                    {STATUS_LABELS[order.status] || order.status}
-                  </span>
-                </div>
-                <h1 className="mt-2 text-[18px] md:text-[20px] font-black tracking-tight text-slate-900 leading-none truncate">
-                  {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
-                </h1>
-                <p className="text-[11px] text-slate-500 font-medium mt-1">
-                  Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
-                </p>
-              </div>
-            </div>
+  return (
+    <div className="w-full font-sans text-slate-800 bg-[#d4d4d8] p-4 sm:p-6 md:p-8 relative z-10 min-h-[calc(100vh-4rem)] pb-12">
+      {/* Exact Proxy Order Canvas Background */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-400/35 blur-[140px] pointer-events-none animate-pulse"></div>
+        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-sky-400/35 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-cyan-300/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+      </div>
 
-            <div className="lg:justify-self-end w-full max-w-[300px] ml-auto space-y-3">
-              <div className="rounded-2xl border border-cyan-100/80 bg-cyan-50/60 p-3.5 shadow-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-[9px] font-black uppercase tracking-wider text-cyan-900">TIFF Path</p>
-                  <span className="text-cyan-700 cursor-pointer hover:text-cyan-950 transition-colors" onClick={copyPath} title="Copy TIFF Path">
-                    <Copy size={12} />
-                  </span>
+      {/* Page Content Stream (Modular Standalone Cards) */}
+      <div className="relative z-10 w-full space-y-6">
+        {/* Header Panel (Bold Command Headline) */}
+        {!hideHeader && (
+          <section className="w-full">
+            <div className="flex flex-row items-center justify-between gap-4 flex-wrap md:flex-nowrap px-2 sm:px-3 md:px-4">
+              <div className="flex flex-row items-center gap-3 min-w-0">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h1 className="text-[28px] font-black tracking-tight text-slate-900 truncate">
+                      Order #{order.id.replace('ORD-', '')} — {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
+                    </h1>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="inline-flex items-center rounded-full border border-slate-200/80 bg-white/70 backdrop-blur-md px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-slate-700 shadow-2xs">
+                        {STATUS_LABELS[order.status] || order.status}
+                      </span>
+                      {order.currentWorkflowLabel && (
+                        <span className="inline-flex items-center rounded-full border border-purple-200/80 bg-purple-50/80 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-purple-700 shadow-2xs">
+                          Step: {order.currentWorkflowLabel}
+                        </span>
+                      )}
+                      {mode === 'READ_ONLY' && (
+                        <span className="inline-flex items-center rounded-full border border-blue-200/80 bg-blue-50/80 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-blue-700 shadow-2xs">
+                          • Read Only
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-1">
+                    Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'} • {order.customerSnapshot?.companyName || 'Hindustan Enterprises'}
+                  </p>
                 </div>
-                <p className="mt-1.5 text-[11px] font-bold text-slate-900 truncate" title={fileName}>{fileName}</p>
-                <p className="mt-0.5 text-[9px] font-semibold text-slate-500 truncate" title={pathLabel}>{pathLabel}</p>
               </div>
 
-              <div className="flex items-center gap-2 justify-end">
+              <div className="flex items-center gap-2.5 shrink-0">
                 <button 
                   type="button"
                   onClick={() => router.push(backHref)} 
-                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/80 backdrop-blur-md px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow transition-all duration-200"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/80 backdrop-blur-md px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow-sm transition-all duration-200"
                 >
                   <ChevronLeft size={12} /> Back
                 </button>
@@ -547,16 +555,16 @@ export function PrinterOrderWorkspace({
                   <button
                     type="button"
                     onClick={openTiff}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-cyan-600 px-4 h-9 text-[10px] font-black uppercase tracking-widest text-white hover:bg-cyan-700 shadow transition-all duration-200"
+                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-cyan-600 hover:bg-cyan-700 px-4 h-9 text-[10px] font-black uppercase tracking-widest text-white shadow transition-all duration-200"
                   >
-                    <ExternalLink size={12} /> Open
+                    <ExternalLink size={12} /> Open TIFF
                   </button>
                 )}
                 <button
                   type="button"
                   onClick={handleWorkDone}
                   disabled={processing || mode === 'READ_ONLY'}
-                  className={`inline-flex items-center justify-center gap-1.5 rounded-full px-4 h-9 text-[10px] font-black uppercase tracking-widest text-white transition-all shadow duration-200 ${
+                  className={`inline-flex items-center justify-center gap-1.5 rounded-full px-5 h-9 text-[10px] font-black uppercase tracking-widest text-white transition-all shadow duration-200 ${
                     mode === 'READ_ONLY' || isCompleted
                       ? 'bg-slate-200 text-slate-500 cursor-not-allowed border-slate-300 opacity-80'
                       : 'bg-slate-900 hover:bg-slate-800 disabled:opacity-50'
@@ -575,78 +583,49 @@ export function PrinterOrderWorkspace({
                 </button>
               </div>
             </div>
-          </div>
-        </section>
-      )}
+          </section>
+        )}
 
-      {mode === 'READ_ONLY' && (
-        <div className="rounded-2xl bg-blue-50/60 p-4 flex items-start gap-3 border border-blue-100 text-slate-800">
-          <span className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5">
-            <span className="material-symbols-outlined text-lg leading-none">visibility</span>
-          </span>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-600">Read Only Mode</p>
-            <p className="text-[14px] font-bold text-blue-900 mt-1">This stage has already been completed.</p>
-            <p className="text-[12px] text-blue-700/80 mt-0.5 font-medium">Uploads and workflow actions are disabled for this stage.</p>
+        {/* Read Only Mode Banner */}
+        {mode === 'READ_ONLY' && (
+          <div className="w-full rounded-[2rem] bg-blue-500/10 border border-blue-400/30 backdrop-blur-xl p-4 flex items-center gap-3.5 shadow-2xs">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20 text-blue-800 shrink-0">
+              <Eye size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-blue-700">Read Only Mode</span>
+                <span className="text-[10px] font-bold text-slate-500">•</span>
+                <span className="text-xs font-black text-slate-900">This stage has already been completed.</span>
+              </div>
+              <p className="text-[11px] font-bold text-slate-600 mt-0.5">Uploads and workflow actions are disabled for this stage.</p>
+            </div>
           </div>
+        )}
+
+        {/* ── Full Booking Details ── */}
+        <OrderDetailsPanel 
+          order={order} 
+          role="PRINTER" 
+          items={items} 
+          className="text-slate-800 w-full"
+        />
+
+        {/* 📄 Job Specification Sheet Section 📄 */}
+        <div className="w-full space-y-4">
+          {jobSpecSection}
         </div>
-      )}
 
-      {/* ── Full Booking Details ── */}
-      <OrderDetailsPanel 
-        order={order} 
-        role="PRINTER" 
-        items={items} 
-        className="text-slate-800 w-full"
-      />
+        {/* ── Enterprise MES Workflow Timeline ── */}
+        <div className="w-full rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
+          <WorkflowTimeline orderId={orderId} />
+        </div>
 
-      {/* Customer Notes */}
-      {(() => {
-        const notesContent = order.productionNotes || (order as any).production_notes || order.notes || order.customerNotes || (order as any).customer_notes || (order as any).remarks || (order as any).metadata?.notes || (order as any).metadata?.productionNotes || (order as any).additionalNotes;
-        return (
-          <div className={`w-full rounded-2xl p-4 border flex items-center gap-3 ${notesContent ? 'bg-amber-50/80 border-amber-200/80 shadow-sm' : 'bg-slate-50/80 border-slate-200/80'}`}>
-            <span className={`material-symbols-outlined ${notesContent ? 'text-amber-600' : 'text-purple-400'}`}>notes</span>
-            <span className={`text-[10px] font-black tracking-widest uppercase ${notesContent ? 'text-amber-800' : 'text-slate-500'}`}>Customer Notes:</span>
-            <span className={`text-sm font-semibold ${notesContent ? 'text-slate-900' : 'text-slate-500'}`}>{notesContent || "No customer notes provided."}</span>
-          </div>
-        );
-      })()}
-
-      {/* 📄 Job Specification Sheet Section 📄 */}
-      <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
-        {jobSpecSection}
-      </div>
-
-      {/* ── Enterprise MES Workflow Timeline ── */}
-      <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
-        <WorkflowTimeline orderId={orderId} />
-      </div>
-
-      {/* ── TIFF Timeline Section ── */}
-      <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
-        {tiffTimelineSection}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="font-sans text-slate-800 bg-gradient-to-br from-[#cad6fa] via-[#d4e4fc] to-[#bce1f8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none overflow-hidden pb-12">
-      {/* Dynamic Glassmorphism Background with glowing orbs */}
-      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
-        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-[#93c5fd]/30 blur-[140px] pointer-events-none animate-pulse"></div>
-        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#c4b5fd]/30 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-[#a5f3fc]/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
-      </div>
-
-      {/* ONE Master Glass Container */}
-      <div className="relative z-10 rounded-[2.5rem] bg-white/60 backdrop-blur-xl shadow-lg border border-white/50 p-6 md:p-8 space-y-8">
-        {inner}
+        {/* ── TIFF Timeline Section ── */}
+        <div className="w-full space-y-4">
+          {tiffTimelineSection}
+        </div>
       </div>
     </div>
   );
 }
-
-
-

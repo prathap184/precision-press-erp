@@ -11,9 +11,7 @@ export default function DesignerOrderDetailPage() {
 
   return (
     <RoleGuard allowedRoles={['DESIGNER', 'ACDEMA', 'MANAGER', 'ADMIN', 'SUPER_ADMIN']}>
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
-        <DesignerOrderWorkspace orderId={orderId} />
-      </div>
+      <DesignerOrderWorkspace orderId={orderId} />
     </RoleGuard>
   );
 }

@@ -150,21 +150,21 @@ export function WorkflowPipelineVisual({
           const isCompleted = step.isCompleted;
           const navHref = getNavHref(step);
 
-          let bgClass = 'bg-slate-100 text-slate-500 border-slate-300';
+          let bgClass = 'bg-slate-100/90 text-slate-500 border-slate-200 shadow-2xs';
           let icon = <Lock size={13} className="text-slate-400 shrink-0" />;
 
           if (isCompleted) {
-            bgClass = 'bg-emerald-50 text-emerald-900 border-emerald-300';
+            bgClass = 'bg-emerald-50 text-emerald-900 border-emerald-300 shadow-2xs';
             icon = <Check size={12} className="text-emerald-600 shrink-0 stroke-[3]" />;
           } else if (isCurrent) {
             if (step.status === 'IN_PROGRESS') {
-              bgClass = 'bg-blue-100 text-blue-900 border-blue-400 ring-1 ring-blue-200 ring-offset-0 animate-pulse';
+              bgClass = 'bg-blue-100 text-blue-900 border-blue-400 ring-1 ring-blue-200 ring-offset-0 animate-pulse shadow-2xs';
               icon = <Play size={12} className="text-blue-700 fill-blue-700 shrink-0" />;
             } else if (step.status === 'ON_HOLD' || step.status === 'PAUSED') {
-              bgClass = 'bg-amber-100 text-amber-900 border-amber-400 ring-1 ring-amber-200 ring-offset-0';
+              bgClass = 'bg-amber-100 text-amber-900 border-amber-400 ring-1 ring-amber-200 ring-offset-0 shadow-2xs';
               icon = <AlertCircle size={12} className="text-amber-700 shrink-0" />;
             } else {
-              bgClass = 'bg-sky-100 text-sky-900 border-sky-400 ring-1 ring-sky-200 ring-offset-0';
+              bgClass = 'bg-sky-100 text-sky-900 border-sky-400 ring-1 ring-sky-200 ring-offset-0 shadow-2xs';
               icon = <Clock size={12} className="text-sky-700 shrink-0" />;
             }
           }
@@ -192,12 +192,12 @@ const SHORT_STEP_LABELS: Record<string, string> = {
           const pillContent = (
             <>
               {icon}
-              <span className="font-semibold text-slate-800 whitespace-nowrap text-[11px]">{displayLabel}</span>
-              {navHref && <ExternalLink size={9} className="shrink-0 opacity-60 ml-0.5" />}
+              <span className="font-bold text-slate-800 whitespace-nowrap text-[14px]">{displayLabel}</span>
+              {navHref && <ExternalLink size={10} className="shrink-0 opacity-60 ml-0.5" />}
             </>
           );
 
-          const pillBase = `w-[85px] h-[24px] flex items-center justify-center gap-1.5 px-2 rounded-md border text-[11px] font-semibold tracking-normal transition-all duration-200 select-none shadow-sm ${bgClass}`;
+          const pillBase = `w-[100px] h-[27px] flex items-center justify-center gap-1.5 px-2 rounded-md border text-[14px] font-bold tracking-normal transition-all duration-200 select-none shadow-sm ${bgClass}`;
 
           return (
             <div key={`${step.role}-${index}`} className="flex items-center shrink-0">

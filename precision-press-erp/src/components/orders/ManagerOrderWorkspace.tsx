@@ -18,7 +18,8 @@ import {
   Play,
   ArrowRight,
   AlertTriangle,
-  Palette
+  Palette,
+  Eye
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -332,200 +333,125 @@ export function ManagerOrderWorkspace({ orderId }: ManagerOrderWorkspaceProps) {
   const mode = getWorkspaceMode('MANAGER', order.workflowSnapshot);
 
   return (
-    <div className="font-sans text-slate-800 bg-gradient-to-br from-[#cad6fa] via-[#d4e4fc] to-[#bce1f8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none overflow-hidden pb-12">
-      {/* Dynamic Glassmorphism Background with glowing orbs */}
+    <div className="w-full font-sans text-slate-800 bg-[#d4d4d8] p-4 sm:p-6 md:p-8 relative z-10 min-h-[calc(100vh-4rem)] pb-12">
+      {/* Exact Proxy Order Canvas Background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
         <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
-        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-[#93c5fd]/30 blur-[140px] pointer-events-none animate-pulse"></div>
-        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#c4b5fd]/30 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-[#a5f3fc]/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-400/35 blur-[140px] pointer-events-none animate-pulse"></div>
+        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-sky-400/35 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-cyan-300/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
       </div>
 
-      {/* ONE Master Glass Container */}
-      <div className="relative z-10 rounded-[2.5rem] bg-white/60 backdrop-blur-xl shadow-lg border border-white/50 p-6 md:p-8 space-y-8">
-      {/* Header Panel */}
-      <section className="w-full">
-        <div className="px-5 py-4 flex flex-row items-center justify-between gap-4 flex-wrap md:flex-nowrap">
-          <div className="flex flex-row items-center gap-3 min-w-0">
-            <span className="p-2 bg-indigo-100/80 text-indigo-700 rounded-xl shrink-0 hidden sm:inline-flex">
-              <ShieldCheck size={16} />
-            </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-[18px] md:text-[20px] font-black tracking-tight text-slate-900 truncate">
-                  Order #{order.id.replace('ORD-', '')} — {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
-                </h1>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="inline-flex items-center rounded-full border border-slate-200/50 bg-slate-50/50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-slate-600">
-                    {order.status}
-                  </span>
-                  {order.currentWorkflowLabel && (
-                    <span className="inline-flex items-center rounded-full border border-indigo-200/50 bg-indigo-50/50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-indigo-700">
-                      Role: {order.currentWorkflowLabel}
+      {/* Page Content Stream (Modular Standalone Cards) */}
+      <div className="relative z-10 w-full space-y-6">
+        {/* Header Panel (Bold Command Headline) */}
+        <section className="w-full">
+          <div className="flex flex-row items-center justify-between gap-4 flex-wrap md:flex-nowrap px-2 sm:px-3 md:px-4">
+            <div className="flex flex-row items-center gap-3 min-w-0">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-[28px] font-black tracking-tight text-slate-900 truncate">
+                    Order #{order.id.replace('ORD-', '')} — {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
+                  </h1>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="inline-flex items-center rounded-full border border-slate-200/80 bg-white/70 backdrop-blur-md px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-slate-700 shadow-2xs">
+                      {order.status}
                     </span>
-                  )}
-                  {order.printerCategory && (
-                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-amber-700">
-                      <Printer size={11} /> {order.printerCategory}
-                    </span>
-                  )}
+                    {order.currentWorkflowLabel && (
+                      <span className="inline-flex items-center rounded-full border border-purple-200/80 bg-purple-50/80 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-purple-700 shadow-2xs">
+                        Step: {order.currentWorkflowLabel}
+                      </span>
+                    )}
+                    {mode === 'READ_ONLY' && (
+                      <span className="inline-flex items-center rounded-full border border-blue-200/80 bg-blue-50/80 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-blue-700 shadow-2xs">
+                        • Read Only
+                      </span>
+                    )}
+                  </div>
                 </div>
+                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-1">
+                  Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'} • {order.customerSnapshot?.companyName || 'Hindustan Enterprises'}
+                </p>
               </div>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
-              </p>
             </div>
-          </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button 
-              onClick={handleReturnRedirect} 
-              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-white/60 bg-white/80 backdrop-blur-md px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow transition-all duration-200"
-            >
-              <ChevronLeft size={12} /> Back
-            </button>
-            {order.printerCategory && (
-              <div className="hidden sm:flex items-center gap-2 rounded-full border border-amber-300/50 bg-amber-50 px-3 py-1.5">
-                <Printer size={12} className="text-amber-600 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-[9px] font-bold text-amber-800 truncate leading-none">{order.printerCategory}</p>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button 
+                onClick={handleReturnRedirect} 
+                className="inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/80 backdrop-blur-md px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow-sm transition-all duration-200"
+              >
+                <ChevronLeft size={12} /> Back
+              </button>
+              {mode === 'READ_ONLY' ? (
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100/80 px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-500 shadow-2xs">
+                  <CheckCircle size={12} className="text-slate-400" /> Already Completed
                 </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {mode === 'READ_ONLY' && (
-        <div className="rounded-2xl bg-blue-50/60 p-4 flex items-start gap-3 border border-blue-100">
-          <span className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5">
-            <span className="material-symbols-outlined text-lg leading-none">visibility</span>
-          </span>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-600">Read Only Mode</p>
-            <p className="text-[14px] font-bold text-blue-900 mt-1">This stage has already been completed.</p>
-            <p className="text-[12px] text-blue-700/80 mt-0.5 font-medium">Uploads and workflow actions are disabled for this stage.</p>
-          </div>
-        </div>
-      )}
-
-      {/* 🚀 Work Done Action */}
-      {mode === 'READ_ONLY' ? (
-        <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 opacity-75">
-          <div className="space-y-1">
-            <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">Manager Action</p>
-            <h3 className="text-sm font-black text-slate-900">Mark Stage as Work Done</h3>
-            <div className="text-[11px] text-slate-500 font-medium">
-              This stage has already been completed.
-            </div>
-          </div>
-          <button
-            disabled
-            className="inline-flex items-center gap-2 rounded-full bg-slate-100 border border-slate-200 px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-not-allowed shadow-none"
-          >
-            <CheckCircle size={13} className="text-slate-400" />
-            Already Completed
-          </button>
-        </div>
-      ) : (() => {
-        const snapshot = order.workflowSnapshot;
-        const stepIdx = snapshot?.currentStepIndex ?? -1;
-        const totalSteps = snapshot?.steps?.length ?? 0;
-        const nextStep = snapshot?.steps?.[stepIdx + 1];
-        const isLastStep = stepIdx >= totalSteps - 1;
-        const hasMissingPaths = managerItems.some((item: any) => !item.tiffPath);
-        const isActionDisabled = workDoneLoading || hasMissingPaths;
-
-        return (
-          <div className="p-5 rounded-2xl bg-slate-50/80 border border-slate-200/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <p className="text-[11px] font-black uppercase tracking-[0.25em] text-slate-400">Manager Action</p>
-              <h3 className="text-sm font-black text-slate-900">
-                {confirmWorkDone ? 'Confirm: Mark this stage as Work Done?' : 'Mark Stage as Work Done'}
-              </h3>
-              <div className="text-[11px] text-slate-500">
-                {hasMissingPaths ? (
-                  <span className="text-amber-600 font-medium flex items-center gap-1.5 mt-1">
-                    <AlertTriangle size={12} /> Please save production file paths for all items before continuing.
-                  </span>
-                ) : isLastStep
-                  ? 'This is the final stage — order will be fully completed.'
-                  : nextStep
-                    ? <>Advancing to next stage: <strong className="text-indigo-600">{nextStep.label || nextStep.role}</strong></>
-                    : 'Advances the order to the next workflow stage.'}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 shrink-0">
-              {confirmWorkDone && (
+              ) : (
                 <button
-                  onClick={() => setConfirmWorkDone(false)}
-                  disabled={workDoneLoading}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white/80 backdrop-blur-md text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-white disabled:opacity-40 transition-all shadow-sm"
+                  onClick={confirmWorkDone ? handleWorkDone : () => setConfirmWorkDone(true)}
+                  disabled={workDoneLoading || managerItems.some((item: any) => !item.tiffPath)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white px-5 h-9 text-[10px] font-black uppercase tracking-widest transition-all shadow-md disabled:opacity-50"
                 >
-                  Cancel
+                  {workDoneLoading ? (
+                    <><Loader2 size={12} className="animate-spin" /> Processing...</>
+                  ) : confirmWorkDone ? (
+                    <><CheckCircle size={12} className="text-emerald-400" /> Confirm Work Done</>
+                  ) : (
+                    <><ArrowRight size={12} /> Work Done</>
+                  )}
                 </button>
               )}
-              <button
-                onClick={confirmWorkDone ? handleWorkDone : () => setConfirmWorkDone(true)}
-                disabled={isActionDisabled}
-                className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-2.5 text-[10px] font-black uppercase tracking-widest text-white transition-all hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-              >
-                {workDoneLoading ? (
-                  <><Loader2 size={13} className="animate-spin" /> Processing...</>
-                ) : confirmWorkDone ? (
-                  <><CheckCircle size={13} className="text-emerald-400" /> Yes, Confirm</>
-                ) : (
-                  <><ArrowRight size={13} /> Work Done</>
-                )}
-              </button>
             </div>
           </div>
-        );
-      })()}
+        </section>
 
-      {/* Full Booking Details (OrderDetailsPanel at top) */}
-      <OrderDetailsPanel 
-        order={order} 
-        role="MANAGER" 
-        className="text-slate-800 w-full"
-      />
-
-      {/* Customer Notes */}
-      {(() => {
-        const notesContent = order.productionNotes || (order as any).production_notes || order.notes || order.customerNotes || (order as any).customer_notes || (order as any).remarks || (order as any).metadata?.notes || (order as any).metadata?.productionNotes || (order as any).additionalNotes;
-        return (
-          <div className={`w-full rounded-2xl p-4 border flex items-center gap-3 ${notesContent ? 'bg-amber-50/80 border-amber-200/80 shadow-sm' : 'bg-slate-50/80 border-slate-200/80'}`}>
-            <span className={`material-symbols-outlined ${notesContent ? 'text-amber-600' : 'text-purple-400'}`}>notes</span>
-            <span className={`text-[10px] font-black tracking-widest uppercase ${notesContent ? 'text-amber-800' : 'text-slate-500'}`}>Customer Notes:</span>
-            <span className={`text-sm font-semibold ${notesContent ? 'text-slate-900' : 'text-slate-500'}`}>{notesContent || "No customer notes provided."}</span>
+        {/* Read Only Mode Banner */}
+        {mode === 'READ_ONLY' && (
+          <div className="w-full rounded-[2rem] bg-blue-500/10 border border-blue-400/30 backdrop-blur-xl p-4 flex items-center gap-3.5 shadow-2xs">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20 text-blue-800 shrink-0">
+              <Eye size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-blue-700">Read Only Mode</span>
+                <span className="text-[10px] font-bold text-slate-500">•</span>
+                <span className="text-xs font-black text-slate-900">This stage has already been completed.</span>
+              </div>
+              <p className="text-[11px] font-bold text-slate-600 mt-0.5">Uploads and workflow actions are disabled for this stage.</p>
+            </div>
           </div>
-        );
-      })()}
+        )}
 
-      {/* Main Assignment Panel */}
-      <section className="w-full pt-4 border-t border-slate-200/60 space-y-4">
-        <div className="flex items-center gap-2 pb-2">
-          <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
-            <Printer size={16} />
-          </span>
-          <div>
-            <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase">Item Production Routing</h4>
-            <p className="text-[10px] text-slate-500 font-medium italic mt-0.5">Assign printer and save network print file paths</p>
+        {/* Full Booking Details (OrderDetailsPanel at top with Customer, Logistics, Notes, Order Items & Payment) */}
+        <OrderDetailsPanel 
+          order={order} 
+          role="MANAGER" 
+          className="text-slate-800 w-full"
+        />
+
+        {/* Main Assignment Panel */}
+        <section className="w-full rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80">
+            <span className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
+              <Printer size={16} />
+            </span>
+            <div>
+              <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase">Item Production Routing</h4>
+              <p className="text-[10px] text-slate-600 font-bold italic mt-0.5">Assign printer and save network print file paths</p>
+            </div>
           </div>
-        </div>
 
-        <div className="rounded-2xl border border-slate-200/60 bg-white/80 shadow-sm overflow-hidden text-slate-800">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50/70">
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500 font-medium">Item Info</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500 font-medium">Network File Path</th>
-                  <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
+          <div className="rounded-2xl border border-slate-200/80 bg-white/90 shadow-2xs overflow-hidden text-slate-800">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200/80 bg-slate-50/70">
+                    <th className="p-3 text-[11px] font-black uppercase tracking-widest text-slate-700">Item Info</th>
+                    <th className="p-3 text-[11px] font-black uppercase tracking-widest text-slate-700">Network File Path</th>
+                    <th className="p-3 text-[11px] font-black uppercase tracking-widest text-slate-700 text-right">Actions</th>
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-slate-100">
                 {managerItems.map((item: any, index: number) => {
                   const key = itemKey(item.itemId || `item-${index + 1}`);
@@ -627,144 +553,144 @@ export function ManagerOrderWorkspace({ orderId }: ManagerOrderWorkspaceProps) {
       </section>
 
       {/* Timeline */}
-      {currentStep && (
-        <div className="w-full pt-4 border-t border-slate-200/60 space-y-3">
-          <h4 className="text-[12px] font-black text-slate-800 tracking-tight uppercase">Timeline</h4>
-          <div className="space-y-3">
-            {printWorkflow?.timeline?.length ? (
-              printWorkflow.timeline.map((entry: any, index: number) => (
-                <div key={index} className="flex gap-2 text-[11px]">
-                  <div className="mt-1 w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-                  <div>
-                    <p className="font-bold text-slate-800 uppercase text-[9px] tracking-wider">{entry.event.replace('_', ' ')}</p>
-                    <p className="text-slate-600 mt-0.5 font-medium">{entry.notes}</p>
-                    <p className="text-[9px] text-slate-400 mt-0.5">By {entry.user || 'SYSTEM'}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-[11px] text-slate-400 italic">No timeline entries yet.</p>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Visual Artwork Previews */}
-      <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
-        <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-          <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
-            <Palette size={16} />
-          </span>
-          <div>
-            <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase">Visual Artwork Previews</h4>
-            <p className="text-[10px] text-slate-500 font-medium italic mt-0.5">Verify the final design layout before sending to production</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {managerItems.map((item: any, index: number) => {
-            const customerOriginalUrl = item.customerOriginalUrl || '';
-            const correctedArtworkUrl = item.correctedArtworkUrl || '';
-            const hasCorrected = !!correctedArtworkUrl && !!customerOriginalUrl && correctedArtworkUrl !== customerOriginalUrl;
-
-            const isPdf = item.url ? item.url.toLowerCase().includes('.pdf') : false;
-            const isImage = item.url ? (/\.(png|jpg|jpeg|webp|gif|svg)$/i.test(item.url) || (item.url.includes('cloudinary') && !isPdf)) : false;
-
-            return (
-              <div key={item.itemId || index} className="rounded-2xl border border-slate-200/60 bg-white/80 p-4 space-y-3 shadow-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Item {index + 1}</span>
-                    <h5 className="text-sm font-black text-slate-900 mt-0.5">{item.productName}</h5>
-                  </div>
-                  {hasCorrected ? (
-                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-indigo-50 border border-indigo-100 text-indigo-700 rounded-full shrink-0">
-                      Corrected Design
-                    </span>
-                  ) : (
-                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full shrink-0">
-                      Approved Design
-                    </span>
-                  )}
-                </div>
-
-                {hasCorrected ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Left: Original */}
-                    <div className="space-y-1">
-                      <span className="text-[8px] font-black uppercase text-amber-800 tracking-wider block">Original Upload</span>
-                      <div className="h-28 rounded-xl border border-slate-200 bg-white overflow-hidden relative group flex items-center justify-center shadow-sm">
-                        {/\.(png|jpg|jpeg|webp|gif|svg)$/i.test(customerOriginalUrl) || customerOriginalUrl.includes('cloudinary') ? (
-                          <>
-                            <img src={customerOriginalUrl} alt="Original" className="h-full w-full object-contain" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <a href={customerOriginalUrl} target="_blank" rel="noopener noreferrer" className="bg-white text-slate-900 rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
-                                <ExternalLink size={10} /> View
-                              </a>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-center p-2 text-[10px] text-slate-400 font-medium">Original file</div>
-                        )}
-                      </div>
-                    </div>
-                    {/* Right: Corrected */}
-                    <div className="space-y-1">
-                      <span className="text-[8px] font-black uppercase text-emerald-800 tracking-wider block">Corrected Design</span>
-                      <div className="h-28 rounded-xl border-2 border-emerald-300 bg-white overflow-hidden relative group flex items-center justify-center shadow-sm">
-                        {/\.(png|jpg|jpeg|webp|gif|svg)$/i.test(correctedArtworkUrl) || correctedArtworkUrl.includes('cloudinary') ? (
-                          <>
-                            <img src={correctedArtworkUrl} alt="Corrected" className="h-full w-full object-contain" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <a href={correctedArtworkUrl} target="_blank" rel="noopener noreferrer" className="bg-white text-slate-900 rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
-                                <ExternalLink size={10} /> View
-                              </a>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="text-center p-2 text-[10px] text-slate-400 font-medium">Corrected file</div>
-                        )}
-                      </div>
+        {currentStep && (
+          <div className="w-full rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-3">
+            <h4 className="text-xs font-black text-slate-800 tracking-tight uppercase">Timeline</h4>
+            <div className="space-y-3">
+              {printWorkflow?.timeline?.length ? (
+                printWorkflow.timeline.map((entry: any, index: number) => (
+                  <div key={index} className="flex gap-2 text-xs font-medium">
+                    <div className="mt-1 w-2.5 h-2.5 rounded-full bg-indigo-600 shrink-0" />
+                    <div>
+                      <p className="font-black text-slate-900 uppercase text-[10px] tracking-wider">{entry.event.replace('_', ' ')}</p>
+                      <p className="text-slate-700 mt-0.5 font-bold">{entry.notes}</p>
+                      <p className="text-[10px] font-bold text-slate-500 mt-0.5">By {entry.user || 'SYSTEM'}</p>
                     </div>
                   </div>
-                ) : (
-                  /* Single Preview */
-                  <div className="h-28 rounded-xl border border-slate-200 bg-white overflow-hidden relative group flex items-center justify-center shadow-sm">
-                    {isImage ? (
-                      <>
-                        <img src={item.url} alt="Artwork preview" className="h-full w-full object-contain" />
-                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <a href={item.url} target="_blank" rel="noopener noreferrer" className="bg-white text-slate-900 rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
-                            <ExternalLink size={10} /> View
-                          </a>
-                        </div>
-                      </>
-                    ) : isPdf ? (
-                      <div className="w-full h-full relative">
-                        <iframe src={`${item.url}#toolbar=0&navpanes=0`} className="w-full h-full border-0" />
-                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                          <a href={item.url} target="_blank" rel="noopener noreferrer" className="bg-white text-slate-900 rounded-full px-3 py-1.5 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1">
-                            <ExternalLink size={10} /> Open PDF
-                          </a>
-                        </div>
-                      </div>
+                ))
+              ) : (
+                <p className="text-xs font-bold text-slate-600 italic">No timeline entries yet.</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Visual Artwork Previews */}
+        <div className="w-full rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
+          <div className="flex items-center gap-2 border-b border-slate-200/80 pb-3">
+            <span className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
+              <Palette size={16} />
+            </span>
+            <div>
+              <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase">Visual Artwork Previews</h4>
+              <p className="text-[10px] text-slate-600 font-bold italic mt-0.5">Verify the final design layout before sending to production</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {managerItems.map((item: any, index: number) => {
+              const customerOriginalUrl = item.customerOriginalUrl || '';
+              const correctedArtworkUrl = item.correctedArtworkUrl || '';
+              const hasCorrected = !!correctedArtworkUrl && !!customerOriginalUrl && correctedArtworkUrl !== customerOriginalUrl;
+
+              const isPdf = item.url ? item.url.toLowerCase().includes('.pdf') : false;
+              const isImage = item.url ? (/\.(png|jpg|jpeg|webp|gif|svg)$/i.test(item.url) || (item.url.includes('cloudinary') && !isPdf)) : false;
+
+              return (
+                <div key={item.itemId || index} className="rounded-2xl border border-white/80 bg-white/70 backdrop-blur-md p-4 space-y-3 shadow-2xs">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Item {index + 1}</span>
+                      <h5 className="text-sm font-black text-slate-900 mt-0.5">{item.productName}</h5>
+                    </div>
+                    {hasCorrected ? (
+                      <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-full shrink-0 shadow-2xs">
+                        Corrected Design
+                      </span>
                     ) : (
-                      <div className="text-center p-3">
-                        <p className="text-[10px] text-slate-400 font-medium">No Image preview available</p>
-                        {item.url && (
-                          <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-[11px] font-bold text-blue-500 hover:underline mt-1 inline-block">
-                            Open Attached File
-                          </a>
-                        )}
-                      </div>
+                      <span className="text-[9px] font-black uppercase tracking-widest px-2.5 py-0.5 bg-slate-100 border border-slate-200 text-slate-700 rounded-full shrink-0 shadow-2xs">
+                        Approved Design
+                      </span>
                     )}
                   </div>
-                )}
-              </div>
-            );
-          })}
+
+                  {hasCorrected ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Left: Original */}
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-black uppercase text-amber-800 tracking-wider block">Original Upload</span>
+                        <div className="h-28 rounded-xl border border-slate-200 bg-white overflow-hidden relative group flex items-center justify-center shadow-2xs">
+                          {/\.(png|jpg|jpeg|webp|gif|svg)$/i.test(customerOriginalUrl) || customerOriginalUrl.includes('cloudinary') ? (
+                            <>
+                              <img src={customerOriginalUrl} alt="Original" className="h-full w-full object-contain" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <a href={customerOriginalUrl} target="_blank" rel="noopener noreferrer" className="bg-white text-slate-900 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                                  <ExternalLink size={10} /> View
+                                </a>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-center p-2 text-xs text-slate-500 font-bold">Original file</div>
+                          )}
+                        </div>
+                      </div>
+                      {/* Right: Corrected */}
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-black uppercase text-emerald-800 tracking-wider block">Corrected Design</span>
+                        <div className="h-28 rounded-xl border-2 border-emerald-300 bg-white overflow-hidden relative group flex items-center justify-center shadow-2xs">
+                          {/\.(png|jpg|jpeg|webp|gif|svg)$/i.test(correctedArtworkUrl) || correctedArtworkUrl.includes('cloudinary') ? (
+                            <>
+                              <img src={correctedArtworkUrl} alt="Corrected" className="h-full w-full object-contain" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <a href={correctedArtworkUrl} target="_blank" rel="noopener noreferrer" className="bg-white text-slate-900 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                                  <ExternalLink size={10} /> View
+                                </a>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-center p-2 text-xs text-slate-500 font-bold">Corrected file</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Single Preview */
+                    <div className="h-28 rounded-xl border border-slate-200 bg-white overflow-hidden relative group flex items-center justify-center shadow-2xs">
+                      {isImage ? (
+                        <>
+                          <img src={item.url} alt="Artwork preview" className="h-full w-full object-contain" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="bg-white text-slate-900 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                              <ExternalLink size={10} /> View
+                            </a>
+                          </div>
+                        </>
+                      ) : isPdf ? (
+                        <div className="w-full h-full relative">
+                          <iframe src={`${item.url}#toolbar=0&navpanes=0`} className="w-full h-full border-0" />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="bg-white text-slate-900 rounded-full px-3 py-1.5 text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm">
+                              <ExternalLink size={10} /> Open PDF
+                            </a>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center p-3">
+                          <p className="text-xs text-slate-500 font-bold">No Image preview available</p>
+                          {item.url && (
+                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="text-xs font-black text-blue-600 hover:underline mt-1 inline-block">
+                              Open Attached File
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );

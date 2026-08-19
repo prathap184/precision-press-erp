@@ -542,23 +542,20 @@ export function GlobalOrdersPage() {
   return (
     <RoleGuard allowedRoles={['ACDEMA', 'ADMIN', 'SUPER_ADMIN']}>
       <div className="w-full font-sans text-slate-800 relative z-10 min-h-[calc(100vh-4rem)]">
-        {/* Full-width Ambient Pink / Lavender / Rose Atmospheric Glow */}
-        <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
-          <div 
-            className="absolute inset-0"
-            style={{
-              background: 'radial-gradient(ellipse at 15% 15%, rgba(244, 114, 182, 0.28) 0%, rgba(216, 180, 254, 0.32) 30%, rgba(192, 132, 252, 0.18) 60%, transparent 100%), radial-gradient(circle at 85% 75%, rgba(236, 72, 153, 0.22) 0%, rgba(168, 85, 247, 0.20) 40%, rgba(147, 197, 253, 0.15) 70%, transparent 100%), radial-gradient(circle at 50% 50%, rgba(244, 114, 182, 0.12) 0%, transparent 60%), linear-gradient(135deg, #fdf2f8 0%, #faf5ff 35%, #f5f3ff 70%, #eff6ff 100%)'
-            }}
-          />
-          <div className="absolute inset-0 bg-[radial-gradient(#d8b4fe_1px,transparent_1px)] [background-size:24px_24px] opacity-35"></div>
-          {/* Subtle Pink Glowing Ambient Orbs */}
-          <div className="absolute -top-[10%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-pink-400/25 blur-[120px]"></div>
-          <div className="absolute -bottom-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-purple-400/25 blur-[120px]"></div>
-          <div className="absolute top-[30%] right-[20%] w-[35vw] h-[35vw] rounded-full bg-fuchsia-300/20 blur-[100px]"></div>
+        {/* Exact Proxy Order Canvas Background */}
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-[#d4d4d8]" aria-hidden="true">
+          {/* Grid & Noise Pattern */}
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+          
+          {/* 100% Pure Blue & Light Sky Blue Glowing Orbs (Zero Pink) */}
+          <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-400/35 blur-[140px] pointer-events-none animate-pulse"></div>
+          <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-sky-400/35 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-cyan-300/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
         </div>
 
-        <div className="w-full relative z-10">
-          <section className="relative z-50 rounded-2xl bg-white/50 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] backdrop-blur-2xl border border-white/60 mb-3 flex items-center justify-between gap-3 overflow-x-auto scrollbar-hide">
+        <div className="w-full relative z-10 p-4 sm:p-6 md:p-8">
+          <section className="relative z-50 rounded-2xl bg-white/30 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.02)] backdrop-blur-2xl border border-white/40 mb-3 flex items-center justify-between gap-3 overflow-x-auto scrollbar-hide">
             {/* LEFT: TITLE */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <div className="p-1.5 bg-slate-900 rounded-lg text-white">
@@ -570,12 +567,12 @@ export function GlobalOrdersPage() {
             </div>
 
             {/* CENTER: SINGLE LINE COMPACT TABS */}
-            <div className="flex items-center gap-1 bg-slate-100/90 p-0.5 rounded-xl border border-slate-200/80 flex-shrink-0">
+            <div className="flex items-center gap-1 bg-white/40 backdrop-blur-md p-0.5 rounded-xl border border-white/50 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setTab('global')}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
-                  tab === 'global' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  tab === 'global' ? 'bg-white/90 text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                 }`}
               >
                 <ClipboardList size={12} /> Global ({totalStats.total || orders.length})
@@ -584,7 +581,7 @@ export function GlobalOrdersPage() {
                 type="button"
                 onClick={() => setTab('stage')}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
-                  tab === 'stage' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  tab === 'stage' ? 'bg-white/90 text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                 }`}
               >
                 <AlertCircle size={12} /> At My Stage ({stageOrders.length})
@@ -593,7 +590,7 @@ export function GlobalOrdersPage() {
                 type="button"
                 onClick={() => setTab('completed')}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
-                  tab === 'completed' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  tab === 'completed' ? 'bg-white/90 text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                 }`}
               >
                 <CheckCircle size={12} /> Completed Stage ({completedStageOrders.length})
@@ -602,7 +599,7 @@ export function GlobalOrdersPage() {
                 type="button"
                 onClick={() => setTab('completed_by_me')}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
-                  tab === 'completed_by_me' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  tab === 'completed_by_me' ? 'bg-white/90 text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                 }`}
               >
                 <CheckCircle size={12} /> By Me ({completedByMeOrders.length})
@@ -611,7 +608,7 @@ export function GlobalOrdersPage() {
                 type="button"
                 onClick={() => setTab('worked_by_me')}
                 className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold tracking-normal whitespace-nowrap transition ${
-                  tab === 'worked_by_me' ? 'bg-white text-slate-900 shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                  tab === 'worked_by_me' ? 'bg-white/90 text-slate-900 shadow-xs font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                 }`}
               >
                 <Activity size={12} /> Recent ({workedByMeOrders.length})
@@ -620,17 +617,17 @@ export function GlobalOrdersPage() {
 
             {/* RIGHT: INLINE METRICS */}
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <div className="bg-white px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-slate-200/60 shadow-sm text-xs font-bold text-slate-700">
+              <div className="bg-white/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-white/60 shadow-2xs text-xs font-bold text-slate-700">
                 <Package size={12} className="text-slate-500" />
                 <span className="text-[10px] text-slate-400 font-semibold uppercase">Total</span>
                 <span className="text-slate-900">{totalStats.total}</span>
               </div>
-              <div className="bg-white px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-slate-200/60 shadow-sm text-xs font-bold text-indigo-700">
+              <div className="bg-white/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-white/60 shadow-2xs text-xs font-bold text-indigo-700">
                 <Activity size={12} className="text-indigo-500" />
                 <span className="text-[10px] text-indigo-400 font-semibold uppercase">Active</span>
                 <span>{totalStats.active}</span>
               </div>
-              <div className="bg-white px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-slate-200/60 shadow-sm text-xs font-bold text-emerald-700">
+              <div className="bg-white/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-white/60 shadow-2xs text-xs font-bold text-emerald-700">
                 <CheckCircle size={12} className="text-emerald-500" />
                 <span className="text-[10px] text-emerald-400 font-semibold uppercase">Done</span>
                 <span>{totalStats.completed}</span>
@@ -638,7 +635,7 @@ export function GlobalOrdersPage() {
             </div>
           </section>
 
-        <div className="relative z-40 rounded-2xl bg-white/50 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] backdrop-blur-2xl border border-white/60 mb-3 flex gap-2.5 items-center">
+        <div className="relative z-40 rounded-2xl bg-white/30 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.02)] backdrop-blur-2xl border border-white/40 mb-3 flex gap-2.5 items-center">
           <div className="flex-1 relative group">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
             <input
@@ -646,7 +643,7 @@ export function GlobalOrdersPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search manifest by ID, Customer, Phone..."
-              className="w-full h-8 bg-white border border-slate-200 rounded-lg pl-9 pr-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-600 transition-all shadow-sm"
+              className="w-full h-8 bg-white/70 backdrop-blur-md border border-white/60 rounded-lg pl-9 pr-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-600 transition-all shadow-2xs"
             />
           </div>
 
@@ -766,19 +763,18 @@ export function GlobalOrdersPage() {
           </div>
         </div>
 
-        <div className="relative z-30 rounded-3xl bg-white/30 p-3.5 shadow-[0_8px_30px_rgb(0,0,0,0.02)] backdrop-blur-2xl border border-white/50">
-          <div className="bg-white/20 rounded-2xl border border-white/40 shadow-sm overflow-hidden backdrop-blur-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left">
-                 <thead>
-                  <tr className="bg-white/40 border-b border-white/60 backdrop-blur-md">
-                    <th className="px-3 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-left w-[145px]">Node ID</th>
-                    <th className="px-3 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-left w-[280px]">Identity</th>
-                    <th className="px-3 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-left">Operational Status</th>
-                    <th className="px-4 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-right w-[110px]">Settlement</th>
-                    <th className="px-3 py-2.5 text-slate-800 text-xs font-bold uppercase tracking-wider text-center w-[180px]">Action</th>
-                  </tr>
-                </thead>
+        <div className="relative z-30 rounded-[2.5rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-left">
+              <thead>
+                <tr className="border-b border-slate-200/80">
+                  <th className="px-3 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-left w-[145px]">Node ID</th>
+                  <th className="px-3 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-left w-[280px]">Identity</th>
+                  <th className="px-3 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-left">Operational Status</th>
+                  <th className="px-4 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-right w-[110px]">Settlement</th>
+                  <th className="px-3 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-center w-[180px]">Action</th>
+                </tr>
+              </thead>
                 <tbody className="divide-y-0">
                   {loading ? (
                     <tr>
@@ -981,7 +977,7 @@ export function GlobalOrdersPage() {
                                         }
                                         handleInvoiceMultiple([order]);
                                       }}
-                                      className="text-center text-[11px] font-semibold text-indigo-700 border border-indigo-200 bg-indigo-50 hover:bg-indigo-600 hover:text-white rounded-lg py-1 px-2 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                                      className="text-center text-[11px] font-bold text-indigo-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg py-1 px-2.5 transition-all whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
                                       title="Generate Invoice"
                                     >
                                       {processingOrderId === order.id ? <Loader2 size={10} className="animate-spin" /> : <FileText size={10} />}
@@ -992,7 +988,7 @@ export function GlobalOrdersPage() {
                                 <button
                                   disabled={processingOrderId === order.id}
                                   onClick={() => handleReceipt(order)}
-                                  className="text-center text-[11px] font-semibold text-emerald-700 border border-emerald-200 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-lg py-1 px-2 transition-colors whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-sm"
+                                  className="text-center text-[11px] font-bold text-emerald-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg py-1 px-2.5 transition-all whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
                                   title="Record Customer Prepayment"
                                 >
                                   {processingOrderId === order.id ? <Loader2 size={10} className="animate-spin" /> : null}
@@ -1021,7 +1017,7 @@ export function GlobalOrdersPage() {
               </table>
             </div>
             {hasMore && !search && !loading && (
-              <div className="p-3 bg-slate-50 border-t border-slate-200 flex justify-center">
+              <div className="p-3 bg-white/40 border-t border-slate-200/60 rounded-b-2xl flex justify-center">
                 <button
                   onClick={() => setLimitCount((prev) => prev + 20)}
                   className="text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-2"
@@ -1031,7 +1027,6 @@ export function GlobalOrdersPage() {
               </div>
             )}
           </div>
-        </div>
         </div>
       </div>
 

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CheckCircle, ExternalLink, Loader2, Play, Upload } from 'lucide-react';
+import { CheckCircle, ExternalLink, Loader2, Play, Upload, Eye } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 import { db } from '@/lib/firebase';
@@ -228,128 +228,143 @@ export function StagePhotoWorkspace({
   }
 
   return (
-    <div className="font-sans text-slate-800 bg-gradient-to-br from-[#cad6fa] via-[#d4e4fc] to-[#bce1f8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none overflow-hidden pb-12">
-      {/* Dynamic Glassmorphism Background with glowing orbs */}
+    <div className="w-full font-sans text-slate-800 bg-[#d4d4d8] p-4 sm:p-6 md:p-8 relative z-10 min-h-[calc(100vh-4rem)] pb-12">
+      {/* Exact Proxy Order Canvas Background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
         <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
-        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-[#93c5fd]/30 blur-[140px] pointer-events-none animate-pulse"></div>
-        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#c4b5fd]/30 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-[#a5f3fc]/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-400/35 blur-[140px] pointer-events-none animate-pulse"></div>
+        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-sky-400/35 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-cyan-300/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
       </div>
 
-      {/* ONE Master Glass Container */}
-      <div className="relative z-10 rounded-[2.5rem] bg-white/60 backdrop-blur-xl shadow-lg border border-white/50 p-6 md:p-8 space-y-8">
-        {mode === 'READ_ONLY' && (
-          <div className="rounded-2xl bg-blue-50/60 p-4 flex items-start gap-3 border border-blue-100 text-slate-800">
-            <span className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5">
-              <span className="material-symbols-outlined text-lg leading-none">visibility</span>
-            </span>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-600">Read Only Mode</p>
-              <p className="text-[14px] font-bold text-blue-900 mt-1">This stage has already been completed.</p>
-              <p className="text-[12px] text-blue-700/80 mt-0.5 font-medium">Uploads and workflow actions are disabled for this stage.</p>
-            </div>
-          </div>
-        )}
-
+      {/* Page Content Stream (Modular Standalone Cards) */}
+      <div className="relative z-10 w-full space-y-6">
+        {/* Header Panel (Bold Command Headline) */}
         <section className="w-full">
-          <div className="flex flex-col gap-6">
-            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-600">{stageLabel}</p>
-                <h1 className="mt-2 text-[20px] md:text-[24px] font-black tracking-tight text-slate-900 truncate">
-                  Order #{order.id.replace('ORD-', '')} — {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
-                </h1>
-                <p className="mt-1 text-xs text-slate-500 max-w-2xl">{stageDescription}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full border border-slate-200/50 bg-slate-50/50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-slate-600">
-                    {order.status}
-                  </span>
-                  {currentStep?.label && (
-                    <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-blue-700">
-                      Current: {currentStep.label}
+          <div className="flex flex-row items-center justify-between gap-4 flex-wrap md:flex-nowrap px-2 sm:px-3 md:px-4">
+            <div className="flex flex-row items-center gap-3 min-w-0">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h1 className="text-[28px] font-black tracking-tight text-slate-900 truncate">
+                    Order #{order.id.replace('ORD-', '')} — {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
+                  </h1>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="inline-flex items-center rounded-full border border-slate-200/80 bg-white/70 backdrop-blur-md px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-slate-700 shadow-2xs">
+                      {order.status}
                     </span>
-                  )}
+                    {currentStep?.label && (
+                      <span className="inline-flex items-center rounded-full border border-purple-200/80 bg-purple-50/80 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-purple-700 shadow-2xs">
+                        Step: {currentStep.label}
+                      </span>
+                    )}
+                    {mode === 'READ_ONLY' && (
+                      <span className="inline-flex items-center rounded-full border border-blue-200/80 bg-blue-50/80 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-blue-700 shadow-2xs">
+                        • Read Only
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0 lg:items-end">
-                <Link href={backHref} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/80 backdrop-blur-md px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow transition-all duration-200">
-                  {backLabel}
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleWorkDone}
-                  disabled={processing || (!photoOptional && !photoUrl) || photoUploading || mode === 'READ_ONLY'}
-                  className={`inline-flex items-center justify-center gap-2 rounded-full px-5 h-9 text-[10px] font-black uppercase tracking-widest text-white transition-all shadow duration-200 ${
-                    mode === 'READ_ONLY' || isCompleted ? 'bg-slate-200 text-slate-500 cursor-not-allowed border-slate-300 opacity-80' : 'bg-slate-900 hover:bg-slate-800 disabled:opacity-50'
-                  }`}
-                >
-                  {processing ? <Loader2 className="animate-spin" size={13} /> : mode === 'READ_ONLY' ? <CheckCircle size={13} className="text-slate-400" /> : isCompleted ? <CheckCircle size={13} /> : <Play size={13} />}
-                  {mode === 'READ_ONLY' ? 'Already Completed' : isCompleted ? 'Completed' : 'Work Done'}
-                </button>
+                <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-1">
+                  Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'} • {order.customerSnapshot?.companyName || 'Hindustan Enterprises'}
+                </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
-              <div className="rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4 space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Upload Photo</p>
-                <label className={`flex items-center justify-center gap-2 rounded-xl border-2 border-dashed bg-white px-4 py-5 text-xs font-bold text-slate-700 transition-colors shadow-sm ${
-                  mode === 'READ_ONLY'
-                    ? 'border-slate-300 bg-slate-100/50 cursor-not-allowed opacity-75'
-                    : 'border-blue-200 hover:bg-blue-50 cursor-pointer'
-                }`}>
-                  <Upload size={14} />
-                  {photoUploading ? 'Uploading...' : mode === 'READ_ONLY' ? 'Uploads disabled (completed)' : 'Choose stage photo'}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    disabled={photoUploading || mode === 'READ_ONLY'}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) void handlePhotoUpload(file);
-                    }}
-                  />
-                </label>
-                {photoError && <p className="text-xs font-bold text-red-600">{photoError}</p>}
-                {photoUrl && (
-                  <a href={photoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-700 hover:underline">
-                    <ExternalLink size={11} />
-                    Open uploaded photo
-                  </a>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-4 space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Stage Requirement</p>
-                <p className="text-xs font-semibold text-slate-700">
-                  {photoOptional ? 'You can optionally upload a stage photo before pressing Work Done to complete this stage.' : 'Upload the stage photo first, then press Work Done to move the order forward.'}
-                </p>
-                <p className="text-[10px] text-slate-500 font-bold uppercase">Role: {role}</p>
-              </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <Link href={backHref} className="inline-flex items-center justify-center gap-1.5 rounded-full border border-slate-200 bg-white/80 backdrop-blur-md px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow-sm transition-all duration-200">
+                {backLabel}
+              </Link>
+              <button
+                type="button"
+                onClick={handleWorkDone}
+                disabled={processing || (!photoOptional && !photoUrl) || photoUploading || mode === 'READ_ONLY'}
+                className={`inline-flex items-center justify-center gap-1.5 rounded-full px-5 h-9 text-[10px] font-black uppercase tracking-widest text-white transition-all shadow duration-200 ${
+                  mode === 'READ_ONLY' || isCompleted ? 'bg-slate-200 text-slate-500 cursor-not-allowed border-slate-300 opacity-80' : 'bg-slate-900 hover:bg-slate-800 disabled:opacity-50'
+                }`}
+              >
+                {processing ? <Loader2 className="animate-spin" size={12} /> : mode === 'READ_ONLY' ? <CheckCircle size={12} className="text-slate-400" /> : isCompleted ? <CheckCircle size={12} /> : <Play size={12} />}
+                {mode === 'READ_ONLY' ? 'Already Completed' : isCompleted ? 'Completed' : 'Work Done'}
+              </button>
             </div>
           </div>
         </section>
 
+        {/* Read Only Mode Banner */}
+        {mode === 'READ_ONLY' && (
+          <div className="w-full rounded-[2rem] bg-blue-500/10 border border-blue-400/30 backdrop-blur-xl p-4 flex items-center gap-3.5 shadow-2xs">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20 text-blue-800 shrink-0">
+              <Eye size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-blue-700">Read Only Mode</span>
+                <span className="text-[10px] font-bold text-slate-500">•</span>
+                <span className="text-xs font-black text-slate-900">This stage has already been completed.</span>
+              </div>
+              <p className="text-[11px] font-bold text-slate-600 mt-0.5">Uploads and workflow actions are disabled for this stage.</p>
+            </div>
+          </div>
+        )}
+
         {/* ── Full Booking Details (OrderDetailsPanel at top) ── */}
         <OrderDetailsPanel order={order} role={role} className="text-slate-800 w-full" />
 
-        {/* Customer Notes */}
-        {(() => {
-          const notesContent = order.productionNotes || (order as any).production_notes || order.notes || order.customerNotes || (order as any).customer_notes || (order as any).remarks || (order as any).metadata?.notes || (order as any).metadata?.productionNotes || (order as any).additionalNotes;
-          return (
-            <div className={`w-full rounded-2xl p-4 border flex items-center gap-3 ${notesContent ? 'bg-amber-50/80 border-amber-200/80 shadow-sm' : 'bg-slate-50/80 border-slate-200/80'}`}>
-              <span className={`material-symbols-outlined ${notesContent ? 'text-amber-600' : 'text-purple-400'}`}>notes</span>
-              <span className={`text-[10px] font-black tracking-widest uppercase ${notesContent ? 'text-amber-800' : 'text-slate-500'}`}>Customer Notes:</span>
-              <span className={`text-sm font-semibold ${notesContent ? 'text-slate-900' : 'text-slate-500'}`}>{notesContent || "No customer notes provided."}</span>
+        {/* ── Stage Action Card (Photo Proof Upload) ── */}
+        <div className="w-full rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
+          <div className="flex items-center gap-2 pb-3 border-b border-slate-200/80">
+            <span className="p-1.5 bg-indigo-50 text-indigo-700 rounded-lg">
+              <Upload size={16} />
+            </span>
+            <div>
+              <h4 className="text-xs font-black text-slate-900 tracking-tight uppercase">{stageLabel} Proof Photo</h4>
+              <p className="text-[10px] text-slate-600 font-bold italic mt-0.5">{stageDescription}</p>
             </div>
-          );
-        })()}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
+            <div className="space-y-3">
+              <label className={`flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-xs font-black uppercase tracking-wider transition-all shadow-2xs ${
+                mode === 'READ_ONLY'
+                  ? 'border-white/40 bg-white/10 cursor-not-allowed opacity-60 text-slate-500'
+                  : 'border-white/60 bg-white/40 hover:bg-white/70 hover:border-white/90 text-slate-800 cursor-pointer backdrop-blur-md'
+              }`}>
+                <Upload size={16} />
+                {photoUploading ? 'Uploading...' : mode === 'READ_ONLY' ? 'Uploads disabled (completed)' : 'Choose stage photo'}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={photoUploading || mode === 'READ_ONLY'}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) void handlePhotoUpload(file);
+                  }}
+                />
+              </label>
+              {photoError && <p className="text-xs font-bold text-red-600">{photoError}</p>}
+              {photoUrl && (
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/70 border border-slate-200/80 shadow-2xs">
+                  <a href={photoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-black text-blue-700 hover:underline">
+                    <ExternalLink size={12} />
+                    View Uploaded Proof Photo
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/80 bg-white/70 backdrop-blur-md p-5 space-y-2 shadow-2xs">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Stage Requirement</p>
+              <p className="text-xs font-bold text-slate-800">
+                {photoOptional ? 'You can optionally upload a stage photo before pressing Work Done to complete this stage.' : 'Upload the stage photo first, then press Work Done to move the order forward.'}
+              </p>
+              <p className="text-[10px] text-indigo-700 font-black uppercase tracking-wider">Role: {role}</p>
+            </div>
+          </div>
+        </div>
 
         {/* ── Production Timeline ── */}
-        <div className="w-full pt-4 border-t border-slate-200/60 space-y-4">
+        <div className="w-full rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
           <WorkflowTimeline orderId={orderId} />
         </div>
       </div>

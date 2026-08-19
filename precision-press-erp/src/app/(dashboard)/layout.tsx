@@ -34,7 +34,7 @@ export default function DashboardRootLayout({
   const isProxyOrderPage = pathname.startsWith('/proxy-order') || pathname.startsWith('/admin/orders/proxy') || pathname.startsWith('/acdema');
   const isAccountingDashboard = pathname.startsWith('/accounting');
   const displaySidebarExpanded = (isGlobalOrdersPage || isAcdemaViewPage || isAccountantLedgerPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isAccountingDashboard) ? false : isSidebarExpanded;
-  const mainPadding = (isGlobalOrdersPage || isAcdemaViewPage) ? 'p-2.5 md:p-3.5' : isAccountantLedgerPage ? 'p-3 lg:p-4' : 'p-4 lg:p-6';
+  const mainPadding = (isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage) ? 'p-0' : isAccountantLedgerPage ? 'p-3 lg:p-4' : 'p-4 lg:p-6';
 
   return (
     <RoleGuard allowedRoles={['ADMIN', 'CUSTOMER', 'DESIGNER', 'SUPER_ADMIN', 'PRINTER', 'MANAGER', 'ACCOUNTANT', 'DISPATCH', 'SUPPORT', 'DELIVERY', 'ACDEMA', 'PASTING', 'FINISHING']}>
@@ -48,8 +48,9 @@ export default function DashboardRootLayout({
               error: { style: { background: '#ef4444', color: '#fff', fontWeight: 'bold' }, duration: 6000 },
             }}
           />
-          <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900 relative overflow-x-clip">
-          {/* Decorative Layers omitted for brevity in summary, but kept in code */}
+          <div className={`min-h-screen ${(isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage) ? 'bg-[#d4d4d8]' : 'bg-slate-50'} font-sans antialiased text-slate-900 relative overflow-x-clip`}>
+          {/* Decorative Layers omitted on full-canvas workspace pages */}
+          {!(isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage) && (
           <div className="fixed inset-0 pointer-events-none select-none z-0" aria-hidden="true">
             <div
               className="absolute inset-0 opacity-[0.35]"
@@ -101,6 +102,7 @@ export default function DashboardRootLayout({
               <path d="M30 110 L30 30 L110 30" stroke="#00236f" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </div>
+          )}
           <style>{`
             @keyframes drift1 {
               0%   { transform: translate(0, 0) scale(1); }

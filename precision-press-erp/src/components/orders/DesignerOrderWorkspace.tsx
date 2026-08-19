@@ -16,7 +16,8 @@ import {
   FileCheck,
   ChevronLeft,
   Clock,
-  Send
+  Send,
+  Eye
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
@@ -342,26 +343,26 @@ function OrderItemDesignBoxes({
         const correctedArtworkIsImage = correctedArtworkUrl ? (/\.(png|jpg|jpeg|webp|gif|svg)$/i.test(correctedArtworkUrl) || (correctedArtworkUrl.includes('cloudinary') && !correctedArtworkIsPdf)) : false;
 
         return (
-          <div key={item.id} className="rounded-3xl border border-white/60 bg-white/75 backdrop-blur-lg p-6 space-y-6 shadow-md">
-            <div className="flex items-start justify-between gap-3 border-b border-slate-100/50 pb-4">
+          <div key={item.id} className="rounded-[2rem] border border-white/40 bg-white/30 backdrop-blur-2xl p-6 space-y-6 shadow-[0_8px_30px_rgb(0,0,0,0.02)]">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-200/60 pb-4">
               <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-purple-600 mb-1">Item {index + 1} Workspace</p>
-                <h5 className="text-[18px] font-black text-slate-900">{item.productName}</h5>
-                <p className="text-[13px] text-slate-500 font-medium mt-1">
-                  Quantity: <span className="text-slate-900 font-bold">{item.specs?.quantity}</span>
+                <p className="text-[11px] font-black uppercase tracking-[0.3em] text-purple-700 mb-1">Item {index + 1} Workspace</p>
+                <h5 className="text-[20px] font-black text-slate-900">{item.productName}</h5>
+                <p className="text-[13px] text-slate-800 font-bold mt-1">
+                  Quantity: <span className="text-slate-900 font-black">{item.specs?.quantity}</span>
                   {item.specs?.width && item.specs?.height && (
-                    <span className="ml-3 border-l pl-3 border-slate-200">
-                      Size: <span className="text-slate-900 font-bold">{item.specs.width} {item.specs.widthUnit} × {item.specs.height} {item.specs.heightUnit}</span>
+                    <span className="ml-3 border-l-2 pl-3 border-slate-300">
+                      Size: <span className="text-slate-900 font-black">{item.specs.width} {item.specs.widthUnit} × {item.specs.height} {item.specs.heightUnit}</span>
                     </span>
                   )}
                 </p>
                 {item.designType === 'CUSTOMER_DESIGN' && (
-                  <span className="mt-2 inline-block px-3 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/80 text-amber-800 border border-amber-200/50">
+                  <span className="mt-2 inline-block px-3 py-0.5 rounded-full text-[10px] font-black bg-amber-100/90 text-amber-900 border border-amber-300/60 shadow-2xs">
                     CUSTOMER DESIGN
                   </span>
                 )}
                 {(item.designType === 'COMPANY_DESIGN' || item.designUrl === 'DESIGN_BY_US' || item.fileUrl === 'DESIGN_BY_US' || item.itemWorkspace?.customerUploadUrl === 'DESIGN_BY_US') && (
-                  <span className="mt-2 inline-block px-3 py-0.5 rounded-full text-[10px] font-bold bg-blue-100/80 text-blue-800 border border-blue-200/50">
+                  <span className="mt-2 inline-block px-3 py-0.5 rounded-full text-[10px] font-black bg-blue-100/90 text-blue-900 border border-blue-300/60 shadow-2xs">
                     DESIGN BY US
                   </span>
                 )}
@@ -632,49 +633,49 @@ function OrderItemDesignBoxes({
 
             <div className={hasCorrectedArtwork ? "space-y-4 max-w-xl" : "grid grid-cols-1 md:grid-cols-2 gap-6"}>
               <div className="space-y-4">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <label className="text-xs font-black uppercase tracking-wider text-slate-800">
                   {item.designType === 'CUSTOMER_DESIGN' ? 'Upload Corrected Version' : 'Upload Final Design'}
                 </label>
                 {item.designStatus === 'CUSTOMER_REVIEW' && (
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="rounded-2xl border border-amber-300 bg-amber-50/80 p-3 flex items-start gap-2 shadow-2xs">
+                    <Clock className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <p className="text-[11px] font-black text-amber-800 uppercase tracking-widest">Awaiting Customer Verification</p>
-                      <p className="text-[11px] text-amber-700 mt-0.5 font-medium">The customer needs to verify this design before you can mark the work as done. You may re-upload to replace it.</p>
+                      <p className="text-[11px] font-black text-amber-900 uppercase tracking-widest">Awaiting Customer Verification</p>
+                      <p className="text-[11px] text-amber-800 mt-0.5 font-bold">The customer needs to verify this design before you can mark the work as done. You may re-upload to replace it.</p>
                     </div>
                   </div>
                 )}
                 <label className={`relative flex items-center justify-center w-full h-20 border-2 border-dashed rounded-2xl transition-all ${
                   mode === 'READ_ONLY'
-                    ? 'bg-slate-100/50 border-slate-300 opacity-60 cursor-not-allowed'
+                    ? 'bg-white/10 border-white/40 opacity-60 cursor-not-allowed'
                     : isUploading
-                      ? 'bg-slate-50/40 border-slate-300 cursor-not-allowed'
-                      : 'border-purple-200 bg-purple-50/30 hover:bg-purple-50/60 hover:border-purple-400 cursor-pointer'
+                      ? 'bg-white/20 border-white/40 cursor-not-allowed'
+                      : 'border-white/50 bg-white/20 hover:bg-white/40 hover:border-white/70 cursor-pointer backdrop-blur-md'
                 }`}>
                   <div className="flex items-center justify-center gap-3 px-4 py-2">
                     {isUploading ? (
                       <>
                         <Loader2 className="w-5 h-5 text-purple-50 animate-spin text-purple-500" />
-                        <p className="text-[13px] font-bold text-slate-700">Uploading...</p>
+                        <p className="text-[13px] font-black text-slate-900">Uploading...</p>
                       </>
                     ) : mode === 'READ_ONLY' ? (
                       <>
-                        <div className="w-8 h-8 bg-slate-200 rounded-full shadow flex items-center justify-center text-slate-400 shrink-0">
+                        <div className="w-8 h-8 bg-white/40 backdrop-blur-md rounded-full shadow-2xs flex items-center justify-center text-slate-600 shrink-0">
                           <Upload className="w-4 h-4" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[13px] font-bold text-slate-500">Uploads Disabled</p>
-                          <p className="text-[10px] text-slate-400 font-medium uppercase tracking-widest">Completed Stage</p>
+                          <p className="text-[13px] font-black text-slate-800">Uploads Disabled</p>
+                          <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">Completed Stage</p>
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="w-8 h-8 bg-white/95 rounded-full shadow flex items-center justify-center text-purple-600 shrink-0">
+                        <div className="w-8 h-8 bg-white/80 backdrop-blur-md rounded-full shadow-2xs flex items-center justify-center text-purple-700 shrink-0">
                           <Upload className="w-4 h-4" />
                         </div>
                         <div className="text-left">
-                          <p className="text-[13px] font-bold text-slate-700">Click to upload design</p>
-                          <p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">PNG, JPG, PDF</p>
+                          <p className="text-[13px] font-black text-slate-900">Click to upload design</p>
+                          <p className="text-[10px] text-slate-700 font-bold uppercase tracking-widest">PNG, JPG, PDF</p>
                         </div>
                       </>
                     )}
@@ -694,8 +695,8 @@ function OrderItemDesignBoxes({
 
               {!hasCustomerArtwork && !hasCorrectedArtwork && (
                 <div className="space-y-4">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Preview</label>
-                  <div className="h-48 rounded-xl border border-slate-200/60 bg-white/80 flex items-center justify-center overflow-hidden relative group shadow-sm">
+                  <label className="text-xs font-black uppercase tracking-wider text-slate-800">Live Preview</label>
+                  <div className="h-48 rounded-2xl border border-white/40 bg-white/20 backdrop-blur-xl flex items-center justify-center overflow-hidden relative group shadow-2xs">
                     {previewUrl ? (
                       isImage ? (
                         <>
@@ -705,7 +706,7 @@ function OrderItemDesignBoxes({
                               href={previewUrl} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="bg-white/90 backdrop-blur-sm text-slate-900 rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-white shadow"
+                              className="bg-white text-slate-900 rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 hover:bg-white shadow"
                             >
                               <ExternalLink size={14} /> Full View
                             </a>
@@ -719,7 +720,7 @@ function OrderItemDesignBoxes({
                               href={previewUrl} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="bg-white/95 text-slate-900 shadow-sm border rounded px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 hover:bg-white"
+                              className="bg-white text-slate-900 shadow-sm border rounded px-2.5 py-1.5 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 hover:bg-white"
                             >
                               <ExternalLink size={12} /> Open PDF
                             </a>
@@ -727,14 +728,14 @@ function OrderItemDesignBoxes({
                         </div>
                       ) : (
                         <div className="flex flex-col items-center gap-2">
-                          <FileCheck className="w-8 h-8 text-slate-400" />
-                          <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-[13px] font-bold text-blue-600 hover:underline">
+                          <FileCheck className="w-8 h-8 text-slate-600" />
+                          <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-[13px] font-black text-blue-700 hover:underline">
                             View Document
                           </a>
                         </div>
                       )
                     ) : (
-                      <p className="text-[13px] font-medium text-slate-400 italic">No design uploaded yet</p>
+                      <p className="text-[13px] font-bold text-slate-600 italic">No design uploaded yet</p>
                     )}
                   </div>
                 </div>
@@ -1010,53 +1011,59 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
   }
 
   return (
-    <div className="font-sans text-slate-800 bg-gradient-to-br from-[#cad6fa] via-[#d4e4fc] to-[#bce1f8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none overflow-hidden pb-12">
-      {/* Dynamic Glassmorphism Background with glowing orbs */}
+    <div className="w-full font-sans text-slate-800 bg-[#d4d4d8] p-4 sm:p-6 md:p-8 relative z-10 min-h-[calc(100vh-4rem)] pb-12">
+      {/* Exact Proxy Order Canvas Background */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
         <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
-        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-[#93c5fd]/30 blur-[140px] pointer-events-none animate-pulse"></div>
-        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-[#c4b5fd]/30 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-[#a5f3fc]/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+        {/* 100% Pure Blue & Light Sky Blue Glowing Orbs (Zero Pink) */}
+        <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-400/35 blur-[140px] pointer-events-none animate-pulse"></div>
+        <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-sky-400/35 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-cyan-300/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
       </div>
 
-      {/* ONE Master Glass Container */}
-      <div className="relative z-10 rounded-[2.5rem] bg-white/60 backdrop-blur-xl shadow-lg border border-white/50 p-6 md:p-8 space-y-8">
-      {/* Header Panel */}
-      <section className="w-full">
-        <div className="px-5 py-4 flex flex-row items-center justify-between gap-4 flex-wrap md:flex-nowrap">
-          <div className="flex flex-row items-center gap-3 min-w-0">
-            <span className="p-2 bg-purple-100/80 text-purple-700 rounded-xl shrink-0 hidden sm:inline-flex">
-              <Palette size={16} />
-            </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-[18px] md:text-[20px] font-black tracking-tight text-slate-900 truncate">
-                  Order #{order.id.replace('ORD-', '')} — {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
-                </h1>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <span className="inline-flex items-center rounded-full border border-slate-200/50 bg-slate-50/50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-slate-600">
-                    {order.status}
+      {/* Page Content Stream (Modular Standalone Cards) */}
+      <div className="relative z-10 w-full space-y-6">
+      {/* Header Panel (Bold Command Headline) */}
+      <section className="w-full mb-2 px-2 sm:px-3 md:px-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-[28px] font-black tracking-tight text-slate-900 leading-tight">
+                Order #{order.id.replace('ORD-', '')}
+              </h1>
+              <span className="text-xl font-bold text-slate-400">—</span>
+              <span className="text-[24px] font-bold text-slate-800 tracking-tight">
+                {order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Unknown Customer'}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center rounded-full border border-slate-300/80 bg-white/90 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-700 shadow-2xs">
+                  {order.status}
+                </span>
+                {currentStep?.label && (
+                  <span className="inline-flex items-center rounded-full border border-purple-200 bg-purple-100/80 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-purple-800 shadow-2xs">
+                    Step: {currentStep.label}
                   </span>
-                  {currentStep?.label && (
-                    <span className="inline-flex items-center rounded-full border border-purple-200/50 bg-purple-50/50 px-2.5 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-purple-700">
-                      Step: {currentStep.label}
-                    </span>
-                  )}
-                </div>
+                )}
+                {mode === 'READ_ONLY' && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/90 px-3 py-0.5 text-[10px] font-black uppercase tracking-wider text-blue-700 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    Read Only
+                  </span>
+                )}
               </div>
-              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'}
-              </p>
             </div>
+            <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mt-1">
+              Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'} • Hindustan Enterprises
+            </p>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
             <button 
               onClick={handleReturnRedirect} 
-              className="inline-flex items-center justify-center gap-1.5 rounded-full border border-white/60 bg-white/80 backdrop-blur-md px-4 h-9 text-[10px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow transition-all duration-200"
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-white/80 bg-white/90 backdrop-blur-md px-4 h-10 text-[11px] font-black uppercase tracking-widest text-slate-700 hover:bg-white hover:shadow-md transition-all duration-200 shadow-2xs"
             >
-              <ChevronLeft size={12} /> Back
+              <ChevronLeft size={14} /> Back
             </button>
 
             {/* Stage Actions */}
@@ -1064,9 +1071,9 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
               <div className="flex items-center gap-2">
                 <button
                   disabled
-                  className="px-4 h-9 bg-slate-100 text-slate-400 border border-slate-200 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 opacity-75 cursor-not-allowed"
+                  className="px-4 h-10 bg-white/90 text-slate-400 border border-slate-200/80 rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 opacity-80 cursor-not-allowed shadow-2xs"
                 >
-                  <CheckCircle className="w-3.5 h-3.5 text-slate-400" />
+                  <CheckCircle className="w-4 h-4 text-slate-400" />
                   Already Completed
                 </button>
               </div>
@@ -1077,27 +1084,27 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
                     <button 
                       onClick={handleStart}
                       disabled={isProcessing}
-                      className="px-4 h-9 bg-blue-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 disabled:opacity-50 shadow hover:bg-blue-700 transition-all duration-200"
+                      className="px-5 h-10 bg-blue-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 disabled:opacity-50 shadow-md hover:bg-blue-700 transition-all duration-200"
                     >
-                      {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                      {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                       START WORK
                     </button>
                   )}
 
                   {currentStep.status === 'IN_PROGRESS' && (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2">
                       {hasCompanyDesign && (
                         <button 
                           onClick={() => openAction('pause')}
                           disabled={isProcessing || hasUnuploadedDesigns}
-                          className={`px-4 h-9 text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow transition-all duration-200 ${
+                          className={`px-4 h-10 text-white rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow transition-all duration-200 ${
                             hasUnuploadedDesigns 
                               ? 'bg-slate-400 cursor-not-allowed opacity-75' 
                               : 'bg-amber-600 hover:bg-amber-700 disabled:opacity-50'
                           }`}
                           title={hasUnuploadedDesigns ? 'Upload design first' : 'Send Proof For Customer Approval'}
                         >
-                          <PauseCircle className="w-3.5 h-3.5" />
+                          <PauseCircle className="w-4 h-4" />
                           SEND FOR VERIFICATION
                         </button>
                       )}
@@ -1106,9 +1113,9 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
                           onClick={() => openAction('complete')}
                           disabled={isProcessing}
                           title={blockReason}
-                          className="px-4 h-9 text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow transition-all duration-200 bg-emerald-600 hover:bg-emerald-700"
+                          className="px-5 h-10 text-white rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-md transition-all duration-200 bg-emerald-600 hover:bg-emerald-700"
                         >
-                          <CheckCircle className="w-3.5 h-3.5" />
+                          <CheckCircle className="w-4 h-4" />
                           SEND TO NEXT STAGE
                         </button>
                       )}
@@ -1119,9 +1126,9 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
                      <button 
                        onClick={handleResume}
                        disabled={isProcessing}
-                       className="px-4 h-9 bg-purple-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 hover:bg-purple-700 disabled:opacity-50 shadow transition-all duration-200"
+                       className="px-5 h-10 bg-purple-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5 hover:bg-purple-700 disabled:opacity-50 shadow-md transition-all duration-200"
                      >
-                       {isProcessing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+                       {isProcessing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
                        RESUME WORK
                      </button>
                   )}
@@ -1132,21 +1139,26 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
         </div>
       </section>
 
+      {/* Read Only Mode Banner */}
+      {mode === 'READ_ONLY' && (
+        <div className="w-full rounded-[2rem] bg-blue-500/10 border border-blue-400/30 backdrop-blur-xl p-4 flex items-center gap-3.5 shadow-2xs">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/20 text-blue-800 shrink-0">
+            <Eye size={18} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] font-black uppercase tracking-[0.25em] text-blue-700">Read Only Mode</span>
+              <span className="text-[10px] font-bold text-slate-500">•</span>
+              <span className="text-xs font-black text-slate-900">This stage has already been completed.</span>
+            </div>
+            <p className="text-[11px] font-bold text-slate-600 mt-0.5">Uploads and workflow actions are disabled for this stage.</p>
+          </div>
+        </div>
+      )}
+
       {/* Main Designer Content */}
       {currentStep && (
         <div className="space-y-6">
-          {mode === 'READ_ONLY' && (
-            <div className="rounded-2xl bg-blue-50/60 p-4 flex items-start gap-3 border border-blue-100">
-              <span className="p-2 bg-blue-100 text-blue-700 rounded-xl shrink-0 mt-0.5">
-                <span className="material-symbols-outlined text-lg leading-none">visibility</span>
-              </span>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-600">Read Only Mode</p>
-                <p className="text-[14px] font-bold text-blue-900 mt-1">This stage has already been completed.</p>
-                <p className="text-[12px] text-blue-700/80 mt-0.5 font-medium">Uploads and workflow actions are disabled for this stage.</p>
-              </div>
-            </div>
-          )}
 
           {isDesignApproved && mode !== 'READ_ONLY' && (
             <div className="rounded-2xl bg-emerald-50/60 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-emerald-100">
@@ -1176,17 +1188,7 @@ export function DesignerOrderWorkspace({ orderId, itemId }: DesignerOrderWorkspa
         className="text-slate-800 w-full"
       />
 
-      {/* Customer Notes */}
-      {(() => {
-        const notesContent = order.productionNotes || (order as any).production_notes || order.notes || order.customerNotes || (order as any).customer_notes || (order as any).remarks || (order as any).metadata?.notes || (order as any).metadata?.productionNotes || (order as any).additionalNotes;
-        return (
-          <div className={`w-full rounded-2xl p-4 border flex items-center gap-3 ${notesContent ? 'bg-amber-50/80 border-amber-200/80 shadow-sm' : 'bg-slate-50/80 border-slate-200/80'}`}>
-            <span className={`material-symbols-outlined ${notesContent ? 'text-amber-600' : 'text-purple-400'}`}>notes</span>
-            <span className={`text-[10px] font-black tracking-widest uppercase ${notesContent ? 'text-amber-800' : 'text-slate-500'}`}>Customer Notes:</span>
-            <span className={`text-sm font-semibold ${notesContent ? 'text-slate-900' : 'text-slate-500'}`}>{notesContent || "No customer notes provided."}</span>
-          </div>
-        );
-      })()}
+
 
       {/* Main Designer Content (Item Workspaces) */}
       {currentStep && (
