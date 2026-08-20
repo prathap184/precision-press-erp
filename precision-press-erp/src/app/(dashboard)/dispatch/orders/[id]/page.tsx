@@ -170,9 +170,10 @@ export default function DispatchFinalizationPage() {
       if (dbErr) throw dbErr;
 
       // 2. Mark order as DISPATCHED via workflow
-      const method = order.delivery?.choice || 'PICKUP';
+      const rawChoice = String(order.delivery?.choice || (order as any).deliveryChoice || (order as any).delivery_choice || 'PICKUP').toUpperCase();
+      const mappedMethod = rawChoice.includes('DOOR') ? 'DOOR_DELIVERY' : rawChoice.includes('COURIER') ? 'COURIER' : rawChoice.includes('TRANSPORT') ? 'TRANSPORT' : 'PICKUP';
       const result = await dispatchOrder(order.id, {
-        method: method === 'PICKUP' ? 'PICKUP' : method === 'DOOR_DELIVERY' ? 'DOOR_DELIVERY' : method === 'COURIER' ? 'COURIER' : 'TRANSPORT',
+        method: mappedMethod,
         transportName: form.transporter_name,
         lrNumber: form.lr_number,
         notes: form.notes,

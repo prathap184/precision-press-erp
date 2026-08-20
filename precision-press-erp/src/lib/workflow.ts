@@ -1484,9 +1484,10 @@ export async function advanceOrderWorkflow(orderId: string, notes?: string, meta
   } else if (nextRole === 'PRINTER' || nextRole === 'PASTING' || nextRole === 'FINISHING') {
     nextStatus = 'IN_PROGRESS';
   } else if (nextRole === 'DISPATCH') {
-    nextStatus = 'COMPLETED'; // Production is done, ready for dispatch
+    nextStatus = 'IN_PROGRESS'; // Order is in production / awaiting dispatch
   } else if (nextRole === 'DELIVERY') {
-    const isDeliverySkipped = ['pickup', 'counter'].includes((orderData.dispatchInfo?.method || orderData.deliveryChoice || '').toLowerCase());
+    const rawDeliveryChoice = (orderData.dispatchInfo?.method || orderData.deliveryChoice || orderData.delivery?.choice || '').toLowerCase();
+    const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes(rawDeliveryChoice);
     if (isDeliverySkipped) {
       nextStatus = 'DELIVERED';
       if (!metadata) metadata = {};
@@ -1495,17 +1496,20 @@ export async function advanceOrderWorkflow(orderId: string, notes?: string, meta
       nextStatus = 'DISPATCHED';
     }
   } else if (!nextRole) {
-    // If no next role, fallback to legacy sequential logic
-    if (role === 'DESIGNER') {
+    const rawDeliveryChoice = (orderData.dispatchInfo?.method || orderData.deliveryChoice || orderData.delivery?.choice || '').toLowerCase();
+    const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes(rawDeliveryChoice);
+    if (role === 'DISPATCH' && isDeliverySkipped) {
+      nextStatus = 'DELIVERED';
+      if (!metadata) metadata = {};
+      metadata['workflow.deliveredAt'] = admin.firestore.FieldValue.serverTimestamp();
+    } else if (role === 'DELIVERY') {
+      nextStatus = 'DELIVERED';
+    } else if (role === 'DISPATCH') {
+      nextStatus = 'DISPATCHED';
+    } else if (role === 'DESIGNER') {
       nextStatus = 'DESIGN_READY';
     } else if (role === 'MANAGER' || role === 'MANAGER_SIGN_OFF' || role === 'MANAGER SIGN-OFF') {
       nextStatus = 'ASSIGNED';
-    } else if (orderData.status === 'ASSIGNED' || orderData.status === 'IN_PROGRESS') {
-      nextStatus = 'COMPLETED';
-    } else if (orderData.status === 'COMPLETED') {
-      nextStatus = 'DISPATCHED';
-    } else if (orderData.status === 'DISPATCHED' || orderData.status === 'IN_TRANSIT') {
-      nextStatus = 'DELIVERED';
     }
   }
   
@@ -1755,9 +1759,8 @@ export async function dispatchOrder(orderId: string, dispatchInfo: any) {
   
   const snap = await adminDb.collection('orders').doc(orderId).get();
   const currentStatus = snap.data()?.status;
-  const orderData = snap.data() as any;
-  
-  const isDeliverySkipped = ['pickup', 'counter'].includes((dispatchInfo?.method || orderData?.deliveryChoice || '').toLowerCase());
+  const rawChoice = (dispatchInfo?.method || orderData?.deliveryChoice || orderData?.delivery?.choice || '').toLowerCase();
+  const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes(rawChoice);
   
   const { dispatchProofUrl, ...restDispatchInfo } = dispatchInfo;
   

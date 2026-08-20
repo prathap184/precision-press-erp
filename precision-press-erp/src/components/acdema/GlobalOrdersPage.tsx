@@ -254,6 +254,30 @@ export function GlobalOrdersPage() {
     }
   };
 
+  const isOrderFullyCompleted = (order: Order): boolean => {
+    if (order.status === 'DELIVERED' || Boolean(order.workflow?.['deliveredAt'])) return true;
+    
+    const dispatchMethodKey = order.dispatchInfo?.method || (order as any).deliveryChoice || (order as any).delivery_choice || order.delivery?.choice || '';
+    const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes((dispatchMethodKey || '').toLowerCase());
+    
+    if (order.workflowSnapshot?.steps && Array.isArray(order.workflowSnapshot.steps) && order.workflowSnapshot.steps.length > 0) {
+      const steps = order.workflowSnapshot.steps;
+      const hasDeliveryStep = steps.some((s: any) => s.role === 'DELIVERY');
+      
+      if (isDeliverySkipped || !hasDeliveryStep) {
+        // Pick up order: completed once all non-delivery steps are completed
+        const relevantSteps = steps.filter((s: any) => s.role !== 'DELIVERY');
+        return relevantSteps.length > 0 && relevantSteps.every((s: any) => s.status === 'COMPLETED');
+      } else {
+        // DOOR, COURIER, TRANSPORT: must have DELIVERY step completed!
+        const deliveryStep = steps.find((s: any) => s.role === 'DELIVERY');
+        return deliveryStep ? deliveryStep.status === 'COMPLETED' : false;
+      }
+    }
+    
+    return false;
+  };
+
   const ALL_WORKFLOW_ROLES = [
     { id: 'ACCOUNTANT', label: 'Accounts Approval', color: 'bg-teal-100' },
     { id: 'DESIGNER',   label: 'Design & Artwork',  color: 'bg-purple-100' },
@@ -498,6 +522,14 @@ export function GlobalOrdersPage() {
     });
   }, [orders, viewerUid]);
 
+  const computedStats = React.useMemo(() => {
+    if (orders.length === 0) return totalStats;
+    const total = orders.length;
+    const completed = orders.filter(isOrderFullyCompleted).length;
+    const active = total - completed;
+    return { total, active, completed };
+  }, [orders, totalStats]);
+
   const activeOrders = React.useMemo(() => {
     if (tab === 'stage') return stageOrders;
     if (tab === 'completed') return completedStageOrders;
@@ -620,17 +652,17 @@ export function GlobalOrdersPage() {
               <div className="bg-white/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-white/60 shadow-2xs text-xs font-bold text-slate-700">
                 <Package size={12} className="text-slate-500" />
                 <span className="text-[10px] text-slate-400 font-semibold uppercase">Total</span>
-                <span className="text-slate-900">{totalStats.total}</span>
+                <span className="text-slate-900">{computedStats.total}</span>
               </div>
               <div className="bg-white/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-white/60 shadow-2xs text-xs font-bold text-indigo-700">
                 <Activity size={12} className="text-indigo-500" />
                 <span className="text-[10px] text-indigo-400 font-semibold uppercase">Active</span>
-                <span>{totalStats.active}</span>
+                <span>{computedStats.active}</span>
               </div>
               <div className="bg-white/60 backdrop-blur-md px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-white/60 shadow-2xs text-xs font-bold text-emerald-700">
                 <CheckCircle size={12} className="text-emerald-500" />
                 <span className="text-[10px] text-emerald-400 font-semibold uppercase">Done</span>
-                <span>{totalStats.completed}</span>
+                <span>{computedStats.completed}</span>
               </div>
             </div>
           </section>
@@ -833,10 +865,7 @@ export function GlobalOrdersPage() {
                         ? 'border-b-[3px] border-white shadow-[0_1px_4px_rgba(255,255,255,0.5)]'
                         : 'border-b-0';
 
-                      const isOrderCompleted = (order.status === 'DELIVERED') || 
-                        Boolean(order.workflow?.['deliveredAt']) || 
-                        (order.currentWorkflowLabel === 'COMPLETED') || 
-                        ((order.workflowSnapshot?.currentStepIndex ?? -1) >= (order.workflowSnapshot?.steps?.length ?? 0));
+                      const isOrderCompleted = isOrderFullyCompleted(order);
 
                       return (
                         <React.Fragment key={order.id}>

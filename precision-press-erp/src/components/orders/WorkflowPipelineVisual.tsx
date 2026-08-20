@@ -15,6 +15,7 @@ interface WorkflowPipelineVisualProps {
   detailed?: boolean;
   filterByRoles?: boolean;
   allowNavigation?: boolean;
+  deliveryChoice?: string;
 }
 
 const ROLE_DASHBOARD_URL: Partial<Record<StaffRole, string>> = {
@@ -35,6 +36,7 @@ export function WorkflowPipelineVisual({
   detailed = false,
   filterByRoles = false,
   allowNavigation = false,
+  deliveryChoice,
 }: WorkflowPipelineVisualProps): JSX.Element {
   let roles: StaffRole[] = [];
   let role: string | undefined;
@@ -69,11 +71,16 @@ export function WorkflowPipelineVisual({
     role === 'ADMIN' ||
     role === 'SUPER_ADMIN';
 
-  let stepsToRender = snapshot.steps.map((step, index) => ({
+  const isPickupOrder = ['pickup', 'counter', 'selfpickup'].includes((deliveryChoice || '').toLowerCase());
+  const effectiveSnapshotSteps = isPickupOrder
+    ? snapshot.steps.filter((step) => step.role !== 'DELIVERY')
+    : snapshot.steps;
+
+  let stepsToRender = effectiveSnapshotSteps.map((step, index) => ({
     ...step,
     originalIndex: index,
-    isCurrent: index === snapshot.currentStepIndex,
-    isCompleted: index < snapshot.currentStepIndex,
+    isCurrent: index === snapshot.currentStepIndex && step.status !== 'COMPLETED',
+    isCompleted: index < snapshot.currentStepIndex || step.status === 'COMPLETED',
   }));
 
   if (filterByRoles && !isAdmin) {

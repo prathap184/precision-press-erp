@@ -511,6 +511,7 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
                             detailed={true}
                             filterByRoles={false}
                             allowNavigation={true}
+                            deliveryChoice={order.dispatchInfo?.method || (order as any).deliveryChoice || order.delivery?.choice}
                           />
                         </div>
                       </div>
