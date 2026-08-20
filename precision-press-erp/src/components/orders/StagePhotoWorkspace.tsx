@@ -344,11 +344,20 @@ export function StagePhotoWorkspace({
               </label>
               {photoError && <p className="text-xs font-bold text-red-600">{photoError}</p>}
               {photoUrl && (
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-white/70 border border-slate-200/80 shadow-2xs">
-                  <a href={photoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-black text-blue-700 hover:underline">
-                    <ExternalLink size={12} />
-                    View Uploaded Proof Photo
-                  </a>
+                <div className="p-3 rounded-2xl bg-white/80 border border-slate-200 shadow-sm space-y-2">
+                  <div className="relative rounded-xl overflow-hidden bg-slate-100 max-h-60 flex items-center justify-center border border-slate-200">
+                    <img 
+                      src={photoUrl} 
+                      alt={`${stageLabel} Proof`} 
+                      className="max-h-60 w-full object-contain rounded-xl"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">✓ Stage Proof Attached</span>
+                    <a href={photoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] font-black text-blue-700 hover:underline">
+                      <ExternalLink size={12} /> View Full Photo
+                    </a>
+                  </div>
                 </div>
               )}
             </div>

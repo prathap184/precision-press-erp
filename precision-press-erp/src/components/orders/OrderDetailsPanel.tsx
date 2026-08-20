@@ -208,6 +208,92 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
         </div>
       </div>
 
+      {/* Stage Proof Photos Section (Designer, Pasting, Finishing, Dispatch, Delivery) */}
+      {(() => {
+        const wf = (order?.workflow || {}) as Record<string, any>;
+        const dispatch = (order?.dispatchInfo || {}) as Record<string, any>;
+        const proofList = [
+          {
+            stage: 'Design Artwork',
+            url: wf.designUrl || wf.designerProofs?.[0]?.url || (typeof wf.designerProof === 'string' ? wf.designerProof : wf.designerProof?.url) || wf.artworkUrl,
+            time: wf.designerProofs?.[0]?.uploadedAt || wf.designApprovedAt,
+            uploader: wf.designerProofs?.[0]?.uploadedByName,
+            badgeColor: 'bg-purple-100 text-purple-800 border-purple-200',
+          },
+          {
+            stage: 'Pasting Proof',
+            url: wf.pastingProofUrl || wf.pastingProof || wf.pasting_proof_url,
+            time: wf.pastingProofUploadedAt || wf.pastingCompletedAt,
+            uploader: wf.pastingProofUploadedBy,
+            badgeColor: 'bg-amber-100 text-amber-800 border-amber-200',
+          },
+          {
+            stage: 'Finishing Proof',
+            url: wf.finishingProofUrl || wf.finishingProof || wf.finishing_proof_url,
+            time: wf.finishingProofUploadedAt || wf.finishingCompletedAt,
+            uploader: wf.finishingProofUploadedBy,
+            badgeColor: 'bg-blue-100 text-blue-800 border-blue-200',
+          },
+          {
+            stage: 'Dispatch Proof',
+            url: wf.dispatchProofUrl || dispatch.proofUrl || (order as any).dispatch_proof_url,
+            time: wf.dispatchProofUploadedAt || dispatch.dispatchedAt,
+            uploader: dispatch.transporter_name,
+            badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+          },
+          {
+            stage: 'Delivery Proof',
+            url: (typeof wf.deliveryProof === 'object' ? wf.deliveryProof?.url : wf.deliveryProof) || wf.deliveryProofUrl || (order as any).delivery_proof_url,
+            time: typeof wf.deliveryProof === 'object' ? wf.deliveryProof?.uploadedAt : wf.deliveredAt,
+            uploader: typeof wf.deliveryProof === 'object' ? wf.deliveryProof?.uploadedByName : undefined,
+            badgeColor: 'bg-teal-100 text-teal-800 border-teal-200',
+          },
+        ].filter(p => Boolean(p.url) && typeof p.url === 'string');
+
+        if (proofList.length === 0) return null;
+
+        return (
+          <div className="relative z-10 w-full mt-6 rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-blue-600">photo_library</span>
+                  Stage Proof Photos & Verification ({proofList.length})
+                </h3>
+                <p className="text-[10px] text-slate-500 font-bold mt-0.5">Uploaded stage photos from Pasting, Finishing, Dispatch, and Delivery</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {proofList.map((p, i) => (
+                <div key={i} className="rounded-2xl bg-white/90 border border-slate-200/80 p-3 shadow-2xs space-y-2 flex flex-col justify-between">
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border ${p.badgeColor}`}>
+                      {p.stage}
+                    </span>
+                    <a href={p.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 hover:underline">
+                      <ExternalLink size={10} /> Full
+                    </a>
+                  </div>
+                  <div className="relative rounded-xl overflow-hidden bg-slate-100 h-44 flex items-center justify-center border border-slate-100 group">
+                    <img 
+                      src={p.url} 
+                      alt={p.stage} 
+                      className="h-full w-full object-contain transition-transform group-hover:scale-105" 
+                    />
+                  </div>
+                  {p.time && (
+                    <p className="text-[9px] text-slate-400 font-semibold truncate">
+                      Uploaded: {new Date(p.time).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Order Items Table Section inside Dedicated Card */}
       <div className="relative z-10 w-full mt-6 rounded-[2rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 flex flex-col">
         <div className="mb-4 flex items-center justify-between">
