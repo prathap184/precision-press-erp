@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { Order, OrderItem } from '@/types/models';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where } from '@/lib/supabase-firestore-shim';
-import { normalizeTiffPathToFileUrl, openTiffInSystem, resolvePrintWorkflow } from '@/lib/tiff-utils';
+import { getFileNameFromPath, normalizeTiffPathToFileUrl, openTiffInSystem, resolvePrintWorkflow } from '@/lib/tiff-utils';
 import { ExternalLink, FileText, Printer, Truck, IndianRupee, ChevronDown } from 'lucide-react';
 
 interface OrderDetailsPanelProps {
@@ -411,23 +411,17 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
                       </td>
                       <td className="py-3 px-2 tabular-nums min-w-[160px]">
                         <div className="flex h-10 w-full items-center justify-between rounded-xl bg-white px-3 border border-slate-200/80 shadow-2xs">
-                          <span className="text-[11px] text-slate-900 font-bold font-mono truncate max-w-[140px] block">
-                            {filePath && filePath !== 'No file' ? filePath : '\\\\server\\path\\file (optional)'}
+                          <span className="text-[11px] text-slate-900 font-bold font-mono truncate max-w-[140px] block" title={filePath}>
+                            {filePath && filePath !== 'No file' ? getFileNameFromPath(filePath) : '\\\\server\\path\\file (optional)'}
                           </span>
                           {filePath && filePath !== 'No file' && (
                             <button
                               type="button"
                               onClick={() => {
-                                const isWebUrl = filePath.startsWith('/') || filePath.startsWith('http://') || filePath.startsWith('https://');
-                                if (isWebUrl) {
-                                  window.open(filePath, '_blank');
-                                } else {
-                                  const fileUrl = normalizeTiffPathToFileUrl(filePath);
-                                  openTiffInSystem(fileUrl) || window.open(fileUrl, '_blank');
-                                }
+                                openTiffInSystem(filePath);
                               }}
-                              className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors ml-1"
-                              title="Open File"
+                              className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors ml-1 p-1 hover:bg-blue-50 rounded"
+                              title={`Open: ${filePath}`}
                             >
                               <ExternalLink size={12} />
                             </button>

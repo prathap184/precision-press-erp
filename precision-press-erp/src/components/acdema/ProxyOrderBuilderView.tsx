@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle } from 'lucide-react';
+import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle, ExternalLink } from 'lucide-react';
 import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
+import { openTiffInSystem } from '@/lib/tiff-utils';
+import { toast } from 'react-hot-toast';
 
 export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const {
@@ -29,6 +31,35 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [paymentMethodTab, setPaymentMethodTab] = useState<'CASH_UPI' | 'CREDIT'>('CASH_UPI');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
+  const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
+
+  const handleRowFileUpload = async (rowId: string, file: File) => {
+    setRowUploading((prev) => ({ ...prev, [rowId]: true }));
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `order_files/${rowId}`);
+
+      const res = await fetch('/api/designs/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success || !data.fileUrl) {
+        throw new Error(data.error || 'File upload failed');
+      }
+
+      updateRow(rowId, { tiffPath: data.fileUrl, fileName: file.name });
+      setValidationErrors((prev) => ({ ...prev, [`row-${rowId}-file`]: '' }));
+      toast.success(`Uploaded: ${file.name}`);
+    } catch (err: any) {
+      console.error('Row file upload error:', err);
+      toast.error(err.message || 'Failed to upload file');
+    } finally {
+      setRowUploading((prev) => ({ ...prev, [rowId]: false }));
+    }
+  };
 
   const creditAvailable = selectedCustomer ? (selectedCustomer.creditLimit || 0) - (selectedCustomer.usedCredit || 0) : 0;
   const creditExceeded = paymentMethodTab === 'CREDIT' && summary.grandTotal > creditAvailable;
@@ -502,7 +533,61 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               </div>
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <input id={`error-row-${row.id}-file`} value={row.tiffPath} onChange={(e) => { updateRow(row.id, { tiffPath: e.target.value }); setValidationErrors(prev => ({...prev, [`row-${row.id}-file`]: ''})); }} className={`h-10 w-full min-w-[120px] rounded-lg border px-3 font-mono text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${validationErrors[`row-${row.id}-file`] ? 'border-red-400 bg-red-50 text-red-600 placeholder-red-300' : 'border-slate-200 bg-slate-50 text-slate-800'}`} placeholder="\\server\path\file (optional)" />
+                              <div className="flex items-center gap-1.5 min-w-[210px]">
+                                <div className="relative flex-1">
+                                  <input
+                                    id={`error-row-${row.id}-file`}
+                                    value={row.tiffPath || ''}
+                                    onChange={(e) => {
+                                      updateRow(row.id, { tiffPath: e.target.value });
+                                      setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
+                                    }}
+                                    className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${
+                                      validationErrors[`row-${row.id}-file`]
+                                        ? 'border-red-400 bg-red-50 text-red-600 placeholder-red-300'
+                                        : 'border-slate-200 bg-slate-50 text-slate-800'
+                                    }`}
+                                    placeholder="Paste path or browse file..."
+                                  />
+                                  {row.tiffPath && (
+                                    <button
+                                      type="button"
+                                      onClick={() => openTiffInSystem(row.tiffPath)}
+                                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                      title="Open / View File"
+                                    >
+                                      <ExternalLink size={12} />
+                                    </button>
+                                  )}
+                                </div>
+
+                                <label
+                                  className={`flex items-center justify-center gap-1 h-10 px-2.5 rounded-lg border text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-2xs ${
+                                    rowUploading[row.id]
+                                      ? 'bg-slate-100 border-slate-300 text-slate-400 cursor-wait'
+                                      : row.tiffPath
+                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+                                      : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-blue-600'
+                                  }`}
+                                  title="Browse & Upload file from computer"
+                                >
+                                  {rowUploading[row.id] ? (
+                                    <Loader2 size={12} className="animate-spin text-slate-500" />
+                                  ) : (
+                                    <Upload size={12} />
+                                  )}
+                                  <span>{rowUploading[row.id] ? '...' : row.tiffPath ? 'Change' : 'Browse'}</span>
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    disabled={rowUploading[row.id]}
+                                    onChange={(e) => {
+                                      const f = e.target.files?.[0];
+                                      if (f) void handleRowFileUpload(row.id, f);
+                                    }}
+                                  />
+                                </label>
+                              </div>
                             </td>
                             <td className="py-3 px-2 text-right text-sm font-black text-slate-900 tabular-nums">
                               {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

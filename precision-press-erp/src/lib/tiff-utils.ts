@@ -112,18 +112,31 @@ export function inspectTiffPath(path: string): TiffPathInfo {
   };
 }
 
-export async function openTiffInSystem(tiffPath: string) {
+export async function openTiffInSystem(tiffPath: string): Promise<boolean> {
+  if (!tiffPath || typeof tiffPath !== 'string') return false;
+  const trimmed = tiffPath.trim();
+  if (!trimmed) return false;
+
+  // 1. If it's a web/cloud/API/blob URL, open directly in browser tab on any laptop or device
+  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('/') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    if (typeof window !== 'undefined') {
+      window.open(trimmed, '_blank', 'noopener,noreferrer');
+      return true;
+    }
+  }
+
+  // 2. If it's a local/UNC path, attempt native system open via server endpoint
   try {
     const res = await fetch('/api/workflow/open-tiff', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ tiffPath }),
+      body: JSON.stringify({ tiffPath: trimmed }),
     });
 
     if (res.ok) {
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (data.success) {
         return true;
       }
@@ -131,5 +144,13 @@ export async function openTiffInSystem(tiffPath: string) {
   } catch (error) {
     console.error('Failed to open TIFF in system via API:', error);
   }
+
+  // 3. Fallback: normalized file URL open in browser
+  if (typeof window !== 'undefined') {
+    const fileUrl = normalizeNetworkPath(trimmed);
+    window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    return true;
+  }
+
   return false;
 }
