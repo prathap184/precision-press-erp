@@ -574,16 +574,16 @@ export function GlobalOrdersPage() {
   return (
     <RoleGuard allowedRoles={['ACDEMA', 'ADMIN', 'SUPER_ADMIN']}>
       <div className="w-full font-sans text-slate-800 relative z-10 min-h-[calc(100vh-4rem)]">
-        {/* Exact Proxy Order Canvas Background */}
-        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-[#d4d4d8]" aria-hidden="true">
+        {/* Clean Light Blue Ambient Background */}
+        <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none bg-[#e2ecf8]" aria-hidden="true">
           {/* Grid & Noise Pattern */}
-          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-overlay"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(#bfdbfe_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
           
-          {/* 100% Pure Blue & Light Sky Blue Glowing Orbs (Zero Pink) */}
-          <div className="absolute -top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-400/35 blur-[140px] pointer-events-none animate-pulse"></div>
-          <div className="absolute -bottom-[20%] -left-[10%] w-[60vw] h-[60vw] rounded-full bg-sky-400/35 blur-[140px] pointer-events-none animate-pulse" style={{ animationDelay: '2s' }}></div>
-          <div className="absolute top-[20%] left-[20%] w-[40vw] h-[40vw] rounded-full bg-cyan-300/30 blur-[120px] pointer-events-none animate-pulse" style={{ animationDelay: '4s' }}></div>
+          {/* Pure Soft Light Blue Ambient Orbs */}
+          <div className="absolute -top-[15%] -right-[10%] w-[55vw] h-[55vw] rounded-full bg-sky-200/50 blur-[130px] pointer-events-none"></div>
+          <div className="absolute -bottom-[15%] -left-[10%] w-[55vw] h-[55vw] rounded-full bg-blue-200/40 blur-[130px] pointer-events-none"></div>
+          <div className="absolute top-[35%] left-[25%] w-[45vw] h-[45vw] rounded-full bg-sky-100/60 blur-[120px] pointer-events-none"></div>
         </div>
 
         <div className="w-full relative z-10 p-4 sm:p-6 md:p-8">
@@ -667,7 +667,7 @@ export function GlobalOrdersPage() {
             </div>
           </section>
 
-        <div className="relative z-40 rounded-2xl bg-white/30 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.02)] backdrop-blur-2xl border border-white/40 mb-3 flex gap-2.5 items-center">
+        <div className="relative z-40 rounded-2xl bg-white/20 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.02)] backdrop-blur-2xl border border-white/30 mb-3 flex gap-2.5 items-center">
           <div className="flex-1 relative group">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
             <input
@@ -675,7 +675,7 @@ export function GlobalOrdersPage() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search manifest by ID, Customer, Phone..."
-              className="w-full h-8 bg-white/70 backdrop-blur-md border border-white/60 rounded-lg pl-9 pr-3 text-xs font-semibold text-slate-800 outline-none focus:border-indigo-600 transition-all shadow-2xs"
+              className="w-full h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg pl-9 pr-3 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-indigo-600 focus:bg-white/40 transition-all shadow-2xs"
             />
           </div>
 
@@ -689,7 +689,7 @@ export function GlobalOrdersPage() {
                 className={`h-8 flex items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-all ${
                   selectedRoleFilter
                     ? 'border-blue-400 bg-blue-600 text-white shadow-sm'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                    : 'border-white/30 bg-white/20 backdrop-blur-md text-slate-700 hover:bg-white/40'
                 }`}
               >
                 <Filter size={12} />
@@ -750,7 +750,7 @@ export function GlobalOrdersPage() {
           <div className="relative flex-shrink-0">
             <button 
               onClick={() => setShowDatePicker(!showDatePicker)}
-              className={`px-2.5 h-8 bg-white border rounded-lg text-xs font-semibold text-slate-700 hover:border-slate-300 transition-all flex items-center gap-1.5 ${dateRange.start || dateRange.end ? 'border-indigo-600 text-indigo-600 bg-indigo-50' : 'border-slate-200'}`}
+              className={`px-2.5 h-8 border rounded-lg text-xs font-semibold text-slate-700 hover:bg-white/40 transition-all flex items-center gap-1.5 ${dateRange.start || dateRange.end ? 'border-indigo-600 text-indigo-600 bg-indigo-50' : 'border-white/30 bg-white/20 backdrop-blur-md'}`}
             >
               <Calendar size={12} />
               {dateRange.start && dateRange.end 
@@ -795,16 +795,16 @@ export function GlobalOrdersPage() {
           </div>
         </div>
 
-        <div className="relative z-30 rounded-[2.5rem] bg-white/60 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 overflow-hidden">
+        <div className="relative z-30 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-slate-200/80">
-                  <th className="px-3 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-left w-[145px]">Node ID</th>
-                  <th className="px-3 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-left w-[280px]">Identity</th>
-                  <th className="px-3 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-left">Operational Status</th>
-                  <th className="px-4 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-right w-[110px]">Settlement</th>
-                  <th className="px-3 py-3 text-slate-800 text-xs font-bold uppercase tracking-wider text-center w-[180px]">Action</th>
+                <tr className="border-b border-black/15">
+                  <th className="py-3 px-3 text-slate-800 text-[13px] font-normal text-left w-[145px]">Node ID</th>
+                  <th className="py-3 px-3 text-slate-800 text-[13px] font-normal text-left w-[280px]">Identity</th>
+                  <th className="py-3 px-3 text-slate-800 text-[14px] font-normal text-left">Operational Status</th>
+                  <th className="py-3 px-4 text-slate-800 text-[13px] font-normal text-right w-[110px]">Settlement</th>
+                  <th className="py-3 px-3 text-slate-800 text-[13px] font-normal text-center w-[180px]">Action</th>
                 </tr>
               </thead>
                 <tbody className="divide-y-0">
@@ -813,14 +813,14 @@ export function GlobalOrdersPage() {
                       <td colSpan={5} className="py-20 text-center tabular-nums">
                         <div className="flex flex-col items-center gap-2">
                           <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
-                          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Synchronizing Registry...</p>
+                          <p className="text-[13px] font-normal text-slate-500">Synchronizing Registry...</p>
                         </div>
                       </td>
                     </tr>
                   ) : filtered.length === 0 ? (
                     <tr>
                       <td colSpan={5} className="py-20 text-center tabular-nums">
-                        <p className="text-xs font-bold text-slate-400 uppercase italic tracking-widest">No matching records found</p>
+                        <p className="text-[13px] font-normal text-slate-400 italic">No matching records found</p>
                       </td>
                     </tr>
                   ) : (
@@ -860,17 +860,15 @@ export function GlobalOrdersPage() {
 
                       const isFirstOfGroup = idx === 0 || filtered[idx - 1].id.replace('ORD-', '').split('-')[0] !== parentOrderNum;
                       const isEvenGroup = groupIdx % 2 === 0;
-                      const rowBg = isEvenGroup ? 'bg-white/30 hover:bg-white/50 backdrop-blur-md' : 'bg-white/10 hover:bg-white/30 backdrop-blur-md';
-                      const tdBorder = isLastItemOfGroup
-                        ? 'border-b-[3px] border-white shadow-[0_1px_4px_rgba(255,255,255,0.5)]'
-                        : 'border-b-0';
+                      const rowBg = isEvenGroup ? 'bg-white/40 hover:bg-white/65' : 'bg-blue-50/20 hover:bg-white/50';
+                      const tdBorder = isLastItemOfGroup ? 'border-b border-black/15' : 'border-b border-transparent';
 
                       const isOrderCompleted = isOrderFullyCompleted(order);
 
                       return (
                         <React.Fragment key={order.id}>
-                          <tr id={`order-row-${order.id}`} className={`${isHighlighted ? 'bg-indigo-50/90 shadow-inner transition-all duration-1000' : rowBg + ' transition-colors'} group`}>
-                            <td className={`px-3 py-1.5 align-middle text-left tabular-nums ${tdBorder}`}>
+                          <tr id={`order-row-${order.id}`} className={`${isHighlighted ? 'bg-indigo-50/70' : rowBg} transition-colors group`}>
+                            <td className={`px-3 py-2 align-middle text-left tabular-nums ${tdBorder}`}>
                               <div className="flex items-center gap-2">
                                 <div className="relative shrink-0">
                                   {isDesignerStepActive ? (
@@ -886,7 +884,7 @@ export function GlobalOrdersPage() {
                                   )}
                                   {isOrderCompleted && (
                                     <div className="absolute inset-0 bg-emerald-950/20 backdrop-blur-[0.5px] rounded-lg flex items-center justify-center pointer-events-none">
-                                      <span className="border border-emerald-400/80 bg-emerald-600/90 text-white text-[7px] font-black uppercase tracking-tighter px-1 py-0.2 rounded -rotate-12 shadow-sm whitespace-nowrap">
+                                      <span className="border border-emerald-400/80 bg-emerald-600/90 text-white text-[9px] font-normal uppercase px-1 py-0.2 rounded -rotate-12 shadow-sm whitespace-nowrap">
                                         COMPLETED
                                       </span>
                                     </div>
@@ -894,24 +892,24 @@ export function GlobalOrdersPage() {
                                 </div>
                                 <div className="flex flex-col justify-center">
                                   <div className="flex items-center gap-1.5">
-                                    <p className="text-slate-900 font-mono text-xs font-semibold leading-tight">#{order.id.replace('ORD-', '')}</p>
+                                    <p className="text-slate-900 font-mono text-[13px] font-normal leading-tight">#{order.id.replace('ORD-', '')}</p>
                                     {isOrderCompleted && (
-                                      <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-300 text-[8.5px] font-extrabold uppercase tracking-tight shadow-sm">
+                                      <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-300 text-[11px] font-normal tracking-tight shadow-xs">
                                         ✓ Done
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-slate-500 text-[11px] font-normal mt-0.5">{date}</p>
+                                  <p className="text-slate-500 text-[13px] font-normal mt-0.5">{date}</p>
                                 </div>
                               </div>
                             </td>
-                            <td className={`px-3 py-1.5 align-middle text-left tabular-nums ${tdBorder}`}>
+                            <td className={`px-3 py-2 align-middle text-left tabular-nums ${tdBorder}`}>
                               <div className="flex flex-col justify-center">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <p className="text-slate-900 text-xs font-bold leading-tight">{order.customerSnapshot?.name || 'Guest'}</p>
-                                  <p className="text-slate-500 text-[11px] font-normal">{order.customerSnapshot?.phone || 'No phone'}</p>
+                                  <p className="text-slate-900 text-[13px] font-normal leading-tight">{order.customerSnapshot?.name || 'Guest'}</p>
+                                  <p className="text-slate-500 text-[13px] font-normal">{order.customerSnapshot?.phone || 'No phone'}</p>
                                   {order.proxyExecutor && (
-                                    <span className="inline-block px-1.5 py-0.2 rounded bg-indigo-50 border border-indigo-200 text-[10.5px] font-semibold text-indigo-700">
+                                    <span className="inline-block px-1.5 py-0.2 rounded bg-indigo-50 border border-indigo-200 text-[13px] font-normal text-indigo-700">
                                       Proxy: {(() => {
                                         const proxy = typeof order.proxyExecutor === 'string' ? JSON.parse(order.proxyExecutor) : order.proxyExecutor;
                                         return order.proxyName || proxy?.name || (proxy?.role === 'ACDEMA' ? 'AcDema Support' : 'Admin');
@@ -921,7 +919,7 @@ export function GlobalOrdersPage() {
                                 </div>
                                 <div className="mt-0.5">
                                   <span 
-                                    className="text-slate-900 text-xs font-semibold tracking-normal inline-block truncate max-w-[280px]"
+                                    className="text-slate-900 text-[13px] font-normal tracking-normal inline-block truncate max-w-[280px]"
                                     title={order.items?.map(i => i.productName).join(', ') || order.workflow?.printWorkflow?.tiffFileName || 'Custom Print'}
                                   >
                                     {order.items?.map(i => i.productName).join(', ') || order.workflow?.printWorkflow?.tiffFileName || 'Custom Print'}
@@ -929,7 +927,7 @@ export function GlobalOrdersPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className={`px-3 py-1.5 align-middle text-left tabular-nums ${tdBorder}`}>
+                            <td className={`px-3 py-2 align-middle text-left tabular-nums ${tdBorder}`}>
                               <div className="relative inline-flex items-center">
                                 <WorkflowPipelineVisual
                                   snapshot={(() => {
@@ -949,27 +947,27 @@ export function GlobalOrdersPage() {
                                   allowNavigation={true}
                                 />
                                 {isOrderCompleted && (
-                                  <div className="absolute inset-0 bg-emerald-950/15 backdrop-blur-[1px] rounded-lg border border-emerald-400/40 flex items-center justify-center pointer-events-none shadow-sm z-10">
-                                    <div className="flex items-center gap-1.5 px-3 py-0.5 rounded-md bg-emerald-600/95 text-white font-black text-[10.5px] uppercase tracking-widest shadow-md border border-emerald-300 -rotate-1">
-                                      <CheckCircle size={12} className="text-white" />
+                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                    <div className="flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-600/95 text-white font-medium text-[12px] tracking-wide shadow-md border border-emerald-400">
+                                      <CheckCircle size={13} className="text-white shrink-0" />
                                       <span>ORDER COMPLETED</span>
                                     </div>
                                   </div>
                                 )}
                               </div>
                             </td>
-                            <td className={`px-4 py-1.5 align-middle text-right tabular-nums ${tdBorder}`}>
+                            <td className={`px-4 py-2 align-middle text-right tabular-nums ${tdBorder}`}>
                               <div className="flex flex-col items-end justify-center">
-                                <p className="text-slate-900 text-sm font-bold leading-tight">₹{amount.toLocaleString()}</p>
+                                <p className="text-slate-900 text-[13px] font-normal leading-tight">₹{amount.toLocaleString()}</p>
                                 <div className="flex items-center justify-end gap-1 mt-0.5">
                                   <div className={`w-1.5 h-1.5 rounded-full ${order.paymentStatus === 'VERIFIED' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                                  <p className={`text-[11px] font-semibold ${order.paymentStatus === 'VERIFIED' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                  <p className={`text-[13px] font-normal ${order.paymentStatus === 'VERIFIED' ? 'text-emerald-700' : 'text-amber-700'}`}>
                                     {order.paymentStatus === 'VERIFIED' ? 'Verified' : 'Pending'}
                                   </p>
                                 </div>
                               </div>
                             </td>
-                            <td className={`px-3 py-1.5 align-middle text-center tabular-nums ${tdBorder}`}>
+                            <td className={`px-3 py-2 align-middle text-center tabular-nums ${tdBorder}`}>
                               <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
                                 {(() => {
                                   const matchedInvoice = getInvoiceForOrder(order);
@@ -978,7 +976,7 @@ export function GlobalOrdersPage() {
                                     const invId = matchedInvoice?.id || (order as any).invoice_id || (order as any).invoiceId;
                                     return (
                                       <button
-                                        className="text-center text-[11px] font-semibold text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg py-1 px-2 inline-flex items-center justify-center gap-1 shadow-sm hover:bg-emerald-100 transition-colors cursor-pointer"
+                                        className="text-center text-[13px] font-normal text-emerald-800 border border-emerald-300 bg-emerald-50 rounded-lg py-1 px-2 inline-flex items-center justify-center gap-1 shadow-sm hover:bg-emerald-100 transition-colors cursor-pointer"
                                         title={`Invoice #${invNum}`}
                                         onClick={() => {
                                           if (invId) {
@@ -988,7 +986,7 @@ export function GlobalOrdersPage() {
                                           }
                                         }}
                                       >
-                                        <CheckCircle size={10} className="text-emerald-600" />
+                                        <CheckCircle size={11} className="text-emerald-600" />
                                         {invNum}
                                       </button>
                                     );
@@ -1006,10 +1004,10 @@ export function GlobalOrdersPage() {
                                         }
                                         handleInvoiceMultiple([order]);
                                       }}
-                                      className="text-center text-[11px] font-bold text-indigo-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg py-1 px-2.5 transition-all whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                                      className="text-center text-[13px] font-normal text-indigo-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg py-1 px-2.5 transition-all whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
                                       title="Generate Invoice"
                                     >
-                                      {processingOrderId === order.id ? <Loader2 size={10} className="animate-spin" /> : <FileText size={10} />}
+                                      {processingOrderId === order.id ? <Loader2 size={11} className="animate-spin" /> : <FileText size={11} />}
                                       Invoice
                                     </button>
                                   );
@@ -1017,10 +1015,10 @@ export function GlobalOrdersPage() {
                                 <button
                                   disabled={processingOrderId === order.id}
                                   onClick={() => handleReceipt(order)}
-                                  className="text-center text-[11px] font-bold text-emerald-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg py-1 px-2.5 transition-all whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                                  className="text-center text-[13px] font-normal text-emerald-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg py-1 px-2.5 transition-all whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
                                   title="Record Customer Prepayment"
                                 >
-                                  {processingOrderId === order.id ? <Loader2 size={10} className="animate-spin" /> : null}
+                                  {processingOrderId === order.id ? <Loader2 size={11} className="animate-spin" /> : null}
                                   Receipt
                                 </button>
                                 <Link

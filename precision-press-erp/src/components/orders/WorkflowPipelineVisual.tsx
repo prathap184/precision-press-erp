@@ -29,6 +29,24 @@ const ROLE_DASHBOARD_URL: Partial<Record<StaffRole, string>> = {
   DELIVERY: '/delivarypartner/orders',
 };
 
+const SHORT_STEP_LABELS: Record<string, string> = {
+  'Accounts Approval': 'Accounts',
+  'Design & Artwork': 'Design',
+  'Manager Sign-Off': 'Manager',
+  'Printing': 'Print',
+  'Pasting': 'Pasting',
+  'Finishing': 'Finishing',
+  'Dispatch': 'Dispatch',
+  'Delivery': 'Delivery',
+  'ACCOUNTANT': 'Accounts',
+  'DESIGNER': 'Design',
+  'MANAGER': 'Manager',
+  'PRINTER': 'Print',
+  'PASTING': 'Pasting',
+  'FINISHING': 'Finishing',
+  'DISPATCH': 'Dispatch',
+  'DELIVERY': 'Delivery',
+};
 export function WorkflowPipelineVisual({
   snapshot,
   orderId,
@@ -59,43 +77,41 @@ export function WorkflowPipelineVisual({
 
   if (!snapshot || !snapshot.steps || snapshot.steps.length === 0) {
     return (
-      <div className={`flex items-center gap-1 ${className}`}>
-        <span className="text-[9px] font-bold text-slate-400 italic">No Pipeline</span>
+      <div className={`flex items-center gap-1.5 text-xs text-slate-400 font-mono ${className}`}>
+        <Clock size={12} />
+        <span>Workflow Initializing...</span>
       </div>
     );
   }
 
-  const isAdmin =
-    roles.includes('ADMIN' as StaffRole) ||
-    roles.includes('SUPER_ADMIN' as StaffRole) ||
-    role === 'ADMIN' ||
-    role === 'SUPER_ADMIN';
+  const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes((deliveryChoice || '').toLowerCase());
 
-  const isPickupOrder = ['pickup', 'counter', 'selfpickup'].includes((deliveryChoice || '').toLowerCase());
-  const effectiveSnapshotSteps = isPickupOrder
-    ? snapshot.steps.filter((step) => step.role !== 'DELIVERY')
-    : snapshot.steps;
-
-  let stepsToRender = effectiveSnapshotSteps.map((step, index) => ({
+  let stepsToRender = snapshot.steps.map((step, index) => ({
     ...step,
     originalIndex: index,
     isCurrent: index === snapshot.currentStepIndex && step.status !== 'COMPLETED',
     isCompleted: index < snapshot.currentStepIndex || step.status === 'COMPLETED',
   }));
 
-  if (filterByRoles && !isAdmin) {
-    stepsToRender = stepsToRender.filter((step) => effectiveRoles.includes(step.role));
+  if (filterByRoles && roles.length > 0 && !roles.includes('SUPER_ADMIN' as StaffRole) && !roles.includes('ADMIN' as StaffRole)) {
+    stepsToRender = stepsToRender.filter((s) => effectiveRoles.includes(s.role));
+  }
+
+  if (isDeliverySkipped) {
+    stepsToRender = stepsToRender.filter((s) => s.role !== 'DELIVERY');
   }
 
   if (stepsToRender.length === 0) {
     return (
-      <div className={`flex items-center gap-1 ${className}`}>
-        <span className="text-[9px] font-bold text-slate-400 italic">No Stages for Assigned Roles</span>
+      <div className={`flex items-center gap-1.5 text-xs text-slate-400 font-mono ${className}`}>
+        <Lock size={12} />
+        <span>Stage Restricted</span>
       </div>
     );
   }
 
   const canNavigateToStage = (step: typeof stepsToRender[0]): boolean => {
+    const isAdmin = roles.includes('SUPER_ADMIN' as StaffRole) || roles.includes('ADMIN' as StaffRole);
     if (step.isCurrent) {
       return isAdmin || effectiveRoles.includes(step.role);
     }
@@ -159,10 +175,12 @@ export function WorkflowPipelineVisual({
 
           let bgClass = 'bg-slate-100/90 text-slate-500 border-slate-200 shadow-2xs';
           let icon = <Lock size={13} className="text-slate-400 shrink-0" />;
+          let chevronClass = 'text-slate-400';
 
           if (isCompleted) {
-            bgClass = 'bg-emerald-50 text-emerald-900 border-emerald-300 shadow-2xs';
-            icon = <Check size={12} className="text-emerald-600 shrink-0 stroke-[3]" />;
+            bgClass = 'bg-indigo-50/90 text-indigo-950 border-indigo-300 shadow-2xs';
+            icon = <Check size={12} className="text-indigo-700 shrink-0 stroke-[3]" />;
+            chevronClass = 'text-indigo-400';
           } else if (isCurrent) {
             if (step.status === 'IN_PROGRESS') {
               bgClass = 'bg-blue-100 text-blue-900 border-blue-400 ring-1 ring-blue-200 ring-offset-0 animate-pulse shadow-2xs';
@@ -176,35 +194,16 @@ export function WorkflowPipelineVisual({
             }
           }
 
-const SHORT_STEP_LABELS: Record<string, string> = {
-  'Accounts Approval': 'Accounts',
-  'Design & Artwork': 'Design',
-  'Manager Sign-Off': 'Manager',
-  'Printing': 'Print',
-  'Pasting': 'Pasting',
-  'Finishing': 'Finishing',
-  'Dispatch': 'Dispatch',
-  'Delivery': 'Delivery',
-  'ACCOUNTANT': 'Accounts',
-  'DESIGNER': 'Design',
-  'MANAGER': 'Manager',
-  'PRINTER': 'Print',
-  'PASTING': 'Pasting',
-  'FINISHING': 'Finishing',
-  'DISPATCH': 'Dispatch',
-  'DELIVERY': 'Delivery',
-};
-
           const displayLabel = SHORT_STEP_LABELS[step.label] || SHORT_STEP_LABELS[step.role] || step.label;
           const pillContent = (
             <>
               {icon}
-              <span className="font-bold text-slate-800 whitespace-nowrap text-[14px]">{displayLabel}</span>
+              <span className="font-normal text-slate-800 whitespace-nowrap text-[14px]">{displayLabel}</span>
               {navHref && <ExternalLink size={10} className="shrink-0 opacity-60 ml-0.5" />}
             </>
           );
 
-          const pillBase = `w-[100px] h-[27px] flex items-center justify-center gap-1.5 px-2 rounded-md border text-[14px] font-bold tracking-normal transition-all duration-200 select-none shadow-sm ${bgClass}`;
+          const pillBase = `w-[98px] h-[27px] flex items-center justify-center gap-1.5 px-2 rounded-md border text-[14px] font-normal tracking-normal transition-all duration-200 select-none shadow-2xs ${bgClass}`;
 
           return (
             <div key={`${step.role}-${index}`} className="flex items-center shrink-0">
@@ -225,7 +224,7 @@ const SHORT_STEP_LABELS: Record<string, string> = {
               {index < stepsToRender.length - 1 && (
                 <ChevronRight
                   size={10}
-                  className={`mx-0.5 shrink-0 ${isCompleted ? 'text-emerald-500' : 'text-slate-400'}`}
+                  className={`mx-0.5 shrink-0 ${chevronClass}`}
                 />
               )}
             </div>

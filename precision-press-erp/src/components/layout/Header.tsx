@@ -67,9 +67,9 @@ export const Header = () => {
           <ArrowLeft size={15} />
         </button>
         <div>
-          <h2 className="text-sm md:text-base font-bold text-slate-900 tracking-tight leading-tight">{getPageTitle()}</h2>
+          <h2 className="text-base md:text-lg font-bold text-slate-900 tracking-tight leading-tight">{getPageTitle()}</h2>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[11px] font-medium text-slate-500">Pixel Marketing Intelligence / Terminal Alpha</span>
+            <span className="text-[13px] md:text-[14px] font-medium text-slate-600">Pixel Marketing Intelligence / Terminal Alpha</span>
           </div>
         </div>
       </div>
