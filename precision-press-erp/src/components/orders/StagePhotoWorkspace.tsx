@@ -110,9 +110,26 @@ export function StagePhotoWorkspace({
 
   useEffect(() => {
     if (!order) return;
-    const existing = (order.workflow as any)?.[proofField] || (order.workflow as any)?.stageProofUrl || '';
-    setPhotoUrl(typeof existing === 'string' ? existing : '');
-  }, [order, proofField]);
+    let wfObj: any = order.workflow;
+    if (typeof wfObj === 'string') {
+      try { wfObj = JSON.parse(wfObj); } catch { wfObj = {}; }
+    }
+    const matchingStep = order?.workflowSnapshot?.steps?.find((s: any) => s.role === role);
+    const stepAttachment = matchingStep?.attachments?.[0] || (matchingStep as any)?.proofUrl;
+
+    const existing = 
+      wfObj?.[proofField] || 
+      (order as any)?.[proofField] || 
+      stepAttachment ||
+      (order as any)?.metadata?.[proofField] ||
+      (order as any)?.metadata?.[`workflow.${proofField}`] ||
+      wfObj?.stageProofUrl ||
+      wfObj?.[role.toLowerCase() + 'ProofUrl'] ||
+      wfObj?.[role.toLowerCase() + 'Proof'] ||
+      (order as any)?.[role.toLowerCase() + '_proof_url'] ||
+      '';
+    setPhotoUrl(typeof existing === 'string' ? existing : (existing?.url || ''));
+  }, [order, proofField, role]);
 
   const currentStep = order?.workflowSnapshot?.steps?.[order.workflowSnapshot?.currentStepIndex ?? -1];
   const mode = getWorkspaceMode(role, order?.workflowSnapshot);
@@ -324,42 +341,47 @@ export function StagePhotoWorkspace({
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
             <div className="space-y-3">
-              <label className={`flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-xs font-black uppercase tracking-wider transition-all shadow-2xs ${
-                mode === 'READ_ONLY'
-                  ? 'border-white/40 bg-white/10 cursor-not-allowed opacity-60 text-slate-500'
-                  : 'border-white/60 bg-white/40 hover:bg-white/70 hover:border-white/90 text-slate-800 cursor-pointer backdrop-blur-md'
-              }`}>
-                <Upload size={16} />
-                {photoUploading ? 'Uploading...' : mode === 'READ_ONLY' ? 'Uploads disabled (completed)' : 'Choose stage photo'}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  disabled={photoUploading || mode === 'READ_ONLY'}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) void handlePhotoUpload(file);
-                  }}
-                />
-              </label>
+              {mode !== 'READ_ONLY' && (
+                <label className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-8 text-xs font-black uppercase tracking-wider transition-all shadow-2xs border-white/60 bg-white/40 hover:bg-white/70 hover:border-white/90 text-slate-800 cursor-pointer backdrop-blur-md">
+                  <Upload size={16} />
+                  {photoUploading ? 'Uploading...' : 'Choose stage photo'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    disabled={photoUploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) void handlePhotoUpload(file);
+                    }}
+                  />
+                </label>
+              )}
               {photoError && <p className="text-xs font-bold text-red-600">{photoError}</p>}
-              {photoUrl && (
-                <div className="p-3 rounded-2xl bg-white/80 border border-slate-200 shadow-sm space-y-2">
-                  <div className="relative rounded-xl overflow-hidden bg-slate-100 max-h-60 flex items-center justify-center border border-slate-200">
-                    <img 
-                      src={photoUrl} 
-                      alt={`${stageLabel} Proof`} 
-                      className="max-h-60 w-full object-contain rounded-xl"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between px-1">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">✓ Stage Proof Attached</span>
+              {photoUrl ? (
+                <div className="p-4 rounded-2xl bg-white/90 border border-slate-200/80 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-black uppercase tracking-wider text-emerald-700 flex items-center gap-1.5">
+                      <CheckCircle size={14} className="text-emerald-600" />
+                      {stageLabel} Proof Photo Attached
+                    </span>
                     <a href={photoUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-[11px] font-black text-blue-700 hover:underline">
                       <ExternalLink size={12} /> View Full Photo
                     </a>
                   </div>
+                  <div className="relative rounded-xl overflow-hidden bg-slate-100 max-h-72 flex items-center justify-center border border-slate-200">
+                    <img 
+                      src={photoUrl} 
+                      alt={`${stageLabel} Proof`} 
+                      className="max-h-72 w-full object-contain rounded-xl"
+                    />
+                  </div>
                 </div>
-              )}
+              ) : mode === 'READ_ONLY' ? (
+                <div className="p-6 rounded-2xl bg-white/50 border border-slate-200/60 text-center text-xs font-bold text-slate-400 italic">
+                  No stage proof photo was uploaded for this stage.
+                </div>
+              ) : null}
             </div>
 
             <div className="rounded-2xl border border-white/80 bg-white/70 backdrop-blur-md p-5 space-y-2 shadow-2xs">

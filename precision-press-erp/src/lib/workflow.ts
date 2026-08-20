@@ -2083,12 +2083,44 @@ export async function fastCompleteProductionStage(orderId: string, notes?: strin
         
         let increments: any = null;
 
+        const proofUrl = customUpdateData?.['workflow.pastingProofUrl'] || 
+                         customUpdateData?.['workflow.finishingProofUrl'] || 
+                         customUpdateData?.pastingProofUrl || 
+                         customUpdateData?.finishingProofUrl ||
+                         customUpdateData?.stageProofUrl;
+
         // 1. Calculate Workflow Advance (Snapshot)
         if (freshData?.workflowSnapshot?.steps) {
           const snapUpdateData = calculateWorkflowAdvance(freshData.workflowSnapshot, role, 'COMPLETED', user.id, notes || 'Advanced workflow step');
           if (Object.keys(snapUpdateData).length > 0) {
+            if (proofUrl && snapUpdateData.workflowSnapshot?.steps) {
+              const completedStep = snapUpdateData.workflowSnapshot.steps.find((s: any) => s.role === role);
+              if (completedStep) {
+                completedStep.attachments = [proofUrl];
+                completedStep.proofUrl = proofUrl;
+              }
+            }
             mergedUpdateData = { ...mergedUpdateData, ...snapUpdateData };
           }
+        }
+
+        // 1.5. Persist into workflow JSON object directly for reliable DB column storage
+        let existingWf = freshData.workflow || {};
+        if (typeof existingWf === 'string') {
+          try { existingWf = JSON.parse(existingWf); } catch { existingWf = {}; }
+        } else {
+          existingWf = { ...existingWf };
+        }
+        if (proofUrl) {
+          if (role === 'PASTING') {
+            existingWf.pastingProofUrl = proofUrl;
+            existingWf.pastingProof = proofUrl;
+          } else if (role === 'FINISHING') {
+            existingWf.finishingProofUrl = proofUrl;
+            existingWf.finishingProof = proofUrl;
+          }
+          existingWf.stageProofUrl = proofUrl;
+          mergedUpdateData.workflow = existingWf;
         }
 
         // 2. Determine Next Status based on new workflow role
