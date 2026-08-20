@@ -11,6 +11,8 @@ import { startWorkflowStep, deliverOrder } from '@/lib/workflow';
 import { OrderThumbnail } from '@/components/orders/OrderThumbnail';
 import { OrderDetailsPanel } from '@/components/orders/OrderDetailsPanel';
 import { WorkflowTimeline } from '@/components/orders/WorkflowTimeline';
+import { toast } from 'sonner';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 function formatDate(value: any) {
   if (!value) return '—';
@@ -25,6 +27,8 @@ function formatDate(value: any) {
 }
 
 export function DeliveryOrderActionPanel({ orderId }: { orderId: string }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<'START' | 'DELIVER' | null>(null);
@@ -73,9 +77,10 @@ export function DeliveryOrderActionPanel({ orderId }: { orderId: string }) {
     setActionLoading('START');
     try {
       await startWorkflowStep(order.id, notes || 'Delivery started');
+      toast.success('Delivery stage started');
     } catch (error: any) {
       console.error('Failed to start delivery:', error);
-      alert(error?.message || 'Failed to start delivery.');
+      toast.error(error?.message || 'Failed to start delivery.');
     } finally {
       setActionLoading(null);
     }
@@ -97,28 +102,29 @@ export function DeliveryOrderActionPanel({ orderId }: { orderId: string }) {
       });
 
       if (!res.ok) {
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || 'Upload failed');
       }
 
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!data.success) throw new Error(data.error || 'Upload failed');
       setProofUrl(data.fileUrl);
+      toast.success('Delivery proof photo uploaded');
     } catch (error: any) {
       console.error('Proof upload failed:', error);
       setProofError(error?.message || 'Failed to upload delivery image.');
+      toast.error(error?.message || 'Failed to upload delivery image.');
     } finally {
       setProofUploading(false);
     }
   };
 
   const handleDeliveredToCustomer = async () => {
-    // FORCE_RECOMPILE_V3
     if (!order) return;
 
     const finalProof = proofUrl || deliveryProofUrl || undefined;
     if (!finalProof) {
-      alert('Please upload a delivery image before marking this order delivered.');
+      toast.error('Please upload a delivery image before marking this order delivered.');
       return;
     }
 
@@ -128,15 +134,17 @@ export function DeliveryOrderActionPanel({ orderId }: { orderId: string }) {
       if (res && res.success) {
         setProofUrl(null);
         setProofError(null);
-        // give immediate feedback and refresh to reflect new status
-        alert('Order marked as delivered successfully.');
-        window.location.reload();
+        toast.success('Order marked as delivered successfully.');
+        const returnTo = searchParams.get('returnTo');
+        setTimeout(() => {
+          router.push(returnTo || '/admin/orders');
+        }, 800);
         return;
       }
       throw new Error('Delivery action unsuccessful');
     } catch (error: any) {
       console.error('Failed to complete delivery:', error);
-      alert(error?.message || 'Failed to mark order delivered.');
+      toast.error(error?.message || 'Failed to mark order delivered.');
     } finally {
       setActionLoading(null);
     }
