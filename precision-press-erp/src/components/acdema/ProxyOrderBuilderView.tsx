@@ -31,12 +31,38 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [paymentMethodTab, setPaymentMethodTab] = useState<'CASH_UPI' | 'CREDIT'>('CASH_UPI');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
-  const handleRowFileSelect = (rowId: string, file: File) => {
-    // Instant file name / path assignment and local preview blob
+  const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
+
+  const handleRowFileSelect = async (rowId: string, file: File) => {
+    // 1. Instantly display filename and prepare local blob preview
     const blobUrl = URL.createObjectURL(file);
     updateRow(rowId, { tiffPath: file.name, fileName: file.name, blobUrl });
     setValidationErrors((prev) => ({ ...prev, [`row-${rowId}-file`]: '' }));
-    toast.success(`Selected: ${file.name}`);
+
+    // 2. Upload to server in background so 40.81.236.61 and all PCs can open it
+    setRowUploading((prev) => ({ ...prev, [rowId]: true }));
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `order_files/${rowId}`);
+
+      const res = await fetch('/api/designs/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.success && data?.fileUrl) {
+        updateRow(rowId, { tiffPath: data.fileUrl, fileName: file.name, blobUrl });
+        toast.success(`File saved to server: ${file.name}`);
+      } else {
+        toast.success(`Selected: ${file.name}`);
+      }
+    } catch {
+      toast.success(`Selected: ${file.name}`);
+    } finally {
+      setRowUploading((prev) => ({ ...prev, [rowId]: false }));
+    }
   };
 
   const creditAvailable = selectedCustomer ? (selectedCustomer.creditLimit || 0) - (selectedCustomer.usedCredit || 0) : 0;
