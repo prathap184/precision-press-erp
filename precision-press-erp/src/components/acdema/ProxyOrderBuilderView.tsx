@@ -31,37 +31,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [paymentMethodTab, setPaymentMethodTab] = useState<'CASH_UPI' | 'CREDIT'>('CASH_UPI');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
-  const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
-
-  const handleRowFileSelect = async (rowId: string, file: File) => {
-    setRowUploading((prev) => ({ ...prev, [rowId]: true }));
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('folder', `order_files/${rowId}`);
-
-      const res = await fetch('/api/designs/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success || !data.fileUrl) {
-        throw new Error(data.error || 'File upload failed');
-      }
-
-      // Save real server URL for universal opening, but keep clean fileName for display
-      updateRow(rowId, { tiffPath: data.fileUrl, fileName: file.name });
-      setValidationErrors((prev) => ({ ...prev, [`row-${rowId}-file`]: '' }));
-      toast.success(`Selected: ${file.name}`);
-    } catch (err: any) {
-      console.error('File select error:', err);
-      // Fallback: save file name directly
-      updateRow(rowId, { tiffPath: file.name, fileName: file.name });
-      toast.error(err.message || 'Saved file locally');
-    } finally {
-      setRowUploading((prev) => ({ ...prev, [rowId]: false }));
-    }
+  const handleRowFileSelect = (rowId: string, file: File) => {
+    // Instant file name / path assignment with zero network latency
+    updateRow(rowId, { tiffPath: file.name, fileName: file.name });
+    setValidationErrors((prev) => ({ ...prev, [`row-${rowId}-file`]: '' }));
+    toast.success(`Selected: ${file.name}`);
   };
 
   const creditAvailable = selectedCustomer ? (selectedCustomer.creditLimit || 0) - (selectedCustomer.usedCredit || 0) : 0;
@@ -566,27 +540,21 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                                 <label
                                   className={`flex items-center justify-center gap-1 h-10 px-2.5 rounded-lg border text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-2xs ${
-                                    rowUploading[row.id]
-                                      ? 'bg-slate-100 border-slate-300 text-slate-400 cursor-wait'
-                                      : row.tiffPath
+                                    row.tiffPath
                                       ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
                                       : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-blue-600'
                                   }`}
                                   title="Browse file from computer"
                                 >
-                                  {rowUploading[row.id] ? (
-                                    <Loader2 size={12} className="animate-spin text-slate-500" />
-                                  ) : (
-                                    <Upload size={12} />
-                                  )}
-                                  <span>{rowUploading[row.id] ? '...' : row.tiffPath ? 'Change' : 'Browse'}</span>
+                                  <Upload size={12} />
+                                  <span>{row.tiffPath ? 'Change' : 'Browse'}</span>
                                   <input
                                     type="file"
                                     className="hidden"
-                                    disabled={rowUploading[row.id]}
                                     onChange={(e) => {
                                       const f = e.target.files?.[0];
-                                      if (f) void handleRowFileSelect(row.id, f);
+                                      if (f) handleRowFileSelect(row.id, f);
+                                      e.target.value = '';
                                     }}
                                   />
                                 </label>
