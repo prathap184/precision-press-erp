@@ -2,6 +2,40 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { exec } from 'child_process';
 import os from 'os';
+import fs from 'fs';
+import path from 'path';
+
+function findFileInUserDirs(fileNameOrPath: string): string {
+  if (fs.existsSync(fileNameOrPath)) return fileNameOrPath;
+
+  const base = path.basename(fileNameOrPath);
+  const home = os.homedir();
+  const candidateDirs = [
+    path.join(home, 'Downloads'),
+    path.join(home, 'Desktop'),
+    path.join(home, 'Pictures'),
+    path.join(home, 'Videos'),
+    path.join(home, 'Documents'),
+    path.join(home, 'OneDrive', 'Desktop'),
+    path.join(home, 'OneDrive', 'Pictures'),
+    path.join(home, 'OneDrive', 'Documents'),
+    path.join(home, 'OneDrive', 'Pictures', 'WhatsApp'),
+    path.join(home, 'OneDrive', 'Videos'),
+  ];
+
+  for (const dir of candidateDirs) {
+    try {
+      if (fs.existsSync(dir)) {
+        const full = path.join(dir, base);
+        if (fs.existsSync(full)) {
+          return full;
+        }
+      }
+    } catch {}
+  }
+
+  return fileNameOrPath;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,24 +46,25 @@ export async function POST(req: NextRequest) {
     }
 
     const trimmedPath = tiffPath.trim();
+    const resolvedPath = findFileInUserDirs(trimmedPath);
     const platform = os.platform();
 
     let cmd = '';
     if (platform === 'win32') {
-      // Windows: use start command. Strip internal double quotes to prevent injection.
-      const safePath = trimmedPath.replace(/"/g, '');
+      // Windows: use start command. Strip double quotes to prevent injection.
+      const safePath = resolvedPath.replace(/"/g, '');
       cmd = `start "" "${safePath}"`;
     } else if (platform === 'darwin') {
       // macOS: use open
-      const safePath = trimmedPath.replace(/"/g, '');
+      const safePath = resolvedPath.replace(/"/g, '');
       cmd = `open "${safePath}"`;
     } else {
       // Linux: use xdg-open
-      const safePath = trimmedPath.replace(/"/g, '');
+      const safePath = resolvedPath.replace(/"/g, '');
       cmd = `xdg-open "${safePath}"`;
     }
 
-    console.log(`[OS OPEN] Platform: ${platform}, Executing command: ${cmd}`);
+    console.log(`[OS OPEN] Platform: ${platform}, Resolved: "${resolvedPath}", Command: ${cmd}`);
 
     exec(cmd, (error) => {
       if (error) {
@@ -37,7 +72,7 @@ export async function POST(req: NextRequest) {
       }
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, resolvedPath });
   } catch (error: any) {
     console.error('Open TIFF Route Error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

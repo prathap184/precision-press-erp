@@ -32,8 +32,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
   const handleRowFileSelect = (rowId: string, file: File) => {
-    // Instant file name / path assignment with zero network latency
-    updateRow(rowId, { tiffPath: file.name, fileName: file.name });
+    // Instant file name / path assignment and local preview blob
+    const blobUrl = URL.createObjectURL(file);
+    updateRow(rowId, { tiffPath: file.name, fileName: file.name, blobUrl });
     setValidationErrors((prev) => ({ ...prev, [`row-${rowId}-file`]: '' }));
     toast.success(`Selected: ${file.name}`);
   };
@@ -529,7 +530,23 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   {row.tiffPath && (
                                     <button
                                       type="button"
-                                      onClick={() => openTiffInSystem(row.tiffPath)}
+                                      onClick={async () => {
+                                        if (row.blobUrl) {
+                                          window.open(row.blobUrl, '_blank', 'noopener,noreferrer');
+                                        } else if (/^https?:\/\//i.test(row.tiffPath) || row.tiffPath?.startsWith('/') || row.tiffPath?.startsWith('blob:')) {
+                                          window.open(row.tiffPath, '_blank', 'noopener,noreferrer');
+                                        } else {
+                                          try {
+                                            await navigator.clipboard.writeText(row.tiffPath);
+                                          } catch {}
+                                          const opened = await openTiffInSystem(row.tiffPath);
+                                          if (opened) {
+                                            toast.success('Opening file in system viewer...');
+                                          } else {
+                                            toast.success('Path copied to clipboard! Paste in File Explorer (Win+E).', { duration: 4000 });
+                                          }
+                                        }
+                                      }}
                                       className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
                                       title="Open / View File"
                                     >
