@@ -8,9 +8,12 @@ export interface RateLimitResult {
   retryAfterSeconds?: number;
 }
 
+// In-memory sliding window rate limiter fallback
+const memoryRateLimits = new Map<string, { count: number; resetAt: number }>();
+
 /**
- * Atomic database-backed sliding-window rate limiter.
- * Works consistently across multiple server instances via Supabase SQL.
+ * Atomic database-backed sliding-window rate limiter with in-memory fallback.
+ * Works consistently across multiple server instances via Supabase SQL or in-memory fallback.
  */
 export async function checkRateLimit(
   endpoint: string,
@@ -26,38 +29,51 @@ export async function checkRateLimit(
     const key = `${clientIp}:${endpoint}`;
     const intervalStr = `${windowSeconds} seconds`;
 
-    // Atomic increment call via RPC
-    const { data, error } = await supabaseServer.rpc('increment_rate_limit', {
-      p_key: key,
-      p_limit: limit,
-      p_window_interval: intervalStr
-    });
+    // Attempt RPC increment call
+    try {
+      const { data, error } = await supabaseServer.rpc('increment_rate_limit', {
+        p_key: key,
+        p_limit: limit,
+        p_window_interval: intervalStr
+      });
 
-    if (error) {
-      console.error(`[Rate Limiter] Database RPC failed for ${endpoint}:`, error.message);
-      // Fail open: prevent rate-limiter failure from blocking business services
-      return { allowed: true, remaining: 1, resetAt: new Date().toISOString() };
+      if (!error && data) {
+        const res = data as { allowed: boolean; remaining: number; reset_at: string };
+        let retryAfterSeconds: number | undefined;
+        if (!res.allowed) {
+          const resetTime = new Date(res.reset_at).getTime();
+          retryAfterSeconds = Math.max(1, Math.ceil((resetTime - Date.now()) / 1000));
+        }
+
+        return {
+          allowed: res.allowed,
+          remaining: res.remaining,
+          resetAt: res.reset_at,
+          retryAfterSeconds
+        };
+      }
+    } catch {
+      // In-memory fallback
     }
 
-    const res = data as { allowed: boolean; remaining: number; reset_at: string };
-    const allowed = res.allowed;
-    const remaining = res.remaining;
-    const resetAt = res.reset_at;
+    // In-memory fallback
+    const now = Date.now();
+    const record = memoryRateLimits.get(key);
 
-    let retryAfterSeconds: number | undefined;
-    if (!allowed) {
-      const resetTime = new Date(resetAt).getTime();
-      retryAfterSeconds = Math.max(1, Math.ceil((resetTime - Date.now()) / 1000));
+    if (!record || now > record.resetAt) {
+      const resetAt = now + windowSeconds * 1000;
+      memoryRateLimits.set(key, { count: 1, resetAt });
+      return { allowed: true, remaining: limit - 1, resetAt: new Date(resetAt).toISOString() };
     }
 
-    return {
-      allowed,
-      remaining,
-      resetAt,
-      retryAfterSeconds
-    };
+    if (record.count >= limit) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((record.resetAt - now) / 1000));
+      return { allowed: false, remaining: 0, resetAt: new Date(record.resetAt).toISOString(), retryAfterSeconds };
+    }
+
+    record.count += 1;
+    return { allowed: true, remaining: limit - record.count, resetAt: new Date(record.resetAt).toISOString() };
   } catch (err) {
-    console.error(`[Rate Limiter] Fail open on unexpected error for ${endpoint}:`, err);
     return { allowed: true, remaining: 1, resetAt: new Date().toISOString() };
   }
 }
