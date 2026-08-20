@@ -417,8 +417,16 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
                           {filePath && filePath !== 'No file' && (
                             <button
                               type="button"
-                              onClick={() => {
-                                openTiffInSystem(filePath);
+                              onClick={async () => {
+                                const isWebUrl = /^https?:\/\//i.test(filePath) || filePath.startsWith('/') || filePath.startsWith('blob:');
+                                if (isWebUrl) {
+                                  window.open(filePath, '_blank', 'noopener,noreferrer');
+                                } else {
+                                  try {
+                                    await navigator.clipboard.writeText(filePath);
+                                  } catch {}
+                                  await openTiffInSystem(filePath);
+                                }
                               }}
                               className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors ml-1 p-1 hover:bg-blue-50 rounded"
                               title={`Open: ${filePath}`}

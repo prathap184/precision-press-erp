@@ -265,23 +265,32 @@ export function PrinterOrderWorkspace({
 
   const openTiff = async () => {
     if (!order) return;
-    if (!tiffReady) {
+    if (!tiffPath) {
       toast.error('No valid TIFF path is available for this job.');
       return;
     }
 
-    toast.loading('Opening TIFF in system viewer...', { id: 'printer-order-tiff' });
-    const openedNatively = await openTiffInSystem(tiffPath);
-    if (!openedNatively) {
-      window.open(normalizeTiffPathToFileUrl(tiffPath), '_blank', 'noopener,noreferrer');
+    toast.loading('Opening file...', { id: 'printer-order-tiff' });
+    const isWebUrl = /^https?:\/\//i.test(tiffPath) || tiffPath.startsWith('/') || tiffPath.startsWith('blob:');
+    if (isWebUrl) {
+      window.open(tiffPath, '_blank', 'noopener,noreferrer');
+      toast.success('File opened.', { id: 'printer-order-tiff' });
+    } else {
+      try {
+        await navigator.clipboard.writeText(tiffPath);
+      } catch {}
+      const openedNatively = await openTiffInSystem(tiffPath);
+      if (openedNatively) {
+        toast.success('File opened.', { id: 'printer-order-tiff' });
+      } else {
+        toast.success('Path copied! Paste in File Explorer (Win+E) to view.', { id: 'printer-order-tiff', duration: 4000 });
+      }
     }
 
     try {
       await markTiffOpened(order.id);
-      toast.success('TIFF opened.', { id: 'printer-order-tiff' });
     } catch (err) {
       console.error('Failed to mark TIFF as opened:', err);
-      toast.success('TIFF opened.', { id: 'printer-order-tiff' });
     }
   };
 
@@ -454,7 +463,7 @@ export function PrinterOrderWorkspace({
               {uniqueDisplayItems.map((item) => {
                 const itemTiffPath = item.tiffPath || tiffPath || '';
                 const itemFileName = itemTiffPath ? getFileNameFromPath(itemTiffPath) : 'No TIFF path assigned';
-                const itemReady = Boolean(itemTiffPath && isValidTiffPath(itemTiffPath));
+                const itemReady = Boolean(itemTiffPath && (isValidTiffPath(itemTiffPath) || /^https?:\/\//i.test(itemTiffPath) || itemTiffPath.startsWith('/') || itemTiffPath.includes('.')));
 
                 return (
                   <tr key={item.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/50 transition-colors">
@@ -473,10 +482,22 @@ export function PrinterOrderWorkspace({
                           <button
                             type="button"
                             onClick={async () => {
-                              toast.loading('Opening TIFF...', { id: item.id });
-                              const opened = await openTiffInSystem(itemTiffPath);
-                              if (!opened) window.open(normalizeTiffPathToFileUrl(itemTiffPath), '_blank');
-                              toast.success('TIFF opened.', { id: item.id });
+                              toast.loading('Opening file...', { id: item.id });
+                              const isWebUrl = /^https?:\/\//i.test(itemTiffPath) || itemTiffPath.startsWith('/') || itemTiffPath.startsWith('blob:');
+                              if (isWebUrl) {
+                                window.open(itemTiffPath, '_blank', 'noopener,noreferrer');
+                                toast.success('File opened.', { id: item.id });
+                              } else {
+                                try {
+                                  await navigator.clipboard.writeText(itemTiffPath);
+                                } catch {}
+                                const opened = await openTiffInSystem(itemTiffPath);
+                                if (opened) {
+                                  toast.success('File opened.', { id: item.id });
+                                } else {
+                                  toast.success('Path copied! Paste in File Explorer (Win+E) to view.', { id: item.id, duration: 4000 });
+                                }
+                              }
                             }}
                             className="inline-flex items-center gap-1 rounded-full bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-white shadow-2xs transition-all shrink-0"
                           >

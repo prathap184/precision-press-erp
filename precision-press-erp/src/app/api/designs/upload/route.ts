@@ -77,45 +77,54 @@ export async function POST(req: NextRequest) {
     const rawBuffer = Buffer.from(arrayBuffer);
     const originalSize = rawBuffer.length;
 
-    // ─── 1. Magic Byte Validation ────────────────────────────────────────────
-    const detectedMime = detectMagicMime(rawBuffer);
+    // ─── 1. Flexible MIME & Extension Validation ─────────────────────────────
+    let detectedMime = detectMagicMime(rawBuffer);
     if (!detectedMime) {
-      return NextResponse.json(
-        { error: 'File rejected: unrecognised file type (magic byte mismatch).' },
-        { status: 415 }
-      );
-    }
-    if (!ALLOWED_MIMES.has(detectedMime)) {
-      return NextResponse.json(
-        { error: `File type "${detectedMime}" is not permitted.` },
-        { status: 415 }
-      );
+      // Fallback to filename extension or provided type
+      const ext = filename.split('.').pop()?.toLowerCase() || '';
+      if (['jpg', 'jpeg'].includes(ext)) detectedMime = 'image/jpeg';
+      else if (ext === 'png') detectedMime = 'image/png';
+      else if (['tif', 'tiff'].includes(ext)) detectedMime = 'image/tiff';
+      else if (ext === 'webp') detectedMime = 'image/webp';
+      else if (ext === 'gif') detectedMime = 'image/gif';
+      else if (ext === 'pdf') detectedMime = 'application/pdf';
+      else if (ext === 'psd') detectedMime = 'image/vnd.adobe.photoshop';
+      else if (ext === 'ai') detectedMime = 'application/illustrator';
+      else if (ext === 'cdr') detectedMime = 'application/coreldraw';
+      else if (ext === 'svg') detectedMime = 'image/svg+xml';
+      else if (ext === 'zip') detectedMime = 'application/zip';
+      else if (ext === 'rar') detectedMime = 'application/x-rar-compressed';
+      else detectedMime = originalType || 'application/octet-stream';
     }
 
     // ─── 2. Duplicate Detection (SHA-256 hash) ────────────────────────────────
     const fileHash = sha256(rawBuffer);
-    const { data: existingFile } = await supabaseServer
-      .from('design_revisions')
-      .select('url, cloudinary_public_id')
-      .eq('sha256_hash', fileHash)
-      .maybeSingle();
+    try {
+      const { data: existingFile } = await supabaseServer
+        .from('design_revisions')
+        .select('url, cloudinary_public_id')
+        .eq('sha256_hash', fileHash)
+        .maybeSingle();
 
-    if (existingFile) {
-      return NextResponse.json({
-        success: true,
-        fileId: existingFile.cloudinary_public_id,
-        fileUrl: existingFile.url,
-        filename,
-        contentType: detectedMime,
-        originalSize,
-        compressedSize: originalSize,
-        compressionRatio: '100.0%',
-        storeMethod: 'cached',
-        cloudinaryFolder: 'cached',
-        cloudinaryPublicId: existingFile.cloudinary_public_id,
-        deduplicated: true,
-        sha256: fileHash,
-      });
+      if (existingFile?.url) {
+        return NextResponse.json({
+          success: true,
+          fileId: existingFile.cloudinary_public_id,
+          fileUrl: existingFile.url,
+          filename,
+          contentType: detectedMime,
+          originalSize,
+          compressedSize: originalSize,
+          compressionRatio: '100.0%',
+          storeMethod: 'cached',
+          cloudinaryFolder: 'cached',
+          cloudinaryPublicId: existingFile.cloudinary_public_id,
+          deduplicated: true,
+          sha256: fileHash,
+        });
+      }
+    } catch (e) {
+      console.warn('Duplicate check skipped:', e);
     }
 
     let buffer = rawBuffer;

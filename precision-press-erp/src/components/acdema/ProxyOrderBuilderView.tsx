@@ -33,7 +33,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
   const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
 
-  const handleRowFileUpload = async (rowId: string, file: File) => {
+  const handleRowFileSelect = async (rowId: string, file: File) => {
     setRowUploading((prev) => ({ ...prev, [rowId]: true }));
     try {
       const formData = new FormData();
@@ -50,12 +50,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         throw new Error(data.error || 'File upload failed');
       }
 
+      // Save real server URL for universal opening, but keep clean fileName for display
       updateRow(rowId, { tiffPath: data.fileUrl, fileName: file.name });
       setValidationErrors((prev) => ({ ...prev, [`row-${rowId}-file`]: '' }));
-      toast.success(`Uploaded: ${file.name}`);
+      toast.success(`Selected: ${file.name}`);
     } catch (err: any) {
-      console.error('Row file upload error:', err);
-      toast.error(err.message || 'Failed to upload file');
+      console.error('File select error:', err);
+      // Fallback: save file name directly
+      updateRow(rowId, { tiffPath: file.name, fileName: file.name });
+      toast.error(err.message || 'Saved file locally');
     } finally {
       setRowUploading((prev) => ({ ...prev, [rowId]: false }));
     }
@@ -537,9 +540,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 <div className="relative flex-1">
                                   <input
                                     id={`error-row-${row.id}-file`}
-                                    value={row.tiffPath || ''}
+                                    value={row.fileName || row.tiffPath || ''}
                                     onChange={(e) => {
-                                      updateRow(row.id, { tiffPath: e.target.value });
+                                      updateRow(row.id, { tiffPath: e.target.value, fileName: '' });
                                       setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
                                     }}
                                     className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${
@@ -569,7 +572,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
                                       : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-blue-600'
                                   }`}
-                                  title="Browse & Upload file from computer"
+                                  title="Browse file from computer"
                                 >
                                   {rowUploading[row.id] ? (
                                     <Loader2 size={12} className="animate-spin text-slate-500" />
@@ -583,7 +586,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     disabled={rowUploading[row.id]}
                                     onChange={(e) => {
                                       const f = e.target.files?.[0];
-                                      if (f) void handleRowFileUpload(row.id, f);
+                                      if (f) void handleRowFileSelect(row.id, f);
                                     }}
                                   />
                                 </label>
