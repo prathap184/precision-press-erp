@@ -578,16 +578,20 @@ export default function ContactsPage() {
         {/* Summary + search */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-[13px] text-muted-foreground">
-            <span className="font-medium text-foreground tabular-nums">{contacts.length}</span> contacts
+            <span className="font-semibold text-foreground tabular-nums">{total || contacts.length}</span> total contacts
+            <span className="text-border">·</span>
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
+              <span className="tabular-nums">Showing {contacts.length}</span>
+            </span>
             <span className="text-border">·</span>
             <span className="inline-flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-blue-500" />
-              <span className="tabular-nums">{customers.length}</span> customers
+              <span className="tabular-nums">{typeFilter === "customer" ? total : customers.length}</span> customers
             </span>
             <span className="text-border">·</span>
             <span className="inline-flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-orange-500" />
-              <span className="tabular-nums">{suppliers.length}</span> suppliers
+              <span className="tabular-nums">{typeFilter === "supplier" ? total : suppliers.length}</span> suppliers
             </span>
             {taxExemptCount > 0 && (
               <>
@@ -697,14 +701,40 @@ export default function ContactsPage() {
           </MotionConfig>
         )}
 
-        {/* Infinite scroll sentinel */}
-        {hasMore && !refetching && (
-          <div ref={sentinelRef} className="flex items-center justify-center py-6">
-            {loadingMore && (
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            )}
-          </div>
-        )}
+        {/* Infinite scroll & Load More button */}
+        <div className="flex flex-col items-center justify-center gap-2 py-6">
+          {hasMore && !refetching && (
+            <div className="flex flex-col items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="min-w-[200px] h-9 font-medium shadow-sm hover:bg-accent"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin text-muted-foreground" />
+                    Loading next 50...
+                  </>
+                ) : (
+                  <>
+                    Load next 50 ({Math.max(0, total - contacts.length)} remaining)
+                  </>
+                )}
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Showing {contacts.length} of {total} contacts • Auto-loads on scroll
+              </span>
+              <div ref={sentinelRef} className="h-4 w-full" />
+            </div>
+          )}
+          {!hasMore && contacts.length > 0 && (
+            <span className="text-xs font-medium text-muted-foreground">
+              ✓ All {total} contacts loaded
+            </span>
+          )}
+        </div>
       </div>
       {confirmDialog}
     </ContentReveal>

@@ -224,17 +224,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         ) : (
                           filteredCustomers.map((customer: any) => (
                             <div
-                              key={customer.uid}
+                              key={customer.uid || customer.id}
                               onMouseDown={(e) => {
                                 e.preventDefault();
-                                setSelectedCustomerId(customer.uid);
+                                setSelectedCustomerId(customer.uid || customer.id);
                                 setCustomerDropdownOpen(false);
                                 setCustomerSearch('');
                               }}
-                              className={`cursor-pointer border-b border-slate-100 p-3 hover:bg-slate-50 ${customer.uid === selectedCustomerId ? 'bg-slate-100' : ''}`}
+                              className={`cursor-pointer border-b border-slate-100 p-3 hover:bg-slate-50 ${(customer.uid === selectedCustomerId || customer.id === selectedCustomerId) ? 'bg-slate-100' : ''}`}
                             >
                               <div className="text-sm font-bold text-slate-800">{customer.displayName || customer.name}</div>
-                              <div className="text-xs text-slate-500">{customer.phone} • {customer.businessName}</div>
+                              <div className="text-xs text-slate-500">{customer.phone || 'No phone'} • {customer.businessName || customer.billing_city || 'Mysore'}</div>
                             </div>
                           ))
                         )}
@@ -244,7 +244,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   
                   {selectedCustomer && (
                     <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-600 border border-slate-200">
-                      {selectedCustomer.phone} • {selectedCustomer.businessName || 'No business'}
+                      {selectedCustomer.phone || 'No phone'} • {selectedCustomer.businessName || selectedCustomer.billing_city || 'Customer'}
                     </div>
                   )}
                 </div>
@@ -274,7 +274,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                   {deliveryType !== 'selfPickup' && (
                     <div className="mt-4 space-y-2">
-                      {((selectedCustomer?.addresses && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address) ? (
+                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address) ? (
                         <>
                           <select
                             className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none focus:border-slate-400"
@@ -295,11 +295,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               </option>
                             )}
 
-                            {selectedCustomer?.addresses && selectedCustomer.addresses.map((addr: any) => {
-                              const fullAddr = `${selectedCustomer.displayName || selectedCustomer.name} ${selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}\n${addr.houseNumber}, ${addr.roadName}\n${addr.city}, ${addr.state} - ${addr.pincode}`;
+                            {Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.map((addr: any, idx: number) => {
+                              const fullAddr = `${selectedCustomer.displayName || selectedCustomer.name} ${selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}\n${addr.houseNumber || ''}, ${addr.roadName || ''}\n${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}`;
                               return (
-                                <option key={addr.id} value={fullAddr}>
-                                  {addr.houseNumber}, {addr.roadName}, {addr.city}, {addr.state} - {addr.pincode}
+                                <option key={addr.id || idx} value={fullAddr}>
+                                  {addr.houseNumber || ''}, {addr.roadName || ''}, {addr.city || ''}, {addr.state || ''} - {addr.pincode || ''}
                                 </option>
                               );
                             })}

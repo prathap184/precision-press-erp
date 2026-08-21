@@ -259,7 +259,7 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
     });
   }, [customerSearch, customers]);
 
-  const selectedCustomer = customers.find((customer) => customer.uid === selectedCustomerId) || null;
+  const selectedCustomer = customers.find((customer) => (customer.uid === selectedCustomerId || (customer as any).id === selectedCustomerId)) || null;
 
   const [applyVoucher, setApplyVoucher] = useState(false);
 
@@ -300,7 +300,7 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
       setShippingAddress(parts.join(', '));
     }
     // Fall back to addresses JSON array if it exists
-    else if (selectedCustomer.addresses && selectedCustomer.addresses.length > 0) {
+    else if (Array.isArray(selectedCustomer.addresses) && selectedCustomer.addresses.length > 0) {
       const a = selectedCustomer.addresses[selectedCustomer.addresses.length - 1]; // pick latest
       const parts = [
         a.houseNumber,
