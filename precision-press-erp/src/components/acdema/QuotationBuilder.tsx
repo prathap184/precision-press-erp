@@ -117,18 +117,162 @@ export function QuotationBuilder() {
         throw new Error(data.error || 'Failed to verify GSTIN');
       }
 
-      // Populate form with fetched data
       setNewCustomerForm((f) => {
         const nextForm = { ...f, businessName: data.data?.legalName || data.data?.tradeName || f.businessName };
-        
-        // Very basic parsing for address - could be improved if Sandbox structure is known exactly
         if (data.data?.address) {
           const parts = data.data.address.split(',').map((p: string) => p.trim());
           if (parts.length > 0) {
             nextForm.state = parts.find((p: string) => /karnataka|kerala|tamil/i.test(p)) || nextForm.state;
             nextForm.pincode = parts.find((p: string) => /^\d{6}$/.test(p)) || nextForm.pincode;
-            // Best effort address breakdown
             nextForm.roadName = data.data.address;
+          }
+        }
+        return { ...nextForm, gstVerified: true, gstDetails: data.data };
+      });
+
+      toast.success('GST Verified! Details auto-filled.');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Verification failed');
+    } finally {
+      setVerifyingGst(false);
+    }
+  };
+
+  useEffect(() => {
+    let active = true;
+
+    const bootstrap = async () => {
+      try {
+        const [productData, customerData] = await Promise.all([getProducts(), getCustomers()]);
+        if (!active) return;
+
+        const activeProducts = productData.filter((product: Product) => product.status === 'ACTIVE');
+        setProducts(activeProducts);
+        setCustomers(customerData);
+        setRows([makeRow(activeProducts[0])]);
+      } catch (error) {
+        console.error(error);
+        toast.error('Unable to load quotation data.');
+      } finally {
+        if (active) setBootstrapLoading(false);
+      }
+    };
+
+    bootstrap();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const filteredCustomers = useMemo(() => {
+    const term = customerSearch.trim().toLowerCase();
+    if (!term) return customers;
+    return customers.filter((customer) => {
+      return [customer.name, customer.displayName, customer.phone, customer.businessName, customer.email]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term));
+    });
+  }, [customerSearch, customers]);
+
+  const selectedCustomer = customers.find((customer) => (customer.uid === selectedCustomerId || (customer as any).id === selectedCustomerId)) || null;
+
+  const [applyVoucher, setApplyVoucher] = useState(false);
+
+  useEffect(() => {
+    if (!selectedCustomer) return;
+
+    if (deliveryType === 'selfPickup') {
+      setShippingAddress('Self Pickup');
+      return;
+    }
+
+    if ((selectedCustomer as any).shipping_address_line1) {
+      const cust = selectedCustomer as any;
+      const parts = [
+        cust.shipping_address_line1,
+        cust.shipping_address_line2,
+        cust.shipping_area,
+        cust.shipping_city,
+        cust.shipping_district,
+        cust.shipping_state,
+        cust.shipping_pincode
+      ].filter(Boolean);
+      setShippingAddress(parts.join(', '));
+    } else if ((selectedCustomer as any).billing_address_line1) {
+      const cust = selectedCustomer as any;
+      const parts = [
+        cust.billing_address_line1,
+        cust.billing_address_line2,
+        cust.billing_area,
+        cust.billing_city,
+        cust.billing_district,
+        cust.billing_state,
+        cust.billing_pincode
+      ].filter(Boolean);
+      setShippingAddress(parts.join(', '));
+    } else if (Array.isArray(selectedCustomer.addresses) && selectedCustomer.addresses.length > 0) {
+      const a = selectedCustomer.addresses[selectedCustomer.addresses.length - 1];
+      const parts = [
+        a.houseNumber,
+        a.roadName,
+        (a as any).area,
+        a.city,
+        (a as any).district,
+        a.state,
+        a.pincode
+      ].filter(Boolean);
+      setShippingAddress(parts.join(', '));
+    } else if (selectedCustomer.address) {
+      setShippingAddress(selectedCustomer.address);
+    }
+    
+    setApplyVoucher(false);
+  }, [selectedCustomer, deliveryType]);
+
+  const summary = useMemo(() => {
+    const firstProduct = products.find(p => p.id === rows[0]?.productId);
+    const dCharge = deliveryType === 'selfPickup' ? 0 : (firstProduct?.deliveryPricing?.[deliveryType] || 0);
+
+    const isInterstate = (() => {
+      if (deliveryType === 'selfPickup') return false;
+      if (!shippingAddress) return false;
+      const addr = shippingAddress.toLowerCase();
+      if (addr.includes('karnataka')) return false;
+      if (/\bka\b/.test(addr)) return false;
+      return true;
+    })();
+
+    const pricingRows = rows.map((row) => {
+      const product = products.find((item) => item.id === row.productId);
+      const width = Number(row.width) || 0;
+      const height = Number(row.height) || 0;
+      const quantity = Number(row.quantity) || 0;
+      const rate = product?.baseRate || 0;
+      const eyeletRate = row.eyeletType === 'METAL'
+        ? product?.eyeletPricing?.metal || 0
+        : row.eyeletType === 'PLASTIC'
+          ? product?.eyeletPricing?.plastic || 0
+          : 0;
+          
+      return {
+        name: product?.name || 'Unknown Item',
+        width: row.widthUnit === 'IN' ? width / 12 : width,
+        height: row.heightUnit === 'IN' ? height / 12 : height,
+        quantity,
+        rate,
+        eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
+        eyeletRate,
+        gstRate: (product?.gst_rate || 18) / 100,
+      };
+    });
+
+    const calculatedSummary = calculateOrderSummary(pricingRows, dCharge, 0.18, isInterstate);
+
+    const items = pricingRows.map((row) => {
+      const bAmount = row.width * row.height * row.quantity * row.rate;
+      const fAmount = row.eyeletCount * row.eyeletRate;
+      const sub = bAmount + fAmount;
       const itemGst = sub * row.gstRate;
       const c = isInterstate ? 0 : Number((itemGst / 2).toFixed(2));
       const s = isInterstate ? 0 : Number((itemGst / 2).toFixed(2));
@@ -223,7 +367,7 @@ export function QuotationBuilder() {
     try {
       const result = await createCustomer({
         email: newCustomerForm.email.trim(),
-        name: newCustomerForm.businessName.trim(), // Name field uses businessName
+        name: newCustomerForm.businessName.trim(),
         businessName: newCustomerForm.businessName.trim(),
         phone: newCustomerForm.phone.trim(),
         houseNumber: newCustomerForm.houseNumber.trim(),
@@ -248,231 +392,132 @@ export function QuotationBuilder() {
       }
 
       const created = {
+        uid: result.uid,
         email: newCustomerForm.email.trim(),
-        password: result.password || newCustomerForm.tempPassword.trim(),
+        displayName: newCustomerForm.businessName.trim(),
         name: newCustomerForm.businessName.trim(),
+        businessName: newCustomerForm.businessName.trim(),
+        phone: newCustomerForm.phone.trim(),
+        customerType: newCustomerForm.customerType,
+        creditLimit: newCustomerForm.customerType === 'CREDIT' ? Number(newCustomerForm.creditLimit) || 0 : 0,
+        voucherType: newCustomerForm.voucherType,
+        role: 'CUSTOMER' as const,
+        usedCredit: 0,
       };
 
-      setCreatedCustomer(created);
-      setShowCreateCustomer(false);
-      toast.success('Customer created and credentials ready to share.');
+      setCustomers((prev) => [created as UserProfile, ...prev]);
       setSelectedCustomerId(result.uid);
-      const refreshedCustomers = await getCustomers();
-      setCustomers(refreshedCustomers);
-      setNewCustomerForm({
-        businessName: '',
-        email: '',
-        phone: '',
-        houseNumber: '',
-        roadName: '',
-        city: '',
-        state: '',
-        country: 'India',
-        pincode: '',
-        gstType: 'Unregistered',
-        gstNumber: '',
-        gstVerified: false,
-        gstDetails: null,
-        customerType: 'CASH',
-        creditLimit: 0,
-        voucherType: 'Type 0',
-        tempPassword: `PP-${Math.floor(Math.random() * 90000) + 10000}`,
+      setCreatedCustomer({
+        email: created.email,
+        password: result.password || newCustomerForm.tempPassword,
+        name: created.displayName,
       });
+      setShowCreateCustomer(false);
+      toast.success('Customer created successfully.');
     } catch (error: any) {
       console.error(error);
-      toast.error(error?.message || 'Failed to create customer.');
+      toast.error(error?.message || 'Unable to create customer.');
     } finally {
       setCreatingCustomer(false);
     }
   };
 
-  const [addingAddress, setAddingAddress] = useState(false);
-
-  const handleAddDeliveryAddress = async (addressData: any) => {
-    if (!selectedCustomer) return false;
-    setAddingAddress(true);
-    try {
-      const { addCustomerAddress } = await import('@/lib/actions/users');
-      const result = await addCustomerAddress(selectedCustomer.uid, addressData);
-      if (result.success && result.address) {
-        setCustomers((prev) => prev.map(c => {
-          if (c.uid === selectedCustomer.uid) {
-            return {
-              ...c,
-              addresses: [...(c.addresses || []), result.address],
-              defaultAddressId: result.address.id
-            };
-          }
-          return c;
-        }));
-        
-        const a = result.address;
-        const cName = selectedCustomer.displayName || selectedCustomer.name;
-        const cPhone = selectedCustomer.phone || '';
-        const parts = [
-          a.houseNumber,
-          a.roadName,
-          (a as any).area,
-          a.city,
-          (a as any).district,
-          a.state,
-          a.pincode
-        ].filter(Boolean);
-        const fullStr = `${cName} ${cPhone ? `(${cPhone})` : ''}\n${parts.join(', ')}`;
-        setShippingAddress(fullStr);
-        toast.success('Address added successfully');
-        return true;
-      } else {
-        toast.error(result.error || 'Failed to add address');
-        return false;
-      }
-    } catch (e: any) {
-      toast.error(e.message || 'Error adding address');
-      return false;
-    } finally {
-      setAddingAddress(false);
-    }
-  };
-
   const submitQuotation = async () => {
-    setTiffError('');
-
-    if (!selectedCustomer) {
-      toast.error('Select a customer first.');
+    if (!selectedCustomerId) {
+      toast.error('Please choose a customer.');
       return;
     }
 
-    if (!rows.length) {
-      toast.error('Add at least one item.');
+    if (rows.length === 0) {
+      toast.error('Add at least one product row.');
       return;
     }
-
-    if (deliveryType !== 'selfPickup' && !shippingAddress.trim()) {
-      toast.error('Enter the shipping / delivery address.');
-      return;
-    }
-
-    const resolvedRowPaths = rows.map((row) => row.tiffPath.trim());
-    const invalidRowIndex = -1; // Removed extension validation
-    
-    if (invalidRowIndex !== -1) {
-      toast.error(`Invalid file type in row ${invalidRowIndex + 1}. All files must have a valid extension.`);
-      return;
-    }
-
-    if (paymentMode === 'UPI' && !upiProofUrl) {
-      toast.error('Upload the UPI screenshot first.');
-      return;
-    }
-
-    await refreshAuthTokenCookie().catch(e => console.warn('Token refresh failed', e));
 
     setLoading(true);
     try {
-      const firstProduct = products.find(p => p.id === rows[0]?.productId);
-      const submissionGstRate = firstProduct?.gst_rate ? firstProduct.gst_rate / 100 : 0.18;
+      await refreshAuthTokenCookie();
 
-      const submissionIsInterstate = (() => {
-        if (deliveryType === 'selfPickup') return false;
-        if (!shippingAddress) return false;
-        const addr = shippingAddress.trim().toLowerCase();
-        if (addr.includes('karnataka')) return false;
-        if (/\bka\b/.test(addr)) return false;
-        return true;
-      })();
+      const items = rows.map((row) => {
+        const product = products.find((item) => item.id === row.productId);
+        const width = Number(row.width) || 0;
+        const height = Number(row.height) || 0;
+        const quantity = Number(row.quantity) || 0;
+        const rate = product?.baseRate || 0;
+        const rowSubtotal = calculateRowSubtotal(row, product);
 
-      const result = await createStandaloneQuotation({
-        customerId: selectedCustomer.uid,
-        customerSnapshot: {
-          uid: selectedCustomer.uid,
-          name: selectedCustomer.name || selectedCustomer.displayName || 'Customer',
-          displayName: selectedCustomer.displayName || selectedCustomer.name || 'Customer',
-          email: selectedCustomer.email,
-          phone: selectedCustomer.phone,
-          address: selectedCustomer.address,
-        },
-        deliveryChoice: deliveryType === 'selfPickup' ? 'PICKUP' : deliveryType === 'door' ? 'DOOR_DELIVERY' : deliveryType === 'courier' ? 'COURIER' : 'TRANSPORT',
-        shippingAddress: deliveryType === 'selfPickup' ? 'Self Pickup' : shippingAddress.trim(),
-        preparedItems: rows.map((row) => {
-          const product = products.find((item) => item.id === row.productId);
-          const width = Number(row.width) || 0;
-          const height = Number(row.height) || 0;
-          const quantity = Number(row.quantity) || 1;
-          const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
-          const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
-          const eyeletRate = row.eyeletType === 'METAL'
-            ? product?.eyeletPricing?.metal || 0
-            : row.eyeletType === 'PLASTIC'
-              ? product?.eyeletPricing?.plastic || 0
-              : 0;
-
-          const effectiveTiffPath = row.tiffPath.trim();
-          return {
-            id: row.id,
-            productId: row.productId,
-            productName: row.productName || product?.name || 'Item',
-            projectName: row.projectName,
-            width,
-            widthUnit: row.widthUnit,
-            height,
-            heightUnit: row.heightUnit,
-            quantity,
-            eyeletType: row.eyeletType,
-            eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
-            rate: product?.baseRate || 0,
-            eyeletRate,
-            fileUrl: effectiveTiffPath,
-            tiffPath: effectiveTiffPath,
-            pricingSnapshot: {
-              productId: row.productId,
-              productName: row.productName || product?.name || 'Item',
-              baseRate: product?.baseRate || 0,
-              eyeletPricing: product?.eyeletPricing,
-              deliveryPricing: product?.deliveryPricing,
-              selectedEyeletType: row.eyeletType,
-              eyeletRate,
-              subTotal: calculateRowSubtotal({
-                width: widthInFt,
-                height: heightInFt,
-                quantity,
-                rate: product?.baseRate || 0,
-                eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
-                eyeletRate,
-              }),
-              tax: (product?.gst_rate ?? 18) / 100
-            },
-            subTotal: calculateRowSubtotal({
-              width: widthInFt,
-              height: heightInFt,
-              quantity,
-              rate: product?.baseRate || 0,
-              eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
-              eyeletRate,
-            }),
-          };
-        }),
-        grandTotal: summary.grandTotal,
-        isInterstate: submissionIsInterstate,
-        gstRate: submissionGstRate,
-        transportCharges: summary.deliveryCharges,
+        return {
+          productId: row.productId,
+          productName: product?.name || row.productName || 'Custom Product',
+          projectName: row.projectName || '',
+          hsnCode: row.hsnCode || '',
+          pcsNo: row.pcsNo || '',
+          width: row.width,
+          widthUnit: row.widthUnit,
+          height: row.height,
+          heightUnit: row.heightUnit,
+          quantity,
+          rate,
+          eyeletType: row.eyeletType,
+          eyeletCount: row.eyeletCount,
+          subtotal: rowSubtotal,
+          tiffPath: row.tiffPath,
+        };
       });
 
-      if (!result.success || !result.quotationId) {
-        throw new Error(result.error || 'Failed to create quotation.');
+      const customerSnapshot = selectedCustomer
+        ? {
+            uid: selectedCustomer.uid,
+            name: selectedCustomer.name || selectedCustomer.displayName || 'Customer',
+            displayName: selectedCustomer.displayName || selectedCustomer.name || 'Customer',
+            email: selectedCustomer.email,
+            phone: selectedCustomer.phone,
+            address: selectedCustomer.address,
+            businessName: selectedCustomer.businessName,
+            customerType: selectedCustomer.customerType,
+            voucherType: selectedCustomer.voucherType,
+          }
+        : undefined;
+
+      const quotationPayload = {
+        customerId: selectedCustomerId,
+        customerName: selectedCustomer?.displayName || selectedCustomer?.name || 'Customer',
+        customerSnapshot,
+        items,
+        deliveryType,
+        shippingAddress: deliveryType === 'selfPickup' ? 'Self Pickup' : shippingAddress,
+        notes,
+        totalSqFt: summary.totalSqFt,
+        subtotal: summary.subtotal,
+        deliveryCharge: summary.deliveryCharge,
+        taxableAmount: summary.taxableAmount,
+        gstAmount: summary.gstAmount,
+        cgst: summary.cgst,
+        sgst: summary.sgst,
+        igst: summary.igst,
+        grandTotal: summary.grandTotal,
+        isInterstate: summary.isInterstate,
+        voucherApplied: summary.voucherApplied,
+        voucherGstDiscount: summary.voucherGstDiscount,
+      };
+
+      const result = await createStandaloneQuotation(quotationPayload as any);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate quotation.');
       }
 
-      toast.success(`Quotation sent successfully.`);
-      const basePath = profile?.role === 'ACDEMA' ? '/acdema' : profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN' ? '/admin' : `/${profile?.role?.toLowerCase() || 'admin'}`;
-      router.push(`${basePath}/quotation-register`);
+      toast.success(`Quotation generated: ${result.quotationNumber || ''}`);
+      router.push('/quotations');
     } catch (error: any) {
       console.error(error);
-      toast.error(error?.message || 'Failed to create proxy order.');
+      toast.error(error?.message || 'Failed to submit quotation.');
     } finally {
       setLoading(false);
     }
   };
 
   const viewModel = {
+    mode: 'quotation' as const,
     bootstrapLoading,
     profile,
     roles,
@@ -487,7 +532,7 @@ export function QuotationBuilder() {
     updateRow,
     removeRow,
     products,
-    calculateRowSubtotal,
+    calculateRowSubtotal: (row: any) => calculateRowSubtotal(row, products.find((p) => p.id === row.productId)),
     paymentMode,
     setPaymentMode,
     deliveryType,
@@ -505,32 +550,18 @@ export function QuotationBuilder() {
     newCustomerForm,
     setNewCustomerForm,
     handleCreateCustomer,
-    setTiffError,
-    tiffError,
     notes,
     setNotes,
+    tiffError,
+    setTiffError,
     summary,
-    submitQuotation: submitQuotation,
     submitProxyOrder: submitQuotation,
-    mode: 'quotation',
     loading,
-    addingAddress,
-    handleAddDeliveryAddress,
     applyVoucher,
     setApplyVoucher,
     verifyingGst,
     handleVerifyGst,
-    receiptAmount,
-    setReceiptAmount,
-    receiptRef,
-    setReceiptRef,
-    receiptRemarks,
-    setReceiptRemarks,
   };
 
-  if (bootstrapLoading) {
-    return React.createElement('div', { className: 'flex min-h-[50vh] items-center justify-center' }, 'Loading...');
-  }
-
-  return React.createElement(QuotationBuilderView, { vm: viewModel });
+  return <QuotationBuilderView vm={viewModel} />;
 }
