@@ -56,6 +56,8 @@ export async function GET(
         entryNumber: journalEntry.entryNumber,
         date: journalEntry.date,
         description: journalEntry.description,
+        sourceType: journalEntry.sourceType,
+        sourceId: journalEntry.sourceId,
         debitAmount: journalLine.debitAmount,
         creditAmount: journalLine.creditAmount,
       })
@@ -132,6 +134,11 @@ export async function GET(
 
     return NextResponse.json({
       account: { ...account, balance, totalDebits, totalCredits, entryCount: allLedger.length },
+      openingBalance: signedOpBal,
+      totalDebit: totalDebits,
+      totalCredit: totalCredits,
+      closingBalance: balance,
+      lines: paged,
       ...paginatedResponse(paged, total, page, limit),
     });
   } catch (err) {
