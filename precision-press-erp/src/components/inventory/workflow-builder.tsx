@@ -47,6 +47,8 @@ interface WorkflowBuilderProps {
 }
 
 export function WorkflowBuilder({ steps = [], onChange }: WorkflowBuilderProps) {
+  const safeSteps = Array.isArray(steps) ? steps : [];
+
   const addStep = (role: StaffRole) => {
     const meta = ROLE_META[role];
     if (!meta) return; 
@@ -56,26 +58,26 @@ export function WorkflowBuilder({ steps = [], onChange }: WorkflowBuilderProps) 
       role: role,
       blocking: true
     };
-    onChange([...steps, newStep]);
+    onChange([...safeSteps, newStep]);
   };
 
   const removeStep = (index: number) => {
-    const newSteps = [...steps];
+    const newSteps = [...safeSteps];
     newSteps.splice(index, 1);
     onChange(newSteps);
   };
 
   const moveStep = (index: number, direction: 'up' | 'down') => {
-    const newSteps = [...steps];
+    const newSteps = [...safeSteps];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= steps.length) return;
+    if (targetIndex < 0 || targetIndex >= safeSteps.length) return;
     
     [newSteps[index], newSteps[targetIndex]] = [newSteps[targetIndex], newSteps[index]];
     onChange(newSteps);
   };
 
   const updateStepLabel = (index: number, label: string) => {
-    const newSteps = [...steps];
+    const newSteps = [...safeSteps];
     newSteps[index] = { ...newSteps[index], label };
     onChange(newSteps);
   };
@@ -91,14 +93,14 @@ export function WorkflowBuilder({ steps = [], onChange }: WorkflowBuilderProps) 
       </div>
 
       <div className="space-y-2">
-        {steps.length === 0 ? (
+        {safeSteps.length === 0 ? (
           <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center">
             <p className="text-xs font-medium text-slate-400 italic">No workflow steps defined. Production will be manual.</p>
           </div>
         ) : (
-          steps
-            .filter(step => ROLE_META[step.role]) 
+          safeSteps
             .map((step, index) => {
+            if (!step || !step.role || !ROLE_META[step.role]) return null;
             const meta = ROLE_META[step.role];
             if (!meta) return null; 
             return (

@@ -81,11 +81,11 @@ export function CategoryPicker({ value, onChange, placeholder = "Select category
     fetch("/api/v1/inventory/categories", { headers })
       .then((r) => r.json())
       .then((data) => {
-        const cats = data.flat || data.categories || data.data || (Array.isArray(data) ? data : null);
-        if (id === fetchIdRef.current && cats) setCategories(cats);
+        const cats = data?.flat || data?.categories || data?.data || (Array.isArray(data) ? data : null);
+        if (id === fetchIdRef.current && Array.isArray(cats)) setCategories(cats);
       })
       .catch(() => {})
-      .finally(() => setFetchCount((c) => c - 1));
+      .finally(() => setFetchCount((c) => Math.max(0, c - 1)));
   }
 
   function handleOpenChange(nextOpen: boolean) {
@@ -107,17 +107,18 @@ export function CategoryPicker({ value, onChange, placeholder = "Select category
     return () => window.removeEventListener("refetch-categories", handler);
   }, []);
 
-  const parentMap = new Map(categories.map((c) => [c.id, c]));
-  const selected = categories.find((c) => c.id === value);
+  const safeCategories = Array.isArray(categories) ? categories : [];
+  const parentMap = new Map(safeCategories.map((c) => [c.id, c]));
+  const selected = safeCategories.find((c) => c.id === value);
 
   // Client-side filter since category lists are small
   const filtered = debouncedSearch
-    ? categories.filter((c) => {
+    ? safeCategories.filter((c) => {
         const parent = c.parentId ? parentMap.get(c.parentId) : null;
-        const haystack = `${c.name} ${parent?.name || ""}`.toLowerCase();
-        return haystack.includes(debouncedSearch.toLowerCase());
+        const haystack = `${c.name || ""} ${parent?.name || ""}`.toLowerCase();
+        return haystack.includes((debouncedSearch || "").toLowerCase());
       })
-    : categories;
+    : safeCategories;
 
   const loading = fetching || isSearching;
 
