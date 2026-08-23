@@ -56,6 +56,8 @@ export default function InventoryItemDetailsPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   useDocumentTitle("Inventory · Product Details");
 
+  const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+
   // Sync local state when item loads or changes
   useEffect(() => {
     if (item) {

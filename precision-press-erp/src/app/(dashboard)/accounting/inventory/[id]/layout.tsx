@@ -198,14 +198,17 @@ export default function InventoryItemLayout({ children }: { children: React.Reac
     );
   }
 
-  const isLowStock = item.quantityOnHand <= item.reorderPoint && item.isActive;
-  const stockValue = item.quantityOnHand * item.purchasePrice;
-  const activeSalePrice = item.metadata?.isDirectSelling === false && item.metadata?.baseRate ? item.metadata.baseRate : item.salePrice;
-  const margin = item.purchasePrice > 0
-    ? ((activeSalePrice - item.purchasePrice) / item.purchasePrice * 100)
+  const isLowStock = (item.quantityOnHand || 0) <= (item.reorderPoint || 0) && item.isActive;
+  const stockValue = (item.quantityOnHand || 0) * (item.purchasePrice || 0);
+  const activeSalePrice = item.metadata?.isDirectSelling === false && item.metadata?.baseRate 
+    ? Math.round(Number(item.metadata.baseRate) * 100) 
+    : (item.salePrice || 0);
+  const purchasePrice = item.purchasePrice || 0;
+  const margin = purchasePrice > 0
+    ? ((activeSalePrice - purchasePrice) / purchasePrice * 100)
     : 0;
-  const stockPercent = item.reorderPoint > 0
-    ? Math.min((item.quantityOnHand / (item.reorderPoint * 3)) * 100, 100)
+  const stockPercent = (item.reorderPoint || 0) > 0
+    ? Math.min(((item.quantityOnHand || 0) / ((item.reorderPoint || 1) * 3)) * 100, 100)
     : 100;
 
   // Determine active tab from pathname
