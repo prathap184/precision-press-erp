@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { useAccountContext } from "../account-context";
@@ -26,6 +27,8 @@ export default function AccountSettingsPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   const { account, setAccount, refetch } = useAccountContext();
   const [saving, setSaving] = useState(false);
+  const [formOpeningBalance, setFormOpeningBalance] = useState(account?.openingBalance ? String(account.openingBalance) : "");
+  const [formOpeningBalanceType, setFormOpeningBalanceType] = useState(account?.openingBalanceType || "Dr");
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
 
@@ -48,6 +51,8 @@ export default function AccountSettingsPage() {
           subType: fd.get("subType") || null,
           description: fd.get("description") || null,
           isActive: fd.get("isActive") === "true",
+          openingBalance: formOpeningBalance || "0",
+          openingBalanceType: formOpeningBalanceType || "Dr",
         }
       : {
           code: fd.get("code"),
@@ -55,6 +60,8 @@ export default function AccountSettingsPage() {
           subType: fd.get("subType") || null,
           description: fd.get("description") || null,
           isActive: fd.get("isActive") === "true",
+          openingBalance: formOpeningBalance || "0",
+          openingBalanceType: formOpeningBalanceType || "Dr",
         };
     try {
       const res = await fetch(`/api/v1/accounts/${id}`, {
@@ -169,6 +176,45 @@ export default function AccountSettingsPage() {
             <div className="space-y-1.5">
               <Label className="text-xs">Description</Label>
               <Textarea name="description" defaultValue={account.description || ""} placeholder="Optional notes about this account" rows={3} />
+            </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* Opening Balance */}
+        <div className="grid gap-6 sm:grid-cols-[200px_1fr] sm:gap-10">
+          <div className="shrink-0">
+            <p className="text-sm font-medium text-primary uppercase tracking-wide">Opening Balance</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+              Day 1 starting score. Sets starting scoreboard without affecting other accounts.
+            </p>
+          </div>
+          <div className="min-w-0 rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Starting Amount (₹)</Label>
+                <CurrencyInput
+                  value={formOpeningBalance}
+                  onChange={setFormOpeningBalance}
+                  placeholder="0.00"
+                />
+                <p className="text-[11px] text-muted-foreground">Original balance from Tally migration</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Balance Type</Label>
+                <Select
+                  value={formOpeningBalanceType}
+                  onValueChange={setFormOpeningBalanceType}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dr">Debit (Dr) — Asset / Expense normal balance</SelectItem>
+                    <SelectItem value="Cr">Credit (Cr) — Liability / Income / Capital</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">Dr = Asset · Cr = Liability/Capital</p>
+              </div>
             </div>
           </div>
         </div>

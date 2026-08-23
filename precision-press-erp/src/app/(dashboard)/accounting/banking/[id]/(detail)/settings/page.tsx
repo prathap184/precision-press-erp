@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { useConfirm } from "@/lib/hooks/use-confirm";
 import { cn } from "@/lib/utils";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
@@ -28,9 +29,11 @@ export default function BankSettingsPage() {
   const { account, setAccount, refetch } = useBankAccountContext();
   const [saving, setSaving] = useState(false);
   const [bankCurrency, setBankCurrency] = useState(account?.currencyCode || "INR");
-  // Which ledger account this bank account is recorded under. Defaults to the
-  // one connected automatically; the picker lets the user point it elsewhere.
   const [chartAccountId, setChartAccountId] = useState(account?.chartAccountId ?? "");
+  const [formOpeningBalance, setFormOpeningBalance] = useState(
+    account?.openingBalance ? String(account.openingBalance) : (account?.balance ? String(account.balance / 100) : "")
+  );
+  const [formOpeningBalanceType, setFormOpeningBalanceType] = useState(account?.openingBalanceType || "Dr");
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
 
@@ -53,6 +56,8 @@ export default function BankSettingsPage() {
           countryCode: fd.get("countryCode") || null,
           accountType: fd.get("accountType") || undefined,
           color: fd.get("color") || undefined,
+          openingBalance: formOpeningBalance || "0",
+          openingBalanceType: formOpeningBalanceType || "Dr",
           // Only send a connection when one is chosen — never actively unlink
           // (an empty value just falls back to the automatic connection).
           ...(chartAccountId ? { chartAccountId } : {}),
@@ -144,6 +149,45 @@ export default function BankSettingsPage() {
             <div className="space-y-1.5">
               <Label className="text-xs">Country</Label>
               <Input name="countryCode" defaultValue={account.countryCode || "IN"} placeholder="IN" maxLength={2} />
+            </div>
+          </div>
+        </div>
+
+        <div className="h-px bg-border" />
+
+        {/* Opening Balance */}
+        <div className="grid gap-6 sm:grid-cols-[200px_1fr] sm:gap-10">
+          <div className="shrink-0">
+            <p className="text-sm font-medium text-primary uppercase tracking-wide">Opening Balance</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+              Day 1 starting cash/bank balance. Sets starting scoreboard without affecting other accounts.
+            </p>
+          </div>
+          <div className="min-w-0 rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Starting Amount (₹)</Label>
+                <CurrencyInput
+                  value={formOpeningBalance}
+                  onChange={setFormOpeningBalance}
+                  placeholder="0.00"
+                />
+                <p className="text-[11px] text-muted-foreground">Original balance from Tally migration</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium">Balance Type</Label>
+                <Select
+                  value={formOpeningBalanceType}
+                  onValueChange={setFormOpeningBalanceType}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Dr">Debit (Dr) — Normal Bank Balance / Asset</SelectItem>
+                    <SelectItem value="Cr">Credit (Cr) — Overdraft / Negative</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">Dr = Normal bank balance · Cr = Overdraft</p>
+              </div>
             </div>
           </div>
         </div>

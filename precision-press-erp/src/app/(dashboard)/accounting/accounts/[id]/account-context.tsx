@@ -16,6 +16,8 @@ export interface AccountDetail {
   totalDebits?: number;
   totalCredits?: number;
   entryCount?: number;
+  openingBalance?: string | number | null;
+  openingBalanceType?: "Dr" | "Cr" | string | null;
 }
 
 export interface AccountContextValue {

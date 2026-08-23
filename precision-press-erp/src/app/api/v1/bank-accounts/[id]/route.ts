@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { bankAccount } from "@/lib/db/schema";
+import { bankAccount, chartAccount } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -22,6 +22,8 @@ const updateSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
   chartAccountId: z.string().nullable().optional(),
   balance: z.number().int().optional(),
+  openingBalance: z.union([z.number(), z.string()]).optional().transform((v) => (v !== undefined && v !== null ? String(v) : undefined)),
+  openingBalanceType: z.enum(["Dr", "Cr"]).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -71,9 +73,28 @@ export async function PATCH(
     const body = await request.json();
     const parsed = updateSchema.parse(body);
 
+    const updatePayload: Record<string, any> = { ...parsed };
+    if (parsed.openingBalance !== undefined) {
+      const opNum = Number(parsed.openingBalance || 0);
+      const opCents = Math.round(opNum * 100);
+      const isCr = (parsed.openingBalanceType ?? (existing as any).openingBalanceType) === "Cr";
+      updatePayload.balance = isCr ? -opCents : opCents;
+
+      // Sync linked chart account opening balance
+      if (existing.chartAccountId) {
+        await db
+          .update(chartAccount)
+          .set({
+            openingBalance: String(opNum),
+            openingBalanceType: isCr ? "Cr" : "Dr",
+          })
+          .where(eq(chartAccount.id, existing.chartAccountId));
+      }
+    }
+
     const [updated] = await db
       .update(bankAccount)
-      .set(parsed)
+      .set(updatePayload)
       .where(eq(bankAccount.id, id))
       .returning();
 

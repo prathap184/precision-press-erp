@@ -18,6 +18,8 @@ const updateSchema = z.object({
   defaultTaxRateId: z.string().uuid().nullable().optional(),
   taxDisallowedPercent: z.number().int().min(0).max(10000).optional(),
   reportingCode: z.string().nullable().optional(),
+  openingBalance: z.union([z.number(), z.string()]).optional().transform((v) => (v !== undefined && v !== null ? String(v) : undefined)),
+  openingBalanceType: z.enum(["Dr", "Cr"]).optional(),
 });
 
 export async function GET(
@@ -68,7 +70,14 @@ export async function GET(
       .orderBy(asc(journalEntry.date));
 
     // Compute running balance and totals on full set
-    let balance = 0;
+    const opBalRaw = Number(account.openingBalance || 0);
+    const opBalCents = Math.round(opBalRaw * 100);
+    const isAssetOrExp = ["asset", "expense"].includes(account.type);
+    const signedOpBal = isAssetOrExp
+      ? (account.openingBalanceType === "Cr" ? -opBalCents : opBalCents)
+      : (account.openingBalanceType === "Dr" ? -opBalCents : opBalCents);
+
+    let balance = signedOpBal;
     let totalDebits = 0;
     let totalCredits = 0;
     const fullLedger = allLedger.map((row) => {

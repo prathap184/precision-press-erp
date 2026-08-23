@@ -114,7 +114,9 @@ export interface BankAccountDetail {
   // The ledger account this bank account is recorded under in the books. Set up
   // automatically; surfaced read-only so users can see the connection exists.
   chartAccountId?: string | null;
-  chartAccount?: { id: string; name: string; code: string } | null;
+  chartAccount?: { id: string; name: string; code: string; openingBalance?: string | number | null; openingBalanceType?: string | null } | null;
+  openingBalance?: string | number | null;
+  openingBalanceType?: "Dr" | "Cr" | string | null;
 }
 
 export interface ImportPreviewRow {

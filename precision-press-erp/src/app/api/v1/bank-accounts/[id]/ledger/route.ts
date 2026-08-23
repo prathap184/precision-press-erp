@@ -45,8 +45,12 @@ export async function GET(
 
     const accountId = account.chartAccountId;
 
-    // 2a. Opening balance = ALL opening_balance journal entries (regardless of date)
-    let openingBalance = 0;
+    // 2a. Direct Bank opening balance (or linked Chart Account opening balance)
+    const directOpBal = Number(account.openingBalance ?? account.chartAccount?.openingBalance ?? 0);
+    const opBalCents = directOpBal > 0 ? Math.round(directOpBal * 100) : (account.balance ?? 0);
+    const opType = account.openingBalanceType ?? account.chartAccount?.openingBalanceType ?? "Dr";
+    let openingBalance = opType === "Cr" ? -opBalCents : opBalCents;
+
     const openingBalanceLines = await db
       .select({
         debit: journalLine.debitAmount,
