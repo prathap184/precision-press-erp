@@ -92,6 +92,9 @@ export async function PATCH(
       }
     }
 
+    delete updatePayload.openingBalance;
+    delete updatePayload.openingBalanceType;
+
     const [updated] = await db
       .update(bankAccount)
       .set(updatePayload)

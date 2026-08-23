@@ -83,8 +83,6 @@ export const bankAccount = pgTable("bank_account", {
   color: text("color").notNull().default("#0f766e"),
   chartAccountId: uuid("chart_account_id").references(() => chartAccount.id),
   balance: integer("balance").notNull().default(0),
-  openingBalance: numeric("opening_balance").default("0"),
-  openingBalanceType: text("opening_balance_type").default("Dr"),
   lowBalanceThreshold: integer("low_balance_threshold"),
   isActive: boolean("is_active").notNull().default(true),
   // Tally Integration Fields
