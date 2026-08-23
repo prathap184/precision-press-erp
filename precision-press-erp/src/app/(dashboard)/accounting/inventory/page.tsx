@@ -737,7 +737,9 @@ export default function InventoryPage() {
                 <div className="hidden md:flex flex-col items-end gap-0.5 w-24">
                   {item.metadata?.isDirectSelling === false ? (
                     <>
-                      <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{formatMoney(item.metadata.baseRate)}</span>
+                      <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {formatMoney(item.metadata?.baseRate != null ? Math.round(Number(item.metadata.baseRate) * 100) : item.salePrice)}
+                      </span>
                       <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Base Rate</span>
                     </>
                   ) : (

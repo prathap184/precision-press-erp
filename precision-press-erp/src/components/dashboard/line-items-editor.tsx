@@ -210,13 +210,15 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                       if (item) {
                         const matchingTax = item.gstRate ? taxRates.find(t => (t.rate / 100) === item.gstRate) : null;
                         const isItemDirectSelling = item.metadata?.isDirectSelling === true;
-                        const effectiveRate = isItemDirectSelling ? item.salePrice : (item.metadata?.baseRate ?? item.salePrice);
+                        const effectiveRate = isItemDirectSelling
+                          ? (Number(item.salePrice || 0) / 100)
+                          : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
                         const updated = [...lines];
                         updated[i] = {
                           ...updated[i],
                           inventoryItemId: item.id,
                           description: item.name,
-                          unitPrice: (effectiveRate / 100).toString(),
+                          unitPrice: effectiveRate.toString(),
                           accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
                           taxRateId: matchingTax ? matchingTax.id : updated[i].taxRateId,
                         };
