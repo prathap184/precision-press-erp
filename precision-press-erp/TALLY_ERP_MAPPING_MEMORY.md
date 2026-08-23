@@ -323,3 +323,28 @@ The ERP automatically classifies the **582 Tally Stock Items** into two function
   * `metadata`: `{"isDirectSelling": false, "baseRate": 102.00}`
 * **Sales Sync Flow**: Order specifies job dimensions (e.g. 4ft $\times$ 6ft = 24 sqft). Invoice charges 24 sqft $\times$ ₹102.00. Tally stock reduces by exactly 24.00 sqft.
 
+---
+
+## 🏛️ 12. Isolated Opening Balance Architecture (Day 1 Starting Scoreboards)
+
+### 1. 🛡️ The Golden Accounting Rule:
+* **Opening balances are STATIC STARTING NUMBERS.** They define the Day 1 starting scoreboard for each ledger.
+* Setting an opening balance **NEVER** generates automated background journal entries or bank movements.
+* Setting a Customer opening balance **NEVER** touches Bank Accounts or Sales Revenue.
+* Setting a Bank opening balance **NEVER** touches Customers or Suppliers.
+* **Only NEW live Invoices and Receipts created during daily operations** generate double-entry vouchers and auto-sync to Tally Prime.
+
+### 2. 🗄️ Database Fields & UI Locations:
+
+| Entity | DB Table | DB Field(s) | UI Location | Effect on UI |
+| :--- | :--- | :--- | :--- | :--- |
+| **Customers** | `public.contact` | `opening_balance`<br>`opening_balance_type` | `/accounting/contacts/[id]` *(Details Tab)* | Shows as **`STARTING BALANCE`** on Statement & live **`OWES YOU`** |
+| **Suppliers** | `public.contact` | `opening_balance`<br>`opening_balance_type` | `/accounting/contacts/[id]` *(Details Tab)* | Shows as **`STARTING BALANCE`** on Statement & live **`YOU OWE`** |
+| **Bank Accounts** | `public.bank_account` | `opening_balance`<br>`opening_balance_type`<br>`balance` | `/accounting/banking/[id]/settings` | Sets starting cash/bank card & **`Opening Balance`** row on Bank Ledger |
+| **Chart of Accounts** | `public.chart_account` | `opening_balance`<br>`opening_balance_type` | `/accounting/accounts/[id]/settings` | Sets starting line & running balance on Account Ledger |
+| **Stock Items** | `public.inventory_item` | `quantity_on_hand`<br>`opening_quantity`<br>`purchase_price` | `/accounting/inventory/[id]` | Sets starting stock quantity & ₹1.508 Cr opening valuation |
+
+### 3. 🔗 Bank Account $\leftrightarrow$ GL Account Synchronization:
+* Each `bank_account` is linked to a `chart_account` via `chart_account_id` (e.g. Federal Bank $\leftrightarrow$ GL 1100 Checking Account).
+* Updating the opening balance on a Bank Account automatically synchronizes its linked Chart of Account opening balance simultaneously, ensuring a single source of truth with **ZERO double-counting**!
+
