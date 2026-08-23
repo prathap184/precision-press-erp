@@ -251,5 +251,75 @@ All automated Port 9000 connector scripts are maintained in:
 3. **`sync_customers_connector.js`** ➔ Synchronizes all 1,260 customers with deep phone, smart city, PAN, and division mapping.
 4. **`sync_suppliers_connector.js`** ➔ Synchronizes all 133 suppliers with GSTIN, PAN, and opening balances.
 5. **`sync_bank_and_chart_accounts_connector.js`** ➔ Synchronizes all 221 General Ledger accounts and links operational bank profiles.
-6. **`verify_stock_audit.js`** ➔ Live stock items and valuation audit tool.
-7. **`verify_final_audit.js`** ➔ Live reconciliation and integrity testing tool.
+6. **`fast_enrich_metadata.js`** ➔ Enriches all 582 items with Direct vs Non-Direct metadata and base rates.
+7. **`verify_stock_audit.js`** ➔ Live stock items and valuation audit tool.
+8. **`verify_final_audit.js`** ➔ Live reconciliation and integrity testing tool.
+
+---
+
+## 🏷️ 11. Direct Selling vs Non-Direct Selling Architecture
+
+The ERP automatically classifies the **582 Tally Stock Items** into two functional business types using the Tally `<BASEUNITS>` (Unit of Measure) tag:
+
+```
+                          ┌───────────────────────────────┐
+                          │   582 TOTAL TALLY PRODUCTS    │
+                          └───────────────┬───────────────┘
+                                          │
+                  ┌───────────────────────┴───────────────────────┐
+                  ▼                                               ▼
+       ┌─────────────────────┐                         ┌─────────────────────┐
+       │   DIRECT SELLING    │                         │ NON-DIRECT SELLING  │
+       │     (395 Items)     │                         │     (187 Items)     │
+       └──────────┬──────────┘                         └──────────┬──────────┘
+                  │                                               │
+        UOM: N, No, pc, Set,                            UOM: sqft, Sh, R,
+             Box, Pkt                                        Kg, Mt, lt
+                  │                                               │
+      Sold count-by-count (Pieces)                    Sold by Area/Dimensions (Sq.Ft)
+     Uses Unit Cost & Selling Price                  Uses Base Rate & Dimension Calc
+```
+
+### 📊 Classification Summary & Rules
+
+| Classification | Count | Tally `<BASEUNITS>` | ERP `metadata` Flag | ERP UI & Calculation Behavior |
+| :--- | :---: | :--- | :--- | :--- |
+| **Direct Selling** | **395 Items** | `N`, `No`, `pc`, `Set`, `Box`, `Pkt` | `{"isDirectSelling": true}` | Displays **"Units on hand"**.<br>Standard unit billing (e.g. Qty: 2 $\times$ ₹166.73). |
+| **Non-Direct Selling** *(Custom Fabrication / Raw Media)* | **187 Items** | `sqft`, `Sh`, `R`, `Kg`, `Mt`, `lt`, `ft` | `{"isDirectSelling": false, "baseRate": 78.46}` | Displays **"Sq.Ft on hand"**.<br>Triggers Width $\times$ Height dimensional calculator (e.g. 4ft $\times$ 6ft = 24 sq.ft $\times$ ₹102.00). |
+
+---
+
+### 🔍 Real-World Master Data Examples
+
+#### 1️⃣ Direct Selling Example: `CP 22 Medium Grey` (Spray Can)
+* **Tally XML Data**:
+  * `<STOCKITEM NAME="CP 22 Medium Grey">`
+  * `<PARENT>Spray</PARENT>`
+  * `<BASEUNITS>N</BASEUNITS>`
+  * `<OPENINGBALANCE> 2.00 N</OPENINGBALANCE>`
+  * `<OPENINGRATE>128.25/N</OPENINGRATE>`
+  * `<OPENINGVALUE>-256.50</OPENINGVALUE>`
+* **ERP Database State**:
+  * `code`: `SPR-0566`
+  * `quantity_on_hand`: `2`
+  * `purchase_price`: `12825` (₹128.25)
+  * `sale_price`: `16673` (₹166.73)
+  * `metadata`: `{"isDirectSelling": true}`
+* **Sales Sync Flow**: When sold, decreases Tally stock by $N$ units.
+
+#### 2️⃣ Non-Direct Selling Example: `03 Acrylic Sheet 3mm ~2.5mm- A3` (Raw Sheet)
+* **Tally XML Data**:
+  * `<STOCKITEM NAME="03 Acrylic Sheet 3mm ~2.5mm- A3">`
+  * `<PARENT>Acrylic</PARENT>`
+  * `<BASEUNITS>sqft</BASEUNITS>`
+  * `<OPENINGBALANCE> 4004.095 sqft</OPENINGBALANCE>`
+  * `<OPENINGRATE>78.46/sqft</OPENINGRATE>`
+  * `<OPENINGVALUE>-314172.06</OPENINGVALUE>`
+* **ERP Database State**:
+  * `code`: `ACR-0003`
+  * `quantity_on_hand`: `4004` (4,004.095 sq.ft)
+  * `purchase_price`: `7846` (₹78.46)
+  * `sale_price`: `10200` (₹102.00)
+  * `metadata`: `{"isDirectSelling": false, "baseRate": 102.00}`
+* **Sales Sync Flow**: Order specifies job dimensions (e.g. 4ft $\times$ 6ft = 24 sqft). Invoice charges 24 sqft $\times$ ₹102.00. Tally stock reduces by exactly 24.00 sqft.
+
