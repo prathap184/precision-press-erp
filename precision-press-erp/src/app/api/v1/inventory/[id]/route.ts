@@ -91,10 +91,16 @@ export async function PATCH(
       }
     }
 
+    let metadataToSave = parsed.metadata !== undefined ? parsed.metadata : (existing as any).metadata;
+    if (parsed.salePrice !== undefined && metadataToSave) {
+      metadataToSave = { ...metadataToSave, baseRate: parsed.salePrice / 100 };
+    }
+
     const [updated] = await db
       .update(inventoryItem)
       .set({ 
         ...parsed, 
+        ...(metadataToSave !== undefined ? { metadata: metadataToSave } : {}),
         ...(finalGstRate !== undefined ? { gstRate: finalGstRate } : {}),
         updatedAt: new Date() 
       })
