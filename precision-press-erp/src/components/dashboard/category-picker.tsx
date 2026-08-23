@@ -97,10 +97,11 @@ export function CategoryPicker({ value, onChange, placeholder = "Select category
     }
   }
 
-  // Listen for refetch-categories event (dispatched by CategoryDrawer on create)
+  // Fetch categories on mount and listen for refetch-categories event
   const doFetchRef = useRef(doFetch);
   doFetchRef.current = doFetch;
   useEffect(() => {
+    doFetchRef.current();
     function handler() { doFetchRef.current(); }
     window.addEventListener("refetch-categories", handler);
     return () => window.removeEventListener("refetch-categories", handler);

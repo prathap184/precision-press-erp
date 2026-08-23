@@ -56,7 +56,18 @@ export default function InventoryItemDetailsPage() {
   const { confirm, dialog: confirmDialog } = useConfirm();
   useDocumentTitle("Inventory · Product Details");
 
-  const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+  // Sync local state when item loads or changes
+  useEffect(() => {
+    if (item) {
+      if (item.categoryId) setCategoryId(item.categoryId);
+      if (item.purchasePrice !== undefined) setInvPurchasePrice(centsToDecimal(item.purchasePrice));
+      if (item.salePrice !== undefined) setInvSalePrice(centsToDecimal(item.salePrice));
+      if ((item as any).metadata) setMetadata((item as any).metadata);
+      if ((item as any).workflowSteps && Array.isArray((item as any).workflowSteps)) {
+        setWorkflowSteps((item as any).workflowSteps);
+      }
+    }
+  }, [item]);
 
   // Fetch per-warehouse stock
   useEffect(() => {
