@@ -22,6 +22,8 @@ const createSchema = z.object({
   addresses: z.any().optional(),
   notes: z.string().nullable().optional(),
   currencyCode: currencyCodeSchema.default("INR"),
+  openingBalance: z.union([z.number(), z.string()]).optional().transform((v) => (v !== undefined && v !== null ? String(v) : undefined)),
+  openingBalanceType: z.enum(["Dr", "Cr"]).optional().default("Dr"),
 });
 
 export async function GET(request: Request) {
@@ -166,8 +168,22 @@ export async function GET(request: Request) {
       const customer = owedByCustomer.get(c.id) || { outstanding: 0, overdue: 0 };
       const supplier = owedToSupplier.get(c.id) || { outstanding: 0, overdue: 0 };
       
+      const opBalRaw = Number(c.openingBalance || 0);
+      const opBalCents = Math.round(opBalRaw * 100);
+      const isCust = c.type === "customer" || c.type === "both";
+      const isSupp = c.type === "supplier" || c.type === "both";
+
       let owesYou = customer.outstanding;
       let youOwe = supplier.outstanding;
+
+      if (isCust) {
+        const signedCustOpBal = c.openingBalanceType === "Cr" ? -opBalCents : opBalCents;
+        owesYou += signedCustOpBal;
+      }
+      if (isSupp && c.type === "supplier") {
+        const signedSuppOpBal = c.openingBalanceType === "Dr" ? -opBalCents : opBalCents;
+        youOwe += signedSuppOpBal;
+      }
 
       // If customer has a net credit (negative outstanding), it means we owe them
       if (owesYou < 0) {

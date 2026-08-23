@@ -26,6 +26,8 @@ const updateSchema = z.object({
   defaultRevenueAccountId: z.string().uuid().nullable().optional(),
   defaultExpenseAccountId: z.string().uuid().nullable().optional(),
   defaultTaxRateId: z.string().uuid().nullable().optional(),
+  openingBalance: z.union([z.number(), z.string()]).optional().transform((v) => (v !== undefined && v !== null ? String(v) : undefined)),
+  openingBalanceType: z.enum(["Dr", "Cr"]).optional(),
 });
 
 export async function GET(

@@ -41,6 +41,10 @@ export default function ContactDetailsPage() {
     setFormCreditLimit,
     formCurrencyCode,
     setFormCurrencyCode,
+    formOpeningBalance,
+    setFormOpeningBalance,
+    formOpeningBalanceType,
+    setFormOpeningBalanceType,
     formRevenueAccountId,
     setFormRevenueAccountId,
     formExpenseAccountId,
@@ -115,6 +119,8 @@ export default function ContactDetailsPage() {
           defaultRevenueAccountId: formRevenueAccountId !== "none" ? formRevenueAccountId : null,
           defaultExpenseAccountId: formExpenseAccountId !== "none" ? formExpenseAccountId : null,
           defaultTaxRateId: formTaxRateId !== "none" ? formTaxRateId : null,
+          openingBalance: formOpeningBalance ? formOpeningBalance : "0",
+          openingBalanceType: formOpeningBalanceType || "Dr",
           notes: form.get("notes") || null,
         }),
       });
@@ -131,6 +137,8 @@ export default function ContactDetailsPage() {
       setForm1099Vendor(c.is1099Vendor ?? false);
       setFormCreditLimit(c.creditLimit != null ? String(c.creditLimit / 100) : "");
       setFormCurrencyCode(c.currencyCode || "");
+      setFormOpeningBalance(c.openingBalance != null ? String(c.openingBalance) : "");
+      setFormOpeningBalanceType(c.openingBalanceType || "Dr");
       toast.success("Contact updated");
     } catch {
       toast.error("Failed to update contact");
@@ -253,6 +261,42 @@ export default function ContactDetailsPage() {
                 </div>
               </div>
             </div>
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-primary uppercase tracking-wide">
+                  Opening Balance (Day 1 Starting Score)
+                </Label>
+                <span className="text-[11px] text-muted-foreground">Sets statement baseline without affecting banks</span>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Starting Amount (₹)</Label>
+                  <CurrencyInput
+                    value={formOpeningBalance}
+                    onChange={setFormOpeningBalance}
+                    placeholder="0.00"
+                  />
+                  <p className="text-[11px] text-muted-foreground">Original balance brought from Tally</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Balance Type</Label>
+                  <Select
+                    value={formOpeningBalanceType}
+                    onValueChange={setFormOpeningBalanceType}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Dr">Debit (Dr) — Customer owes you money</SelectItem>
+                      <SelectItem value="Cr">Credit (Cr) — Customer advance / You owe</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">Dr = Receivable (Due) · Cr = Advance</p>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-1.5">
               <Label className="text-xs">US tax reporting</Label>
               <div className="flex items-start space-x-2">

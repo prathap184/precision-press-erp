@@ -89,7 +89,11 @@ export async function GET(
     const isSupplier = c.type === "supplier" || c.type === "both";
 
     // ---------- Opening balance ----------
-    let openingBalance = 0;
+    const rawContactOpBal = Number(c.openingBalance || 0);
+    const opBalCents = Math.round(rawContactOpBal * 100);
+    let openingBalance = isCustomer
+      ? (c.openingBalanceType === "Cr" ? -opBalCents : opBalCents)
+      : (c.openingBalanceType === "Dr" ? -opBalCents : opBalCents);
 
     // Invoices before startDate (customer owes us)
     if (isCustomer) {

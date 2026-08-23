@@ -4,6 +4,8 @@ import {
   uuid,
   timestamp,
   integer,
+  numeric,
+  bigint,
   boolean,
   pgEnum,
   jsonb,
@@ -58,6 +60,14 @@ export const contact = pgTable("contact", {
   // consolidation group, marking transactions with it as intercompany so they
   // can be eliminated on consolidation. Nullable = external (third-party) contact.
   linkedOrgId: uuid("linked_org_id").references(() => organization.id, { onDelete: "set null" }),
+  // Opening Balance & Tally Integration Fields
+  openingBalance: numeric("opening_balance").default("0"),
+  openingBalanceType: text("opening_balance_type").default("Dr"),
+  tallyLedgerName: text("tally_ledger_name"),
+  tallyGuid: text("tally_guid"),
+  tallyOpeningBalance: text("tally_opening_balance"),
+  tallyClosingBalance: text("tally_closing_balance"),
+  alterId: bigint("alter_id", { mode: "number" }),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { mode: "date" }),

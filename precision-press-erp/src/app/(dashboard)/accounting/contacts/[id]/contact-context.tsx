@@ -38,6 +38,10 @@ export interface ContactDetail {
   defaultTaxRate: { id: string; name: string; rate: number } | null;
   people: ContactPerson[];
   notes: string | null;
+  openingBalance?: string | number | null;
+  openingBalanceType?: "Dr" | "Cr" | string | null;
+  tallyLedgerName?: string | null;
+  tallyClosingBalance?: string | null;
   createdAt: string;
 }
 
@@ -146,6 +150,10 @@ export interface ContactContextValue {
   setFormCreditLimit: (v: string) => void;
   formCurrencyCode: string;
   setFormCurrencyCode: (v: string) => void;
+  formOpeningBalance: string;
+  setFormOpeningBalance: (v: string) => void;
+  formOpeningBalanceType: string;
+  setFormOpeningBalanceType: (v: string) => void;
   saving: boolean;
   setSaving: (v: boolean) => void;
 }

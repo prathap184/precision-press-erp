@@ -84,6 +84,8 @@ export default function ContactDetailLayout({ children }: { children: React.Reac
   const [form1099Vendor, setForm1099Vendor] = useState(false);
   const [formCreditLimit, setFormCreditLimit] = useState("");
   const [formCurrencyCode, setFormCurrencyCode] = useState("");
+  const [formOpeningBalance, setFormOpeningBalance] = useState("");
+  const [formOpeningBalanceType, setFormOpeningBalanceType] = useState("Dr");
   const [saving, setSaving] = useState(false);
 
   // "Merge duplicates" dialog
@@ -183,6 +185,8 @@ export default function ContactDetailLayout({ children }: { children: React.Reac
         setForm1099Vendor(c.is1099Vendor ?? false);
         setFormCreditLimit(c.creditLimit != null ? centsToDecimal(c.creditLimit) : "");
         setFormCurrencyCode(c.currencyCode || "");
+        setFormOpeningBalance(c.openingBalance != null ? String(c.openingBalance) : "");
+        setFormOpeningBalanceType(c.openingBalanceType || "Dr");
       }
     } catch {
       toast.error("Failed to load contact");
@@ -243,6 +247,10 @@ export default function ContactDetailLayout({ children }: { children: React.Reac
         setFormCreditLimit,
         formCurrencyCode,
         setFormCurrencyCode,
+        formOpeningBalance,
+        setFormOpeningBalance,
+        formOpeningBalanceType,
+        setFormOpeningBalanceType,
         saving,
         setSaving,
       }}
