@@ -2,9 +2,8 @@
  * ╔══════════════════════════════════════════════════════════════════════════════╗
  * ║     PRECISION PRESS ERP — LIVE TALLY SUPPLIER CONNECTOR & AUDITOR            ║
  * ║     • Connects directly to Tally Prime Port 9000 (with XML fallback)         ║
- * ║     • Ingests & Syncs all Sundry Creditors / Raw Material Suppliers          ║
- * ║     • Stores into 'public.contact' with type = 'supplier'                    ║
- * ║     • Generates full reconciliation and audit report                         ║
+ * ║     • Full Data Enrichment: Deep Phone, Smart City, PAN, Division Category   ║
+ * ║     • Auto-Inserts new & Auto-Heals existing in 'public.contact'             ║
  * ╚══════════════════════════════════════════════════════════════════════════════╝
  */
 
@@ -55,6 +54,40 @@ function clean(str) {
     .replace(/&apos;/g, "'")
     .replace(/&#4;/g, '')
     .trim();
+}
+
+/**
+ * Smart geographic city resolution from name, address, and state
+ */
+function resolveSmartCity(name, fullAddress, state) {
+  const combined = `${name || ''} ${fullAddress || ''}`.toLowerCase();
+  
+  if (combined.includes('bangalore') || combined.includes('bengaluru') || combined.includes('bng') || combined.includes('rajajinagar') || combined.includes('peenya')) return { city: 'Bangalore', state: 'Karnataka' };
+  if (combined.includes('mangalore') || combined.includes('mangaluru')) return { city: 'Mangalore', state: 'Karnataka' };
+  if (combined.includes('madikeri') || combined.includes('coorg')) return { city: 'Madikeri', state: 'Karnataka' };
+  if (combined.includes('mandya')) return { city: 'Mandya', state: 'Karnataka' };
+  if (combined.includes('maddur')) return { city: 'Maddur', state: 'Karnataka' };
+  if (combined.includes('chamarajanagar') || combined.includes('chamarajanagara')) return { city: 'Chamarajanagar', state: 'Karnataka' };
+  if (combined.includes('nanjangud') || combined.includes('nanjangudu')) return { city: 'Nanjangud', state: 'Karnataka' };
+  if (combined.includes('srirangapatna')) return { city: 'Srirangapatna', state: 'Karnataka' };
+  if (combined.includes('davangere') || combined.includes('davanagere')) return { city: 'Davangere', state: 'Karnataka' };
+  if (combined.includes('hosapete') || combined.includes('hospet')) return { city: 'Hosapete', state: 'Karnataka' };
+  if (combined.includes('hubli') || combined.includes('dharwad')) return { city: 'Hubli', state: 'Karnataka' };
+  if (combined.includes('belgaum') || combined.includes('belagavi')) return { city: 'Belgaum', state: 'Karnataka' };
+  if (combined.includes('gulbarga') || combined.includes('kalaburagi')) return { city: 'Gulbarga', state: 'Karnataka' };
+  if (combined.includes('shimoga') || combined.includes('shivamogga')) return { city: 'Shivamogga', state: 'Karnataka' };
+  if (combined.includes('hassan')) return { city: 'Hassan', state: 'Karnataka' };
+  if (combined.includes('tumkur') || combined.includes('tumakuru')) return { city: 'Tumkur', state: 'Karnataka' };
+  if (combined.includes('chennai') || combined.includes('madras')) return { city: 'Chennai', state: 'Tamil Nadu' };
+  if (combined.includes('coimbatore')) return { city: 'Coimbatore', state: 'Tamil Nadu' };
+  if (combined.includes('gudalur')) return { city: 'Gudalur', state: 'Tamil Nadu' };
+  if (combined.includes('mumbai') || combined.includes('bombay') || combined.includes('pune')) return { city: 'Mumbai', state: 'Maharashtra' };
+  if (combined.includes('delhi') || combined.includes('noida') || combined.includes('gurugram')) return { city: 'New Delhi', state: 'Delhi' };
+  if (combined.includes('vadodara') || combined.includes('ahmedabad') || combined.includes('surat') || combined.includes('gujarat')) return { city: 'Vadodara', state: 'Gujarat' };
+  if (combined.includes('hyderabad') || combined.includes('nizamabad') || combined.includes('telangana')) return { city: 'Hyderabad', state: 'Telangana' };
+  if (combined.includes('trivandrum') || combined.includes('thiruvananthapuram') || combined.includes('trissur') || combined.includes('kerala')) return { city: 'Thiruvananthapuram', state: 'Kerala' };
+
+  return { city: 'Mysore', state: state || 'Karnataka' };
 }
 
 function fetchLiveTallyXml() {
@@ -121,7 +154,7 @@ function parseSuppliersFromXml(xml) {
     const alterM = body.match(/<ALTERID>([^<]*)<\/ALTERID>/i);
     const gstinM = body.match(/<PARTYGSTIN>([^<]*)<\/PARTYGSTIN>/i) || body.match(/<GSTIN>([^<]*)<\/GSTIN>/i);
     const gstTypeM = body.match(/<GSTREGISTRATIONTYPE>([^<]*)<\/GSTREGISTRATIONTYPE>/i);
-    const mobileM = body.match(/<LEDGERMOBILE>([^<]*)<\/LEDGERMOBILE>/i);
+    const mobileM = body.match(/<LEDGERMOBILE>([^<]*)<\/LEDGERMOBILE>/i) || body.match(/<LEDGERPHONE>([^<]*)<\/LEDGERPHONE>/i);
     const emailM = body.match(/<EMAIL>([^<]*)<\/EMAIL>/i);
     const balM = body.match(/<OPENINGBALANCE>([^<]*)<\/OPENINGBALANCE>/i);
     const stateM = body.match(/<STATE>([^<]*)<\/STATE>/i) || body.match(/<OLDLEDSTATENAME>([^<]*)<\/OLDLEDSTATENAME>/i);
@@ -138,6 +171,12 @@ function parseSuppliersFromXml(xml) {
     const pincode = pinM ? clean(pinM[1]) : '';
     const creditDays = termsM ? parseInt(clean(termsM[1]).replace(/[^\d]/g, ''), 10) || 30 : 30;
 
+    // Deep phone extraction from name if mobile is empty
+    if (!mobile) {
+      const namePhoneM = name.match(/\b([6-9]\d{9})\b/);
+      if (namePhoneM) mobile = namePhoneM[1];
+    }
+
     const addressLines = [];
     const addrRegex = /<ADDRESS>([^<]*)<\/ADDRESS>/gi;
     let aM;
@@ -149,6 +188,9 @@ function parseSuppliersFromXml(xml) {
       }
     }
 
+    // Extract PAN from 15-digit GSTIN
+    const pan = (gstin && gstin.length === 15) ? gstin.slice(2, 12) : null;
+
     let balNum = 0;
     let balType = 'Cr';
     if (balM) {
@@ -158,21 +200,27 @@ function parseSuppliersFromXml(xml) {
       balType = raw.startsWith('-') || cleanNum < 0 ? 'Dr' : 'Cr';
     }
 
+    const fullAddr = addressLines.join(', ') || null;
+    const geo = resolveSmartCity(name, fullAddr, state);
+
     suppliers.push({
       tallyName: name,
       tallyGroup: parentGroup,
       tallyGuid: guid,
       alterId,
       gstin: gstin || null,
+      pan: pan || null,
       gstRegistrationType: gstType,
       phone: mobile || null,
       email: email || null,
-      state: state,
+      city: geo.city,
+      state: geo.state,
       pincode: pincode || null,
-      fullAddress: addressLines.join(', ') || null,
+      fullAddress: fullAddr,
       openingBalance: balNum,
       openingBalanceType: balType,
-      paymentTermsDays: creditDays
+      paymentTermsDays: creditDays,
+      printerCategory: 'CREDITOR'
     });
   }
 
@@ -251,6 +299,7 @@ async function runLiveSupplierConnector() {
       tax_number: ts.gstin || null,
       gstin: ts.gstin || null,
       gst_number: ts.gstin || null,
+      pan_number: ts.pan || null,
       gst_registered: !!ts.gstin,
       gst_registration_type: ts.gstRegistrationType,
       phone: ts.phone || null,
@@ -258,8 +307,8 @@ async function runLiveSupplierConnector() {
       place_of_supply: ts.state || 'Karnataka',
       billing_address_line1: ts.fullAddress || null,
       billing_address_line2: null,
-      billing_city: 'Mysore',
-      billing_state: ts.state || 'Karnataka',
+      billing_city: ts.city,
+      billing_state: ts.state,
       billing_pincode: ts.pincode || null,
       billing_country: 'India',
       opening_balance: ts.openingBalance || 0,
@@ -268,6 +317,9 @@ async function runLiveSupplierConnector() {
       tally_ledger_name: ts.tallyName,
       tally_guid: ts.tallyGuid || null,
       alter_id: ts.alterId || null,
+      remarks: ts.tallyGroup || 'Sundry Creditors',
+      printerCategory: 'CREDITOR',
+      currency_code: 'INR',
       payment_terms_days: ts.paymentTermsDays || 30,
       updated_at: new Date().toISOString()
     };
@@ -289,8 +341,8 @@ async function runLiveSupplierConnector() {
   console.log('═══════════════════════════════════════════════════════════════════════════════════');
   console.log(` • Data Source                  : ${source}`);
   console.log(` • Total Suppliers in Tally     : ${tallySuppliers.length}`);
-  console.log(` • New Suppliers Created in ERP : ${createdCount}`);
-  console.log(` • Existing Suppliers Updated   : ${updatedCount}`);
+  console.log(` • Newly Created in ERP         : ${createdCount}`);
+  console.log(` • Synchronized & Updated       : ${updatedCount}`);
   console.log(` • Total Live Suppliers in ERP  : ${createdCount + updatedCount}`);
   console.log(` • Sync Success Rate            : 100% PERFECT MATCH 🎯`);
   console.log('═══════════════════════════════════════════════════════════════════════════════════\n');

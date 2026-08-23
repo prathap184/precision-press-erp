@@ -143,7 +143,7 @@ export default function BankSettingsPage() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Country</Label>
-              <Input name="countryCode" defaultValue={account.countryCode || ""} placeholder="US" maxLength={2} />
+              <Input name="countryCode" defaultValue={account.countryCode || "IN"} placeholder="IN" maxLength={2} />
             </div>
           </div>
         </div>

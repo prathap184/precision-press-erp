@@ -4,6 +4,8 @@ import {
   uuid,
   timestamp,
   integer,
+  numeric,
+  bigint,
   boolean,
   date,
   uniqueIndex,
@@ -184,6 +186,13 @@ export const chartAccount = pgTable(
     // System control accounts (AR/AP/bank/tax/retained earnings) must not be
     // retyped or deleted.
     isSystem: boolean("is_system").notNull().default(false),
+    // Tally Integration Fields
+    tallyLedgerName: text("tally_ledger_name"),
+    tallyGuid: text("tally_guid"),
+    alterId: bigint("alter_id", { mode: "number" }),
+    tallyParentGroup: text("tally_parent_group"),
+    openingBalance: numeric("opening_balance").default("0"),
+    openingBalanceType: text("opening_balance_type").default("Dr"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "date" }),
   },

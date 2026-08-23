@@ -4,6 +4,7 @@ import {
   uuid,
   timestamp,
   integer,
+  bigint,
   boolean,
   date,
   pgEnum,
@@ -83,6 +84,12 @@ export const bankAccount = pgTable("bank_account", {
   balance: integer("balance").notNull().default(0),
   lowBalanceThreshold: integer("low_balance_threshold"),
   isActive: boolean("is_active").notNull().default(true),
+  // Tally Integration Fields
+  tallyLedgerName: text("tally_ledger_name"),
+  tallyGuid: text("tally_guid"),
+  alterId: bigint("alter_id", { mode: "number" }),
+  ifscCode: text("ifsc_code"),
+  branchName: text("branch_name"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { mode: "date" }),
 });

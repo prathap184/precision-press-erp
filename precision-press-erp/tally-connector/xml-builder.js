@@ -102,17 +102,21 @@ function buildSalesInvoiceXML(payload, educationalMode = true) {
 
   // GST entries (Optional)
   const gstEntries = [];
+  const cgstName = payload.cgstLedgerName || 'CGST';
+  const sgstName = payload.sgstLedgerName || 'SGST';
+  const igstName = payload.igstLedgerName || 'IGST';
+
   if (cgst > 0) {
     gstEntries.push(`
 <LEDGERENTRIES.LIST>
-<LEDGERNAME>Output CGST</LEDGERNAME>
+<LEDGERNAME>${xmlEscape(cgstName)}</LEDGERNAME>
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
 <ISPARTYLEDGER>No</ISPARTYLEDGER>
 <AMOUNT>${cgst.toFixed(2)}</AMOUNT>
 </LEDGERENTRIES.LIST>`);
     gstEntries.push(`
 <LEDGERENTRIES.LIST>
-<LEDGERNAME>Output SGST</LEDGERNAME>
+<LEDGERNAME>${xmlEscape(sgstName)}</LEDGERNAME>
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
 <ISPARTYLEDGER>No</ISPARTYLEDGER>
 <AMOUNT>${sgst.toFixed(2)}</AMOUNT>
@@ -120,7 +124,7 @@ function buildSalesInvoiceXML(payload, educationalMode = true) {
   } else if (igst > 0) {
     gstEntries.push(`
 <LEDGERENTRIES.LIST>
-<LEDGERNAME>Output IGST</LEDGERNAME>
+<LEDGERNAME>${xmlEscape(igstName)}</LEDGERNAME>
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
 <ISPARTYLEDGER>No</ISPARTYLEDGER>
 <AMOUNT>${igst.toFixed(2)}</AMOUNT>
