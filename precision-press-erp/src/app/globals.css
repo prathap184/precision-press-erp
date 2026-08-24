@@ -32,9 +32,10 @@
   --card-foreground: #f8fafc;
 }
 
-/* ─── Global SF Mono, Semibold & 12px/14px Typography ───────────────────────── */
-html, body, input, select, textarea, button, table, div, span, p, a, label, th, td, h1, h2, h3, h4, h5, h6 {
+/* ─── Global SF Mono, Semibold & 14px/16px Typography ───────────────────────── */
+html, body, input, select, textarea, button, table, div, span, p, a, label, th, td, h1, h2, h3, h4, h5, h6, small, caption, code {
   font-family: "SF Mono", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-weight: 600 !important;
 }
 
 html {
@@ -46,66 +47,44 @@ html {
 body {
   background-color: var(--google-bg);
   color: var(--google-text);
-  font-size: 0.8125rem; /* 13px baseline (12px-14px) */
+  font-size: 0.875rem; /* 14px baseline */
   line-height: 1.5;
-  font-weight: 600; /* Semibold */
+  font-weight: 600 !important;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Enforce semibold weight across all text elements */
-p, span, div, a, label, td, th, input, select, textarea, button {
-  font-weight: 600;
+/* Enforce minimum 14px floor on all smaller text classes */
+.text-xs,
+.text-\[9px\],
+.text-\[10px\],
+.text-\[11px\],
+.text-\[12px\],
+.text-\[13px\],
+[class*="text-\[9px\]"],
+[class*="text-\[10px\]"],
+[class*="text-\[11px\]"],
+[class*="text-\[12px\]"],
+[class*="text-\[13px\]"] {
+  font-size: 14px !important;
+  font-weight: 600 !important;
 }
 
-/* ─── Selection ───────────────────────────────────────────────────────────────── */
-::selection {
-  background-color: #1e3a8a;
-  color: #ffffff;
+/* Standardize table cells, labels, inputs, and text to 14px-16px */
+table, td, th {
+  font-size: 0.875rem !important; /* 14px */
+  font-weight: 600 !important;
 }
 
-/* ─── Minimum readable contrast — prevent ghost text ─────────────────────────── */
-/* Any text using opacity tricks that falls below readable threshold gets a floor */
-[class*="text-"][class*="/10"],
-[class*="text-"][class*="/15"],
-[class*="text-"][class*="/20"] {
-  opacity: 1 !important;
-}
-
-/* ─── Headings ────────────────────────────────────────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-body);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
-  color: #0f172a;
-}
-
-/* ─── Labels & Small Text — enforce minimum size ─────────────────────────────── */
-label, caption, small {
-  font-size: 0.8125rem; /* 13px */
-  line-height: 1.5;
-  font-weight: 500;
-}
-
-/* ─── Inputs ─────────────────────────────────────────────────────────────────── */
 input, textarea, select {
-  font-family: var(--font-body);
-  font-size: 0.875rem; /* 14px */
-  line-height: 1.5;
-  color: #0f172a;
+  font-size: 0.875rem !important; /* 14px */
+  font-weight: 600 !important;
 }
 
-input::placeholder,
-textarea::placeholder {
-  color: #94a3b8;
-  font-weight: 400;
-}
-
-/* ─── Tables ─────────────────────────────────────────────────────────────────── */
-table {
-  font-size: 0.8125rem; /* 13px */
-  line-height: 1.5;
+label, caption {
+  font-size: 0.875rem !important; /* 14px */
+  font-weight: 600 !important;
 }
 
 th {
