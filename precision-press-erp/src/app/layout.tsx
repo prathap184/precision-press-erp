@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { ReactQueryProvider } from "@/components/providers/query-provider";
+import { SmartKeyboardProvider } from "@/components/providers/smart-keyboard-provider";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
 
@@ -12,8 +13,6 @@ const inter = Inter({
   display: "swap",
   weight: ["400", "500", "600", "700", "800"],
 });
-
-
 
 export const metadata: Metadata = {
   title: "The PIXEL MARKETING | Industrial Online Printing System",
@@ -42,10 +41,12 @@ export default function RootLayout({
       <body className="antialiased font-sans bg-slate-50 text-slate-900 overflow-x-hidden">
         <ReactQueryProvider>
           <AuthProvider>
-            <Toaster position="top-right" richColors closeButton />
-            <Suspense fallback={null}>
-              {children}
-            </Suspense>
+            <SmartKeyboardProvider>
+              <Toaster position="top-right" richColors closeButton />
+              <Suspense fallback={null}>
+                {children}
+              </Suspense>
+            </SmartKeyboardProvider>
           </AuthProvider>
         </ReactQueryProvider>
       </body>
