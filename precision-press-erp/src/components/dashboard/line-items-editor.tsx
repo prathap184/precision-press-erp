@@ -5,6 +5,13 @@ import { Plus, Trash2, Search, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AccountPicker } from "./account-picker";
 
 export interface LineItem {
@@ -450,7 +457,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                     <SelectItem value="none">No tax</SelectItem>
                     {taxRates.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
-                         ({formatRatePct(t.rate)}%)
+                        {t.name} ({formatRatePct(t.rate)}%)
                       </SelectItem>
                     ))}
                   </SelectContent>
