@@ -402,6 +402,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       <input
                                         value={isOpen ? searchQuery : (selProd?.name ?? '')}
                                         placeholder="Select item..."
+                                        data-dropdown-open={isOpen ? "true" : "false"}
                                         onChange={(e) => { setOpenRowId(row.id); setSearchQuery(e.target.value); }}
                                         onFocus={() => {
                                           setOpenRowId(row.id); setSearchQuery('');
@@ -410,20 +411,28 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           if (e.key === "ArrowDown") {
                                             e.preventDefault();
                                             if (!isOpen) { setOpenRowId(row.id); return; }
-                                          } else if (e.key === "Enter" && isOpen && matched.length > 0) {
-                                            e.preventDefault();
-                                            const p = matched[0];
-                                            if (p) {
-                                              updateRow(row.id, { productId: p.id });
-                                              setOpenRowId(null);
-                                              setSearchQuery('');
+                                          } else if (e.key === "Enter") {
+                                            if (isOpen && matched.length > 0) {
+                                              e.preventDefault();
+                                              const p = matched[0];
+                                              if (p) {
+                                                updateRow(row.id, { productId: p.id });
+                                                setOpenRowId(null);
+                                                setSearchQuery('');
+                                                setTimeout(() => {
+                                                  const projectInput = document.querySelector(`input[value="${row.projectName || ''}"]`) as HTMLElement;
+                                                  const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                                  if (projectInput) projectInput.focus();
+                                                  else if (widthInput) widthInput.focus();
+                                                }, 60);
+                                              }
                                             }
                                           }
                                         }}
                                         onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 160)}
                                         className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
                                       />
-                                      <ChevronDown size={14} className="text-slate-400" />
+                                      <ChevronDown size={14} className="text-slate-400 cursor-pointer" onClick={() => setOpenRowId(isOpen ? null : row.id)} />
                                     </div>
                                     {isOpen && (
                                       <div className="absolute left-0 top-full mt-1 w-[260px] z-[9999] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
@@ -442,11 +451,22 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               <div className="bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10 border-b border-slate-200 shadow-sm">
                                                 {cat.replace(/_/g, ' ')}
                                               </div>
-                                              {prods.map((p: any) => (
+                                              {prods.map((p: any, pIdx: number) => (
                                                 <div 
                                                   key={p.id} 
-                                                  onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { productId: p.id }); setOpenRowId(null); setSearchQuery(''); }} 
-                                                  className="cursor-pointer border-b border-slate-50 p-3 pl-4 hover:bg-slate-50 text-xs font-bold text-slate-700 flex justify-between items-center transition-colors"
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    updateRow(row.id, { productId: p.id });
+                                                    setOpenRowId(null);
+                                                    setSearchQuery('');
+                                                    setTimeout(() => {
+                                                      const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                                      if (widthInput) widthInput.focus();
+                                                    }, 60);
+                                                  }} 
+                                                  className={`cursor-pointer border-b border-slate-50 p-3 pl-4 hover:bg-blue-50 text-xs font-bold text-slate-700 flex justify-between items-center transition-colors ${
+                                                    p.id === row.productId ? 'bg-blue-50/80 text-blue-700 font-extrabold' : ''
+                                                  }`}
                                                 >
                                                   <span className="truncate pr-2">{p.name}</span>
                                                   <span className="text-[9px] font-black tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md flex-shrink-0">{p.id}</span>
@@ -480,8 +500,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter" || e.key === " ") {
                                           e.preventDefault();
+                                          if (openUnitPickerId === `${row.id}-w`) {
+                                            setOpenUnitPickerId(null);
+                                            setTimeout(() => {
+                                              const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                              if (heightInput) heightInput.focus();
+                                            }, 50);
+                                          } else {
+                                            setOpenUnitPickerId(`${row.id}-w`);
+                                          }
+                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                          e.preventDefault();
                                           const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
                                           updateRow(row.id, { widthUnit: nextUnit });
+                                          setOpenUnitPickerId(`${row.id}-w`);
                                         }
                                       }}
                                       onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
@@ -497,7 +529,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             key={u}
                                             type="button"
                                             tabIndex={-1}
-                                            onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { widthUnit: u }); setOpenUnitPickerId(null); }}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              updateRow(row.id, { widthUnit: u });
+                                              setOpenUnitPickerId(null);
+                                              setTimeout(() => {
+                                                const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                                if (heightInput) heightInput.focus();
+                                              }, 50);
+                                            }}
                                             className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
                                               row.widthUnit === u
                                                 ? 'bg-blue-600 text-white'
@@ -528,8 +568,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter" || e.key === " ") {
                                           e.preventDefault();
+                                          if (openUnitPickerId === `${row.id}-h`) {
+                                            setOpenUnitPickerId(null);
+                                            setTimeout(() => {
+                                              const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                              if (qtyInput) qtyInput.focus();
+                                            }, 50);
+                                          } else {
+                                            setOpenUnitPickerId(`${row.id}-h`);
+                                          }
+                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                          e.preventDefault();
                                           const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
                                           updateRow(row.id, { heightUnit: nextUnit });
+                                          setOpenUnitPickerId(`${row.id}-h`);
                                         }
                                       }}
                                       onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
@@ -545,7 +597,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             key={u}
                                             type="button"
                                             tabIndex={-1}
-                                            onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { heightUnit: u }); setOpenUnitPickerId(null); }}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              updateRow(row.id, { heightUnit: u });
+                                              setOpenUnitPickerId(null);
+                                              setTimeout(() => {
+                                                const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                                if (qtyInput) qtyInput.focus();
+                                              }, 50);
+                                            }}
                                             className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
                                               row.heightUnit === u
                                                 ? 'bg-blue-600 text-white'
