@@ -445,6 +445,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 type="button"
                 variant="ghost"
                 size="icon"
+                tabIndex={-1}
                 className="size-8"
                 onClick={() => removeLine(i)}
                 disabled={lines.length <= 1}
