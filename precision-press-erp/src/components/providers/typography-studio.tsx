@@ -111,6 +111,13 @@ function applyTypography(settings: TypographySettings) {
   const fontObj = FONT_OPTIONS.find((f) => f.name === settings.fontFamily) || FONT_OPTIONS[0];
   const fontStack = fontObj.stack;
 
+  // 1. Set CSS root variables directly on root
+  document.documentElement.style.setProperty("--app-font-family", fontStack);
+  document.documentElement.style.setProperty("--app-font-size", `${settings.fontSize}px`);
+  document.documentElement.style.setProperty("--app-font-weight", `${settings.fontWeight}`);
+  document.documentElement.style.setProperty("--app-letter-spacing", settings.letterSpacing || "-0.01em");
+
+  // 2. High-specificity stylesheet injection
   let styleEl = document.getElementById("live-erp-typography") as HTMLStyleElement | null;
   if (!styleEl) {
     styleEl = document.createElement("style");
@@ -119,22 +126,32 @@ function applyTypography(settings: TypographySettings) {
   }
 
   styleEl.innerHTML = `
-    html, body, input, select, textarea, button, table, div, span, p, a, label, th, td, h1, h2, h3, h4, h5, h6, small, caption, code {
+    :root {
+      --app-font-family: ${fontStack};
+      --app-font-size: ${settings.fontSize}px;
+      --app-font-weight: ${settings.fontWeight};
+    }
+    * {
+      font-family: ${fontStack} !important;
+    }
+    html, body, input, select, textarea, button, table, div, span, p, a, label, th, td, h1, h2, h3, h4, h5, h6, small, caption, code, b, strong {
       font-family: ${fontStack} !important;
       font-weight: ${settings.fontWeight} !important;
-      letter-spacing: ${settings.letterSpacing} !important;
+      letter-spacing: ${settings.letterSpacing || "-0.01em"} !important;
     }
-    body {
+    body, p, span, div, a, label, td, th, input, select, textarea, button {
       font-size: ${settings.fontSize}px !important;
+      font-weight: ${settings.fontWeight} !important;
     }
-    p, span, div, a, label, td, th, input, select, textarea, button {
-      font-size: ${settings.fontSize}px !important;
+    .font-normal, .font-medium, .font-semibold, .font-bold, .font-extrabold, .font-black, [class*="font-"] {
+      font-weight: ${settings.fontWeight} !important;
     }
-    .text-xs, [class*="text-\\[10px\\]"], [class*="text-\\[11px\\]"], [class*="text-\\[12px\\]"], [class*="text-\\[13px\\]"], [class*="text-\\[14px\\]"] {
+    .text-xs, .text-sm, .text-base, [class*="text-"] {
       font-size: ${settings.fontSize}px !important;
     }
     table, td, th {
       font-size: ${settings.fontSize}px !important;
+      font-weight: ${settings.fontWeight} !important;
     }
   `;
 }
