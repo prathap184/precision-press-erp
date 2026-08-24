@@ -152,7 +152,7 @@ function SearchableProductSelect({
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 w-[320px] z-[9999] max-h-64 overflow-y-auto rounded-xl border border-border bg-popover shadow-2xl divide-y divide-border/40">
+        <div className="absolute left-0 top-full mt-1.5 w-[320px] z-[99999] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-2xl divide-y divide-slate-100 dark:divide-slate-800">
           <div
             onMouseDown={(e) => {
               e.preventDefault();
@@ -160,20 +160,20 @@ function SearchableProductSelect({
               setIsOpen(false);
               setSearch("");
             }}
-            className="cursor-pointer p-2.5 px-3 hover:bg-muted/50 text-xs text-muted-foreground italic flex justify-between items-center transition-colors"
+            className="cursor-pointer p-2.5 px-3 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-xs text-slate-400 italic flex justify-between items-center transition-colors"
           >
             <span>Custom item (no inventory link)</span>
-            {!value && <Check className="size-3.5 text-primary shrink-0" />}
+            {!value && <Check className="size-3.5 text-blue-600 shrink-0" />}
           </div>
 
           {matched.length === 0 ? (
-            <div className="p-3 text-xs text-muted-foreground italic text-center">
+            <div className="p-3 text-xs text-slate-400 dark:text-slate-500 italic text-center bg-white dark:bg-slate-900">
               No products found.
             </div>
           ) : (
             Object.entries(grouped).map(([cat, prods]) => (
-              <div key={cat}>
-                <div className="bg-muted/80 backdrop-blur px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground sticky top-0 z-10 border-b border-border/80 shadow-sm">
+              <div key={cat} className="bg-white dark:bg-slate-900">
+                <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700 shadow-sm">
                   {cat.replace(/_/g, " ")}
                 </div>
                 {prods.map((p) => {
@@ -189,13 +189,13 @@ function SearchableProductSelect({
                         setIsOpen(false);
                         setSearch("");
                       }}
-                      className={`cursor-pointer border-b border-border/30 p-2.5 px-3 hover:bg-muted text-xs font-bold text-foreground flex justify-between items-center transition-colors ${
-                        isSelected ? "bg-primary/10 text-primary font-black" : ""
+                      className={`cursor-pointer border-b border-slate-100 dark:border-slate-800 p-2.5 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 flex justify-between items-center transition-colors ${
+                        isSelected ? "bg-blue-50/80 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-extrabold" : ""
                       }`}
                     >
                       <span className="truncate pr-2 font-medium">{p.name}</span>
                       {code && (
-                        <span className="text-[9px] font-black tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md shrink-0 uppercase border border-border/40">
+                        <span className="text-[9px] font-black tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md shrink-0 uppercase border border-slate-200 dark:border-slate-700">
                           {code}
                         </span>
                       )}
