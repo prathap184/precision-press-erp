@@ -97,12 +97,26 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
 
       // 2. ENTER HANDLER (Enter-as-Tab / Enter-to-Advance)
       if (e.key === "Enter" && !e.shiftKey) {
-        // Multi-line textareas use Enter for newline
-        if (tagName === "textarea") return;
+        // Multi-line textarea: allow Enter for newlines ONLY if it already has text.
+        // If textarea is empty, or user pressed Ctrl+Enter, advance to next field!
+        if (tagName === "textarea") {
+          const textarea = target as HTMLTextAreaElement;
+          const val = textarea.value.trim();
+          if (val !== "" && !e.ctrlKey) {
+            return;
+          }
+        }
 
-        // Form submit buttons handle Enter naturally
-        if (tagName === "button" && (target.getAttribute("type") === "submit" || target.classList.contains("btn-submit"))) {
+        // Form submit buttons handle Enter naturally to submit
+        if (tagName === "button" && (target.getAttribute("type") === "submit" || target.classList.contains("btn-submit") || target.innerText.toLowerCase().includes("place order") || target.innerText.toLowerCase().includes("create order") || target.innerText.toLowerCase().includes("save"))) {
           return;
+        }
+
+        // Checkbox: toggle check state on Enter and move to next
+        if (tagName === "input" && inputType === "checkbox") {
+          const cb = target as HTMLInputElement;
+          cb.checked = !cb.checked;
+          cb.dispatchEvent(new Event("change", { bubbles: true }));
         }
 
         // If target is inside a custom dropdown search box and a dropdown item is highlighted,

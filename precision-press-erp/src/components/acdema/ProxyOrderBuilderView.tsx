@@ -235,6 +235,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 setCustomerSearch('');
                                 setHighlightCustomerIndex(0);
                                 setTimeout(() => {
+                                  if (vm.mode !== 'quotation') {
+                                    const logisticsBtn = document.getElementById(`logistics-btn-${deliveryType}`) || document.getElementById('logistics-btn-door') || document.querySelector('[id^="logistics-btn-"]');
+                                    if (logisticsBtn) {
+                                      (logisticsBtn as HTMLElement).focus();
+                                      return;
+                                    }
+                                  }
                                   const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
                                   if (firstProductInput) firstProductInput.focus();
                                 }, 60);
@@ -275,6 +282,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   setCustomerSearch('');
                                   setHighlightCustomerIndex(0);
                                   setTimeout(() => {
+                                    if (vm.mode !== 'quotation') {
+                                      const logisticsBtn = document.getElementById(`logistics-btn-${deliveryType}`) || document.getElementById('logistics-btn-door') || document.querySelector('[id^="logistics-btn-"]');
+                                      if (logisticsBtn) {
+                                        (logisticsBtn as HTMLElement).focus();
+                                        return;
+                                      }
+                                    }
                                     const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
                                     if (firstProductInput) firstProductInput.focus();
                                   }, 60);
@@ -314,15 +328,52 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
                   <div className="flex gap-2">
                     {[
-                      { id: 'selfPickup', label: 'PICKUP' },
-                      { id: 'door', label: 'DOOR' },
-                      { id: 'courier', label: 'COURIER' },
-                      { id: 'transport', label: 'TRANSPORT' },
-                    ].map((opt) => (
+                      { id: 'selfPickup', label: 'PICKUP', key: 'p' },
+                      { id: 'door', label: 'DOOR', key: 'd' },
+                      { id: 'courier', label: 'COURIER', key: 'c' },
+                      { id: 'transport', label: 'TRANSPORT', key: 't' },
+                    ].map((opt, optIdx, arr) => (
                       <button
                         key={opt.id}
+                        type="button"
                         onClick={() => setDeliveryType(opt.id as any)}
-                        className={`flex-1 rounded-xl py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${
+                        onKeyDown={(e) => {
+                          const k = e.key.toLowerCase();
+                          if (e.key === "ArrowRight") {
+                            e.preventDefault();
+                            const next = arr[(optIdx + 1) % arr.length];
+                            setDeliveryType(next.id as any);
+                            const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
+                            if (nextBtn) nextBtn.focus();
+                          } else if (e.key === "ArrowLeft") {
+                            e.preventDefault();
+                            const prev = arr[(optIdx - 1 + arr.length) % arr.length];
+                            setDeliveryType(prev.id as any);
+                            const prevBtn = document.getElementById(`logistics-btn-${prev.id}`);
+                            if (prevBtn) prevBtn.focus();
+                          } else if (k === 'p' || k === 'd' || k === 'c' || k === 't') {
+                            const found = arr.find(item => item.key === k);
+                            if (found) {
+                              e.preventDefault();
+                              setDeliveryType(found.id as any);
+                              const targetBtn = document.getElementById(`logistics-btn-${found.id}`);
+                              if (targetBtn) targetBtn.focus();
+                            }
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (deliveryType !== 'selfPickup') {
+                              const addrSelect = document.querySelector('select[value]') || document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
+                              if (addrSelect) {
+                                (addrSelect as HTMLElement).focus();
+                                return;
+                              }
+                            }
+                            const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                            if (firstProductInput) firstProductInput.focus();
+                          }
+                        }}
+                        id={`logistics-btn-${opt.id}`}
+                        className={`flex-1 rounded-xl py-2.5 text-[10px] font-black uppercase tracking-widest transition-all focus:ring-2 focus:ring-slate-400 focus:outline-none ${
                           deliveryType === opt.id ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
                         }`}
                       >
@@ -868,16 +919,41 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   {paymentMethodTab === 'CASH_UPI' && (
                     <div className="flex gap-1.5 p-1 bg-slate-100/60 rounded-xl mb-4 border border-slate-200/40">
                       {[
-                        { id: 'HAND_CASH', label: 'CASH' },
-                        { id: 'UPI', label: 'UPI' },
-                        { id: 'BANK', label: 'BANK' },
-                        { id: 'COD', label: 'COD' }
-                      ].map((opt) => (
+                        { id: 'HAND_CASH', label: 'CASH', key: 'c' },
+                        { id: 'UPI', label: 'UPI', key: 'u' },
+                        { id: 'BANK', label: 'BANK', key: 'b' },
+                        { id: 'COD', label: 'COD', key: 'o' }
+                      ].map((opt, optIdx, arr) => (
                         <button
                           key={opt.id}
                           type="button"
+                          id={`pay-mode-btn-${opt.id}`}
                           onClick={() => setPaymentMode(opt.id as any)}
-                          className={`flex-1 rounded-lg py-1.5 text-[9px] font-black uppercase tracking-wider transition-all ${
+                          onKeyDown={(e) => {
+                            const k = e.key.toLowerCase();
+                            if (e.key === "ArrowRight") {
+                              e.preventDefault();
+                              const next = arr[(optIdx + 1) % arr.length];
+                              setPaymentMode(next.id as any);
+                              const nextBtn = document.getElementById(`pay-mode-btn-${next.id}`);
+                              if (nextBtn) nextBtn.focus();
+                            } else if (e.key === "ArrowLeft") {
+                              e.preventDefault();
+                              const prev = arr[(optIdx - 1 + arr.length) % arr.length];
+                              setPaymentMode(prev.id as any);
+                              const prevBtn = document.getElementById(`pay-mode-btn-${prev.id}`);
+                              if (prevBtn) prevBtn.focus();
+                            } else if (k === 'c' || k === 'u' || k === 'b' || k === 'o') {
+                              const found = arr.find(item => item.key === k);
+                              if (found) {
+                                e.preventDefault();
+                                setPaymentMode(found.id as any);
+                                const targetBtn = document.getElementById(`pay-mode-btn-${found.id}`);
+                                if (targetBtn) targetBtn.focus();
+                              }
+                            }
+                          }}
+                          className={`flex-1 rounded-lg py-1.5 text-[9px] font-black uppercase tracking-wider transition-all focus:ring-2 focus:ring-slate-400 focus:outline-none ${
                             paymentMode === opt.id
                               ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
                               : 'text-slate-500 hover:bg-white/40'
