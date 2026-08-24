@@ -1,17 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { Plus, Trash2, Search, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { AccountPicker } from "./account-picker";
 
 export interface LineItem {
@@ -78,6 +71,160 @@ function reclaimHint(rate: TaxRateOption): string | null {
   if (recoverable <= 0) return "not reclaimable";
   if (recoverable < 10000) return `${formatRatePct(recoverable)}% reclaimable`;
   return "reclaimable";
+}
+
+function SearchableProductSelect({
+  value,
+  inventoryItems,
+  onSelect,
+}: {
+  value: string;
+  inventoryItems: InventoryItemOption[];
+  onSelect: (item: InventoryItemOption | null) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selectedItem = inventoryItems.find((item) => item.id === value);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredItems = useMemo(() => {
+    if (!search.trim()) return inventoryItems;
+    const q = search.toLowerCase().trim();
+    return inventoryItems.filter(
+      (item) =>
+        item.name.toLowerCase().includes(q) ||
+        (item.metadata?.code && String(item.metadata.code).toLowerCase().includes(q)) ||
+        (item.metadata?.sku && String(item.metadata.sku).toLowerCase().includes(q)) ||
+        (item.metadata?.category && String(item.metadata.category).toLowerCase().includes(q))
+    );
+  }, [inventoryItems, search]);
+
+  const grouped = useMemo(() => {
+    return filteredItems.reduce((acc: Record<string, InventoryItemOption[]>, item) => {
+      const cat = item.metadata?.category || "General Products";
+      if (!acc[cat]) acc[cat] = [];
+      acc[cat].push(item);
+      return acc;
+    }, {});
+  }, [filteredItems]);
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        onClick={() => {
+          setIsOpen((prev) => !prev);
+          setSearch("");
+        }}
+        className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-muted/30 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
+      >
+        <span className="truncate">
+          {selectedItem ? selectedItem.name : "Select a product..."}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-1" />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full z-[9999] mt-1 max-h-72 w-[340px] overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-xl">
+          <div className="p-2 border-b bg-muted/20 sticky top-0 z-20">
+            <div className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 shadow-sm">
+              <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <input
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search product name, category, SKU..."
+                className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="text-[10px] text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="max-h-56 overflow-y-auto divide-y divide-border/40">
+            <button
+              type="button"
+              onClick={() => {
+                onSelect(null);
+                setIsOpen(false);
+              }}
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-muted/50 transition-colors"
+            >
+              <span className="italic text-muted-foreground">Custom item (no inventory link)</span>
+              {!value && <Check className="h-3.5 w-3.5 text-primary" />}
+            </button>
+
+            {filteredItems.length === 0 ? (
+              <div className="p-4 text-center text-xs text-muted-foreground italic">
+                No matching products found.
+              </div>
+            ) : (
+              Object.entries(grouped).map(([category, items]) => (
+                <div key={category} className="py-1">
+                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 bg-muted/40 sticky top-0 z-10">
+                    {category}
+                  </div>
+                  {items.map((item) => {
+                    const isSelected = item.id === value;
+                    const isItemDirectSelling = item.metadata?.isDirectSelling === true;
+                    const rate = isItemDirectSelling
+                      ? (Number(item.salePrice || 0) / 100)
+                      : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => {
+                          onSelect(item);
+                          setIsOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition-colors hover:bg-muted/60 ${
+                          isSelected ? "bg-primary/10 font-semibold text-primary" : ""
+                        }`}
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="truncate font-medium">{item.name}</div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            {item.metadata?.code && (
+                              <span className="rounded bg-muted px-1 py-0.2 font-mono">
+                                {item.metadata.code}
+                              </span>
+                            )}
+                            <span>₹{rate.toFixed(2)}</span>
+                            {item.metadata?.unit && <span>/ {item.metadata.unit}</span>}
+                          </div>
+                        </div>
+                        {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext }: LineItemsEditorProps) {
@@ -199,45 +346,31 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
             >
               <div className="space-y-1">
                 {inventoryItems.length > 0 && (
-                  <Select
-                    value={line.inventoryItemId || "none"}
-                    onValueChange={(v) => {
-                      if (v === "none") {
+                  <SearchableProductSelect
+                    value={line.inventoryItemId || ""}
+                    inventoryItems={inventoryItems}
+                    onSelect={(item) => {
+                      if (!item) {
                         updateLine(i, "inventoryItemId", "");
                         return;
                       }
-                      const item = inventoryItems.find((itm) => itm.id === v);
-                      if (item) {
-                        const matchingTax = item.gstRate ? taxRates.find(t => (t.rate / 100) === item.gstRate) : null;
-                        const isItemDirectSelling = item.metadata?.isDirectSelling === true;
-                        const effectiveRate = isItemDirectSelling
-                          ? (Number(item.salePrice || 0) / 100)
-                          : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
-                        const updated = [...lines];
-                        updated[i] = {
-                          ...updated[i],
-                          inventoryItemId: item.id,
-                          description: item.name,
-                          unitPrice: effectiveRate.toString(),
-                          accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
-                          taxRateId: matchingTax ? matchingTax.id : updated[i].taxRateId,
-                        };
-                        onChange(updated);
-                      }
+                      const matchingTax = item.gstRate ? taxRates.find(t => (t.rate / 100) === item.gstRate) : null;
+                      const isItemDirectSelling = item.metadata?.isDirectSelling === true;
+                      const effectiveRate = isItemDirectSelling
+                        ? (Number(item.salePrice || 0) / 100)
+                        : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
+                      const updated = [...lines];
+                      updated[i] = {
+                        ...updated[i],
+                        inventoryItemId: item.id,
+                        description: item.name,
+                        unitPrice: effectiveRate.toString(),
+                        accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
+                        taxRateId: matchingTax ? matchingTax.id : updated[i].taxRateId,
+                      };
+                      onChange(updated);
                     }}
-                  >
-                    <SelectTrigger className="h-8 text-sm bg-muted/30">
-                      <SelectValue placeholder="Select a product" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Custom item</SelectItem>
-                      {inventoryItems.map((item) => (
-                        <SelectItem key={item.id} value={item.id}>
-                          {item.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  />
                 )}
                 <Input
                   className="h-8 text-sm"
