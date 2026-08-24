@@ -26,12 +26,12 @@ const FONT_OPTIONS = [
   {
     name: "JetBrains Mono",
     stack: "'JetBrains Mono', monospace",
-    tag: "IDE High-Precision",
+    tag: "IDE Precision",
   },
   {
     name: "Fira Code",
     stack: "'Fira Code', monospace",
-    tag: "Clean Industrial",
+    tag: "Industrial Code",
   },
   {
     name: "Roboto Mono",
@@ -44,9 +44,54 @@ const FONT_OPTIONS = [
     tag: "Corporate Tech",
   },
   {
+    name: "Source Code Pro",
+    stack: "'Source Code Pro', monospace",
+    tag: "Adobe Studio",
+  },
+  {
+    name: "Inconsolata",
+    stack: "'Inconsolata', monospace",
+    tag: "High Legibility",
+  },
+  {
+    name: "Space Mono",
+    stack: "'Space Mono', monospace",
+    tag: "Geometric Retro",
+  },
+  {
+    name: "Ubuntu Mono",
+    stack: "'Ubuntu Mono', monospace",
+    tag: "Linux Terminal",
+  },
+  {
+    name: "DM Mono",
+    stack: "'DM Mono', monospace",
+    tag: "Modern Minimal",
+  },
+  {
+    name: "Overpass Mono",
+    stack: "'Overpass Mono', monospace",
+    tag: "Red Hat System",
+  },
+  {
+    name: "PT Mono",
+    stack: "'PT Mono', monospace",
+    tag: "Compact Grid",
+  },
+  {
+    name: "Share Tech Mono",
+    stack: "'Share Tech Mono', monospace",
+    tag: "Military HUD",
+  },
+  {
+    name: "Consolas",
+    stack: "Consolas, 'Lucida Console', Monaco, monospace",
+    tag: "Windows Native",
+  },
+  {
     name: "Inter (Sans)",
     stack: "'Inter', system-ui, -apple-system, sans-serif",
-    tag: "Modern Sans",
+    tag: "Standard Sans",
   },
 ];
 
@@ -184,10 +229,15 @@ export function TypographyStudio() {
 
           {/* 1. Font Family Selection */}
           <div className="mb-4">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">
-              Font Family
-            </label>
-            <div className="grid grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Monospace Font Family
+              </label>
+              <span className="text-[9px] font-bold text-slate-400">
+                {FONT_OPTIONS.length} Mono Types
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1">
               {FONT_OPTIONS.map((f) => {
                 const isSelected = settings.fontFamily === f.name;
                 return (
