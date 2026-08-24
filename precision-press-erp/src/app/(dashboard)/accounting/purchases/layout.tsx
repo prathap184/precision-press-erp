@@ -4,14 +4,14 @@ import { Receipt, CreditCard, ClipboardList, ClipboardCheck, PackageOpen, Undo2,
 import { TabLayout } from "@/components/dashboard/tab-layout";
 
 const TABS = [
-  { href: "/purchases", label: "Bills", icon: Receipt, exact: true },
-  { href: "/purchases/bills/recurring", label: "Recurring Bills", icon: Repeat, title: "Supplier bills that repeat on a schedule" },
-  { href: "/purchases/debit-notes", label: "Supplier Credits", icon: Undo2, title: "Credit a supplier owes you back, applied against bills" },
-  { href: "/purchases/expenses", label: "Expenses", icon: CreditCard },
-  { href: "/purchases/orders", label: "Purchase Orders", icon: ClipboardList },
-  { href: "/purchases/goods-receipts", label: "Goods Received", icon: PackageCheck, title: "Items received from suppliers against a purchase order" },
-  { href: "/purchases/requisitions", label: "Requisitions", icon: ClipboardCheck },
-  { href: "/purchases/landed-costs", label: "Landed Costs", icon: PackageOpen, title: "Extra costs like freight & duty added to the cost of stock" },
+  { href: "/accounting/purchases", label: "Bills", icon: Receipt, exact: true },
+  { href: "/accounting/purchases/bills/recurring", label: "Recurring Bills", icon: Repeat, title: "Supplier bills that repeat on a schedule" },
+  { href: "/accounting/purchases/debit-notes", label: "Supplier Credits", icon: Undo2, title: "Credit a supplier owes you back, applied against bills" },
+  { href: "/accounting/purchases/expenses", label: "Expenses", icon: CreditCard },
+  { href: "/accounting/purchases/orders", label: "Purchase Orders", icon: ClipboardList },
+  { href: "/accounting/purchases/goods-receipts", label: "Goods Received", icon: PackageCheck, title: "Items received from suppliers against a purchase order" },
+  { href: "/accounting/purchases/requisitions", label: "Requisitions", icon: ClipboardCheck },
+  { href: "/accounting/purchases/landed-costs", label: "Landed Costs", icon: PackageOpen, title: "Extra costs like freight & duty added to the cost of stock" },
 ];
 
 export default function PurchasesLayout({

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,17 +25,27 @@ export function TabLayout({
 }) {
   const pathname = usePathname();
 
-  // Hide tabs on detail pages (path has more segments than any tab href)
-  const isDetailPage = !tabs.some((tab) =>
-    tab.exact ? pathname === tab.href : pathname === tab.href
-  ) && tabs.some((tab) => pathname.startsWith(tab.href + "/"));
+  const normalizedTabs = useMemo(() => {
+    const isAccounting = pathname.startsWith("/accounting");
+    return tabs.map((tab) => {
+      let href = tab.href;
+      if (isAccounting && !href.startsWith("/accounting")) {
+        href = `/accounting${href.startsWith("/") ? href : `/${href}`}`;
+      } else if (!isAccounting && href.startsWith("/accounting")) {
+        href = href.replace(/^\/accounting/, "");
+      }
+      return { ...tab, href };
+    });
+  }, [tabs, pathname]);
 
-  // On detail pages, keep the blur key stable so sub-tab navigation
-  // doesn't re-animate the entire layout. Use the tab href + first
-  // extra segment (the ID) as a stable key.
+  // Hide tabs on detail pages (path has more segments than any tab href)
+  const isDetailPage = !normalizedTabs.some((tab) =>
+    tab.exact ? pathname === tab.href : pathname === tab.href
+  ) && normalizedTabs.some((tab) => pathname.startsWith(tab.href + "/"));
+
   let blurKey = pathname;
   if (isDetailPage) {
-    const matchedTab = tabs.find((tab) => pathname.startsWith(tab.href + "/"));
+    const matchedTab = normalizedTabs.find((tab) => pathname.startsWith(tab.href + "/"));
     if (matchedTab) {
       const rest = pathname.slice(matchedTab.href.length + 1);
       const idSegment = rest.split("/")[0];
@@ -46,7 +57,7 @@ export function TabLayout({
     <div>
       {!isDetailPage && (
         <nav className="-mt-2 mb-6 sm:mb-8 flex items-center gap-1 overflow-x-auto border-b border-border scrollbar-none">
-          {tabs.map((tab) => {
+          {normalizedTabs.map((tab) => {
             const isActive = tab.exact
               ? pathname === tab.href
               : pathname.startsWith(tab.href);

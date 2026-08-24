@@ -4,14 +4,14 @@ import { FileText, ScrollText, CreditCard, RefreshCw, Banknote, Wallet, Calendar
 import { TabLayout } from "@/components/dashboard/tab-layout";
 
 const TABS = [
-  { href: "/sales", label: "Invoices", icon: FileText, exact: true },
-  { href: "/sales/quotes", label: "Quotes", icon: ScrollText },
-  { href: "/sales/receipts", label: "Cash Sales", icon: Banknote },
-  { href: "/sales/credit-notes", label: "Credit Notes", icon: CreditCard },
-  { href: "/sales/payments", label: "Payments", icon: Coins, title: "Payments received from customers" },
-  { href: "/sales/customer-prepayments", label: "Receipts", icon: Wallet, title: "Advance receipts & customer payment records" },
-  { href: "/sales/revenue-schedules", label: "Revenue Schedules", icon: CalendarClock, title: "Recognise income from an invoice gradually over time" },
-  { href: "/sales/recurring", label: "Recurring", icon: RefreshCw },
+  { href: "/accounting/sales", label: "Invoices", icon: FileText, exact: true },
+  { href: "/accounting/sales/quotes", label: "Quotes", icon: ScrollText },
+  { href: "/accounting/sales/receipts", label: "Cash Sales", icon: Banknote },
+  { href: "/accounting/sales/credit-notes", label: "Credit Notes", icon: CreditCard },
+  { href: "/accounting/sales/payments", label: "Payments", icon: Coins, title: "Payments received from customers" },
+  { href: "/accounting/sales/customer-prepayments", label: "Receipts", icon: Wallet, title: "Advance receipts & customer payment records" },
+  { href: "/accounting/sales/revenue-schedules", label: "Revenue Schedules", icon: CalendarClock, title: "Recognise income from an invoice gradually over time" },
+  { href: "/accounting/sales/recurring", label: "Recurring", icon: RefreshCw },
 ];
 
 export default function SalesLayout({

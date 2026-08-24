@@ -4,11 +4,11 @@ import { Package, ClipboardList, Warehouse, BarChart3, ArrowLeftRight } from "lu
 import { TabLayout } from "@/components/dashboard/tab-layout";
 
 const TABS = [
-  { href: "/inventory", label: "Items", icon: Package, exact: true },
-  { href: "/inventory/stock-takes", label: "Stocktakes", icon: ClipboardList },
-  { href: "/inventory/warehouses", label: "Locations", icon: Warehouse },
-  { href: "/inventory/transfers", label: "Transfers", icon: ArrowLeftRight },
-  { href: "/inventory/valuation", label: "Stock value", icon: BarChart3 },
+  { href: "/accounting/inventory", label: "Items", icon: Package, exact: true },
+  { href: "/accounting/inventory/stock-takes", label: "Stocktakes", icon: ClipboardList },
+  { href: "/accounting/inventory/warehouses", label: "Locations", icon: Warehouse },
+  { href: "/accounting/inventory/transfers", label: "Transfers", icon: ArrowLeftRight },
+  { href: "/accounting/inventory/valuation", label: "Stock value", icon: BarChart3 },
 ];
 
 export default function InventoryLayout({
