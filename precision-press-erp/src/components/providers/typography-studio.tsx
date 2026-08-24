@@ -182,50 +182,7 @@ export function TypographyStudio() {
             </button>
           </div>
 
-          {/* 1. Quick Presets */}
-          <div className="mb-4">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">
-              Quick Presets
-            </label>
-            <div className="grid grid-cols-2 gap-1.5">
-              <button
-                onClick={() =>
-                  updateSetting({ fontFamily: "SF Mono", fontSize: 14, fontWeight: 600 })
-                }
-                className="flex items-center gap-1.5 p-2 rounded-xl text-[10px] font-black bg-blue-50 text-blue-700 border border-blue-200/60 hover:bg-blue-100 transition-all text-left"
-              >
-                <Sparkles size={12} className="shrink-0" />
-                <span>Boss: SF Mono 14px</span>
-              </button>
-              <button
-                onClick={() =>
-                  updateSetting({ fontFamily: "JetBrains Mono", fontSize: 14, fontWeight: 600 })
-                }
-                className="flex items-center gap-1.5 p-2 rounded-xl text-[10px] font-black bg-purple-50 text-purple-700 border border-purple-200/60 hover:bg-purple-100 transition-all text-left"
-              >
-                <Sparkles size={12} className="shrink-0" />
-                <span>JetBrains 14px</span>
-              </button>
-              <button
-                onClick={() =>
-                  updateSetting({ fontFamily: "SF Mono", fontSize: 12, fontWeight: 600 })
-                }
-                className="flex items-center gap-1.5 p-2 rounded-xl text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all text-left"
-              >
-                <span>Compact 12px</span>
-              </button>
-              <button
-                onClick={() =>
-                  updateSetting({ fontFamily: "SF Mono", fontSize: 16, fontWeight: 700 })
-                }
-                className="flex items-center gap-1.5 p-2 rounded-xl text-[10px] font-bold bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 transition-all text-left"
-              >
-                <span>Large 16px Bold</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 2. Font Family Selection */}
+          {/* 1. Font Family Selection */}
           <div className="mb-4">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1.5 block">
               Font Family
