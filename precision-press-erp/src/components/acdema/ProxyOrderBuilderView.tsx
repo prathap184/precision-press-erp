@@ -25,6 +25,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightProductIndex, setHighlightProductIndex] = useState<number>(0);
+  const [highlightCustomerIndex, setHighlightCustomerIndex] = useState<number>(0);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
