@@ -11,7 +11,6 @@ const FOCUSABLE_SELECTOR = [
   'select:not([disabled]):not([tabindex="-1"])',
   'textarea:not([disabled]):not([readonly]):not([tabindex="-1"])',
   '[contenteditable="true"]',
-  'button:not([disabled]):not([tabindex="-1"])',
 ].join(", ");
 
 function isVisible(el: HTMLElement): boolean {
@@ -38,51 +37,35 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
 
       if (tagName === "input") {
         const input = target as HTMLInputElement;
-        const inputType = (input.type || "text").toLowerCase();
+        const val = input.value ?? "";
+        const hasSelection =
+          input.selectionStart !== null &&
+          input.selectionEnd !== null &&
+          input.selectionStart !== input.selectionEnd;
 
-        // Non-text input types (checkbox, radio, button, submit, etc.)
-        if (["checkbox", "radio", "submit", "button", "reset", "image", "color"].includes(inputType)) {
+        // If the field is empty, or cursor is at start 0 with no text selected:
+        if (!hasSelection && (val === "" || input.selectionStart === 0)) {
           shouldNavigateBack = true;
-        } else {
-          // For text, number, search, date, etc.
-          const val = input.value ?? "";
-          const hasSelection =
-            input.selectionStart !== null &&
-            input.selectionEnd !== null &&
-            input.selectionStart !== input.selectionEnd;
-
-          // If the field is empty, or cursor is at position 0 with no text selected to delete:
-          if (!hasSelection && (val === "" || input.selectionStart === 0)) {
-            shouldNavigateBack = true;
-          }
         }
       } else if (tagName === "select") {
         shouldNavigateBack = true;
       } else if (tagName === "textarea") {
         const textarea = target as HTMLTextAreaElement;
         const val = textarea.value ?? "";
-        const hasSelection =
-          textarea.selectionStart !== null &&
-          textarea.selectionEnd !== null &&
-          textarea.selectionStart !== textarea.selectionEnd;
-
-        // Only navigate back if the textarea is completely empty
-        if (!hasSelection && val === "" && textarea.selectionStart === 0) {
+        if (val === "" && textarea.selectionStart === 0) {
           shouldNavigateBack = true;
         }
-      } else if (target.getAttribute("role") === "combobox" || target.getAttribute("role") === "button") {
+      } else {
         shouldNavigateBack = true;
       }
 
       if (!shouldNavigateBack) return;
 
-      // Find the closest active container (Modal, Drawer, Sheet, Form, or Main body)
+      // Find the active container (Modal, Sheet/Drawer, or entire page)
       const container =
         target.closest("[role='dialog']") ||
         target.closest("[data-slot='sheet-content']") ||
         target.closest(".sheet-content") ||
-        target.closest("form") ||
-        target.closest("main") ||
         document.body;
 
       const focusables = Array.from(
@@ -95,16 +78,15 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
         const prevEl = focusables[currentIndex - 1];
         prevEl.focus();
 
-        // If the previous element is an input, place cursor at the end or select content
         if (prevEl instanceof HTMLInputElement || prevEl instanceof HTMLTextAreaElement) {
           try {
-            const len = prevEl.value.length;
-            prevEl.setSelectionRange(len, len);
+            prevEl.select();
           } catch {
             try {
-              prevEl.select();
+              const len = prevEl.value.length;
+              prevEl.setSelectionRange(len, len);
             } catch {
-              // Ignore if select not supported
+              // Ignore
             }
           }
         }

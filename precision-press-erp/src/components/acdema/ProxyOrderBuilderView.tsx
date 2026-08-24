@@ -462,6 +462,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <div className="relative flex-shrink-0">
                                     <button
                                       type="button"
+                                      tabIndex={-1}
                                       onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
                                       onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
                                       className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -475,6 +476,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           <button
                                             key={u}
                                             type="button"
+                                            tabIndex={-1}
                                             onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { widthUnit: u }); setOpenUnitPickerId(null); }}
                                             className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
                                               row.widthUnit === u
@@ -502,6 +504,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <div className="relative flex-shrink-0">
                                     <button
                                       type="button"
+                                      tabIndex={-1}
                                       onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
                                       onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
                                       className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -515,6 +518,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           <button
                                             key={u}
                                             type="button"
+                                            tabIndex={-1}
                                             onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { heightUnit: u }); setOpenUnitPickerId(null); }}
                                             className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
                                               row.heightUnit === u
