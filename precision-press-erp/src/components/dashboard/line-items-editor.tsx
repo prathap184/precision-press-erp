@@ -106,130 +106,105 @@ function SearchableProductSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredItems = useMemo(() => {
-    if (!search.trim()) return itemsList;
-    const q = search.toLowerCase().trim();
+  const qTerm = search.trim().toLowerCase();
+  const matched = useMemo(() => {
+    if (!qTerm) return itemsList;
     return itemsList.filter(
       (item) =>
-        (item?.name && item.name.toLowerCase().includes(q)) ||
-        (item?.metadata?.code && String(item.metadata.code).toLowerCase().includes(q)) ||
-        (item?.metadata?.sku && String(item.metadata.sku).toLowerCase().includes(q)) ||
-        (item?.metadata?.category && String(item.metadata.category).toLowerCase().includes(q))
+        (item?.name && item.name.toLowerCase().includes(qTerm)) ||
+        (item?.metadata?.code && String(item.metadata.code).toLowerCase().includes(qTerm)) ||
+        (item?.metadata?.sku && String(item.metadata.sku).toLowerCase().includes(qTerm)) ||
+        (item?.metadata?.category && String(item.metadata.category).toLowerCase().includes(qTerm))
     );
-  }, [itemsList, search]);
+  }, [itemsList, qTerm]);
 
   const grouped = useMemo(() => {
-    return (filteredItems || []).reduce((acc: Record<string, InventoryItemOption[]>, item) => {
+    return (matched || []).reduce((acc: Record<string, InventoryItemOption[]>, item) => {
       if (!item) return acc;
       const cat = item.metadata?.category || "General Products";
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(item);
       return acc;
     }, {});
-  }, [filteredItems]);
+  }, [matched]);
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <button
-        type="button"
-        onClick={() => {
-          setIsOpen((prev) => !prev);
-          setSearch("");
-        }}
-        className="flex h-8 w-full items-center justify-between rounded-md border border-input bg-muted/30 px-2.5 py-1 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring"
-      >
-        <span className="truncate">
-          {selectedItem ? selectedItem.name : "Select a product..."}
-        </span>
-        <ChevronDown className="h-3.5 w-3.5 opacity-50 shrink-0 ml-1" />
-      </button>
+      <div className="flex h-8 w-full items-center rounded-md border border-input bg-background px-2.5 shadow-sm transition-colors focus-within:ring-1 focus-within:ring-ring focus-within:border-primary">
+        <input
+          value={isOpen ? search : (selectedItem?.name ?? "")}
+          placeholder="Select item..."
+          onChange={(e) => {
+            setIsOpen(true);
+            setSearch(e.target.value);
+          }}
+          onFocus={() => {
+            setIsOpen(true);
+            setSearch("");
+          }}
+          className="w-full border-0 bg-transparent p-0 text-xs font-semibold text-foreground outline-none focus:ring-0 placeholder:text-muted-foreground"
+        />
+        <ChevronDown
+          size={14}
+          className="text-muted-foreground shrink-0 ml-1 cursor-pointer transition-transform duration-200"
+          onClick={() => setIsOpen(!isOpen)}
+        />
+      </div>
 
       {isOpen && (
-        <div className="absolute left-0 top-full z-[9999] mt-1 max-h-72 w-[340px] overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-xl">
-          <div className="p-2 border-b bg-muted/20 sticky top-0 z-20">
-            <div className="flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 shadow-sm">
-              <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search product name, category, SKU..."
-                className="w-full bg-transparent text-xs outline-none placeholder:text-muted-foreground"
-              />
-              {search && (
-                <button
-                  type="button"
-                  onClick={() => setSearch("")}
-                  className="text-[10px] text-muted-foreground hover:text-foreground"
-                >
-                  Clear
-                </button>
-              )}
+        <div className="absolute left-0 top-full mt-1.5 w-[320px] z-[9999] max-h-64 overflow-y-auto rounded-xl border border-border bg-popover shadow-2xl divide-y divide-border/40">
+          <div
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(null);
+              setIsOpen(false);
+              setSearch("");
+            }}
+            className="cursor-pointer p-2.5 px-3 hover:bg-muted/50 text-xs text-muted-foreground italic flex justify-between items-center transition-colors"
+          >
+            <span>Custom item (no inventory link)</span>
+            {!value && <Check className="size-3.5 text-primary shrink-0" />}
+          </div>
+
+          {matched.length === 0 ? (
+            <div className="p-3 text-xs text-muted-foreground italic text-center">
+              No products found.
             </div>
-          </div>
-
-          <div className="max-h-56 overflow-y-auto divide-y divide-border/40">
-            <button
-              type="button"
-              onClick={() => {
-                onSelect(null);
-                setIsOpen(false);
-              }}
-              className="flex w-full items-center justify-between px-3 py-2 text-left text-xs hover:bg-muted/50 transition-colors"
-            >
-              <span className="italic text-muted-foreground">Custom item (no inventory link)</span>
-              {!value && <Check className="h-3.5 w-3.5 text-primary" />}
-            </button>
-
-            {filteredItems.length === 0 ? (
-              <div className="p-4 text-center text-xs text-muted-foreground italic">
-                No matching products found.
-              </div>
-            ) : (
-              Object.entries(grouped).map(([category, items]) => (
-                <div key={category} className="py-1">
-                  <div className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70 bg-muted/40 sticky top-0 z-10">
-                    {category}
-                  </div>
-                  {items.map((item) => {
-                    const isSelected = item.id === value;
-                    const isItemDirectSelling = item.metadata?.isDirectSelling === true;
-                    const rate = isItemDirectSelling
-                      ? (Number(item.salePrice || 0) / 100)
-                      : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
-
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => {
-                          onSelect(item);
-                          setIsOpen(false);
-                        }}
-                        className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition-colors hover:bg-muted/60 ${
-                          isSelected ? "bg-primary/10 font-semibold text-primary" : ""
-                        }`}
-                      >
-                        <div className="min-w-0 pr-2">
-                          <div className="truncate font-medium">{item.name}</div>
-                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                            {item.metadata?.code && (
-                              <span className="rounded bg-muted px-1 py-0.2 font-mono">
-                                {item.metadata.code}
-                              </span>
-                            )}
-                            <span>₹{rate.toFixed(2)}</span>
-                            {item.metadata?.unit && <span>/ {item.metadata.unit}</span>}
-                          </div>
-                        </div>
-                        {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
-                      </button>
-                    );
-                  })}
+          ) : (
+            Object.entries(grouped).map(([cat, prods]) => (
+              <div key={cat}>
+                <div className="bg-muted/80 backdrop-blur px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground sticky top-0 z-10 border-b border-border/80 shadow-sm">
+                  {cat.replace(/_/g, " ")}
                 </div>
-              ))
-            )}
-          </div>
+                {prods.map((p) => {
+                  const isSelected = p.id === value;
+                  const code = p.metadata?.code || p.metadata?.sku || p.id.slice(0, 8);
+
+                  return (
+                    <div
+                      key={p.id}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onSelect(p);
+                        setIsOpen(false);
+                        setSearch("");
+                      }}
+                      className={`cursor-pointer border-b border-border/30 p-2.5 px-3 hover:bg-muted text-xs font-bold text-foreground flex justify-between items-center transition-colors ${
+                        isSelected ? "bg-primary/10 text-primary font-black" : ""
+                      }`}
+                    >
+                      <span className="truncate pr-2 font-medium">{p.name}</span>
+                      {code && (
+                        <span className="text-[9px] font-black tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md shrink-0 uppercase border border-border/40">
+                          {code}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))
+          )}
         </div>
       )}
     </div>
