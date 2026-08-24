@@ -75,7 +75,7 @@ function reclaimHint(rate: TaxRateOption): string | null {
 
 function SearchableProductSelect({
   value,
-  inventoryItems,
+  inventoryItems = [],
   onSelect,
 }: {
   value: string;
@@ -86,7 +86,8 @@ function SearchableProductSelect({
   const [search, setSearch] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedItem = inventoryItems.find((item) => item.id === value);
+  const itemsList = Array.isArray(inventoryItems) ? inventoryItems : [];
+  const selectedItem = itemsList.find((item) => item?.id === value);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -99,19 +100,20 @@ function SearchableProductSelect({
   }, []);
 
   const filteredItems = useMemo(() => {
-    if (!search.trim()) return inventoryItems;
+    if (!search.trim()) return itemsList;
     const q = search.toLowerCase().trim();
-    return inventoryItems.filter(
+    return itemsList.filter(
       (item) =>
-        item.name.toLowerCase().includes(q) ||
-        (item.metadata?.code && String(item.metadata.code).toLowerCase().includes(q)) ||
-        (item.metadata?.sku && String(item.metadata.sku).toLowerCase().includes(q)) ||
-        (item.metadata?.category && String(item.metadata.category).toLowerCase().includes(q))
+        (item?.name && item.name.toLowerCase().includes(q)) ||
+        (item?.metadata?.code && String(item.metadata.code).toLowerCase().includes(q)) ||
+        (item?.metadata?.sku && String(item.metadata.sku).toLowerCase().includes(q)) ||
+        (item?.metadata?.category && String(item.metadata.category).toLowerCase().includes(q))
     );
-  }, [inventoryItems, search]);
+  }, [itemsList, search]);
 
   const grouped = useMemo(() => {
-    return filteredItems.reduce((acc: Record<string, InventoryItemOption[]>, item) => {
+    return (filteredItems || []).reduce((acc: Record<string, InventoryItemOption[]>, item) => {
+      if (!item) return acc;
       const cat = item.metadata?.category || "General Products";
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(item);

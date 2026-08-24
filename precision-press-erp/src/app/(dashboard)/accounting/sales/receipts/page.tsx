@@ -58,14 +58,14 @@ function buildColumns(): Column<SalesReceipt>[] {
       sortKey: "number",
       className: "w-32",
       render: (r) => (
-        <span className="font-mono text-sm">{r.receiptNumber}</span>
+        <span className="font-mono text-sm">{r?.receiptNumber || "-"}</span>
       ),
     },
     {
       key: "contact",
       header: "Customer",
       render: (r) => (
-        <span className="text-sm font-medium">{r.contact?.name || "-"}</span>
+        <span className="text-sm font-medium">{r?.contact?.name || "-"}</span>
       ),
     },
     {
@@ -73,15 +73,15 @@ function buildColumns(): Column<SalesReceipt>[] {
       header: "Date",
       sortKey: "date",
       className: "w-28",
-      render: (r) => <span className="text-sm">{r.date}</span>,
+      render: (r) => <span className="text-sm">{r?.date || "-"}</span>,
     },
     {
       key: "status",
       header: "Status",
       className: "w-24",
       render: (r) => (
-        <Badge variant="outline" className={statusColors[r.status] || ""}>
-          {statusLabels[r.status] || r.status}
+        <Badge variant="outline" className={statusColors[r?.status || "draft"] || ""}>
+          {statusLabels[r?.status || "draft"] || r?.status || "draft"}
         </Badge>
       ),
     },
@@ -92,7 +92,7 @@ function buildColumns(): Column<SalesReceipt>[] {
       className: "w-28 text-right",
       render: (r) => (
         <span className="font-mono text-sm tabular-nums">
-          {formatMoney(r.total, r.currencyCode)}
+          {formatMoney(r?.total || 0, r?.currencyCode || "INR")}
         </span>
       ),
     },
@@ -212,12 +212,12 @@ export default function SalesReceiptsPage() {
 
   const [searchKey, setSearchKey] = useState(0);
   const filteredReceipts = useMemo(() => {
-    if (!debouncedSearch) return receipts;
+    if (!debouncedSearch) return receipts || [];
     const q = debouncedSearch.toLowerCase();
-    return receipts.filter(
+    return (receipts || []).filter(
       (r) =>
-        r.receiptNumber.toLowerCase().includes(q) ||
-        (r.contact?.name || "").toLowerCase().includes(q)
+        (r?.receiptNumber && r.receiptNumber.toLowerCase().includes(q)) ||
+        (r?.contact?.name && r.contact.name.toLowerCase().includes(q))
     );
   }, [receipts, debouncedSearch]);
 
@@ -228,7 +228,7 @@ export default function SalesReceiptsPage() {
   }, [debouncedSearch]);
 
   const totalCollected = useMemo(
-    () => receipts.reduce((sum, r) => sum + (r.status !== "void" ? r.total : 0), 0),
+    () => (receipts || []).reduce((sum, r) => sum + (r?.status !== "void" ? (Number(r?.total) || 0) : 0), 0),
     [receipts]
   );
 
