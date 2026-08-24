@@ -462,8 +462,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <div className="relative flex-shrink-0">
                                     <button
                                       type="button"
-                                      tabIndex={-1}
                                       onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
+                                          updateRow(row.id, { widthUnit: nextUnit });
+                                        }
+                                      }}
                                       onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
                                       className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                                     >
@@ -504,8 +510,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <div className="relative flex-shrink-0">
                                     <button
                                       type="button"
-                                      tabIndex={-1}
                                       onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter" || e.key === " ") {
+                                          e.preventDefault();
+                                          const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
+                                          updateRow(row.id, { heightUnit: nextUnit });
+                                        }
+                                      }}
                                       onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
                                       className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                                     >

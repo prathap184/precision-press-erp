@@ -10,9 +10,7 @@ const FOCUSABLE_SELECTOR = [
   'input:not([type="hidden"]):not([disabled]):not([readonly]):not([tabindex="-1"])',
   'select:not([disabled]):not([tabindex="-1"])',
   'textarea:not([disabled]):not([readonly]):not([tabindex="-1"])',
-  'button[role="combobox"]:not([disabled]):not([tabindex="-1"])',
-  'button[data-state]:not([disabled]):not([tabindex="-1"])',
-  'button[aria-haspopup]:not([disabled]):not([tabindex="-1"])',
+  'button:not([disabled]):not([tabindex="-1"])',
   '[contenteditable="true"]',
 ].join(", ");
 
