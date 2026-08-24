@@ -892,14 +892,14 @@ export function GlobalOrdersPage() {
                                 </div>
                                 <div className="flex flex-col justify-center">
                                   <div className="flex items-center gap-1.5">
-                                    <p className="text-slate-900 font-mono text-[13px] font-normal leading-tight">#{order.id.replace('ORD-', '')}</p>
+                                    <p className="text-slate-900 font-SFmono text-[12px] font-semibold leading-tight">#{order.id.replace('ORD-', '')}</p>
                                     {isOrderCompleted && (
                                       <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded bg-emerald-100/90 text-emerald-800 border border-emerald-300 text-[11px] font-normal tracking-tight shadow-xs">
                                         ✓ Done
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-slate-500 text-[13px] font-normal mt-0.5">{date}</p>
+                                  <p className="text-slate-500 text-[14px] font-normal mt-0.5">{date}</p>
                                 </div>
                               </div>
                             </td>
@@ -919,7 +919,7 @@ export function GlobalOrdersPage() {
                                 </div>
                                 <div className="mt-0.5">
                                   <span 
-                                    className="text-slate-900 text-[13px] font-normal tracking-normal inline-block truncate max-w-[280px]"
+                                    className="text-slate-900 text-[12px] font-normal tracking-normal inline-block truncate max-w-[280px]"
                                     title={order.items?.map(i => i.productName).join(', ') || order.workflow?.printWorkflow?.tiffFileName || 'Custom Print'}
                                   >
                                     {order.items?.map(i => i.productName).join(', ') || order.workflow?.printWorkflow?.tiffFileName || 'Custom Print'}

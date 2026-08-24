@@ -4,8 +4,9 @@
 
 /* ─── CSS Variable Bridge ────────────────────────────────────────────────────── */
 :root {
-  --font-body:    'Plus Jakarta Sans', 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --font-display: 'Plus Jakarta Sans', 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'SF Mono', 'SFMono-Regular', ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-display: 'SF Mono', 'SFMono-Regular', ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-inter: 'SF Mono', 'SFMono-Regular', ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
   
   /* Google M3 Colors */
   --google-text: #1e293b;
@@ -31,7 +32,11 @@
   --card-foreground: #f8fafc;
 }
 
-/* ─── Base Typography ─────────────────────────────────────────────────────────── */
+/* ─── Global SF Mono, Semibold & 12px/14px Typography ───────────────────────── */
+html, body, input, select, textarea, button, table, div, span, p, a, label, th, td, h1, h2, h3, h4, h5, h6 {
+  font-family: "SF Mono", "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
@@ -41,13 +46,17 @@ html {
 body {
   background-color: var(--google-bg);
   color: var(--google-text);
-  font-family: var(--font-body);
-  font-size: 0.9375rem; /* 15px */
+  font-size: 0.8125rem; /* 13px baseline (12px-14px) */
   line-height: 1.5;
-  font-weight: 400;
+  font-weight: 600; /* Semibold */
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Enforce semibold weight across all text elements */
+p, span, div, a, label, td, th, input, select, textarea, button {
+  font-weight: 600;
 }
 
 /* ─── Selection ───────────────────────────────────────────────────────────────── */
