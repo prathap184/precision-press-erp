@@ -6,6 +6,7 @@ import { ReactQueryProvider } from "@/components/providers/query-provider";
 import { SmartKeyboardProvider } from "@/components/providers/smart-keyboard-provider";
 import { Inter } from "next/font/google";
 import { Toaster } from "sonner";
+import { TypographyStudio } from "@/components/providers/typography-studio";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -30,7 +31,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link 
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto:wght@300;400;500;700;900&display=swap" 
+          href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&family=Roboto:wght@300;400;500;700;900&display=swap" 
           rel="stylesheet" 
         />
         <link 
@@ -46,6 +47,7 @@ export default function RootLayout({
               <Suspense fallback={null}>
                 {children}
               </Suspense>
+              <TypographyStudio />
             </SmartKeyboardProvider>
           </AuthProvider>
         </ReactQueryProvider>
