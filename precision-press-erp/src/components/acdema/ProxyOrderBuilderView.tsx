@@ -24,6 +24,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [highlightProductIndex, setHighlightProductIndex] = useState<number>(0);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
@@ -200,13 +201,45 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       <input
                         value={customerDropdownOpen ? customerSearch : (selectedCustomer?.displayName || selectedCustomer?.name || '')}
                         placeholder="Search customer..."
+                        data-dropdown-open={customerDropdownOpen ? "true" : "false"}
                         onChange={(e) => {
                           setCustomerDropdownOpen(true);
                           setCustomerSearch(e.target.value);
+                          setHighlightCustomerIndex(0);
                         }}
                         onFocus={() => {
                           setCustomerDropdownOpen(true);
                           setCustomerSearch('');
+                          setHighlightCustomerIndex(0);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            if (!customerDropdownOpen) {
+                              setCustomerDropdownOpen(true);
+                              setHighlightCustomerIndex(0);
+                              return;
+                            }
+                            setHighlightCustomerIndex((prev) => Math.min(prev + 1, filteredCustomers.length - 1));
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setHighlightCustomerIndex((prev) => Math.max(prev - 1, 0));
+                          } else if (e.key === "Enter") {
+                            if (customerDropdownOpen && filteredCustomers.length > 0) {
+                              e.preventDefault();
+                              const customer = filteredCustomers[highlightCustomerIndex] || filteredCustomers[0];
+                              if (customer) {
+                                setSelectedCustomerId(customer.uid || customer.id);
+                                setCustomerDropdownOpen(false);
+                                setCustomerSearch('');
+                                setHighlightCustomerIndex(0);
+                                setTimeout(() => {
+                                  const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                                  if (firstProductInput) firstProductInput.focus();
+                                }, 60);
+                              }
+                            }
+                          }
                         }}
                         onBlur={() => {
                           setTimeout(() => {
@@ -226,21 +259,42 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         {filteredCustomers.length === 0 ? (
                           <div className="p-4 text-xs italic text-slate-400">No matches found.</div>
                         ) : (
-                          filteredCustomers.map((customer: any) => (
-                            <div
-                              key={customer.uid || customer.id}
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                setSelectedCustomerId(customer.uid || customer.id);
-                                setCustomerDropdownOpen(false);
-                                setCustomerSearch('');
-                              }}
-                              className={`cursor-pointer border-b border-slate-100 p-3 hover:bg-slate-50 ${(customer.uid === selectedCustomerId || customer.id === selectedCustomerId) ? 'bg-slate-100' : ''}`}
-                            >
-                              <div className="text-sm font-bold text-slate-800">{customer.displayName || customer.name}</div>
-                              <div className="text-xs text-slate-500">{customer.phone || 'No phone'} • {customer.businessName || customer.billing_city || 'Mysore'}</div>
-                            </div>
-                          ))
+                          filteredCustomers.map((customer: any, idx: number) => {
+                            const isHighlighted = idx === highlightCustomerIndex;
+                            return (
+                              <div
+                                key={customer.uid || customer.id}
+                                ref={(el) => {
+                                  if (el && isHighlighted) el.scrollIntoView({ block: 'nearest' });
+                                }}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setSelectedCustomerId(customer.uid || customer.id);
+                                  setCustomerDropdownOpen(false);
+                                  setCustomerSearch('');
+                                  setHighlightCustomerIndex(0);
+                                  setTimeout(() => {
+                                    const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                                    if (firstProductInput) firstProductInput.focus();
+                                  }, 60);
+                                }}
+                                className={`cursor-pointer border-b border-slate-100 p-3 transition-colors ${
+                                  isHighlighted
+                                    ? 'bg-blue-600 text-white font-bold shadow-sm'
+                                    : (customer.uid === selectedCustomerId || customer.id === selectedCustomerId)
+                                      ? 'bg-blue-50 text-blue-800 font-bold'
+                                      : 'hover:bg-slate-50'
+                                }`}
+                              >
+                                <div className={`text-sm font-bold ${isHighlighted ? 'text-white' : 'text-slate-800'}`}>
+                                  {customer.displayName || customer.name}
+                                </div>
+                                <div className={`text-xs ${isHighlighted ? 'text-blue-100' : 'text-slate-500'}`}>
+                                  {customer.phone || 'No phone'} • {customer.businessName || customer.billing_city || 'Mysore'}
+                                </div>
+                              </div>
+                            );
+                          })
                         )}
                       </div>
                     )}
@@ -403,22 +457,37 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         value={isOpen ? searchQuery : (selProd?.name ?? '')}
                                         placeholder="Select item..."
                                         data-dropdown-open={isOpen ? "true" : "false"}
-                                        onChange={(e) => { setOpenRowId(row.id); setSearchQuery(e.target.value); }}
+                                        onChange={(e) => {
+                                          setOpenRowId(row.id);
+                                          setSearchQuery(e.target.value);
+                                          setHighlightProductIndex(0);
+                                        }}
                                         onFocus={() => {
-                                          setOpenRowId(row.id); setSearchQuery('');
+                                          setOpenRowId(row.id);
+                                          setSearchQuery('');
+                                          setHighlightProductIndex(0);
                                         }}
                                         onKeyDown={(e) => {
                                           if (e.key === "ArrowDown") {
                                             e.preventDefault();
-                                            if (!isOpen) { setOpenRowId(row.id); return; }
+                                            if (!isOpen) {
+                                              setOpenRowId(row.id);
+                                              setHighlightProductIndex(0);
+                                              return;
+                                            }
+                                            setHighlightProductIndex((prev) => Math.min(prev + 1, Math.min(matched.length - 1, 49)));
+                                          } else if (e.key === "ArrowUp") {
+                                            e.preventDefault();
+                                            setHighlightProductIndex((prev) => Math.max(prev - 1, 0));
                                           } else if (e.key === "Enter") {
                                             if (isOpen && matched.length > 0) {
                                               e.preventDefault();
-                                              const p = matched[0];
+                                              const p = matched[highlightProductIndex] || matched[0];
                                               if (p) {
                                                 updateRow(row.id, { productId: p.id });
                                                 setOpenRowId(null);
                                                 setSearchQuery('');
+                                                setHighlightProductIndex(0);
                                                 setTimeout(() => {
                                                   const projectInput = document.querySelector(`input[value="${row.projectName || ''}"]`) as HTMLElement;
                                                   const widthInput = document.getElementById(`error-row-${row.id}-width`);
@@ -435,7 +504,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       <ChevronDown size={14} className="text-slate-400 cursor-pointer" onClick={() => setOpenRowId(isOpen ? null : row.id)} />
                                     </div>
                                     {isOpen && (
-                                      <div className="absolute left-0 top-full mt-1 w-[260px] z-[9999] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                                      <div className="absolute left-0 top-full mt-1 w-[280px] z-[9999] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
                                         {(() => {
                                           if (matched.length === 0) return <div className="p-3 text-xs text-slate-400 italic">No products found.</div>;
                                           
@@ -446,32 +515,53 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             return acc;
                                           }, {});
 
+                                          let runningIdx = 0;
+
                                           return Object.entries(grouped).map(([cat, prods]: [string, any]) => (
                                             <div key={cat}>
                                               <div className="bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10 border-b border-slate-200 shadow-sm">
                                                 {cat.replace(/_/g, ' ')}
                                               </div>
-                                              {prods.map((p: any, pIdx: number) => (
-                                                <div 
-                                                  key={p.id} 
-                                                  onMouseDown={(e) => {
-                                                    e.preventDefault();
-                                                    updateRow(row.id, { productId: p.id });
-                                                    setOpenRowId(null);
-                                                    setSearchQuery('');
-                                                    setTimeout(() => {
-                                                      const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                      if (widthInput) widthInput.focus();
-                                                    }, 60);
-                                                  }} 
-                                                  className={`cursor-pointer border-b border-slate-50 p-3 pl-4 hover:bg-blue-50 text-xs font-bold text-slate-700 flex justify-between items-center transition-colors ${
-                                                    p.id === row.productId ? 'bg-blue-50/80 text-blue-700 font-extrabold' : ''
-                                                  }`}
-                                                >
-                                                  <span className="truncate pr-2">{p.name}</span>
-                                                  <span className="text-[9px] font-black tracking-wider text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-md flex-shrink-0">{p.id}</span>
-                                                </div>
-                                              ))}
+                                              {prods.map((p: any) => {
+                                                const currentItemIdx = runningIdx++;
+                                                const isHighlighted = currentItemIdx === highlightProductIndex;
+
+                                                return (
+                                                  <div 
+                                                    key={p.id} 
+                                                    ref={(el) => {
+                                                      if (el && isHighlighted) {
+                                                        el.scrollIntoView({ block: 'nearest' });
+                                                      }
+                                                    }}
+                                                    onMouseDown={(e) => {
+                                                      e.preventDefault();
+                                                      updateRow(row.id, { productId: p.id });
+                                                      setOpenRowId(null);
+                                                      setSearchQuery('');
+                                                      setHighlightProductIndex(0);
+                                                      setTimeout(() => {
+                                                        const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                                        if (widthInput) widthInput.focus();
+                                                      }, 60);
+                                                    }} 
+                                                    className={`cursor-pointer border-b border-slate-100 p-2.5 pl-4 flex justify-between items-center transition-colors ${
+                                                      isHighlighted
+                                                        ? 'bg-blue-600 text-white font-extrabold shadow-sm'
+                                                        : p.id === row.productId
+                                                          ? 'bg-blue-50/80 text-blue-700 font-extrabold'
+                                                          : 'hover:bg-slate-50 text-slate-700 font-bold'
+                                                    }`}
+                                                  >
+                                                    <span className="truncate pr-2 text-xs">{p.name}</span>
+                                                    <span className={`text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded-md flex-shrink-0 ${
+                                                      isHighlighted ? 'bg-blue-700 text-white' : 'text-slate-400 bg-slate-100'
+                                                    }`}>
+                                                      {p.id}
+                                                    </span>
+                                                  </div>
+                                                );
+                                              })}
                                             </div>
                                           ));
                                         })()}

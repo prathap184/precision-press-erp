@@ -91,6 +91,7 @@ function SearchableProductSelect({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [highlightIndex, setHighlightIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const itemsList = Array.isArray(inventoryItems) ? inventoryItems : [];
@@ -134,13 +135,41 @@ function SearchableProductSelect({
         <input
           value={isOpen ? search : (selectedItem?.name ?? "")}
           placeholder="Select item..."
+          data-dropdown-open={isOpen ? "true" : "false"}
           onChange={(e) => {
             setIsOpen(true);
             setSearch(e.target.value);
+            setHighlightIndex(0);
           }}
           onFocus={() => {
             setIsOpen(true);
             setSearch("");
+            setHighlightIndex(0);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              if (!isOpen) {
+                setIsOpen(true);
+                setHighlightIndex(0);
+                return;
+              }
+              setHighlightIndex((prev) => Math.min(prev + 1, Math.min(matched.length - 1, 49)));
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHighlightIndex((prev) => Math.max(prev - 1, 0));
+            } else if (e.key === "Enter") {
+              if (isOpen && matched.length > 0) {
+                e.preventDefault();
+                const p = matched[highlightIndex] || matched[0];
+                if (p) {
+                  onSelect(p);
+                  setIsOpen(false);
+                  setSearch("");
+                  setHighlightIndex(0);
+                }
+              }
+            }
           }}
           className="w-full border-0 bg-transparent p-0 text-xs font-semibold text-foreground outline-none focus:ring-0 placeholder:text-muted-foreground"
         />
@@ -159,6 +188,7 @@ function SearchableProductSelect({
               onSelect(null);
               setIsOpen(false);
               setSearch("");
+              setHighlightIndex(0);
             }}
             className="cursor-pointer p-2.5 px-3 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-xs text-slate-400 italic flex justify-between items-center transition-colors"
           >
@@ -171,39 +201,58 @@ function SearchableProductSelect({
               No products found.
             </div>
           ) : (
-            Object.entries(grouped).map(([cat, prods]) => (
-              <div key={cat} className="bg-white dark:bg-slate-900">
-                <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700 shadow-sm">
-                  {cat.replace(/_/g, " ")}
-                </div>
-                {prods.map((p) => {
-                  const isSelected = p.id === value;
-                  const code = p.metadata?.code || p.metadata?.sku || p.id.slice(0, 8);
+            (() => {
+              let runningIdx = 0;
+              return Object.entries(grouped).map(([cat, prods]) => (
+                <div key={cat} className="bg-white dark:bg-slate-900">
+                  <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700 shadow-sm">
+                    {cat.replace(/_/g, " ")}
+                  </div>
+                  {prods.map((p) => {
+                    const currentIdx = runningIdx++;
+                    const isHighlighted = currentIdx === highlightIndex;
+                    const isSelected = p.id === value;
+                    const code = p.metadata?.code || p.metadata?.sku || p.id.slice(0, 8);
 
-                  return (
-                    <div
-                      key={p.id}
-                      onMouseDown={(e) => {
-                        e.preventDefault();
-                        onSelect(p);
-                        setIsOpen(false);
-                        setSearch("");
-                      }}
-                      className={`cursor-pointer border-b border-slate-100 dark:border-slate-800 p-2.5 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200 flex justify-between items-center transition-colors ${
-                        isSelected ? "bg-blue-50/80 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-extrabold" : ""
-                      }`}
-                    >
-                      <span className="truncate pr-2 font-medium">{p.name}</span>
-                      {code && (
-                        <span className="text-[9px] font-black tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md shrink-0 uppercase border border-slate-200 dark:border-slate-700">
-                          {code}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ))
+                    return (
+                      <div
+                        key={p.id}
+                        ref={(el) => {
+                          if (el && isHighlighted) {
+                            el.scrollIntoView({ block: "nearest" });
+                          }
+                        }}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          onSelect(p);
+                          setIsOpen(false);
+                          setSearch("");
+                          setHighlightIndex(0);
+                        }}
+                        className={`cursor-pointer border-b border-slate-100 dark:border-slate-800 p-2.5 px-3 flex justify-between items-center transition-colors ${
+                          isHighlighted
+                            ? "bg-blue-600 text-white font-extrabold shadow-sm"
+                            : isSelected
+                              ? "bg-blue-50/80 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-extrabold"
+                              : "hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                        }`}
+                      >
+                        <span className="truncate pr-2 font-medium text-xs">{p.name}</span>
+                        {code && (
+                          <span className={`text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded-md shrink-0 uppercase border ${
+                            isHighlighted
+                              ? "bg-blue-700 text-white border-blue-500"
+                              : "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                          }`}>
+                            {code}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ));
+            })()
           )}
         </div>
       )}
