@@ -39,6 +39,10 @@ export interface InventoryItemDetail {
   reorderPoint: number;
   totalValue?: number;
   isActive: boolean;
+  hsnCode?: string | null;
+  gstRate?: number | null;
+  unitOfMeasure?: string | null;
+  metadata?: any;
 }
 
 interface InventoryItemContextValue {
@@ -264,9 +268,26 @@ export default function InventoryItemLayout({ children }: { children: React.Reac
                   {item.isActive ? "Shown" : "Hidden"}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground">
-                {item.code}{item.sku ? ` · ${item.sku}` : ""}{item.category ? ` · ${item.category}` : ""}
-              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-1 text-sm text-muted-foreground">
+                <span>{item.code}</span>
+                {item.sku && <span>· {item.sku}</span>}
+                {item.category && <span>· {item.category}</span>}
+                {(item.hsnCode || item.metadata?.hsn) && (
+                  <span className="rounded-md bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 text-xs font-mono font-semibold text-slate-700 dark:text-slate-300">
+                    HSN: {item.hsnCode || item.metadata?.hsn}
+                  </span>
+                )}
+                {(item.gstRate !== undefined && item.gstRate !== null || item.metadata?.gstRate !== undefined) && (
+                  <span className="rounded-md bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 text-xs font-bold font-mono">
+                    {item.gstRate ?? item.metadata?.gstRate}% GST
+                  </span>
+                )}
+                {(item.unitOfMeasure || item.metadata?.unit) && (
+                  <span className="rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-2 py-0.5 text-xs font-semibold uppercase">
+                    UOM: {item.unitOfMeasure || item.metadata?.unit}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-2">

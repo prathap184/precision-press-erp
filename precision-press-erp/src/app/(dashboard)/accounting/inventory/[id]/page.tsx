@@ -44,6 +44,10 @@ export default function InventoryItemDetailsPage() {
   const [categoryId, setCategoryId] = useState(item.categoryId || "");
   const [invPurchasePrice, setInvPurchasePrice] = useState(centsToDecimal(item.purchasePrice));
   const [invSalePrice, setInvSalePrice] = useState(centsToDecimal(item.salePrice));
+  const [hsnCode, setHsnCode] = useState((item as any)?.hsnCode || (item as any)?.metadata?.hsn || "");
+  const [gstRate, setGstRate] = useState<number>((item as any)?.gstRate != null ? (item as any).gstRate : ((item as any)?.metadata?.gstRate != null ? (item as any).metadata.gstRate : 18));
+  const [unitOfMeasure, setUnitOfMeasure] = useState((item as any)?.unitOfMeasure || (item as any)?.metadata?.unit || "SQFT");
+  const [isDirectSelling, setIsDirectSelling] = useState<boolean>((item as any)?.metadata?.isDirectSelling === true || (item as any)?.unitOfMeasure === "NOS" || (item as any)?.unitOfMeasure === "PCS" || (item as any)?.unitOfMeasure === "N");
   const [metadata, setMetadata] = useState<any>((item as any).metadata || {});
   const [workflowSteps, setWorkflowSteps] = useState<any[]>((item as any).workflowSteps || []);
   const [warehouseStocks, setWarehouseStocks] = useState<WarehouseStockEntry[]>([]);
@@ -64,6 +68,19 @@ export default function InventoryItemDetailsPage() {
       if (item.categoryId) setCategoryId(item.categoryId);
       if (item.purchasePrice !== undefined) setInvPurchasePrice(centsToDecimal(item.purchasePrice));
       if (item.salePrice !== undefined) setInvSalePrice(centsToDecimal(item.salePrice));
+      if ((item as any).hsnCode) setHsnCode((item as any).hsnCode);
+      else if ((item as any).metadata?.hsn) setHsnCode((item as any).metadata.hsn);
+      
+      if ((item as any).gstRate != null) setGstRate((item as any).gstRate);
+      else if ((item as any).metadata?.gstRate != null) setGstRate((item as any).metadata.gstRate);
+      
+      if ((item as any).unitOfMeasure) setUnitOfMeasure((item as any).unitOfMeasure);
+      else if ((item as any).metadata?.unit) setUnitOfMeasure((item as any).metadata.unit);
+      
+      if ((item as any).metadata?.isDirectSelling !== undefined) {
+        setIsDirectSelling((item as any).metadata.isDirectSelling);
+      }
+      
       if ((item as any).metadata) setMetadata((item as any).metadata);
       if ((item as any).workflowSteps && Array.isArray((item as any).workflowSteps)) {
         setWorkflowSteps((item as any).workflowSteps);
@@ -113,7 +130,17 @@ export default function InventoryItemDetailsPage() {
           purchasePrice: Math.round(parseFloat(invPurchasePrice || "0") * 100),
           salePrice: Math.round(parseFloat(invSalePrice || "0") * 100),
           reorderPoint: parseInt(form.get("reorderPoint") as string) || 0,
-          metadata,
+          hsnCode: hsnCode || null,
+          gstRate: Number(gstRate),
+          unitOfMeasure: unitOfMeasure || null,
+          metadata: {
+            ...(metadata || {}),
+            hsn: hsnCode,
+            gstRate: Number(gstRate),
+            unit: unitOfMeasure,
+            isDirectSelling,
+            baseRate: parseFloat(invSalePrice || "0"),
+          },
           workflowSteps,
         }),
       });
@@ -276,6 +303,88 @@ export default function InventoryItemDetailsPage() {
                 <Label className="text-xs" htmlFor="sku">SKU</Label>
                 <Input id="sku" name="sku" defaultValue={item.sku || ""} placeholder="Optional" />
               </div>
+            </div>
+          </div>
+        </Section>
+
+        <div className="h-px bg-border" />
+
+        <Section title="GST & Tax Compliance" description="HSN/SAC code, GST tax rate, and measurement units.">
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="hsnCode">HSN / SAC Code</Label>
+                <Input
+                  id="hsnCode"
+                  value={hsnCode}
+                  onChange={(e) => setHsnCode(e.target.value)}
+                  placeholder="e.g. 3920, 85299090"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="gstRate">GST Tax Rate (%)</Label>
+                <select
+                  id="gstRate"
+                  value={gstRate}
+                  onChange={(e) => setGstRate(Number(e.target.value))}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value={0}>0% (Exempt / Nil Rated)</option>
+                  <option value={5}>5% GST</option>
+                  <option value={12}>12% GST</option>
+                  <option value={18}>18% GST (Standard)</option>
+                  <option value={28}>28% GST (High / Luxury)</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="unitOfMeasure">Unit of Measure (UOM)</Label>
+                <select
+                  id="unitOfMeasure"
+                  value={unitOfMeasure}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setUnitOfMeasure(val);
+                    if (val === "NOS" || val === "PCS" || val === "N" || val === "BOX" || val === "SET") {
+                      setIsDirectSelling(true);
+                    } else if (val === "SQFT") {
+                      setIsDirectSelling(false);
+                    }
+                  }}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="SQFT">SQFT (Square Feet - Custom Area)</option>
+                  <option value="NOS">NOS (Numbers / Pieces - Direct Selling)</option>
+                  <option value="PCS">PCS (Pieces - Direct Selling)</option>
+                  <option value="KG">KG (Kilograms)</option>
+                  <option value="MTR">MTR (Meters)</option>
+                  <option value="BOX">BOX (Boxes)</option>
+                  <option value="SET">SET (Sets)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-muted/20 p-3.5 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-semibold text-foreground">Sales Pricing Mode</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {isDirectSelling
+                    ? "Direct Selling: Sold per piece/unit. Dimensions (Width & Length) are disabled in order & invoice builders."
+                    : "Custom Area: Sold by custom dimensions (Width × Length in feet/inches) per square foot."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsDirectSelling(!isDirectSelling)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  isDirectSelling ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-700"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                    isDirectSelling ? "translate-x-4" : "translate-x-0"
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </Section>
