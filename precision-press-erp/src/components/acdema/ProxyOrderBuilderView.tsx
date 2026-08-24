@@ -406,6 +406,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         onFocus={() => {
                                           setOpenRowId(row.id); setSearchQuery('');
                                         }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "ArrowDown") {
+                                            e.preventDefault();
+                                            if (!isOpen) { setOpenRowId(row.id); return; }
+                                          } else if (e.key === "Enter" && isOpen && matched.length > 0) {
+                                            e.preventDefault();
+                                            const p = matched[0];
+                                            if (p) {
+                                              updateRow(row.id, { productId: p.id });
+                                              setOpenRowId(null);
+                                              setSearchQuery('');
+                                            }
+                                          }
+                                        }}
                                         onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 160)}
                                         className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
                                       />
