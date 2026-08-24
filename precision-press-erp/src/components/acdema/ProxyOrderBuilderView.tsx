@@ -86,9 +86,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       }
     if (rows.length === 0) errors['rows'] = 'At least one item required';
     rows.forEach((row: any) => {
+      const product = products.find((p: any) => p.id === row.productId);
+      const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
       if (!row.productId) errors[`row-${row.id}-product`] = 'Product required';
-      if (!row.width || Number(row.width) <= 0) errors[`row-${row.id}-width`] = 'Width required';
-      if (!row.height || Number(row.height) <= 0) errors[`row-${row.id}-height`] = 'Height required';
+      if (!isDirect) {
+        if (!row.width || Number(row.width) <= 0) errors[`row-${row.id}-width`] = 'Width required';
+        if (!row.height || Number(row.height) <= 0) errors[`row-${row.id}-height`] = 'Height required';
+      }
       if (!row.quantity || Number(row.quantity) <= 0) errors[`row-${row.id}-quantity`] = 'Quantity required';
     });
     setValidationErrors(errors);
@@ -367,16 +371,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     <tbody className="divide-y divide-slate-100">
                       {rows.map((row: any, index: number) => {
                         const product = products.find((item: any) => item.id === row.productId);
+                        const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
                         const w = Number(row.width) || 0;
                         const h = Number(row.height) || 0;
                         const q = Number(row.quantity) || 0;
                         const wFt = row.widthUnit === 'IN' ? w / 12 : w;
                         const hFt = row.heightUnit === 'IN' ? h / 12 : h;
-                        const sqft = wFt * hFt;
-                        const eyeletRate = row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0;
+                        const sqft = isDirect ? 0 : wFt * hFt;
+                        const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
                         const amount = calculateRowSubtotal({
                           width: wFt, height: hFt, quantity: q, rate: product?.baseRate || 0,
-                          eyeletCount: row.eyeletType === 'NONE' ? 0 : q, eyeletRate,
+                          eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : q, eyeletRate,
+                          isDirectSelling: isDirect,
                         });
                         const gstRate = product?.gst_rate || 18;
 
@@ -446,74 +452,84 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </td>
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
                             <td className="py-3 px-2 tabular-nums">
-                              <div className={`flex h-10 w-[90px] items-center rounded-lg border bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-blue-50/40 ${validationErrors[`row-${row.id}-width`] ? 'border-red-400' : 'border-slate-200'}`}>
-                                <input id={`error-row-${row.id}-width`} value={row.width} onChange={(e) => updateRow(row.id, { width: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="W" />
-                                {/* Unit picker */}
-                                <div className="relative flex-shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
-                                    onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
-                                    className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                  >
-                                    {row.widthUnit === 'FT' ? 'ft' : 'in'}
-                                    <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
-                                  </button>
-                                  {openUnitPickerId === `${row.id}-w` && (
-                                    <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
-                                      {['FT', 'IN'].map(u => (
-                                        <button
-                                          key={u}
-                                          type="button"
-                                          onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { widthUnit: u }); setOpenUnitPickerId(null); }}
-                                          className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                                            row.widthUnit === u
-                                              ? 'bg-blue-600 text-white'
-                                              : 'text-slate-600 hover:bg-slate-50'
-                                          }`}
-                                        >
-                                          {u.toLowerCase()}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
+                              {isDirect ? (
+                                <div className="h-10 w-[90px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
+                                  —
                                 </div>
-                              </div>
+                              ) : (
+                                <div className={`flex h-10 w-[90px] items-center rounded-lg border bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-blue-50/40 ${validationErrors[`row-${row.id}-width`] ? 'border-red-400' : 'border-slate-200'}`}>
+                                  <input id={`error-row-${row.id}-width`} value={row.width} onChange={(e) => updateRow(row.id, { width: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="W" />
+                                  <div className="relative flex-shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
+                                      onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                    >
+                                      {row.widthUnit === 'FT' ? 'ft' : 'in'}
+                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                    </button>
+                                    {openUnitPickerId === `${row.id}-w` && (
+                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                                        {['FT', 'IN'].map(u => (
+                                          <button
+                                            key={u}
+                                            type="button"
+                                            onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { widthUnit: u }); setOpenUnitPickerId(null); }}
+                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                              row.widthUnit === u
+                                                ? 'bg-blue-600 text-white'
+                                                : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            {u.toLowerCase()}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <div className={`flex h-10 w-[90px] items-center rounded-lg border bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-blue-50/40 ${validationErrors[`row-${row.id}-height`] ? 'border-red-400' : 'border-slate-200'}`}>
-                                <input id={`error-row-${row.id}-height`} value={row.height} onChange={(e) => updateRow(row.id, { height: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="L" />
-                                {/* Unit picker */}
-                                <div className="relative flex-shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
-                                    onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
-                                    className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                  >
-                                    {row.heightUnit === 'FT' ? 'ft' : 'in'}
-                                    <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
-                                  </button>
-                                  {openUnitPickerId === `${row.id}-h` && (
-                                    <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
-                                      {['FT', 'IN'].map(u => (
-                                        <button
-                                          key={u}
-                                          type="button"
-                                          onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { heightUnit: u }); setOpenUnitPickerId(null); }}
-                                          className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                                            row.heightUnit === u
-                                              ? 'bg-blue-600 text-white'
-                                              : 'text-slate-600 hover:bg-slate-50'
-                                          }`}
-                                        >
-                                          {u.toLowerCase()}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
+                              {isDirect ? (
+                                <div className="h-10 w-[90px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
+                                  —
                                 </div>
-                              </div>
+                              ) : (
+                                <div className={`flex h-10 w-[90px] items-center rounded-lg border bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-blue-50/40 ${validationErrors[`row-${row.id}-height`] ? 'border-red-400' : 'border-slate-200'}`}>
+                                  <input id={`error-row-${row.id}-height`} value={row.height} onChange={(e) => updateRow(row.id, { height: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="L" />
+                                  <div className="relative flex-shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
+                                      onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                    >
+                                      {row.heightUnit === 'FT' ? 'ft' : 'in'}
+                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                    </button>
+                                    {openUnitPickerId === `${row.id}-h` && (
+                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                                        {['FT', 'IN'].map(u => (
+                                          <button
+                                            key={u}
+                                            type="button"
+                                            onMouseDown={(e) => { e.preventDefault(); updateRow(row.id, { heightUnit: u }); setOpenUnitPickerId(null); }}
+                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                              row.heightUnit === u
+                                                ? 'bg-blue-600 text-white'
+                                                : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            {u.toLowerCase()}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
                             </td>
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">
                               {sqft > 0 ? sqft.toFixed(2) : '—'}
@@ -525,16 +541,22 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               {product?.baseRate?.toFixed(2) || '—'}
                             </td>
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-700 tabular-nums">
-                              {product?.baseRate ? (sqft * product.baseRate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'}
+                              {isDirect ? (product?.baseRate ? Number(product.baseRate).toFixed(2) : '—') : (product?.baseRate ? (sqft * product.baseRate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—')}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <div className="flex flex-col gap-1">
-                                <select value={row.eyeletType} onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })} className="h-8 w-full min-w-[80px] rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none">
-                                  <option value="NONE">None</option>
-                                  <option value="METAL">Metal</option>
-                                  <option value="PLASTIC">Plastic</option>
-                                </select>
-                              </div>
+                              {isDirect ? (
+                                <div className="h-8 w-full min-w-[80px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
+                                  —
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-1">
+                                  <select value={row.eyeletType} onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })} className="h-8 w-full min-w-[80px] rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none">
+                                    <option value="NONE">None</option>
+                                    <option value="METAL">Metal</option>
+                                    <option value="PLASTIC">Plastic</option>
+                                  </select>
+                                </div>
+                              )}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
                               <div className="flex items-center gap-1.5 min-w-[210px]">

@@ -249,11 +249,12 @@ export function QuotationBuilder() {
       const height = Number(row.height) || 0;
       const quantity = Number(row.quantity) || 0;
       const rate = product?.baseRate || 0;
-      const eyeletRate = row.eyeletType === 'METAL'
+      const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
+      const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL'
         ? product?.eyeletPricing?.metal || 0
         : row.eyeletType === 'PLASTIC'
           ? product?.eyeletPricing?.plastic || 0
-          : 0;
+          : 0);
           
       return {
         name: product?.name || 'Unknown Item',
@@ -261,7 +262,8 @@ export function QuotationBuilder() {
         height: row.heightUnit === 'IN' ? height / 12 : height,
         quantity,
         rate,
-        eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
+        isDirectSelling: isDirect,
+        eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : quantity,
         eyeletRate,
         gstRate: (product?.gst_rate || 18) / 100,
       };
@@ -270,7 +272,7 @@ export function QuotationBuilder() {
     const calculatedSummary = calculateOrderSummary(pricingRows, dCharge, 0.18, isInterstate);
 
     const items = pricingRows.map((row) => {
-      const bAmount = row.width * row.height * row.quantity * row.rate;
+      const bAmount = row.isDirectSelling ? (row.quantity * row.rate) : (row.width * row.height * row.quantity * row.rate);
       const fAmount = row.eyeletCount * row.eyeletRate;
       const sub = bAmount + fAmount;
       const itemGst = sub * row.gstRate;

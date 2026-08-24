@@ -50,17 +50,15 @@ export const calculateSqft = (width: number, height: number, quantity: number): 
   return Number((width * height * quantity).toFixed(2));
 };
 
-export const calculateRowSubtotal = (row: PricingRow & { eyeletCount?: number, eyeletRate?: number }): number => {
-  const sqft = calculateSqft(row.width, row.height, row.quantity);
-  const basePrice = sqft * row.rate;
-  
-  const eyeletPrice = (row.eyeletCount || 0) * (row.eyeletRate || 0);
-  
+export const calculateRowSubtotal = (row: PricingRow & { eyeletCount?: number, eyeletRate?: number, isDirectSelling?: boolean }): number => {
+  const isDirect = row.isDirectSelling || (!row.width && !row.height);
+  const basePrice = isDirect ? (row.quantity * row.rate) : (calculateSqft(row.width, row.height, row.quantity) * row.rate);
+  const eyeletPrice = isDirect ? 0 : ((row.eyeletCount || 0) * (row.eyeletRate || 0));
   return Number((basePrice + eyeletPrice).toFixed(2));
 };
 
 export const calculateOrderSummary = (
-  rows: (PricingRow & { eyeletCount?: number, eyeletRate?: number })[], 
+  rows: (PricingRow & { eyeletCount?: number, eyeletRate?: number, isDirectSelling?: boolean })[], 
   deliveryCharges: number = 0,
   fallbackGstRate: number = 0.18, // 18% GST default fallback
   isInterstate: boolean = false
@@ -74,9 +72,10 @@ export const calculateOrderSummary = (
   const items: ItemBreakdown[] = [];
 
   rows.forEach(row => {
-    const sqft = calculateSqft(row.width, row.height, row.quantity);
-    const rowBase = sqft * row.rate;
-    const rowEyelets = (row.eyeletCount || 0) * (row.eyeletRate || 0);
+    const isDirect = row.isDirectSelling || (!row.width && !row.height);
+    const sqft = isDirect ? 0 : calculateSqft(row.width, row.height, row.quantity);
+    const rowBase = isDirect ? (row.quantity * row.rate) : (sqft * row.rate);
+    const rowEyelets = isDirect ? 0 : ((row.eyeletCount || 0) * (row.eyeletRate || 0));
     const rowSubtotal = rowBase + rowEyelets;
     
     const currentGstRate = row.gstRate !== undefined ? row.gstRate : fallbackGstRate;
