@@ -224,8 +224,19 @@ export function GlobalOrdersPage() {
 
         totalDeliveryCharge += Number(order.allocated_logistics_amount ?? parsedAmounts.transport ?? parsedAmounts.deliveryCharges ?? 0);
 
-        if (Object.keys(orderDelivery).length === 0 && order.delivery) {
-          try { orderDelivery = typeof order.delivery === 'string' ? JSON.parse(order.delivery) : order.delivery; } catch {}
+        if (Object.keys(orderDelivery).length === 0) {
+          if (order.delivery) {
+            try {
+              const d = typeof order.delivery === 'string' ? JSON.parse(order.delivery) : order.delivery;
+              if (d && (d.choice || d.address)) orderDelivery = d;
+            } catch {}
+          }
+          if (Object.keys(orderDelivery).length === 0 && (order.dispatchInfo || (order as any).shippingAddress || (order as any).shipping_address || (order as any).deliveryChoice)) {
+            orderDelivery = {
+              choice: order.dispatchInfo?.method || (order as any).deliveryChoice || (order as any).delivery_choice,
+              address: (order as any).shippingAddress || (order as any).shipping_address || (order as any).delivery_address || (order.dispatchInfo as any)?.address
+            };
+          }
         }
       }
 
@@ -233,7 +244,17 @@ export function GlobalOrdersPage() {
 
       // Use specific invoiced order IDs as reference (comma-separated) so only selected items are marked invoiced
       const specificRef = ordersToProcess.map((o: any) => o.id.replace('ORD-', '')).join(',');
-      openDrawer('invoice', { reference: specificRef, contactId, contactName, lines: allMappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
+      const finalDeliveryMode = orderDelivery.choice || (ordersToProcess[0] as any)?.deliveryChoice || (ordersToProcess[0] as any)?.delivery?.choice || undefined;
+      const finalDeliveryAddress = orderDelivery.address || (ordersToProcess[0] as any)?.shippingAddress || (ordersToProcess[0] as any)?.shipping_address || (ordersToProcess[0] as any)?.delivery?.address || undefined;
+
+      openDrawer('invoice', {
+        reference: specificRef,
+        contactId,
+        contactName,
+        lines: allMappedLines,
+        deliveryMode: finalDeliveryMode,
+        deliveryAddress: finalDeliveryAddress
+      });
       setSiblingsModal(null);
       setTimeout(() => fetchInvoices(), 3000);
     } catch (err) {

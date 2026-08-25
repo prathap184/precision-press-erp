@@ -578,6 +578,16 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
     { description: "", quantity: "1", unitPrice: "", accountId: "", taxRateId: "" },
   ]);
 
+  function normalizeDeliveryMode(mode?: string): string {
+    if (!mode) return "";
+    const m = mode.trim().toUpperCase().replace(/[\s_-]+/g, "");
+    if (m.includes("DOOR")) return "DOOR";
+    if (m.includes("PICK") || m.includes("COUNTER") || m.includes("SELF")) return "PICKUP";
+    if (m.includes("COUR")) return "COURIER";
+    if (m.includes("TRANS")) return "TRANSPORT";
+    return mode;
+  }
+
   useEffect(() => {
     if (!contactId) {
       setSavedAddresses([]);
@@ -602,17 +612,22 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
             }
           };
 
-          // 1. Primary (billing_address_line1)
+          // 1. Order Address if provided from proxy order
+          if (initialData?.deliveryAddress) {
+            add("Order Address", initialData.deliveryAddress);
+          }
+
+          // 2. Primary (billing_address_line1)
           if (c.billing_address_line1 || c.billing_address_line2 || c.billing_city) {
             const p1 = [c.billing_address_line1, c.billing_address_line2, c.billing_city, c.billing_state, c.billing_pincode || c.billing_postalCode].filter(Boolean).join(", ");
             add("Primary", p1);
           }
-          // 2. Secondary (shipping_address_line1)
+          // 3. Secondary (shipping_address_line1)
           if (c.shipping_address_line1 || c.shipping_address_line2 || c.shipping_city) {
             const p2 = [c.shipping_address_line1, c.shipping_address_line2, c.shipping_city, c.shipping_state, c.shipping_pincode || c.shipping_postalCode].filter(Boolean).join(", ");
             add("Secondary", p2);
           }
-          // 3. Array of addresses
+          // 4. Array of addresses
           if (Array.isArray(c.addresses)) {
             c.addresses.forEach((addr: any, i: number) => {
               if (typeof addr === "string") {
@@ -630,7 +645,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
               }
             });
           } else if (c.addresses && typeof c.addresses === "object") {
-            // 4. Object of addresses { shipping, billing }
+            // 5. Object of addresses { shipping, billing }
             if (c.addresses.shipping) {
               const s = typeof c.addresses.shipping === "string" ? c.addresses.shipping : [c.addresses.shipping.line1, c.addresses.shipping.line2, c.addresses.shipping.city, c.addresses.shipping.state, c.addresses.shipping.postalCode, c.addresses.shipping.country].filter(Boolean).join(", ");
               add("Shipping Address", s);
@@ -640,26 +655,28 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
               add("Billing Address", b);
             }
           }
-          // 5. Legacy address string
+          // 6. Legacy address string
           if (c.address && typeof c.address === "string") {
             add("Legacy", c.address);
           }
 
           setSavedAddresses(list);
-          if (list.length > 0) {
-            setDeliveryAddress(list[0].address);
-          }
+          setDeliveryAddress((curr) => {
+            if (curr) return curr;
+            if (initialData?.deliveryAddress) return initialData.deliveryAddress;
+            return list.length > 0 ? list[0].address : "";
+          });
         }
       })
       .catch(() => {});
-  }, [contactId]);
+  }, [contactId, initialData?.deliveryAddress]);
 
   useEffect(() => {
     if (open && initialData) {
       if (initialData.reference) setReference(initialData.reference);
       if (initialData.lines && initialData.lines.length > 0) setLines(initialData.lines);
       if (initialData.contactId) setContactId(initialData.contactId);
-      if (initialData.deliveryMode) setDeliveryMode(initialData.deliveryMode);
+      if (initialData.deliveryMode) setDeliveryMode(normalizeDeliveryMode(initialData.deliveryMode));
       if (initialData.deliveryAddress) setDeliveryAddress(initialData.deliveryAddress);
     } else if (!open) {
       setContactId(""); setReference(""); setNotes("");

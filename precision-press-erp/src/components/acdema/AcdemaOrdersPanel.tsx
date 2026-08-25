@@ -111,9 +111,23 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
       const deliveryCharge = Number(order.allocated_logistics_amount ?? parsedAmounts.transport ?? parsedAmounts.deliveryCharges ?? 0);
       if (deliveryCharge > 0) mappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: deliveryCharge.toFixed(2), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
       let orderDelivery: any = {};
-      if (order.delivery) { try { orderDelivery = typeof order.delivery === 'string' ? JSON.parse(order.delivery) : order.delivery; } catch {} }
+      if (order.delivery) {
+        try {
+          const d = typeof order.delivery === 'string' ? JSON.parse(order.delivery) : order.delivery;
+          if (d && (d.choice || d.address)) orderDelivery = d;
+        } catch {}
+      }
+      if (Object.keys(orderDelivery).length === 0 && (order.dispatchInfo || (order as any).shippingAddress || (order as any).shipping_address || (order as any).deliveryChoice)) {
+        orderDelivery = {
+          choice: order.dispatchInfo?.method || (order as any).deliveryChoice || (order as any).delivery_choice,
+          address: (order as any).shippingAddress || (order as any).shipping_address || (order as any).delivery_address || (order.dispatchInfo as any)?.address
+        };
+      }
       const parentRef = (order as any).parent_order_id || (order as any).baseOrderId || order.id;
-      openDrawer('invoice', { reference: parentRef, contactId, contactName, lines: mappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
+      const finalDeliveryMode = orderDelivery.choice || (order as any).deliveryChoice || (order as any).delivery?.choice || undefined;
+      const finalDeliveryAddress = orderDelivery.address || (order as any).shippingAddress || (order as any).shipping_address || (order as any).delivery?.address || undefined;
+
+      openDrawer('invoice', { reference: parentRef, contactId, contactName, lines: mappedLines, deliveryMode: finalDeliveryMode, deliveryAddress: finalDeliveryAddress });
     } catch (err) {
       console.error('Failed to generate invoice', err);
       openDrawer('invoice', { reference: order.id });
