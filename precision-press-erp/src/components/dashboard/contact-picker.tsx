@@ -48,9 +48,10 @@ interface ContactPickerProps {
   onChange: (contactId: string) => void;
   type?: "customer" | "supplier";
   placeholder?: string;
+  initialContactName?: string;
 }
 
-export function ContactPicker({ value, onChange, type, placeholder = "Select contact..." }: ContactPickerProps) {
+export function ContactPicker({ value, onChange, type, placeholder = "Select contact...", initialContactName }: ContactPickerProps) {
   const [open, setOpen] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,15 +71,23 @@ export function ContactPicker({ value, onChange, type, placeholder = "Select con
     fetch(`/api/v1/contacts?${params}`, { headers })
       .then((r) => r.json())
       .then((data) => {
-        if (data.data) {
-          setContacts(data.data);
-        } else if (Array.isArray(data)) {
-          setContacts(data);
+        const list = data.data || (Array.isArray(data) ? data : []);
+        setContacts(list);
+
+        // Auto-match contact by ID or name
+        if (value || initialContactName) {
+          const match = list.find((c: any) => 
+            (value && (c.id === value || c.uid === value)) ||
+            (initialContactName && c.name?.toLowerCase() === initialContactName.toLowerCase())
+          );
+          if (match && match.id && match.id !== value) {
+            onChange(match.id);
+          }
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [type]);
+  }, [type, value, initialContactName, onChange]);
 
   useEffect(() => {
     loadContacts();
@@ -91,7 +100,11 @@ export function ContactPicker({ value, onChange, type, placeholder = "Select con
     }
   };
 
-  const selected = contacts.find((c) => c.id === value);
+  const selected = contacts.find((c) => 
+    c.id === value || 
+    (c as any).uid === value || 
+    (initialContactName && c.name?.toLowerCase() === initialContactName.toLowerCase())
+  );
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
@@ -110,6 +123,10 @@ export function ContactPicker({ value, onChange, type, placeholder = "Select con
                   {typeBadge[selected.type].label}
                 </Badge>
               )}
+            </span>
+          ) : initialContactName ? (
+            <span className="flex items-center gap-2 truncate font-semibold text-slate-800">
+              <span className="truncate">{initialContactName}</span>
             </span>
           ) : (
             <span className="text-muted-foreground">{placeholder}</span>

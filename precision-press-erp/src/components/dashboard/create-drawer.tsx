@@ -4676,7 +4676,7 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
               <SectionLabel>Receipt Details</SectionLabel>
               <div className="space-y-2">
                 <Label>Customer *</Label>
-                <ContactPicker value={contactId} onChange={setContactId} type="customer" />
+                <ContactPicker value={contactId} onChange={setContactId} type="customer" initialContactName={initialData?.contactName} />
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">

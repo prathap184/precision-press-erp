@@ -1110,56 +1110,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
 
 
-                  {/* Inline Receipt Entry for CASH/UPI */}
-                  {paymentMethodTab === 'CASH_UPI' && paymentMode !== 'COD' && (
-                    <div className="mb-4 bg-emerald-50/50 border border-emerald-200/60 rounded-xl p-4">
-                      <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-800 mb-3 flex items-center gap-1.5">
-                        Receipt Entry (Auto-Verified)
-                      </h4>
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Amount Received (₹)</label>
-                          <input type="number" placeholder={summary.grandTotal.toString()} value={vm.receiptAmount} onChange={e => vm.setReceiptAmount(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold focus:border-emerald-400 outline-none" />
-                        </div>
-                        {(paymentMode === 'BANK' || paymentMode === 'UPI') && (
-                          <>
-                            {paymentMode === 'UPI' && (
-                              <div>
-                                <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">UPI App</label>
-                                <input type="text" placeholder="PhonePe, GPay, etc." value={vm.upiApp} onChange={e => vm.setUpiApp(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none" />
-                              </div>
-                            )}
-                            <div>
-                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Bank Ledger Name</label>
-                              <select 
-                                value={vm.bankLedger} 
-                                onChange={e => vm.setBankLedger(e.target.value)} 
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none"
-                              >
-                                <option value="">Select Bank Account...</option>
-                                {vm.bankAccountsList?.map((bank: string) => (
-                                  <option key={bank} value={bank}>{bank}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">UTR / Transaction ID</label>
-                              <input type="text" placeholder="e.g. UTR123456" value={vm.utr} onChange={e => vm.setUtr(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none" />
-                            </div>
-                          </>
-                        )}
-                        <div>
-                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Reference (Optional)</label>
-                          <input type="text" placeholder="e.g. Receipt no." value={vm.receiptRef} onChange={e => vm.setReceiptRef(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none" />
-                        </div>
-                        <div>
-                          <label className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1 block">Remarks (Optional)</label>
-                          <input type="text" placeholder="Additional notes..." value={vm.receiptRemarks} onChange={e => vm.setReceiptRemarks(e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:border-emerald-400 outline-none" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                     </>
                   )}
 
