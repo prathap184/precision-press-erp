@@ -443,14 +443,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         <>
                           <select
                             id="delivery-address-select"
-                            className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none focus:border-slate-400"
+                            className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-300"
                             value={shippingAddress}
                             onChange={(e) => setShippingAddress(e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
-                                const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
-                                if (firstProductInput) firstProductInput.focus();
+                                const addAddrBtn = document.getElementById("add-address-btn");
+                                if (addAddrBtn) {
+                                  addAddrBtn.focus();
+                                } else {
+                                  const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                                  if (firstProductInput) firstProductInput.focus();
+                                }
                               }
                             }}
                           >
@@ -485,10 +490,23 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </div>
                           )}
                           <button
+                            id="add-address-btn"
                             type="button"
-                            tabIndex={-1}
                             onClick={() => setShowAddressModal(true)}
-                            className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                                if (firstProductInput) {
+                                  firstProductInput.focus();
+                                  try { (firstProductInput as HTMLInputElement).select(); } catch {}
+                                }
+                              } else if (e.key === " " || e.key === "Spacebar") {
+                                e.preventDefault();
+                                setShowAddressModal(true);
+                              }
+                            }}
+                            className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer focus:ring-2 focus:ring-blue-400 focus:outline-none rounded px-1"
                           >
                             + Add Address
                           </button>
@@ -498,7 +516,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           id="error-shippingAddress"
                           type="button"
                           onClick={() => setShowAddressModal(true)}
-                          className={`flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed text-xs font-bold uppercase tracking-widest transition-all ${
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              setShowAddressModal(true);
+                            }
+                          }}
+                          className={`flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed text-xs font-bold uppercase tracking-widest transition-all focus:ring-2 focus:ring-blue-400 focus:outline-none ${
                             validationErrors['shippingAddress'] ? 'border-red-400 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
                           }`}
                         >
