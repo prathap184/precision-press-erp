@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Sliders, Check, X, Search, RefreshCw, Layers } from "lucide-react";
+import { Sliders, Check, X, Search, RefreshCw, Type, Monitor, Apple, Terminal } from "lucide-react";
 
 export interface TypographySettings {
   fontFamily: string;
@@ -19,126 +19,328 @@ const DEFAULT_SETTINGS: TypographySettings = {
 
 export interface FontOption {
   name: string;
-  category: "Mono" | "Sans" | "Serif" | "Display";
+  category: "Mono" | "Windows" | "Mac" | "Sans" | "Serif";
   stack: string;
   tag: string;
   googleFontName?: string;
 }
 
 const ALL_FONT_OPTIONS: FontOption[] = [
-  // ─── MONOSPACE FONTS ───
+  // ══════════════════════════════════════════════════════════════
+  // 1. ALL TYPES OF MONOSPACE (26+ MONO FONTS)
+  // ══════════════════════════════════════════════════════════════
   {
     name: "SF Mono",
     category: "Mono",
     stack: "'SF Mono', 'SFMono-Regular', ui-monospace, Menlo, Monaco, Consolas, 'Liberation Mono', monospace",
-    tag: "Apple Clean",
+    tag: "Apple Developer Mono",
   },
   {
     name: "JetBrains Mono",
     category: "Mono",
     stack: "'JetBrains Mono', monospace",
-    tag: "IDE Precision",
+    tag: "IDE Precision Mono",
     googleFontName: "JetBrains+Mono",
+  },
+  {
+    name: "Cascadia Code",
+    category: "Mono",
+    stack: "'Cascadia Code', 'Cascadia Mono', Consolas, monospace",
+    tag: "Microsoft Windows Terminal",
   },
   {
     name: "Fira Code",
     category: "Mono",
     stack: "'Fira Code', monospace",
-    tag: "Industrial Code",
+    tag: "Mozilla Industrial Mono",
     googleFontName: "Fira+Code",
+  },
+  {
+    name: "Consolas",
+    category: "Mono",
+    stack: "Consolas, 'Lucida Console', Monaco, monospace",
+    tag: "Windows Native Mono",
   },
   {
     name: "Roboto Mono",
     category: "Mono",
     stack: "'Roboto Mono', monospace",
-    tag: "Google Modern",
+    tag: "Google Modern Mono",
     googleFontName: "Roboto+Mono",
   },
   {
     name: "IBM Plex Mono",
     category: "Mono",
     stack: "'IBM Plex Mono', monospace",
-    tag: "Corporate Tech",
+    tag: "IBM Corporate Tech",
     googleFontName: "IBM+Plex+Mono",
   },
   {
     name: "Source Code Pro",
     category: "Mono",
     stack: "'Source Code Pro', monospace",
-    tag: "Adobe Studio",
+    tag: "Adobe Studio Mono",
     googleFontName: "Source+Code+Pro",
   },
   {
     name: "Inconsolata",
     category: "Mono",
     stack: "'Inconsolata', monospace",
-    tag: "High Legibility",
+    tag: "High-Density Readability",
     googleFontName: "Inconsolata",
+  },
+  {
+    name: "Menlo",
+    category: "Mono",
+    stack: "Menlo, 'SF Mono', Monaco, monospace",
+    tag: "macOS Developer Standard",
+  },
+  {
+    name: "Monaco",
+    category: "Mono",
+    stack: "Monaco, Menlo, 'Courier New', monospace",
+    tag: "Classic macOS Terminal",
+  },
+  {
+    name: "Lucida Console",
+    category: "Mono",
+    stack: "'Lucida Console', Monaco, monospace",
+    tag: "Classic Windows Mono",
+  },
+  {
+    name: "Courier New",
+    category: "Mono",
+    stack: "'Courier New', Courier, monospace",
+    tag: "Universal System Mono",
+  },
+  {
+    name: "Courier Prime",
+    category: "Mono",
+    stack: "'Courier Prime', monospace",
+    tag: "Clean Typewriter",
+    googleFontName: "Courier+Prime",
   },
   {
     name: "Space Mono",
     category: "Mono",
     stack: "'Space Mono', monospace",
-    tag: "Geometric Retro",
+    tag: "Geometric Retro Mono",
     googleFontName: "Space+Mono",
   },
   {
     name: "Ubuntu Mono",
     category: "Mono",
     stack: "'Ubuntu Mono', monospace",
-    tag: "Linux Terminal",
+    tag: "Linux Terminal Standard",
     googleFontName: "Ubuntu+Mono",
   },
   {
     name: "DM Mono",
     category: "Mono",
     stack: "'DM Mono', monospace",
-    tag: "Modern Minimal",
+    tag: "Minimalist Modern Mono",
     googleFontName: "DM+Mono",
   },
   {
     name: "Overpass Mono",
     category: "Mono",
     stack: "'Overpass Mono', monospace",
-    tag: "Red Hat System",
+    tag: "Red Hat System Mono",
     googleFontName: "Overpass+Mono",
   },
   {
     name: "PT Mono",
     category: "Mono",
     stack: "'PT Mono', monospace",
-    tag: "Compact Grid",
+    tag: "Compact Grid Mono",
     googleFontName: "PT+Mono",
   },
   {
     name: "Share Tech Mono",
     category: "Mono",
     stack: "'Share Tech Mono', monospace",
-    tag: "Military HUD",
+    tag: "Military HUD Terminal",
     googleFontName: "Share+Tech+Mono",
-  },
-  {
-    name: "Courier Prime",
-    category: "Mono",
-    stack: "'Courier Prime', monospace",
-    tag: "Classic Typewriter",
-    googleFontName: "Courier+Prime",
   },
   {
     name: "Anonymous Pro",
     category: "Mono",
     stack: "'Anonymous Pro', monospace",
-    tag: "Hacker Terminal",
+    tag: "Hacker Terminal Classic",
     googleFontName: "Anonymous+Pro",
   },
   {
-    name: "Consolas",
+    name: "Oxygen Mono",
     category: "Mono",
-    stack: "Consolas, 'Lucida Console', Monaco, monospace",
-    tag: "Windows Native",
+    stack: "'Oxygen Mono', monospace",
+    tag: "KDE Desktop Mono",
+    googleFontName: "Oxygen+Mono",
+  },
+  {
+    name: "Nova Mono",
+    category: "Mono",
+    stack: "'Nova Mono', monospace",
+    tag: "Modern Geometric",
+    googleFontName: "Nova+Mono",
+  },
+  {
+    name: "Cutive Mono",
+    category: "Mono",
+    stack: "'Cutive Mono', monospace",
+    tag: "Vintage Typewriter",
+    googleFontName: "Cutive+Mono",
+  },
+  {
+    name: "VT323",
+    category: "Mono",
+    stack: "'VT323', monospace",
+    tag: "Retro 80s Terminal",
+    googleFontName: "VT323",
   },
 
-  // ─── SANS-SERIF MODERN FONTS ───
+  // ══════════════════════════════════════════════════════════════
+  // 2. WINDOWS SYSTEM & ENTERPRISE FONTS
+  // ══════════════════════════════════════════════════════════════
+  {
+    name: "Segoe UI",
+    category: "Windows",
+    stack: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+    tag: "Windows Native Standard",
+  },
+  {
+    name: "Calibri",
+    category: "Windows",
+    stack: "Calibri, Candara, Segoe, 'Segoe UI', Optima, Arial, sans-serif",
+    tag: "Microsoft Office Classic",
+  },
+  {
+    name: "Arial",
+    category: "Windows",
+    stack: "Arial, Helvetica, sans-serif",
+    tag: "Universal Clean Sans",
+  },
+  {
+    name: "Tahoma",
+    category: "Windows",
+    stack: "Tahoma, Verdana, Segoe, sans-serif",
+    tag: "Windows Dialog Classic",
+  },
+  {
+    name: "Verdana",
+    category: "Windows",
+    stack: "Verdana, Geneva, sans-serif",
+    tag: "Wide High-Legibility",
+  },
+  {
+    name: "Trebuchet MS",
+    category: "Windows",
+    stack: "'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', sans-serif",
+    tag: "Dynamic Clean Sans",
+  },
+  {
+    name: "Candara",
+    category: "Windows",
+    stack: "Candara, Calibri, Segoe, 'Segoe UI', Optima, sans-serif",
+    tag: "Fluent UI Microsoft",
+  },
+  {
+    name: "Corbel",
+    category: "Windows",
+    stack: "Corbel, 'Lucida Grande', 'Lucida Sans Unicode', sans-serif",
+    tag: "Microsoft Soft Sans",
+  },
+  {
+    name: "Century Gothic",
+    category: "Windows",
+    stack: "'Century Gothic', AppleGothic, sans-serif",
+    tag: "Geometric Clean",
+  },
+  {
+    name: "Franklin Gothic",
+    category: "Windows",
+    stack: "'Franklin Gothic Medium', 'Arial Narrow Bold', Arial, sans-serif",
+    tag: "Industrial News Bold",
+  },
+  {
+    name: "Georgia",
+    category: "Windows",
+    stack: "Georgia, Times, 'Times New Roman', serif",
+    tag: "Standard Windows Serif",
+  },
+  {
+    name: "Times New Roman",
+    category: "Windows",
+    stack: "'Times New Roman', Times, serif",
+    tag: "Classic Document Serif",
+  },
+  {
+    name: "Impact",
+    category: "Windows",
+    stack: "Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif",
+    tag: "Heavy Headline Bold",
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  // 3. APPLE / MAC SYSTEM FONTS
+  // ══════════════════════════════════════════════════════════════
+  {
+    name: "SF Pro (System)",
+    category: "Mac",
+    stack: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', system-ui, sans-serif",
+    tag: "Apple Native System UI",
+  },
+  {
+    name: "Helvetica Neue",
+    category: "Mac",
+    stack: "'Helvetica Neue', Helvetica, Arial, sans-serif",
+    tag: "Swiss International Style",
+  },
+  {
+    name: "Avenir Next",
+    category: "Mac",
+    stack: "'Avenir Next', Avenir, 'Century Gothic', sans-serif",
+    tag: "Modern Apple Geometry",
+  },
+  {
+    name: "Optima",
+    category: "Mac",
+    stack: "Optima, Segoe, 'Segoe UI', Candara, Calibri, Arial, sans-serif",
+    tag: "Humanist Luxury Sans",
+  },
+  {
+    name: "Gill Sans",
+    category: "Mac",
+    stack: "'Gill Sans', 'Gill Sans MT', Calibri, sans-serif",
+    tag: "British Design Classic",
+  },
+  {
+    name: "Baskerville",
+    category: "Mac",
+    stack: "Baskerville, 'Baskerville Old Face', 'Hoefler Text', Garamond, 'Times New Roman', serif",
+    tag: "Refined British Serif",
+  },
+  {
+    name: "Didot",
+    category: "Mac",
+    stack: "Didot, 'Bodoni MT', 'Cinzel', serif",
+    tag: "High Fashion Luxury",
+  },
+  {
+    name: "Charter",
+    category: "Mac",
+    stack: "Charter, 'Bitstream Charter', Georgia, serif",
+    tag: "Bitstream Editorial Serif",
+  },
+  {
+    name: "Palatino",
+    category: "Mac",
+    stack: "Palatino, 'Palatino Linotype', 'Book Antiqua', Georgia, serif",
+    tag: "Executive Renaissance Serif",
+  },
+
+  // ══════════════════════════════════════════════════════════════
+  // 4. MODERN WEB & DESIGN SYSTEM SANS FONTS
+  // ══════════════════════════════════════════════════════════════
   {
     name: "Inter",
     category: "Sans",
@@ -150,14 +352,8 @@ const ALL_FONT_OPTIONS: FontOption[] = [
     name: "Plus Jakarta Sans",
     category: "Sans",
     stack: "'Plus Jakarta Sans', sans-serif",
-    tag: "SaaS Premium",
+    tag: "Modern SaaS Premium",
     googleFontName: "Plus+Jakarta+Sans",
-  },
-  {
-    name: "Geist",
-    category: "Sans",
-    stack: "'Geist', system-ui, sans-serif",
-    tag: "Vercel Modern",
   },
   {
     name: "Poppins",
@@ -170,14 +366,14 @@ const ALL_FONT_OPTIONS: FontOption[] = [
     name: "Outfit",
     category: "Sans",
     stack: "'Outfit', sans-serif",
-    tag: "Clean Luxury",
+    tag: "Clean Luxury Brand",
     googleFontName: "Outfit",
   },
   {
     name: "Montserrat",
     category: "Sans",
     stack: "'Montserrat', sans-serif",
-    tag: "Bold Modern",
+    tag: "Urban Architectural",
     googleFontName: "Montserrat",
   },
   {
@@ -191,14 +387,14 @@ const ALL_FONT_OPTIONS: FontOption[] = [
     name: "Urbanist",
     category: "Sans",
     stack: "'Urbanist', sans-serif",
-    tag: "High Fashion",
+    tag: "High-Tech Minimalist",
     googleFontName: "Urbanist",
   },
   {
     name: "Lexend",
     category: "Sans",
     stack: "'Lexend', sans-serif",
-    tag: "Fast Readability",
+    tag: "Reading Speed Optimized",
     googleFontName: "Lexend",
   },
   {
@@ -226,51 +422,53 @@ const ALL_FONT_OPTIONS: FontOption[] = [
     name: "Open Sans",
     category: "Sans",
     stack: "'Open Sans', sans-serif",
-    tag: "Classic Web",
+    tag: "Classic Web Neutral",
     googleFontName: "Open+Sans",
   },
   {
     name: "Work Sans",
     category: "Sans",
     stack: "'Work Sans', sans-serif",
-    tag: "Clean Typography",
+    tag: "Graphic Design Clean",
     googleFontName: "Work+Sans",
   },
   {
     name: "Public Sans",
     category: "Sans",
     stack: "'Public Sans', sans-serif",
-    tag: "Government Precision",
+    tag: "US Government Precision",
     googleFontName: "Public+Sans",
   },
   {
     name: "Roboto",
     category: "Sans",
     stack: "'Roboto', sans-serif",
-    tag: "Android Standard",
+    tag: "Google Android Standard",
     googleFontName: "Roboto",
   },
 
-  // ─── SERIF & EDITORIAL ───
+  // ══════════════════════════════════════════════════════════════
+  // 5. EDITORIAL & SERIF FONTS
+  // ══════════════════════════════════════════════════════════════
   {
     name: "Playfair Display",
     category: "Serif",
     stack: "'Playfair Display', serif",
-    tag: "Luxury Editorial",
+    tag: "Vogue Luxury Editorial",
     googleFontName: "Playfair+Display",
   },
   {
     name: "Merriweather",
     category: "Serif",
     stack: "'Merriweather', serif",
-    tag: "Newspaper Classic",
+    tag: "Newspaper High-Legibility",
     googleFontName: "Merriweather",
   },
   {
     name: "Lora",
     category: "Serif",
     stack: "'Lora', serif",
-    tag: "Elegant Calligraphy",
+    tag: "Contemporary Calligraphy",
     googleFontName: "Lora",
   },
   {
@@ -295,11 +493,11 @@ const WEIGHT_OPTIONS = [
 function applyTypography(settings: TypographySettings) {
   if (typeof document === "undefined") return;
 
-  const fontObj = ALL_FONT_OPTIONS.find((f) => f.name === settings.fontFamily) || ALL_FONT_OPTIONS[0];
-  const fontStack = fontObj.stack;
+  const fontObj = ALL_FONT_OPTIONS.find((f) => f.name === settings.fontFamily);
+  const fontStack = fontObj ? fontObj.stack : `'${settings.fontFamily}', monospace, sans-serif`;
 
   // Dynamically load Google Font if needed
-  if (fontObj.googleFontName) {
+  if (fontObj && fontObj.googleFontName) {
     const linkId = `google-font-${fontObj.googleFontName.replace(/\+/g, "-")}`;
     if (!document.getElementById(linkId)) {
       const link = document.createElement("link");
@@ -359,7 +557,8 @@ export function TypographyStudio() {
   const [isOpen, setIsOpen] = useState(false);
   const [settings, setSettings] = useState<TypographySettings>(DEFAULT_SETTINGS);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<"ALL" | "Mono" | "Sans" | "Serif">("ALL");
+  const [customFontInput, setCustomFontInput] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<"ALL" | "Mono" | "Windows" | "Mac" | "Sans" | "Serif">("ALL");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -383,6 +582,13 @@ export function TypographyStudio() {
     try {
       localStorage.setItem("erp_typography_settings", JSON.stringify(updated));
     } catch {}
+  };
+
+  const handleApplyCustomFont = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customFontInput.trim()) return;
+    updateSetting({ fontFamily: customFontInput.trim() });
+    setCustomFontInput("");
   };
 
   const handleReset = () => {
@@ -415,7 +621,7 @@ export function TypographyStudio() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-2.5 rounded-full bg-slate-900/95 text-white px-5 py-3 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur-md border border-slate-700/80 hover:bg-slate-950 hover:scale-105 transition-all duration-200 group cursor-pointer"
+          className="flex items-center gap-3 rounded-full bg-slate-900/95 text-white px-5 py-3 shadow-[0_12px_45px_rgba(0,0,0,0.4)] backdrop-blur-md border border-slate-700/80 hover:bg-slate-950 hover:scale-105 transition-all duration-200 group cursor-pointer"
           title="Open Live Font & Typography Studio"
         >
           <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-xs font-black text-white shadow-sm">
@@ -434,9 +640,9 @@ export function TypographyStudio() {
 
       {/* Large Studio Window (Big Box & Searchable) */}
       {isOpen && (
-        <div className="w-[500px] max-w-[95vw] max-h-[90vh] flex flex-col rounded-3xl bg-white text-slate-900 p-6 shadow-[0_25px_60px_rgba(0,0,0,0.3)] border border-slate-200/90 backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="w-[540px] max-w-[95vw] max-h-[92vh] flex flex-col rounded-3xl bg-white text-slate-900 p-6 shadow-[0_30px_70px_rgba(0,0,0,0.35)] border border-slate-200/90 backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-100 shrink-0">
+          <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-slate-100 shrink-0">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-2xl bg-blue-50 text-blue-600 shadow-sm border border-blue-100">
                 <Sliders size={20} />
@@ -445,11 +651,11 @@ export function TypographyStudio() {
                 <h3 className="text-sm font-black uppercase tracking-wider text-slate-900 flex items-center gap-2">
                   Typography Studio
                   <span className="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded-md font-black">
-                    LIVE
+                    70+ FONTS LIVE
                   </span>
                 </h3>
                 <p className="text-[11px] font-medium text-slate-400">
-                  Search & preview 35+ typography styles across the entire website
+                  Instant real-time preview across the entire website
                 </p>
               </div>
             </div>
@@ -461,13 +667,13 @@ export function TypographyStudio() {
             </button>
           </div>
 
-          {/* Search Bar & Category Filter */}
-          <div className="mb-4 space-y-2 shrink-0">
+          {/* Search Bar & Custom Font Name Input */}
+          <div className="mb-3 space-y-2 shrink-0">
             <div className="relative">
               <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
-                placeholder="Search by font name (e.g. JetBrains, SF Mono, Inter, Fira)..."
+                placeholder="Search 70+ fonts (JetBrains, SF Mono, Segoe UI, Arial, Cascadia)..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-11 pl-10 pr-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-normal focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all"
@@ -483,28 +689,47 @@ export function TypographyStudio() {
             </div>
 
             {/* Category Filter Pills */}
-            <div className="flex gap-1.5 p-1 bg-slate-100 rounded-xl">
-              {(["ALL", "Mono", "Sans", "Serif"] as const).map((cat) => (
+            <div className="flex gap-1 p-1 bg-slate-100 rounded-2xl overflow-x-auto">
+              {[
+                { id: "ALL", label: "All Fonts" },
+                { id: "Mono", label: "25+ Mono", icon: Terminal },
+                { id: "Windows", label: "Windows", icon: Monitor },
+                { id: "Mac", label: "Apple/Mac", icon: Apple },
+                { id: "Sans", label: "Sans-Serif" },
+                { id: "Serif", label: "Serif" },
+              ].map((cat: any) => (
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                    selectedCategory === cat
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`flex-1 py-1.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap flex items-center justify-center gap-1 ${
+                    selectedCategory === cat.id
                       ? "bg-white text-slate-900 shadow-sm"
                       : "text-slate-500 hover:text-slate-900"
                   }`}
                 >
-                  {cat === "ALL" ? "All Fonts" : `${cat}space`}
+                  {cat.label}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Font Family Selection Grid (Big Scrollable Area) */}
-          <div className="mb-5 flex-1 min-h-[160px] max-h-[260px] overflow-y-auto pr-1">
+          <div className="mb-4 flex-1 min-h-[160px] max-h-[250px] overflow-y-auto pr-1">
             {filteredFonts.length === 0 ? (
-              <div className="p-8 text-center text-xs font-semibold text-slate-400 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                No fonts matching "{searchQuery}". Try another name!
+              <div className="p-6 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <p className="text-xs font-semibold text-slate-500 mb-2">No presets matching "{searchQuery}"</p>
+                <form onSubmit={handleApplyCustomFont} className="flex gap-2 max-w-xs mx-auto">
+                  <input
+                    type="text"
+                    placeholder="Type custom font name..."
+                    value={customFontInput}
+                    onChange={(e) => setCustomFontInput(e.target.value)}
+                    className="flex-1 px-3 py-1.5 text-xs border rounded-xl"
+                  />
+                  <button type="submit" className="px-3 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold">
+                    Apply
+                  </button>
+                </form>
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
@@ -520,7 +745,7 @@ export function TypographyStudio() {
                           : "bg-slate-50 text-slate-700 border-slate-200/80 hover:bg-slate-100/90 font-semibold"
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center justify-between mb-0.5">
                         <span className="text-xs font-black truncate">{f.name}</span>
                         {isSelected ? (
                           <Check size={14} className="text-blue-400 shrink-0 ml-1" />
@@ -545,10 +770,10 @@ export function TypographyStudio() {
           </div>
 
           {/* Size & Weight Controls (Bottom Area) */}
-          <div className="space-y-4 pt-4 border-t border-slate-100 shrink-0 bg-white">
+          <div className="space-y-3.5 pt-3.5 border-t border-slate-100 shrink-0 bg-white">
             {/* Font Size */}
             <div>
-              <div className="flex justify-between items-center mb-1.5">
+              <div className="flex justify-between items-center mb-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   Font Size
                 </label>
@@ -561,7 +786,7 @@ export function TypographyStudio() {
                   <button
                     key={size}
                     onClick={() => updateSetting({ fontSize: size })}
-                    className={`flex-1 py-2 rounded-xl text-xs font-black transition-all ${
+                    className={`flex-1 py-1.5 rounded-xl text-xs font-black transition-all ${
                       settings.fontSize === size
                         ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
                         : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
@@ -575,7 +800,7 @@ export function TypographyStudio() {
 
             {/* Font Weight */}
             <div>
-              <div className="flex justify-between items-center mb-1.5">
+              <div className="flex justify-between items-center mb-1">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                   Weight (Boldness)
                 </label>
@@ -588,7 +813,7 @@ export function TypographyStudio() {
                   <button
                     key={w.weight}
                     onClick={() => updateSetting({ fontWeight: w.weight })}
-                    className={`flex-1 py-2 rounded-xl text-[10px] font-black transition-all ${
+                    className={`flex-1 py-1.5 rounded-xl text-[10px] font-black transition-all ${
                       settings.fontWeight === w.weight
                         ? "bg-white text-slate-900 shadow-sm ring-1 ring-slate-200"
                         : "text-slate-500 hover:text-slate-900 hover:bg-white/50"
@@ -600,8 +825,26 @@ export function TypographyStudio() {
               </div>
             </div>
 
+            {/* Custom Font Quick Input Bar */}
+            <form onSubmit={handleApplyCustomFont} className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-1.5">
+              <Type size={14} className="text-slate-400 ml-2" />
+              <input
+                type="text"
+                placeholder="Or type any custom font name (e.g. Comic Sans MS, Monaco, Georgia)..."
+                value={customFontInput}
+                onChange={(e) => setCustomFontInput(e.target.value)}
+                className="flex-1 bg-transparent text-xs font-bold text-slate-800 placeholder:text-slate-400 placeholder:font-normal outline-none"
+              />
+              <button
+                type="submit"
+                className="px-3 py-1 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-slate-800 transition-colors"
+              >
+                Apply
+              </button>
+            </form>
+
             {/* Footer Actions */}
-            <div className="pt-3 border-t border-slate-100 flex justify-between items-center">
+            <div className="pt-2 border-t border-slate-100 flex justify-between items-center">
               <button
                 onClick={handleReset}
                 className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-slate-700 transition-colors"
