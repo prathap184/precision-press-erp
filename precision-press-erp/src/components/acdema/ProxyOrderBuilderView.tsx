@@ -224,6 +224,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     fullName: '', phone: '', pincode: '', state: '', stateCode: '', district: '', city: '', houseNo: '', roadName: '', area: '', addressType: 'Home'
   });
 
+  useEffect(() => {
+    if (showAddressModal) {
+      setTimeout(() => {
+        const houseNoInput = document.getElementById('modal-house-no') as HTMLInputElement;
+        if (houseNoInput) {
+          houseNoInput.focus();
+          try { houseNoInput.select(); } catch {}
+        }
+      }, 100);
+    }
+  }, [showAddressModal]);
+
   const productImages = useMemo(() => {
     return rows
       .flatMap(r => {
@@ -1479,24 +1491,168 @@ const gstRate = product?.gst_rate || 18;
             <div
               role="dialog"
               aria-modal="true"
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setShowAddressModal(false);
+                  setTimeout(() => {
+                    const btn = document.getElementById("add-address-btn") || document.getElementById("error-shippingAddress");
+                    if (btn) btn.focus();
+                  }, 80);
+                }
+              }}
               className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm"
             >
-              <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
+              <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl border border-slate-100">
                 <div className="mb-6 flex items-center justify-between">
                   <h3 className="text-xl font-black text-slate-900">Add Delivery Address</h3>
-                  <button type="button" tabIndex={-1} onClick={() => setShowAddressModal(false)} className="text-slate-400 hover:text-slate-900">✕</button>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={() => {
+                      setShowAddressModal(false);
+                      setTimeout(() => {
+                        const btn = document.getElementById("add-address-btn") || document.getElementById("error-shippingAddress");
+                        if (btn) btn.focus();
+                      }, 80);
+                    }}
+                    className="text-slate-400 hover:text-slate-900 font-bold text-lg"
+                  >
+                    ✕
+                  </button>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <input id="modal-house-no" placeholder="House No." value={addressForm.houseNo} onChange={(e) => setAddressForm(f => ({ ...f, houseNo: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none md:col-span-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-                  <input id="modal-road-name" placeholder="Road Name" value={addressForm.roadName} onChange={(e) => setAddressForm(f => ({ ...f, roadName: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none md:col-span-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-                  <input id="modal-area" placeholder="Area / Locality" value={addressForm.area} onChange={(e) => setAddressForm(f => ({ ...f, area: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-                  <input id="modal-city" placeholder="City" value={addressForm.city} onChange={(e) => setAddressForm(f => ({ ...f, city: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-                  <input id="modal-district" placeholder="District" value={addressForm.district} onChange={(e) => setAddressForm(f => ({ ...f, district: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
-                  <select id="modal-state" value={addressForm.state} onChange={(e) => setAddressForm(f => ({ ...f, state: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none appearance-none cursor-pointer focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                  <input
+                    id="modal-house-no"
+                    placeholder="House No."
+                    value={addressForm.houseNo}
+                    onChange={(e) => setAddressForm(f => ({ ...f, houseNo: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const next = document.getElementById("modal-road-name");
+                        if (next) next.focus();
+                      } else if (e.key === "Backspace" && !addressForm.houseNo) {
+                        e.preventDefault();
+                        setShowAddressModal(false);
+                        setTimeout(() => {
+                          const btn = document.getElementById("add-address-btn") || document.getElementById("error-shippingAddress");
+                          if (btn) btn.focus();
+                        }, 80);
+                      }
+                    }}
+                    className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none md:col-span-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                  />
+                  <input
+                    id="modal-road-name"
+                    placeholder="Road Name"
+                    value={addressForm.roadName}
+                    onChange={(e) => setAddressForm(f => ({ ...f, roadName: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const next = document.getElementById("modal-area");
+                        if (next) next.focus();
+                      } else if (e.key === "Backspace" && !addressForm.roadName) {
+                        e.preventDefault();
+                        const prev = document.getElementById("modal-house-no");
+                        if (prev) prev.focus();
+                      }
+                    }}
+                    className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none md:col-span-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                  />
+                  <input
+                    id="modal-area"
+                    placeholder="Area / Locality"
+                    value={addressForm.area}
+                    onChange={(e) => setAddressForm(f => ({ ...f, area: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const next = document.getElementById("modal-city");
+                        if (next) next.focus();
+                      } else if (e.key === "Backspace" && !addressForm.area) {
+                        e.preventDefault();
+                        const prev = document.getElementById("modal-road-name");
+                        if (prev) prev.focus();
+                      }
+                    }}
+                    className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                  />
+                  <input
+                    id="modal-city"
+                    placeholder="City"
+                    value={addressForm.city}
+                    onChange={(e) => setAddressForm(f => ({ ...f, city: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const next = document.getElementById("modal-district");
+                        if (next) next.focus();
+                      } else if (e.key === "Backspace" && !addressForm.city) {
+                        e.preventDefault();
+                        const prev = document.getElementById("modal-area");
+                        if (prev) prev.focus();
+                      }
+                    }}
+                    className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                  />
+                  <input
+                    id="modal-district"
+                    placeholder="District"
+                    value={addressForm.district}
+                    onChange={(e) => setAddressForm(f => ({ ...f, district: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const next = document.getElementById("modal-state");
+                        if (next) next.focus();
+                      } else if (e.key === "Backspace" && !addressForm.district) {
+                        e.preventDefault();
+                        const prev = document.getElementById("modal-city");
+                        if (prev) prev.focus();
+                      }
+                    }}
+                    className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                  />
+                  <select
+                    id="modal-state"
+                    value={addressForm.state}
+                    onChange={(e) => setAddressForm(f => ({ ...f, state: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const next = document.getElementById("modal-state-code");
+                        if (next) next.focus();
+                      } else if (e.key === "Backspace") {
+                        e.preventDefault();
+                        const prev = document.getElementById("modal-district");
+                        if (prev) prev.focus();
+                      }
+                    }}
+                    className="h-12 rounded-xl border-2 border-slate-200 bg-white px-4 text-sm font-semibold outline-none appearance-none cursor-pointer focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 transition-all"
+                  >
                     <option value="" disabled>Select State</option>
                     {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
-                  <input id="modal-state-code" placeholder="State Code" value={addressForm.stateCode} onChange={(e) => setAddressForm(f => ({ ...f, stateCode: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                  <input
+                    id="modal-state-code"
+                    placeholder="State Code"
+                    value={addressForm.stateCode}
+                    onChange={(e) => setAddressForm(f => ({ ...f, stateCode: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const next = document.getElementById("modal-pincode");
+                        if (next) next.focus();
+                      } else if (e.key === "Backspace" && !addressForm.stateCode) {
+                        e.preventDefault();
+                        const prev = document.getElementById("modal-state");
+                        if (prev) prev.focus();
+                      }
+                    }}
+                    className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                  />
                   <input
                     id="modal-pincode"
                     placeholder="Pincode"
@@ -1507,16 +1663,40 @@ const gstRate = product?.gst_rate || 18;
                         e.preventDefault();
                         const saveBtn = document.getElementById("modal-save-address-btn");
                         if (saveBtn) saveBtn.focus();
+                      } else if (e.key === "Backspace" && !addressForm.pincode) {
+                        e.preventDefault();
+                        const prev = document.getElementById("modal-state-code");
+                        if (prev) prev.focus();
                       }
                     }}
-                    className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                    className="h-12 rounded-xl border-2 border-slate-200 bg-slate-50 px-4 text-sm font-semibold outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
                   />
                 </div>
                 <div className="mt-8 flex gap-3">
-                  <button type="button" onClick={() => setShowAddressModal(false)} className="h-12 flex-1 rounded-xl bg-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-200">Cancel</button>
+                  <button
+                    id="modal-cancel-btn"
+                    type="button"
+                    onClick={() => {
+                      setShowAddressModal(false);
+                      setTimeout(() => {
+                        const btn = document.getElementById("add-address-btn") || document.getElementById("error-shippingAddress");
+                        if (btn) btn.focus();
+                      }, 80);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace") {
+                        e.preventDefault();
+                        const prev = document.getElementById("modal-pincode");
+                        if (prev) prev.focus();
+                      }
+                    }}
+                    className="h-12 flex-1 rounded-xl bg-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-200 focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 border-transparent transition-all"
+                  >
+                    Cancel
+                  </button>
                   <button
                     id="modal-save-address-btn"
-                    type="submit"
+                    type="button"
                     onClick={async () => {
                       const success = await handleAddDeliveryAddress({
                         pincode: addressForm.pincode, state: addressForm.state, stateCode: addressForm.stateCode, district: addressForm.district, city: addressForm.city, houseNumber: addressForm.houseNo, roadName: addressForm.roadName, area: addressForm.area
@@ -1532,8 +1712,15 @@ const gstRate = product?.gst_rate || 18;
                         }, 120);
                       }
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Backspace") {
+                        e.preventDefault();
+                        const prev = document.getElementById("modal-pincode");
+                        if (prev) prev.focus();
+                      }
+                    }}
                     disabled={addingAddress}
-                    className="h-12 flex-1 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50"
+                    className="h-12 flex-1 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50 focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 border-transparent transition-all"
                   >
                     {addingAddress ? 'Saving...' : 'Save Address'}
                   </button>
