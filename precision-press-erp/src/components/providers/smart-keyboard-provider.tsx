@@ -123,12 +123,7 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           return;
         }
 
-        // Checkbox: toggle check state on Enter and move to next
-        if (tagName === "input" && inputType === "checkbox") {
-          const cb = target as HTMLInputElement;
-          cb.checked = !cb.checked;
-          cb.dispatchEvent(new Event("change", { bubbles: true }));
-        }
+        // Checkbox: preserve checked state and advance to next field on Enter
 
         // If target is inside a custom dropdown search box and a dropdown item is highlighted,
         // let the picker's onKeyDown handler select the item first.
