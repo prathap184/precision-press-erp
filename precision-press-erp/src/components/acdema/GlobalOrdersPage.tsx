@@ -139,11 +139,21 @@ export function GlobalOrdersPage() {
       const orgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrgId') : null;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (orgId) headers['x-organization-id'] = orgId;
-      let contactId: string | undefined;
-      const contactName = firstOrder.customerSnapshot?.name;
+      const contactName = firstOrder.customerSnapshot?.displayName || firstOrder.customerSnapshot?.name || firstOrder.customerSnapshot?.companyName || firstOrder.customerName || '';
+      let contactId: string | undefined = firstOrder.customerId || firstOrder.customerSnapshot?.uid || firstOrder.customerSnapshot?.id;
+
       if (contactName && contactName !== 'Guest') {
-        const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=1`, { headers });
-        if (sr.ok) { const sd = await sr.json(); if (sd.data?.length > 0) contactId = sd.data[0].id; }
+        const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=10`, { headers });
+        if (sr.ok) {
+          const sd = await sr.json();
+          const list = sd.data || (Array.isArray(sd) ? sd : []);
+          const match = list.find((c: any) => c.name?.toLowerCase() === contactName.toLowerCase() || (contactId && (c.id === contactId || c.uid === contactId)));
+          if (match) {
+            contactId = match.id;
+          } else if (list.length > 0) {
+            contactId = list[0].id;
+          }
+        }
         if (!contactId) {
           const cr = await fetch('/api/v1/contacts', { method: 'POST', headers, body: JSON.stringify({ name: contactName, phone: firstOrder.customerSnapshot?.phone || null, type: 'customer' }) });
           if (cr.ok) { const cd = await cr.json(); if (cd.contact) contactId = cd.contact.id; }
@@ -223,7 +233,7 @@ export function GlobalOrdersPage() {
 
       // Use specific invoiced order IDs as reference (comma-separated) so only selected items are marked invoiced
       const specificRef = ordersToProcess.map((o: any) => o.id.replace('ORD-', '')).join(',');
-      openDrawer('invoice', { reference: specificRef, contactId, lines: allMappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
+      openDrawer('invoice', { reference: specificRef, contactId, contactName, lines: allMappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
       setSiblingsModal(null);
       setTimeout(() => fetchInvoices(), 3000);
     } catch (err) {

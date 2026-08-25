@@ -58,11 +58,21 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
       const orgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrgId') : null;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (orgId) headers['x-organization-id'] = orgId;
-      let contactId: string | undefined;
-      const contactName = order.customerSnapshot?.name;
+      const contactName = order.customerSnapshot?.displayName || order.customerSnapshot?.name || order.customerSnapshot?.companyName || order.customerName || '';
+      let contactId: string | undefined = order.customerId || order.customerSnapshot?.uid || order.customerSnapshot?.id;
+
       if (contactName && contactName !== 'Guest') {
-        const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=1`, { headers });
-        if (sr.ok) { const sd = await sr.json(); if (sd.data?.length > 0) contactId = sd.data[0].id; }
+        const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=10`, { headers });
+        if (sr.ok) {
+          const sd = await sr.json();
+          const list = sd.data || (Array.isArray(sd) ? sd : []);
+          const match = list.find((c: any) => c.name?.toLowerCase() === contactName.toLowerCase() || (contactId && (c.id === contactId || c.uid === contactId)));
+          if (match) {
+            contactId = match.id;
+          } else if (list.length > 0) {
+            contactId = list[0].id;
+          }
+        }
         if (!contactId) {
           const cr = await fetch('/api/v1/contacts', { method: 'POST', headers, body: JSON.stringify({ name: contactName, phone: order.customerSnapshot?.phone || null, type: 'customer' }) });
           if (cr.ok) { const cd = await cr.json(); if (cd.contact) contactId = cd.contact.id; }
@@ -103,7 +113,7 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
       let orderDelivery: any = {};
       if (order.delivery) { try { orderDelivery = typeof order.delivery === 'string' ? JSON.parse(order.delivery) : order.delivery; } catch {} }
       const parentRef = (order as any).parent_order_id || (order as any).baseOrderId || order.id;
-      openDrawer('invoice', { reference: parentRef, contactId, lines: mappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
+      openDrawer('invoice', { reference: parentRef, contactId, contactName, lines: mappedLines, deliveryMode: orderDelivery.choice || undefined, deliveryAddress: orderDelivery.address || undefined });
     } catch (err) {
       console.error('Failed to generate invoice', err);
       openDrawer('invoice', { reference: order.id });
@@ -116,17 +126,27 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
       const orgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrgId') : null;
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (orgId) headers['x-organization-id'] = orgId;
-      let contactId: string | undefined;
-      const contactName = order.customerSnapshot?.name;
+      const contactName = order.customerSnapshot?.displayName || order.customerSnapshot?.name || order.customerSnapshot?.companyName || order.customerName || '';
+      let contactId: string | undefined = order.customerId || order.customerSnapshot?.uid || order.customerSnapshot?.id;
+
       if (contactName && contactName !== 'Guest') {
-        const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=1`, { headers });
-        if (sr.ok) { const sd = await sr.json(); if (sd.data?.length > 0) contactId = sd.data[0].id; }
+        const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=10`, { headers });
+        if (sr.ok) {
+          const sd = await sr.json();
+          const list = sd.data || (Array.isArray(sd) ? sd : []);
+          const match = list.find((c: any) => c.name?.toLowerCase() === contactName.toLowerCase() || (contactId && (c.id === contactId || c.uid === contactId)));
+          if (match) {
+            contactId = match.id;
+          } else if (list.length > 0) {
+            contactId = list[0].id;
+          }
+        }
         if (!contactId) {
           const cr = await fetch('/api/v1/contacts', { method: 'POST', headers, body: JSON.stringify({ name: contactName, phone: order.customerSnapshot?.phone || null, type: 'customer' }) });
           if (cr.ok) { const cd = await cr.json(); if (cd.contact) contactId = cd.contact.id; }
         }
       }
-      openDrawer('customerCredit', { contactId });
+      openDrawer('customerCredit', { contactId, contactName });
     } catch (err) {
       console.error('Failed to open receipt', err);
       openDrawer('customerCredit', {});

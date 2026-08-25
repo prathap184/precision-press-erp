@@ -756,7 +756,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Customer *</Label>
-                  <ContactPicker value={contactId} onChange={setContactId} type="customer" />
+                  <ContactPicker value={contactId} onChange={setContactId} type="customer" initialContactName={initialData?.contactName} />
                 </div>
                 <div className="space-y-2">
                   <Label>Reference</Label>

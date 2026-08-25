@@ -58,6 +58,22 @@ export function ContactPicker({ value, onChange, type, placeholder = "Select con
   const fetchedRef = useRef(false);
   const { open: openDrawer } = useCreateDrawer();
 
+  const findContactMatch = useCallback((list: Contact[], val?: string, name?: string) => {
+    if (!list || list.length === 0) return null;
+    if (val) {
+      const byId = list.find((c: any) => c.id === val || c.uid === val);
+      if (byId) return byId;
+    }
+    if (name && name.trim() && name !== "Guest") {
+      const cleanName = name.trim().toLowerCase();
+      const exact = list.find((c) => c.name && c.name.trim().toLowerCase() === cleanName);
+      if (exact) return exact;
+      const partial = list.find((c) => c.name && (c.name.toLowerCase().includes(cleanName) || cleanName.includes(c.name.toLowerCase())));
+      if (partial) return partial;
+    }
+    return null;
+  }, []);
+
   // Fetch contacts on mount so a pre-filled value can display the contact name
   // immediately. The popover open/close state no longer gates the initial load.
   const loadContacts = useCallback(() => {
@@ -65,29 +81,24 @@ export function ContactPicker({ value, onChange, type, placeholder = "Select con
     const headers: Record<string, string> = {};
     if (orgId) headers["x-organization-id"] = orgId;
 
-    const params = new URLSearchParams({ limit: "200" });
+    const params = new URLSearchParams({ limit: "500" });
     if (type) params.set("type", type);
 
     fetch(`/api/v1/contacts?${params}`, { headers })
       .then((r) => r.json())
       .then((data) => {
-        const list = data.data || (Array.isArray(data) ? data : []);
+        const list: Contact[] = data.data || (Array.isArray(data) ? data : []);
         setContacts(list);
 
         // Auto-match contact by ID or name
-        if (value || initialContactName) {
-          const match = list.find((c: any) => 
-            (value && (c.id === value || c.uid === value)) ||
-            (initialContactName && c.name?.toLowerCase() === initialContactName.toLowerCase())
-          );
-          if (match && match.id && match.id !== value) {
-            onChange(match.id);
-          }
+        const match = findContactMatch(list, value, initialContactName);
+        if (match && match.id && match.id !== value) {
+          onChange(match.id);
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [type, value, initialContactName, onChange]);
+  }, [type, value, initialContactName, onChange, findContactMatch]);
 
   useEffect(() => {
     loadContacts();
@@ -100,11 +111,7 @@ export function ContactPicker({ value, onChange, type, placeholder = "Select con
     }
   };
 
-  const selected = contacts.find((c) => 
-    c.id === value || 
-    (c as any).uid === value || 
-    (initialContactName && c.name?.toLowerCase() === initialContactName.toLowerCase())
-  );
+  const selected = findContactMatch(contacts, value, initialContactName);
 
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
