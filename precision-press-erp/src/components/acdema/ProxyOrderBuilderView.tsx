@@ -149,28 +149,67 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     }
   }, [selectedCustomerId, selectedCustomer?.customerType, setPaymentMode]);
 
+  // Auto-focus Customer Selection box when Proxy Order page mounts
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const custInput = document.querySelector('input[placeholder="Search customer..."]') as HTMLInputElement;
+      if (custInput) {
+        custInput.focus();
+        try { custInput.select(); } catch {}
+      }
+    }, 150);
+    return () => clearTimeout(t);
+  }, []);
+
   const validateAndSubmit = () => {
     const errors: Record<string, string> = {};
-    if (!selectedCustomerId) errors['customer'] = 'Customer required';
-      if (vm.mode !== 'quotation' && deliveryType !== 'selfPickup' && (!shippingAddress || shippingAddress === 'Self Pickup')) {
-        errors['shippingAddress'] = 'Delivery address required';
-      }
-    if (rows.length === 0) errors['rows'] = 'At least one item required';
-    rows.forEach((row: any) => {
+    if (!selectedCustomerId) {
+      errors['customer'] = 'Customer is required';
+    }
+    if (vm.mode !== 'quotation' && deliveryType !== 'selfPickup' && (!shippingAddress || shippingAddress === 'Self Pickup' || !shippingAddress.trim())) {
+      errors['shippingAddress'] = 'Delivery address is required';
+    }
+    if (rows.length === 0) {
+      errors['rows'] = 'At least one item is required';
+    }
+    rows.forEach((row: any, idx: number) => {
       const product = products.find((p: any) => p.id === row.productId);
       const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
-      if (!row.productId) errors[`row-${row.id}-product`] = 'Product required';
-      if (!isDirect) {
-        if (!row.width || Number(row.width) <= 0) errors[`row-${row.id}-width`] = 'Width required';
-        if (!row.height || Number(row.height) <= 0) errors[`row-${row.id}-height`] = 'Height required';
+      if (!row.productId) {
+        errors[`row-${row.id}-product`] = `Item #${idx + 1}: Please select a product`;
       }
-      if (!row.quantity || Number(row.quantity) <= 0) errors[`row-${row.id}-quantity`] = 'Quantity required';
+      if (!isDirect) {
+        if (!row.width || Number(row.width) <= 0) {
+          errors[`row-${row.id}-width`] = `Item #${idx + 1}: Width is required`;
+        }
+        if (!row.height || Number(row.height) <= 0) {
+          errors[`row-${row.id}-height`] = `Item #${idx + 1}: Length is required`;
+        }
+      }
+      if (!row.quantity || Number(row.quantity) <= 0) {
+        errors[`row-${row.id}-quantity`] = `Item #${idx + 1}: Quantity must be at least 1`;
+      }
     });
+
     setValidationErrors(errors);
+
     if (Object.keys(errors).length > 0) {
       const firstErrorKey = Object.keys(errors)[0];
-      const element = document.getElementById(`error-${firstErrorKey}`);
-      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const element = document.getElementById(`error-${firstErrorKey}`) || document.getElementById(firstErrorKey);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        setTimeout(() => {
+          const focusable = (element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'BUTTON' || element.tagName === 'TEXTAREA')
+            ? element
+            : element.querySelector('input:not([type="hidden"]), select, textarea, button') as HTMLElement;
+          if (focusable) {
+            focusable.focus();
+            try { (focusable as HTMLInputElement).select(); } catch {}
+          }
+        }, 200);
+      }
+      const firstMsg = Object.values(errors)[0];
+      toast.error(firstMsg || 'Please fill the missing fields highlighted in red.');
       return;
     }
     
@@ -456,10 +495,21 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address) ? (
                         <>
                           <select
-                            id="delivery-address-select"
-                            className="h-12 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                            id="error-shippingAddress"
+                            className={`h-12 w-full rounded-lg border-2 px-4 text-sm font-medium transition-all ${
+                              validationErrors['shippingAddress']
+                                ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                                : 'border-slate-200 bg-slate-50 text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'
+                            }`}
                             value={shippingAddress}
-                            onChange={(e) => setShippingAddress(e.target.value)}
+                            onChange={(e) => {
+                              setShippingAddress(e.target.value);
+                              setValidationErrors((prev) => {
+                                const next = { ...prev };
+                                delete next['shippingAddress'];
+                                return next;
+                              });
+                            }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
@@ -616,7 +666,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                                 return (
                                   <div id={`error-row-${row.id}-product`} className="relative w-full min-w-[140px]">
-                                    <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-400 bg-red-50/50' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                    <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                                       <input
                                         value={isOpen ? searchQuery : (selProd?.name ?? '')}
                                         placeholder="Select item..."
@@ -649,6 +699,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               const p = matched[highlightProductIndex] || matched[0];
                                               if (p) {
                                                 updateRow(row.id, { productId: p.id });
+                                                setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
                                                 setOpenRowId(null);
                                                 setSearchQuery('');
                                                 setHighlightProductIndex(0);
@@ -672,60 +723,29 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         {(() => {
                                           if (matched.length === 0) return <div className="p-3 text-xs text-slate-400 italic">No products found.</div>;
                                           
-                                          const grouped = matched.slice(0, 50).reduce((acc: any, p: any) => {
-                                            const cat = p.category || 'Uncategorized';
-                                            if (!acc[cat]) acc[cat] = [];
-                                            acc[cat].push(p);
-                                            return acc;
-                                          }, {});
-
-                                          let runningIdx = 0;
-
-                                          return Object.entries(grouped).map(([cat, prods]: [string, any]) => (
-                                            <div key={cat}>
-                                              <div className="bg-slate-100 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10 border-b border-slate-200 shadow-sm">
-                                                {cat.replace(/_/g, ' ')}
+                                          return matched.slice(0, 50).map((p: any, idx: number) => (
+                                            <div
+                                              key={p.id}
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                updateRow(row.id, { productId: p.id });
+                                                setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                setOpenRowId(null);
+                                                setSearchQuery('');
+                                                setHighlightProductIndex(0);
+                                                setTimeout(() => {
+                                                  const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                                  if (widthInput) widthInput.focus();
+                                                }, 60);
+                                              }}
+                                              className={`cursor-pointer border-b border-slate-100 p-2.5 text-xs transition-colors ${
+                                                idx === highlightProductIndex ? 'bg-blue-600 font-bold text-white shadow-sm' : 'hover:bg-slate-50 text-slate-700'
+                                              }`}
+                                            >
+                                              <div className="font-bold">{p.name}</div>
+                                              <div className={`text-[10px] ${idx === highlightProductIndex ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                ₹{p.baseRate?.toFixed(2)} • GST {p.gst_rate || 18}%
                                               </div>
-                                              {prods.map((p: any) => {
-                                                const currentItemIdx = runningIdx++;
-                                                const isHighlighted = currentItemIdx === highlightProductIndex;
-
-                                                return (
-                                                  <div 
-                                                    key={p.id} 
-                                                    ref={(el) => {
-                                                      if (el && isHighlighted) {
-                                                        el.scrollIntoView({ block: 'nearest' });
-                                                      }
-                                                    }}
-                                                    onMouseDown={(e) => {
-                                                      e.preventDefault();
-                                                      updateRow(row.id, { productId: p.id });
-                                                      setOpenRowId(null);
-                                                      setSearchQuery('');
-                                                      setHighlightProductIndex(0);
-                                                      setTimeout(() => {
-                                                        const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                        if (widthInput) widthInput.focus();
-                                                      }, 60);
-                                                    }} 
-                                                    className={`cursor-pointer border-b border-slate-100 p-2.5 pl-4 flex justify-between items-center transition-colors ${
-                                                      isHighlighted
-                                                        ? 'bg-blue-600 text-white font-extrabold shadow-sm'
-                                                        : p.id === row.productId
-                                                          ? 'bg-blue-50/80 text-blue-700 font-extrabold'
-                                                          : 'hover:bg-slate-50 text-slate-700 font-bold'
-                                                    }`}
-                                                  >
-                                                    <span className="truncate pr-2 text-xs">{p.name}</span>
-                                                    <span className={`text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded-md flex-shrink-0 ${
-                                                      isHighlighted ? 'bg-blue-700 text-white' : 'text-slate-400 bg-slate-100'
-                                                    }`}>
-                                                      {p.id}
-                                                    </span>
-                                                  </div>
-                                                );
-                                              })}
                                             </div>
                                           ));
                                         })()}
@@ -745,8 +765,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   —
                                 </div>
                               ) : (
-                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white ${validationErrors[`row-${row.id}-width`] ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`}>
-                                  <input id={`error-row-${row.id}-width`} value={row.width} onChange={(e) => updateRow(row.id, { width: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="W" />
+                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                  <input id={`error-row-${row.id}-width`} value={row.width} onChange={(e) => {
+                                    updateRow(row.id, { width: e.target.value });
+                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
+                                  }} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="W" />
                                   <div className="relative flex-shrink-0">
                                     <button
                                       type="button"
@@ -813,8 +836,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   —
                                 </div>
                               ) : (
-                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white ${validationErrors[`row-${row.id}-height`] ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`}>
-                                  <input id={`error-row-${row.id}-height`} value={row.height} onChange={(e) => updateRow(row.id, { height: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="L" />
+                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                  <input id={`error-row-${row.id}-height`} value={row.height} onChange={(e) => {
+                                    updateRow(row.id, { height: e.target.value });
+                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
+                                  }} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="L" />
                                   <div className="relative flex-shrink-0">
                                     <button
                                       type="button"
@@ -879,7 +905,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               {sqft > 0 ? sqft.toFixed(2) : '—'}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <input id={`error-row-${row.id}-quantity`} value={row.quantity} onChange={(e) => updateRow(row.id, { quantity: e.target.value })} className={`h-10 w-16 rounded-lg border-2 border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400 bg-red-50/50' : ''}`} placeholder="Qty" />
+                              <input id={`error-row-${row.id}-quantity`} value={row.quantity} onChange={(e) => {
+                                updateRow(row.id, { quantity: e.target.value });
+                                setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
+                              }} className={`h-10 w-16 rounded-lg border-2 text-center text-xs font-bold transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'}`} placeholder="Qty" />
                             </td>
                             <td className="py-3 px-2 text-xs font-bold text-slate-600 tabular-nums">
                               {product?.baseRate?.toFixed(2) || '—'}

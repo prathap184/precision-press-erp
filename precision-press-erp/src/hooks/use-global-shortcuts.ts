@@ -120,7 +120,7 @@ export function useGlobalShortcuts() {
           setMenuState('DISPLAY_REPORTS');
         } else if (key === 'n') {
           e.preventDefault();
-          router.push('/sales/invoices/new');
+          router.push('/proxy-order');
         } else if (key === 'g') {
           e.preventDefault();
           window.location.href = `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL || 'http://localhost:3000'}/admin/orders`;
