@@ -34,9 +34,11 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
       const tagName = target.tagName.toLowerCase();
       const inputType = (target instanceof HTMLInputElement ? target.type || "text" : "").toLowerCase();
 
-      // Active container (Modal, Drawer/Sheet, or entire page)
+      // Active container (Modal Dialog, Drawer/Sheet, or entire page)
+      const activeModal = document.querySelector<HTMLElement>("[role='dialog']:not([aria-hidden='true'])");
       const container =
         target.closest("[role='dialog']") ||
+        (activeModal && isVisible(activeModal) ? activeModal : null) ||
         target.closest("[data-slot='sheet-content']") ||
         target.closest(".sheet-content") ||
         document.body;

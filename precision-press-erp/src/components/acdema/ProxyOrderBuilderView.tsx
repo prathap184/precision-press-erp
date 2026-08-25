@@ -90,6 +90,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     };
   }, [showExitConfirmModal, customerDropdownOpen, openRowId, openUnitPickerId, showAddressModal, showCreditModal, showCreateCustomer]);
 
+  useEffect(() => {
+    if (showAddressModal) {
+      setOpenRowId(null);
+      setCustomerDropdownOpen(false);
+      const timer = setTimeout(() => {
+        const firstModalInput = document.getElementById("modal-house-no");
+        if (firstModalInput) {
+          firstModalInput.focus();
+        }
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [showAddressModal]);
+
   const handleRowFileSelect = async (rowId: string, file: File) => {
     // 1. Instantly display filename and prepare local blob preview
     const blobUrl = URL.createObjectURL(file);
@@ -1428,42 +1442,65 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
           {/* Add Address Modal */}
           {showAddressModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm">
+            <div
+              role="dialog"
+              aria-modal="true"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4 backdrop-blur-sm"
+            >
               <div className="w-full max-w-lg rounded-3xl bg-white p-8 shadow-2xl">
                 <div className="mb-6 flex items-center justify-between">
                   <h3 className="text-xl font-black text-slate-900">Add Delivery Address</h3>
-                  <button onClick={() => setShowAddressModal(false)} className="text-slate-400 hover:text-slate-900">✕</button>
+                  <button type="button" tabIndex={-1} onClick={() => setShowAddressModal(false)} className="text-slate-400 hover:text-slate-900">✕</button>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <input placeholder="House No." value={addressForm.houseNo} onChange={(e) => setAddressForm(f => ({ ...f, houseNo: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none md:col-span-2" />
-                  <input placeholder="Road Name" value={addressForm.roadName} onChange={(e) => setAddressForm(f => ({ ...f, roadName: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none md:col-span-2" />
-                  <input placeholder="Area / Locality" value={addressForm.area} onChange={(e) => setAddressForm(f => ({ ...f, area: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none" />
-                  <input placeholder="City" value={addressForm.city} onChange={(e) => setAddressForm(f => ({ ...f, city: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none" />
-                  <input placeholder="District" value={addressForm.district} onChange={(e) => setAddressForm(f => ({ ...f, district: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none" />
-                  <select value={addressForm.state} onChange={(e) => setAddressForm(f => ({ ...f, state: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none appearance-none cursor-pointer">
+                  <input id="modal-house-no" placeholder="House No." value={addressForm.houseNo} onChange={(e) => setAddressForm(f => ({ ...f, houseNo: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none md:col-span-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                  <input id="modal-road-name" placeholder="Road Name" value={addressForm.roadName} onChange={(e) => setAddressForm(f => ({ ...f, roadName: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none md:col-span-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                  <input id="modal-area" placeholder="Area / Locality" value={addressForm.area} onChange={(e) => setAddressForm(f => ({ ...f, area: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                  <input id="modal-city" placeholder="City" value={addressForm.city} onChange={(e) => setAddressForm(f => ({ ...f, city: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                  <input id="modal-district" placeholder="District" value={addressForm.district} onChange={(e) => setAddressForm(f => ({ ...f, district: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                  <select id="modal-state" value={addressForm.state} onChange={(e) => setAddressForm(f => ({ ...f, state: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-white px-4 text-sm outline-none appearance-none cursor-pointer focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
                     <option value="" disabled>Select State</option>
                     {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
-                  <input placeholder="State Code" value={addressForm.stateCode} onChange={(e) => setAddressForm(f => ({ ...f, stateCode: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none" />
-                  <input placeholder="Pincode" value={addressForm.pincode} onChange={(e) => setAddressForm(f => ({ ...f, pincode: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none" />
+                  <input id="modal-state-code" placeholder="State Code" value={addressForm.stateCode} onChange={(e) => setAddressForm(f => ({ ...f, stateCode: e.target.value }))} className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                  <input
+                    id="modal-pincode"
+                    placeholder="Pincode"
+                    value={addressForm.pincode}
+                    onChange={(e) => setAddressForm(f => ({ ...f, pincode: e.target.value }))}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const saveBtn = document.getElementById("modal-save-address-btn");
+                        if (saveBtn) saveBtn.focus();
+                      }
+                    }}
+                    className="h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  />
                 </div>
                 <div className="mt-8 flex gap-3">
-                  <button onClick={() => setShowAddressModal(false)} className="h-12 flex-1 rounded-xl bg-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-200">Cancel</button>
-                  <button onClick={async () => {
-                    const success = await handleAddDeliveryAddress({
-                      pincode: addressForm.pincode, state: addressForm.state, stateCode: addressForm.stateCode, district: addressForm.district, city: addressForm.city, houseNumber: addressForm.houseNo, roadName: addressForm.roadName, area: addressForm.area
-                    });
-                    if (success) {
-                      setShowAddressModal(false);
-                      setTimeout(() => {
-                        const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
-                        if (firstProductInput) {
-                          firstProductInput.focus();
-                          try { (firstProductInput as HTMLInputElement).select(); } catch {}
-                        }
-                      }, 120);
-                    }
-                  }} disabled={addingAddress} className="h-12 flex-1 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50">
+                  <button type="button" onClick={() => setShowAddressModal(false)} className="h-12 flex-1 rounded-xl bg-slate-100 text-sm font-bold text-slate-600 hover:bg-slate-200">Cancel</button>
+                  <button
+                    id="modal-save-address-btn"
+                    type="submit"
+                    onClick={async () => {
+                      const success = await handleAddDeliveryAddress({
+                        pincode: addressForm.pincode, state: addressForm.state, stateCode: addressForm.stateCode, district: addressForm.district, city: addressForm.city, houseNumber: addressForm.houseNo, roadName: addressForm.roadName, area: addressForm.area
+                      });
+                      if (success) {
+                        setShowAddressModal(false);
+                        setTimeout(() => {
+                          const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                          if (firstProductInput) {
+                            firstProductInput.focus();
+                            try { (firstProductInput as HTMLInputElement).select(); } catch {}
+                          }
+                        }, 120);
+                      }
+                    }}
+                    disabled={addingAddress}
+                    className="h-12 flex-1 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
                     {addingAddress ? 'Saving...' : 'Save Address'}
                   </button>
                 </div>
