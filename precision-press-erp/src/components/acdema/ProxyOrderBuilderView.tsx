@@ -481,8 +481,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           }
                         }}
                         id={`logistics-btn-${opt.id}`}
-                        className={`flex-1 rounded-xl py-2.5 text-[10px] font-black uppercase tracking-widest transition-all focus:ring-2 focus:ring-slate-400 focus:outline-none ${
-                          deliveryType === opt.id ? 'bg-slate-900 text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                        className={`flex-1 rounded-xl py-2.5 text-[10px] font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
+                          deliveryType === opt.id ? 'bg-slate-900 text-white shadow-md border-2 border-slate-900' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-2 border-transparent'
                         }`}
                       >
                         {opt.label}
@@ -570,7 +570,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 setShowAddressModal(true);
                               }
                             }}
-                            className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer focus:ring-2 focus:ring-blue-400 focus:outline-none rounded px-1"
+                            className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none rounded px-1.5 py-0.5 border-2 border-transparent inline-block"
                           >
                             + Add Address
                           </button>
@@ -586,8 +586,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               setShowAddressModal(true);
                             }
                           }}
-                          className={`flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed text-xs font-bold uppercase tracking-widest transition-all focus:ring-2 focus:ring-blue-400 focus:outline-none ${
-                            validationErrors['shippingAddress'] ? 'border-red-400 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                          className={`flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed text-xs font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
+                            validationErrors['shippingAddress'] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
                           }`}
                         >
                           + Delivery Address
@@ -1085,10 +1085,10 @@ const gstRate = product?.gst_rate || 18;
                         setPaymentMethodTab('CASH_UPI');
                         setPaymentMode('HAND_CASH');
                       }}
-                      className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all ${
+                      className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
                         paymentMethodTab === 'CASH_UPI'
-                          ? 'bg-slate-900 text-white shadow-md'
-                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                          ? 'bg-slate-900 text-white shadow-md border-slate-900'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-transparent'
                       }`}
                     >
                       CASH
@@ -1100,10 +1100,10 @@ const gstRate = product?.gst_rate || 18;
                           setPaymentMethodTab('CREDIT');
                           setPaymentMode('CREDIT');
                         }}
-                        className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all ${
+                        className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
                           paymentMethodTab === 'CREDIT'
-                            ? 'bg-slate-900 text-white shadow-md'
-                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                            ? 'bg-slate-900 text-white shadow-md border-slate-900'
+                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-transparent'
                         }`}
                       >
                         CREDIT ACCOUNT
@@ -1149,10 +1149,10 @@ const gstRate = product?.gst_rate || 18;
                               }
                             }
                           }}
-                          className={`flex-1 rounded-lg py-1.5 text-[9px] font-black uppercase tracking-wider transition-all focus:ring-2 focus:ring-slate-400 focus:outline-none ${
+                          className={`flex-1 rounded-lg py-1.5 text-[9px] font-black uppercase tracking-wider transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
                             paymentMode === opt.id
-                              ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
-                              : 'text-slate-500 hover:bg-white/40'
+                              ? 'bg-white text-slate-900 shadow-sm border-slate-200/80'
+                              : 'text-slate-500 hover:bg-white/40 border-transparent'
                           }`}
                         >
                           {opt.label}
