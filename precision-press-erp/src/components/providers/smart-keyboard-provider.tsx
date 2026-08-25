@@ -47,36 +47,21 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
 
       const currentIndex = focusables.indexOf(target);
 
-      // 1. BACKSPACE HANDLER (Dual action: delete if text, go back if empty)
-      if (e.key === "Backspace") {
-        let shouldNavigateBack = false;
-
-        if (tagName === "input") {
-          const input = target as HTMLInputElement;
-          const val = input.value ?? "";
-          const hasSelection =
-            input.selectionStart !== null &&
-            input.selectionEnd !== null &&
-            input.selectionStart !== input.selectionEnd;
-
-          // If empty, or cursor is at start 0 with no text selected:
-          if (!hasSelection && (val === "" || input.selectionStart === 0)) {
-            shouldNavigateBack = true;
-          }
-        } else if (tagName === "select") {
-          shouldNavigateBack = true;
-        } else if (tagName === "textarea") {
+      // 1. TALLY-STYLE BACKSPACE HANDLER: Navigates directly to previous field
+      if (e.key === "Backspace" && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        // In multiline textareas, only go back if cursor is at the start (index 0) or text is selected/empty
+        if (tagName === "textarea") {
           const textarea = target as HTMLTextAreaElement;
           const val = textarea.value ?? "";
-          if (val === "" && textarea.selectionStart === 0) {
-            shouldNavigateBack = true;
+          const isAtStart = textarea.selectionStart === 0 && textarea.selectionEnd === 0;
+          const isAllSelected = textarea.selectionStart === 0 && textarea.selectionEnd === val.length;
+          if (val !== "" && !isAtStart && !isAllSelected) {
+            return; // allow normal deletion inside active paragraph
           }
-        } else if (tagName === "button") {
-          // If focused on an auxiliary button (like unit button 'ft' or picker trigger), backspace goes back to previous field
-          shouldNavigateBack = true;
         }
 
-        if (shouldNavigateBack && currentIndex > 0) {
+        // Navigate back to previous field (Shift+Tab equivalent)
+        if (currentIndex > 0) {
           e.preventDefault();
           const prevEl = focusables[currentIndex - 1];
           prevEl.focus();
@@ -87,7 +72,7 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
             } catch {
               try {
                 const len = prevEl.value.length;
-                prevEl.setSelectionRange(len, len);
+                prevEl.setSelectionRange(0, len);
               } catch {}
             }
           }
