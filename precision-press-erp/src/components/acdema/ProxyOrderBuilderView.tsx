@@ -652,108 +652,163 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : q, eyeletRate,
                           isDirectSelling: isDirect,
                         });
-                        const gstRate = product?.gst_rate || 18;
+const gstRate = product?.gst_rate || 18;
 
                         return (
                           <tr key={row.id} className="group transition-colors hover:bg-slate-50/50">
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-400 tabular-nums">{index + 1}</td>
                             <td className="py-3 px-2 tabular-nums">
                               {(() => {
-                                const selProd = products.find((p: any) => p.id === row.productId);
-                                const isOpen = openRowId === row.id;
-                                const qTerm = searchQuery.trim().toLowerCase();
-                                const matched = qTerm ? products.filter((p: any) => p.name.toLowerCase().includes(qTerm) || p.id.toString().toLowerCase().includes(qTerm)) : products;
+                                  const selProd = products.find((p: any) => p.id === row.productId);
+                                  const isOpen = openRowId === row.id;
+                                  const qTerm = searchQuery.trim().toLowerCase();
+                                  const isExactCurrent = qTerm === (selProd?.name || '').toLowerCase();
+                                  const matched = (qTerm && !isExactCurrent)
+                                    ? products.filter((p: any) => 
+                                        p.name.toLowerCase().includes(qTerm) || 
+                                        p.id.toString().toLowerCase().includes(qTerm) ||
+                                        (p.category && p.category.toLowerCase().includes(qTerm))
+                                      )
+                                    : products;
 
-                                return (
-                                  <div id={`error-row-${row.id}-product`} className="relative w-full min-w-[140px]">
-                                    <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                      <input
-                                        value={isOpen ? searchQuery : (selProd?.name ?? '')}
-                                        placeholder="Select item..."
-                                        data-dropdown-open={isOpen ? "true" : "false"}
-                                        onChange={(e) => {
-                                          setOpenRowId(row.id);
-                                          setSearchQuery(e.target.value);
-                                          setHighlightProductIndex(0);
-                                        }}
-                                        onFocus={() => {
-                                          setOpenRowId(row.id);
-                                          setSearchQuery('');
-                                          setHighlightProductIndex(0);
-                                        }}
-                                        onKeyDown={(e) => {
-                                          if (e.key === "ArrowDown") {
-                                            e.preventDefault();
-                                            if (!isOpen) {
-                                              setOpenRowId(row.id);
-                                              setHighlightProductIndex(0);
-                                              return;
-                                            }
-                                            setHighlightProductIndex((prev) => Math.min(prev + 1, Math.min(matched.length - 1, 49)));
-                                          } else if (e.key === "ArrowUp") {
-                                            e.preventDefault();
-                                            setHighlightProductIndex((prev) => Math.max(prev - 1, 0));
-                                          } else if (e.key === "Enter") {
-                                            if (isOpen && matched.length > 0) {
+                                  let runningIdx = 0;
+
+                                  return (
+                                    <div id={`error-row-${row.id}-product`} className="relative w-full min-w-[150px]">
+                                      <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                        <input
+                                          value={isOpen ? searchQuery : (selProd?.name ?? '')}
+                                          placeholder="Select item..."
+                                          data-dropdown-open={isOpen ? "true" : "false"}
+                                          onChange={(e) => {
+                                            setOpenRowId(row.id);
+                                            setSearchQuery(e.target.value);
+                                            setHighlightProductIndex(0);
+                                          }}
+                                          onFocus={() => {
+                                            setOpenRowId(row.id);
+                                            const currentName = selProd?.name || '';
+                                            setSearchQuery(currentName);
+                                            const currIdx = products.findIndex((p: any) => p.id === row.productId);
+                                            setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "ArrowDown") {
                                               e.preventDefault();
-                                              const p = matched[highlightProductIndex] || matched[0];
-                                              if (p) {
-                                                updateRow(row.id, { productId: p.id });
-                                                setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
-                                                setOpenRowId(null);
-                                                setSearchQuery('');
-                                                setHighlightProductIndex(0);
-                                                setTimeout(() => {
-                                                  const projectInput = document.querySelector(`input[value="${row.projectName || ''}"]`) as HTMLElement;
-                                                  const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                  if (projectInput) projectInput.focus();
-                                                  else if (widthInput) widthInput.focus();
-                                                }, 60);
+                                              if (!isOpen) {
+                                                setOpenRowId(row.id);
+                                                const currIdx = products.findIndex((p: any) => p.id === row.productId);
+                                                setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                                return;
+                                              }
+                                              setHighlightProductIndex((prev) => Math.min(prev + 1, matched.length - 1));
+                                            } else if (e.key === "ArrowUp") {
+                                              e.preventDefault();
+                                              setHighlightProductIndex((prev) => Math.max(prev - 1, 0));
+                                            } else if (e.key === "Enter") {
+                                              if (isOpen && matched.length > 0) {
+                                                e.preventDefault();
+                                                const p = matched[highlightProductIndex] || matched[0];
+                                                if (p) {
+                                                  updateRow(row.id, { productId: p.id });
+                                                  setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                  setOpenRowId(null);
+                                                  setSearchQuery('');
+                                                  setHighlightProductIndex(0);
+                                                  setTimeout(() => {
+                                                    const projectInput = document.querySelector(`input[value="${row.projectName || ''}"]`) as HTMLElement;
+                                                    const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                                    if (projectInput) projectInput.focus();
+                                                    else if (widthInput) widthInput.focus();
+                                                  }, 60);
+                                                }
                                               }
                                             }
-                                          }
-                                        }}
-                                        onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 160)}
-                                        className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
-                                      />
-                                      <ChevronDown size={14} className={`cursor-pointer transition-colors ${isOpen ? 'text-blue-600' : 'text-slate-400'}`} onClick={() => setOpenRowId(isOpen ? null : row.id)} />
-                                    </div>
-                                    {isOpen && (
-                                      <div className="absolute left-0 top-full mt-1 w-[280px] z-[9999] max-h-64 overflow-y-auto rounded-xl border-2 border-blue-600 bg-white shadow-2xl">
-                                        {(() => {
-                                          if (matched.length === 0) return <div className="p-3 text-xs text-slate-400 italic">No products found.</div>;
-                                          
-                                          return matched.slice(0, 50).map((p: any, idx: number) => (
-                                            <div
-                                              key={p.id}
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                updateRow(row.id, { productId: p.id });
-                                                setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
-                                                setOpenRowId(null);
-                                                setSearchQuery('');
-                                                setHighlightProductIndex(0);
-                                                setTimeout(() => {
-                                                  const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                  if (widthInput) widthInput.focus();
-                                                }, 60);
-                                              }}
-                                              className={`cursor-pointer border-b border-slate-100 p-2.5 text-xs transition-colors ${
-                                                idx === highlightProductIndex ? 'bg-blue-600 font-bold text-white shadow-sm' : 'hover:bg-slate-50 text-slate-700'
-                                              }`}
-                                            >
-                                              <div className="font-bold">{p.name}</div>
-                                              <div className={`text-[10px] ${idx === highlightProductIndex ? 'text-blue-100' : 'text-slate-400'}`}>
-                                                ₹{p.baseRate?.toFixed(2)} • GST {p.gst_rate || 18}%
-                                              </div>
-                                            </div>
-                                          ));
-                                        })()}
+                                          }}
+                                          onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 200)}
+                                          className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
+                                        />
+                                        <ChevronDown size={14} className={`cursor-pointer transition-colors ${isOpen ? 'text-blue-600' : 'text-slate-400'}`} onClick={() => setOpenRowId(isOpen ? null : row.id)} />
                                       </div>
-                                    )}
-                                  </div>
-                                );
-                              })()}
+                                      {isOpen && (
+                                        <div className="absolute left-0 top-full mt-1.5 w-[440px] z-[9999] max-h-80 overflow-y-auto rounded-2xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100">
+                                          {(() => {
+                                            if (matched.length === 0) return <div className="p-4 text-xs text-slate-400 italic">No products found.</div>;
+                                            
+                                            const grouped = matched.reduce((acc: any, p: any) => {
+                                              const cat = p.category || 'General Items';
+                                              if (!acc[cat]) acc[cat] = [];
+                                              acc[cat].push(p);
+                                              return acc;
+                                            }, {});
+
+                                            return Object.entries(grouped).map(([cat, prods]: [string, any]) => (
+                                              <div key={cat} className="last:border-b-0">
+                                                <div className="bg-slate-100/90 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10 backdrop-blur-sm border-b border-slate-200/80 flex items-center justify-between">
+                                                  <span>{cat.replace(/_/g, ' ')}</span>
+                                                  <span className="text-[9px] font-bold text-slate-400">{prods.length} items</span>
+                                                </div>
+                                                <div className="divide-y divide-slate-50">
+                                                  {prods.map((p: any) => {
+                                                    const currentIndex = runningIdx++;
+                                                    const isHighlighted = currentIndex === highlightProductIndex;
+                                                    const isSelected = p.id === row.productId;
+
+                                                    return (
+                                                      <div
+                                                        key={p.id}
+                                                        ref={(el) => {
+                                                          if (el && isHighlighted) {
+                                                            el.scrollIntoView({ block: 'nearest' });
+                                                          }
+                                                        }}
+                                                        onMouseDown={(e) => {
+                                                          e.preventDefault();
+                                                          updateRow(row.id, { productId: p.id });
+                                                          setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                          setOpenRowId(null);
+                                                          setSearchQuery('');
+                                                          setHighlightProductIndex(0);
+                                                          setTimeout(() => {
+                                                            const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                                            if (widthInput) widthInput.focus();
+                                                          }, 60);
+                                                        }}
+                                                        className={`cursor-pointer px-3.5 py-2.5 transition-all flex items-center justify-between gap-3 ${
+                                                          isHighlighted
+                                                            ? 'bg-blue-600 text-white font-extrabold shadow-sm'
+                                                            : isSelected
+                                                              ? 'bg-blue-50/90 text-blue-900 font-bold'
+                                                              : 'hover:bg-slate-50 text-slate-700 font-medium'
+                                                        }`}
+                                                      >
+                                                        <div className="min-w-0 flex-1">
+                                                          <div className="text-xs font-bold truncate leading-tight">{p.name}</div>
+                                                          <div className={`text-[10px] mt-0.5 font-medium ${isHighlighted ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                            ₹{p.baseRate?.toFixed(2)} / sq.ft • GST {p.gst_rate || 18}%
+                                                          </div>
+                                                        </div>
+                                                        <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider flex-shrink-0 ${
+                                                          isHighlighted
+                                                            ? 'bg-blue-700 text-white'
+                                                            : isSelected
+                                                              ? 'bg-blue-200/80 text-blue-800'
+                                                              : 'bg-slate-100 text-slate-500'
+                                                        }`}>
+                                                          {p.id}
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+                                            ));
+                                          })()}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
                               <input value={row.projectName || ''} onChange={(e) => updateRow(row.id, { projectName: e.target.value })} className="h-10 w-full min-w-[80px] rounded-lg border-2 border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800 outline-none placeholder:text-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all" placeholder="Project (optional)" />
