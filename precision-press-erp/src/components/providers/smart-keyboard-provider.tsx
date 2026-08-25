@@ -47,21 +47,47 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
 
       const currentIndex = focusables.indexOf(target);
 
-      // 1. TALLY-STYLE BACKSPACE HANDLER: Navigates directly to previous field
+      // 1. TALLY-STYLE DUAL BACKSPACE HANDLER:
       if (e.key === "Backspace" && !e.shiftKey && !e.ctrlKey && !e.altKey) {
-        // In multiline textareas, only go back if cursor is at the start (index 0) or text is selected/empty
-        if (tagName === "textarea") {
+        let shouldNavigateBack = false;
+
+        if (tagName === "input") {
+          const input = target as HTMLInputElement;
+          const val = input.value ?? "";
+          const start = input.selectionStart ?? 0;
+          const end = input.selectionEnd ?? 0;
+          const isAllSelected = val.length > 0 && start === 0 && end === val.length;
+          const isEmpty = val.length === 0;
+          const isAtBeginning = start === 0 && end === 0;
+
+          // If box is empty, cursor is at start 0, or entire value is selected (just landed):
+          // -> Jump directly to previous field!
+          if (isEmpty || isAllSelected || isAtBeginning) {
+            shouldNavigateBack = true;
+          } else {
+            // User pressed 'End' or cursor is inside text: allow character deletion
+            return;
+          }
+        } else if (tagName === "textarea") {
           const textarea = target as HTMLTextAreaElement;
           const val = textarea.value ?? "";
-          const isAtStart = textarea.selectionStart === 0 && textarea.selectionEnd === 0;
-          const isAllSelected = textarea.selectionStart === 0 && textarea.selectionEnd === val.length;
-          if (val !== "" && !isAtStart && !isAllSelected) {
-            return; // allow normal deletion inside active paragraph
+          const start = textarea.selectionStart ?? 0;
+          const end = textarea.selectionEnd ?? 0;
+          const isAllSelected = val.length > 0 && start === 0 && end === val.length;
+          const isEmpty = val.length === 0;
+          const isAtBeginning = start === 0 && end === 0;
+
+          if (isEmpty || isAllSelected || isAtBeginning) {
+            shouldNavigateBack = true;
+          } else {
+            return;
           }
+        } else if (tagName === "button" || tagName === "select") {
+          shouldNavigateBack = true;
         }
 
         // Navigate back to previous field (Shift+Tab equivalent)
-        if (currentIndex > 0) {
+        if (shouldNavigateBack && currentIndex > 0) {
           e.preventDefault();
           const prevEl = focusables[currentIndex - 1];
           prevEl.focus();
