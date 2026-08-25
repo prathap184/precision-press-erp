@@ -348,3 +348,22 @@ The ERP automatically classifies the **582 Tally Stock Items** into two function
 * Each `bank_account` is linked to a `chart_account` via `chart_account_id` (e.g. Federal Bank $\leftrightarrow$ GL 1100 Checking Account).
 * Updating the opening balance on a Bank Account automatically synchronizes its linked Chart of Account opening balance simultaneously, ensuring a single source of truth with **ZERO double-counting**!
 
+---
+
+## 🚀 13. Live Sync Implementation Status & Pending Tasks
+
+### ✅ Completed & Active Components:
+1. **Master Ledger Ingestion**: 1,260 Debtors, 133 Creditors, 582 Stock Items (395 Direct / 187 Non-Direct), 221 Chart of Accounts, and 3 Bank Profiles completely mapped to Tally.
+2. **Tally XML Engine**: Full XML generators and parsers (`src/lib/actions/tally-xml-parser.ts`, `tally-connector/`) for `Sales`, `Receipt`, `Payment`, `Contra`, `Journal`, and `Ledger` masters.
+3. **Idempotent Sync Queue**: `tally_sync_queue` table and `enqueueTallySync()` server action in `src/lib/actions/tally-sync.ts`.
+4. **Manual Sync Operations UI**: `/tally` dashboard page with manual trigger buttons for batch syncing Invoices, Receipts, Payments, Contra, Journals, and Masters.
+
+### ⏳ Remaining Work To Build (Pending Live Auto-Trigger):
+1. **Automatic Live Enqueue Hooks in Backend API Routes**:
+   * **Invoices (`src/app/api/v1/invoices/route.ts`)**: Wire `enqueueTallySync({ syncType: 'SALES_INVOICE', ... })` directly after invoice creation/approval so every new invoice automatically enters the Tally queue without manual clicks.
+   * **Customer Prepayments & Receipts (`src/app/api/v1/customer-credits/route.ts` & `src/app/api/v1/payments/route.ts`)**: Wire `enqueueTallySync({ syncType: 'RECEIPT_VOUCHER', ... })` on receipt saving and bill allocation.
+   * **New Customers / Contacts (`src/app/api/v1/contacts/route.ts`)**: Auto-enqueue new customer ledgers (`CUSTOMER_LEDGER`) when created from proxy order or contacts page.
+2. **Local Connector Execution**:
+   * Run background connector service (`node tally-connector/connector.js`) on the local Accounting PC pointing to TallyPrime at `http://localhost:9000`.
+3. **Live Daybook Reconciliation**:
+   * Verify test transactions pass to TallyPrime with 0 errors and show up in the Daybook under proper bill references (`New Ref` / `Agst Ref`).
