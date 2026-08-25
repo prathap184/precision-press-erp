@@ -400,7 +400,17 @@ export async function addCustomerAddress(uid: string, address: Omit<DeliveryAddr
       id: Date.now().toString(),
     };
 
-    const currentAddresses: DeliveryAddress[] = Array.isArray(profile.addresses) ? profile.addresses : [];
+    let currentAddresses: DeliveryAddress[] = [];
+    if (Array.isArray(profile.addresses)) {
+      currentAddresses = profile.addresses;
+    } else if (typeof profile.addresses === 'string') {
+      try {
+        currentAddresses = JSON.parse(profile.addresses);
+      } catch {
+        currentAddresses = [];
+      }
+    }
+
     const isFirstAddress = currentAddresses.length === 0;
     if (isFirstAddress || newAddress.isDefault) {
       currentAddresses.forEach(a => (a.isDefault = false));
@@ -420,7 +430,8 @@ export async function addCustomerAddress(uid: string, address: Omit<DeliveryAddr
       updates.billing_state_code = (newAddress as any).stateCode || '';
       updates.billing_pincode = newAddress.pincode || '';
       updates.billing_country = 'India';
-    } else if (profile.billing_address_line1 && !profile.shipping_address_line1) {
+    } else {
+      // Save directly into Shipping Address (Address Line 2)
       updates.shipping_address_line1 = newAddress.houseNumber || '';
       updates.shipping_address_line2 = newAddress.roadName || '';
       updates.shipping_area   = (newAddress as any).area || '';
@@ -430,6 +441,7 @@ export async function addCustomerAddress(uid: string, address: Omit<DeliveryAddr
       updates.shipping_state_code = (newAddress as any).stateCode || '';
       updates.shipping_pincode = newAddress.pincode || '';
       updates.shipping_country = 'India';
+      updates.shipping_same_as_billing = false;
     }
 
     const { error: updateError } = await supabaseDirect

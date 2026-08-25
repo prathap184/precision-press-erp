@@ -520,19 +520,8 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
       const { addCustomerAddress } = await import('@/lib/actions/users');
       const result = await addCustomerAddress(selectedCustomer.uid, addressData);
       if (result.success && result.address) {
-        setCustomers((prev) => prev.map(c => {
-          if (c.uid === selectedCustomer.uid) {
-            return {
-              ...c,
-              addresses: [...(c.addresses || []), result.address],
-              defaultAddressId: result.address.id
-            };
-          }
-          return c;
-        }));
-        
         const a = result.address;
-        const cName = selectedCustomer.displayName || selectedCustomer.name;
+        const cName = selectedCustomer.displayName || selectedCustomer.name || 'Customer';
         const cPhone = selectedCustomer.phone || '';
         const parts = [
           a.houseNumber,
@@ -545,6 +534,31 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
         ].filter(Boolean);
         const fullStr = `${cName} ${cPhone ? `(${cPhone})` : ''}
 ${parts.join(', ')}`;
+
+        setCustomers((prev) => prev.map(c => {
+          if (c.uid === selectedCustomer.uid || (c as any).id === selectedCustomer.uid) {
+            let existingAddresses: any[] = [];
+            if (Array.isArray(c.addresses)) {
+              existingAddresses = c.addresses;
+            } else if (typeof c.addresses === 'string') {
+              try { existingAddresses = JSON.parse(c.addresses); } catch { existingAddresses = []; }
+            }
+            return {
+              ...c,
+              shipping_address_line1: a.houseNumber || (c as any).shipping_address_line1,
+              shipping_address_line2: a.roadName || (c as any).shipping_address_line2,
+              shipping_area: (a as any).area || (c as any).shipping_area,
+              shipping_city: a.city || (c as any).shipping_city,
+              shipping_district: (a as any).district || (c as any).shipping_district,
+              shipping_state: a.state || (c as any).shipping_state,
+              shipping_pincode: a.pincode || (c as any).shipping_pincode,
+              addresses: [...existingAddresses, a],
+              defaultAddressId: a.id
+            };
+          }
+          return c;
+        }));
+        
         setShippingAddress(fullStr);
         toast.success('Address added successfully');
         return true;
