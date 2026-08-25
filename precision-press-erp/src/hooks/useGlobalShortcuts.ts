@@ -94,15 +94,22 @@ export function useGlobalShortcuts() {
       if (e.key === 'Escape') {
         if (menuState !== null) {
           closeMenu();
-        } else {
-          const currentPath = window.location.pathname;
-          if (currentPath !== '/admin/orders') {
-            const parent = getParentRoute(currentPath);
-            if (parent === '/admin/orders' && process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL) {
-              window.location.href = `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}/admin/orders`;
-            } else {
-              router.push(parent);
-            }
+          return;
+        }
+
+        const currentPath = window.location.pathname;
+        if (currentPath === '/proxy-order' || currentPath === '/quotation-builder' || currentPath.startsWith('/acdema/orders')) {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('request-exit-proxy-order'));
+          return;
+        }
+
+        if (currentPath !== '/admin/orders') {
+          const parent = getParentRoute(currentPath);
+          if (parent === '/admin/orders' && process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL) {
+            window.location.href = `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}/admin/orders`;
+          } else {
+            router.push(parent);
           }
         }
         return;

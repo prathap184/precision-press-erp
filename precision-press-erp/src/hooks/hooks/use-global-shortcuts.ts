@@ -43,9 +43,17 @@ export function useGlobalShortcuts() {
       if (e.key === 'Escape') {
         if (menuState !== null) {
           closeMenu();
-        } else {
-          router.back();
+          return;
         }
+
+        const currentPath = window.location.pathname;
+        if (currentPath === '/proxy-order' || currentPath === '/quotation-builder' || currentPath.startsWith('/acdema/orders')) {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('request-exit-proxy-order'));
+          return;
+        }
+
+        router.back();
         return;
       }
 

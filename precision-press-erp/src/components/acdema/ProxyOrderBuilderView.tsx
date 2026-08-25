@@ -29,11 +29,66 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [paymentMethodTab, setPaymentMethodTab] = useState<'CASH_UPI' | 'CREDIT'>('CASH_UPI');
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
   const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const handleExitRequest = () => {
+      if (customerDropdownOpen) {
+        setCustomerDropdownOpen(false);
+        return;
+      }
+      if (openRowId) {
+        setOpenRowId(null);
+        return;
+      }
+      if (openUnitPickerId) {
+        setOpenUnitPickerId(null);
+        return;
+      }
+      if (showAddressModal) {
+        setShowAddressModal(false);
+        return;
+      }
+      if (showCreditModal) {
+        setShowCreditModal(false);
+        return;
+      }
+      if (showCreateCustomer) {
+        setShowCreateCustomer(false);
+        return;
+      }
+      setShowExitConfirmModal(true);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showExitConfirmModal) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowExitConfirmModal(false);
+          return;
+        }
+        if (customerDropdownOpen || openRowId || openUnitPickerId || showAddressModal || showCreditModal || showCreateCustomer) {
+          return;
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        setShowExitConfirmModal(true);
+      }
+    };
+
+    window.addEventListener('request-exit-proxy-order', handleExitRequest);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('request-exit-proxy-order', handleExitRequest);
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [showExitConfirmModal, customerDropdownOpen, openRowId, openUnitPickerId, showAddressModal, showCreditModal, showCreateCustomer]);
 
   const handleRowFileSelect = async (rowId: string, file: File) => {
     // 1. Instantly display filename and prepare local blob preview
@@ -1389,6 +1444,48 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   >
                     {loading && <Loader2 className="animate-spin" size={16} />}
                     Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Escape / Back Exit Confirmation Modal */}
+          {showExitConfirmModal && (
+            <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md animate-in fade-in duration-150">
+              <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 shrink-0">
+                    <AlertTriangle size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">Return to Global Orders?</h3>
+                    <p className="text-xs font-semibold text-slate-500">Unsaved entries will be discarded</p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-600 mb-6 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-100 font-medium">
+                  Are you sure you want to exit the Order Terminal and go back to Global Orders? Any draft items, calculations, and notes will not be saved.
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowExitConfirmModal(false)}
+                    className="flex-1 py-3 rounded-xl border border-slate-200 bg-slate-100 text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                  >
+                    Cancel (Stay)
+                  </button>
+                  <button
+                    type="button"
+                    autoFocus
+                    onClick={() => {
+                      const targetUrl = process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL
+                        ? `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}/admin/orders`
+                        : '/admin/orders';
+                      window.location.href = targetUrl;
+                    }}
+                    className="flex-1 py-3 rounded-xl bg-red-600 text-xs font-black uppercase tracking-wider text-white hover:bg-red-700 shadow-md transition-colors cursor-pointer"
+                  >
+                    Yes, Go Back
                   </button>
                 </div>
               </div>
