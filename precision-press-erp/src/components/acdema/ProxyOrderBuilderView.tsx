@@ -266,8 +266,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   </div>
                   
                   <div className="relative">
-                    <div id="error-customer" className={`flex h-12 w-full items-center rounded-xl bg-slate-50 px-4 transition-all ${validationErrors['customer'] ? 'border-2 border-red-500' : 'border border-slate-200 focus-within:border-slate-400'}`}>
-                      <Search size={16} className="text-slate-400 mr-2" />
+                    <div id="error-customer" className={`flex h-12 w-full items-center rounded-xl px-4 transition-all duration-150 ${validationErrors['customer'] ? 'border-2 border-red-500 bg-red-50/50' : customerDropdownOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-md' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                      <Search size={16} className={`mr-2 transition-colors ${customerDropdownOpen ? 'text-blue-600' : 'text-slate-400'}`} />
                       <input
                         value={customerDropdownOpen ? customerSearch : (selectedCustomer?.displayName || selectedCustomer?.name || '')}
                         placeholder="Search customer..."
@@ -326,12 +326,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         }}
                         className="h-full w-full border-0 focus:ring-0 p-0 bg-transparent text-sm font-bold text-slate-800 outline-none placeholder-slate-400"
                       />
-                      <ChevronDown size={16} className="text-slate-400 ml-2" />
+                      <ChevronDown size={16} className={`ml-2 transition-colors ${customerDropdownOpen ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
 
                     {customerDropdownOpen && (
                       <div
-                        className="absolute left-0 top-full mt-2 w-full z-[9999] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+                        className="absolute left-0 top-full mt-2 w-full z-[9999] max-h-64 overflow-y-auto rounded-xl border-2 border-blue-600 bg-white shadow-2xl"
                       >
                         {filteredCustomers.length === 0 ? (
                           <div className="p-4 text-xs italic text-slate-400">No matches found.</div>
@@ -457,7 +457,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         <>
                           <select
                             id="delivery-address-select"
-                            className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-300"
+                            className="h-12 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
                             value={shippingAddress}
                             onChange={(e) => setShippingAddress(e.target.value)}
                             onKeyDown={(e) => {
@@ -616,7 +616,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                                 return (
                                   <div id={`error-row-${row.id}-product`} className="relative w-full min-w-[140px]">
-                                    <div className={`flex h-10 w-full items-center rounded-lg bg-slate-50 px-3 border ${validationErrors[`row-${row.id}-product`] ? 'border-red-400' : 'border-slate-200'}`}>
+                                    <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-400 bg-red-50/50' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                                       <input
                                         value={isOpen ? searchQuery : (selProd?.name ?? '')}
                                         placeholder="Select item..."
@@ -665,10 +665,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 160)}
                                         className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
                                       />
-                                      <ChevronDown size={14} className="text-slate-400 cursor-pointer" onClick={() => setOpenRowId(isOpen ? null : row.id)} />
+                                      <ChevronDown size={14} className={`cursor-pointer transition-colors ${isOpen ? 'text-blue-600' : 'text-slate-400'}`} onClick={() => setOpenRowId(isOpen ? null : row.id)} />
                                     </div>
                                     {isOpen && (
-                                      <div className="absolute left-0 top-full mt-1 w-[280px] z-[9999] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                                      <div className="absolute left-0 top-full mt-1 w-[280px] z-[9999] max-h-64 overflow-y-auto rounded-xl border-2 border-blue-600 bg-white shadow-2xl">
                                         {(() => {
                                           if (matched.length === 0) return <div className="p-3 text-xs text-slate-400 italic">No products found.</div>;
                                           
@@ -736,7 +736,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               })()}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <input value={row.projectName || ''} onChange={(e) => updateRow(row.id, { projectName: e.target.value })} className="h-10 w-full min-w-[80px] rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800 outline-none placeholder:text-slate-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all" placeholder="Project (optional)" />
+                              <input value={row.projectName || ''} onChange={(e) => updateRow(row.id, { projectName: e.target.value })} className="h-10 w-full min-w-[80px] rounded-lg border-2 border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800 outline-none placeholder:text-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all" placeholder="Project (optional)" />
                             </td>
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
                             <td className="py-3 px-2 tabular-nums">
@@ -745,7 +745,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   —
                                 </div>
                               ) : (
-                                <div className={`flex h-10 w-[90px] items-center rounded-lg border bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-blue-50/40 ${validationErrors[`row-${row.id}-width`] ? 'border-red-400' : 'border-slate-200'}`}>
+                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white ${validationErrors[`row-${row.id}-width`] ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`}>
                                   <input id={`error-row-${row.id}-width`} value={row.width} onChange={(e) => updateRow(row.id, { width: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="W" />
                                   <div className="relative flex-shrink-0">
                                     <button
@@ -777,7 +777,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
                                     </button>
                                     {openUnitPickerId === `${row.id}-w` && (
-                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
                                         {['FT', 'IN'].map(u => (
                                           <button
                                             key={u}
@@ -813,7 +813,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   —
                                 </div>
                               ) : (
-                                <div className={`flex h-10 w-[90px] items-center rounded-lg border bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-blue-50/40 ${validationErrors[`row-${row.id}-height`] ? 'border-red-400' : 'border-slate-200'}`}>
+                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 bg-slate-50 px-1 overflow-visible transition-all focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white ${validationErrors[`row-${row.id}-height`] ? 'border-red-400 bg-red-50/50' : 'border-slate-200'}`}>
                                   <input id={`error-row-${row.id}-height`} value={row.height} onChange={(e) => updateRow(row.id, { height: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="L" />
                                   <div className="relative flex-shrink-0">
                                     <button
@@ -845,7 +845,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
                                     </button>
                                     {openUnitPickerId === `${row.id}-h` && (
-                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border border-slate-200 bg-white shadow-xl overflow-hidden">
+                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
                                         {['FT', 'IN'].map(u => (
                                           <button
                                             key={u}
@@ -879,7 +879,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               {sqft > 0 ? sqft.toFixed(2) : '—'}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
-                              <input id={`error-row-${row.id}-quantity`} value={row.quantity} onChange={(e) => updateRow(row.id, { quantity: e.target.value })} className={`h-10 w-16 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-800 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : ''}`} placeholder="Qty" />
+                              <input id={`error-row-${row.id}-quantity`} value={row.quantity} onChange={(e) => updateRow(row.id, { quantity: e.target.value })} className={`h-10 w-16 rounded-lg border-2 border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400 bg-red-50/50' : ''}`} placeholder="Qty" />
                             </td>
                             <td className="py-3 px-2 text-xs font-bold text-slate-600 tabular-nums">
                               {product?.baseRate?.toFixed(2) || '—'}
@@ -894,7 +894,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               ) : (
                                 <div className="flex flex-col gap-1">
-                                  <select value={row.eyeletType} onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })} className="h-8 w-full min-w-[80px] rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none">
+                                  <select value={row.eyeletType} onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })} className="h-8 w-full min-w-[80px] rounded-lg border-2 border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all">
                                     <option value="NONE">None</option>
                                     <option value="METAL">Metal</option>
                                     <option value="PLASTIC">Plastic</option>
@@ -912,7 +912,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       updateRow(row.id, { tiffPath: e.target.value, fileName: '' });
                                       setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
                                     }}
-                                    className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${
+                                    className={`h-10 w-full rounded-lg border-2 pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all ${
                                       validationErrors[`row-${row.id}-file`]
                                         ? 'border-red-400 bg-red-50 text-red-600 placeholder-red-300'
                                         : 'border-slate-200 bg-slate-50 text-slate-800'
@@ -1126,7 +1126,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Specific color needs, hardware requirements, special instructions..."
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs h-20 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 font-semibold resize-none transition-all"
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-xs h-20 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white font-semibold resize-none transition-all"
                     />
                   </div>
 
