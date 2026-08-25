@@ -442,9 +442,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address) ? (
                         <>
                           <select
+                            id="delivery-address-select"
                             className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none focus:border-slate-400"
                             value={shippingAddress}
                             onChange={(e) => setShippingAddress(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                                if (firstProductInput) firstProductInput.focus();
+                              }
+                            }}
                           >
                             <option value="">Select Delivery Address</option>
                             
@@ -476,13 +484,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               {shippingAddress}
                             </div>
                           )}
-                          <button onClick={() => setShowAddressModal(true)} className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline">
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => setShowAddressModal(true)}
+                            className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer"
+                          >
                             + Add Address
                           </button>
                         </>
                       ) : (
                         <button
                           id="error-shippingAddress"
+                          type="button"
                           onClick={() => setShowAddressModal(true)}
                           className={`flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed text-xs font-bold uppercase tracking-widest transition-all ${
                             validationErrors['shippingAddress'] ? 'border-red-400 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
@@ -504,7 +518,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
               <div className="relative z-10 w-full rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</h3>
-                  <button onClick={addRow} className="flex items-center gap-1 rounded-lg bg-slate-900 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-colors">
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    onClick={addRow}
+                    className="flex items-center gap-1 rounded-lg bg-slate-900 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                  >
                     <Plus size={12} /> Add Row
                   </button>
                 </div>
@@ -1410,7 +1429,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     const success = await handleAddDeliveryAddress({
                       pincode: addressForm.pincode, state: addressForm.state, stateCode: addressForm.stateCode, district: addressForm.district, city: addressForm.city, houseNumber: addressForm.houseNo, roadName: addressForm.roadName, area: addressForm.area
                     });
-                    if (success) setShowAddressModal(false);
+                    if (success) {
+                      setShowAddressModal(false);
+                      setTimeout(() => {
+                        const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                        if (firstProductInput) {
+                          firstProductInput.focus();
+                          try { (firstProductInput as HTMLInputElement).select(); } catch {}
+                        }
+                      }, 120);
+                    }
                   }} disabled={addingAddress} className="h-12 flex-1 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50">
                     {addingAddress ? 'Saving...' : 'Save Address'}
                   </button>
