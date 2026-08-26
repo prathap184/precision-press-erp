@@ -507,5 +507,27 @@ When setting up the target company in TallyPrime for live connector sync:
 * **Base Currency Symbol**: `₹` | **Formal Name**: `INR`
 * **Enable GST (F11)**: `Yes` (GSTIN: `29AFHPP0687G1Z2`, Registration: `Regular`, Periodicity: `Monthly`)
 
+---
+
+## 📑 17. The 7 Real-Time Tally Impacts on Live Sales Invoice Sync
+
+When any invoice is created in ERP and synced to TallyPrime, exactly 7 core places update automatically in real-time:
+
+1. **Day Book (`Gateway of Tally` ➔ `Day Book`)**:
+   * Logs the native voucher under `1.GST HO CS` with invoice number `INV-00043` (`HS1`) for `₹705.35`.
+2. **Customer Ledger (`Account Books` ➔ `Ledger` ➔ `5C Shimoga Hidayath`)**:
+   * Debits the customer account (`₹705.35 Dr`) and opens `<BILLTYPE>New Ref: INV-00043</BILLTYPE>`.
+3. **Profit & Loss Statement (`Gateway of Tally` ➔ `Profit & Loss A/c`)**:
+   * Credits `GST SALES` revenue account (`₹597.75 Cr`), immediately reflecting in Gross and Net Profit.
+4. **Company Balance Sheet (`Gateway of Tally` ➔ `Balance Sheet`)**:
+   * Increases Current Assets (`Sundry Debtors: +₹705.35`) and Current Liabilities (`Duties & Taxes: +₹107.60` = CGST `₹53.80` + SGST `₹53.80`). Balanced perfectly (`₹705.35 = ₹705.35`).
+5. **Stock Summary & Godowns (`Gateway of Tally` ➔ `Stock Summary`)**:
+   * Reduces physical inventory specifically from **`Godown B1`** (e.g. `100.00 N` outwards of `01 Acrylic Premium 1.0mm`) with the monthly August bar chart.
+6. **GST Returns / GSTR-1 (`Display More Reports` ➔ `GST Reports` ➔ `GSTR-1`)**:
+   * Automatically populates under B2B/B2C with Taxable turnover (`₹597.75`), CGST, SGST, and HSN Table 12.
+7. **Bills Receivables & Aging (`Statement of Accounts` ➔ `Outstandings` ➔ `Receivables`)**:
+   * Enters the bill into outstanding receivables tracking with age and due date until customer payment receipt is posted.
+
+
 
 
