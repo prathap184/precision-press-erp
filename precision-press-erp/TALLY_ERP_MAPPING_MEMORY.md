@@ -427,3 +427,49 @@ Analysis of the three ground-truth XML exports from TallyPrime (`Hindustan Enter
 4. **Official Rounding Ledger**: Map round-off adjustments to **`Round Off`**.
 5. **Bill-Wise Tracking**: Every invoice voucher must include `<BILLALLOCATIONS.LIST>` with `<BILLTYPE>New Ref</BILLTYPE>` and `<NAME>{Invoice Number}</NAME>`.
 
+---
+
+## 📑 15. Bill-Wise Allocation Mechanics: `New Ref` vs `Agst Ref` in Sales & Receipts
+
+### 1. The Core Bill Allocation Rules in Tally:
+* **`New Ref` (New Reference)**: Creates a new pending bill/demand for payment (e.g. Sales Invoice #`HS7547`).
+* **`Agst Ref` (Against Reference)**: Settles/closes an existing pending bill reference (e.g. Receipt paying #`HS7547` or Invoice consuming Advance deposit).
+* **`Advance`**: Records prepayment from a customer before an invoice exists (e.g. Advance Receipt #`ADV-101`).
+* **`On Account`**: Records lump-sum payments without specifying exact invoice numbers.
+
+---
+
+### 2. Can a Sales Invoice have `Agst Ref`? YES! 🎯
+
+```
+ ┌────────────────────────────────────────────────────────────────────────────────────────┐
+ │                              THE 2 FLOWS OF A SALES INVOICE                            │
+ ├────────────────────────────────────────────────────────────────────────────────────────┤
+ │ FLOW A: Standard Credit Sale (Customer pays LATER)                                     │
+ │ 1. Today:  Sales Invoice generated ──────▶  <BILLTYPE>New Ref</BILLTYPE> (HS7547)      │
+ │ 2. Later:  Customer pays money     ──────▶  <BILLTYPE>Agst Ref</BILLTYPE> (HS7547)     │
+ ├────────────────────────────────────────────────────────────────────────────────────────┤
+ │ FLOW B: Advance / Pre-paid Sale (Customer paid BEFORE the bill)                        │
+ │ 1. Earlier: Customer paid ₹5,000 Advance  ──▶ <BILLTYPE>Advance</BILLTYPE> (ADV-101)  │
+ │ 2. Today:   Final Sales Invoice generated ──▶ <BILLTYPE>Agst Ref</BILLTYPE> (ADV-101) │
+ │             (Invoice is INSTANTLY marked PAID using their existing advance!)           │
+ └────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### Real Examples from `listofallsalevorcher.xml`:
+* **Invoice #1 (`HS7547`)**: Uses **`New Ref: HS7547`** for ₹250.00 (Customer pays later).
+* **Invoice #11 (`AC786`)**: Uses **`Agst Ref: AC786`** for ₹1,300.00 (Settled against advance).
+* **Invoice #20 (`BC3509`)**: Uses **`Agst Ref: BC3509`** for ₹1,35,936.00 (Settled against order advance).
+
+---
+
+### 3. Summary Mapping Table for ERP Synchronization:
+
+| Customer Payment Timing | Sales Invoice Bill Type in XML | Receipt Voucher Bill Type in XML | Result in Tally |
+| :--- | :--- | :--- | :--- |
+| **Credit Sale** (Pay later) | `<BILLTYPE>New Ref</BILLTYPE>` | `<BILLTYPE>Agst Ref</BILLTYPE>` | Opens unpaid bill $\rightarrow$ Paid when receipt arrives |
+| **Full Advance Prepayment** | `<BILLTYPE>Agst Ref</BILLTYPE>` | `<BILLTYPE>Advance</BILLTYPE>` | Pre-recorded advance $\rightarrow$ Closed immediately upon billing |
+| **Partial Advance** (e.g. ₹500 adv on ₹1,000 bill) | Split: `Agst Ref ₹500` + `New Ref ₹500` | `<BILLTYPE>Advance</BILLTYPE>` | ₹500 advance consumed, ₹500 remains outstanding |
+| **Counter Cash / Immediate UPI** | Cash/Bank ledger debit | N/A (Direct settlement) | Zero debt balance |
+
+
