@@ -367,3 +367,63 @@ The ERP automatically classifies the **582 Tally Stock Items** into two function
    * Run background connector service (`node tally-connector/connector.js`) on the local Accounting PC pointing to TallyPrime at `http://localhost:9000`.
 3. **Live Daybook Reconciliation**:
    * Verify test transactions pass to TallyPrime with 0 errors and show up in the Daybook under proper bill references (`New Ref` / `Agst Ref`).
+
+---
+
+## 📑 14. Real Tally Native XML Vouchers & Master Analysis (`tally_sync/all ledgers/`)
+
+Analysis of the three ground-truth XML exports from TallyPrime (`Hindustan Enterprises 25-26`):
+
+### 1. `Sales_HS7547.xml` (Single Full-Spec e-Invoice Sales Voucher — 39.85 KB)
+* **Voucher Type**: `1.GST HO CS` (Head Office Cash/Credit Sale, Class: `GST Sale`)
+* **Voucher Number**: `HS7547` | **Date**: `01-Aug-2026`
+* **Customer**: `Image Media Solutions- HO- IMX` (GSTIN: `29AADFI9241C1ZG`, Place of Supply: `Karnataka`)
+* **Company GSTIN**: `29AFHPP0687G1Z2` (`Karnataka Registration`)
+* **e-Invoice (IRN / QR Code)**:
+  * `IRN`: `225f3da596f1e605f6ab1ea7b618f8eb07d95e8ce7ff1557fd2814e888af035a`
+  * `IRNACKNO`: `112631910586506` | `IRNACKDATE`: `2026-08-11 16:17:00`
+  * `IRNQRCODE`: Full signed JWT token embedded.
+* **Line Item**: `Dow 789= Clear/24` (HSN: `32141000`, Qty: `1.00 N`, Rate: `₹211.86/N`, Amount: `₹211.86`, Godown: `B1`)
+* **Ledger Allocations**:
+  * `GST SALES` $\rightarrow$ Credit `₹211.86`
+  * `CGST (9%)` $\rightarrow$ Credit `₹19.07`
+  * `SGST (9%)` $\rightarrow$ Credit `₹19.07`
+  * `Image Media Solutions- HO- IMX` $\rightarrow$ Debit `₹250.00` (Negative in XML: `-250.00`)
+* **Bill-Wise Allocation**:
+  * `<BILLTYPE>New Ref</BILLTYPE>`
+  * `<NAME>HS7547</NAME>`
+  * `<AMOUNT>-250.00</AMOUNT>`
+
+---
+
+### 2. `listofallsalevorcher.xml` (Daybook Batch Export of 21 Sales Vouchers — 699.09 KB)
+* **21 Total Vouchers** across all operational branches:
+  * **`1.GST HO CS` (13 Vouchers)**: Head Office Sales (`HS7547` to `HS7559`)
+  * **`GST BO CREDIT` (5 Vouchers)**: Branch Office Credit Sales (`BC3505` to `BC3509`)
+  * **`GST PO CASH` (2 Vouchers)**: Printing Office Cash Sales (`PS1166`, `PS1167`)
+  * **`GST AO Sales` (1 Voucher)**: Acrylic Division Sales
+* **14 Unique Customer Ledgers & 23 Unique Stock Items** spanning dimensional materials and unit products.
+
+---
+
+### 3. `Transactions.xml` (Composite Master + Voucher Structure — 499.96 KB)
+* **11 Master Groups**: `Sales Accounts`, `Duties & Taxes`, `Current Liabilities`, `Current Assets`, `Sundry Debtors`, `Debtors HO`, `Debtors Warehouse BO`, `Cash-in-hand`, `Indirect Expenses`, `Indirect Incomes`.
+* **11 Master Ledgers**:
+  * **Sales / Revenue**: `GST SALES` (under `Sales Accounts`)
+  * **Duties / Taxes**: `CGST`, `SGST`, `IGST` (under `Duties & Taxes`)
+  * **Logistics / Freight**: `zForwarding Charge- Sale` (under `Indirect Incomes`)
+  * **Rounding**: `Round Off` (under `Indirect Expenses`)
+  * **Cash**: `Cash` (under `Cash-in-hand`)
+  * **Debtors**: `Image Media Solutions- HO- IMX`, `Pixel Perceptions- Mys`, `P5 INDIA- BO`
+* **6 Stock Items**: Complete with UOMs (`N`, `sqft`), HSNs (`32141000`, `3920`, `3921`), and GST tax rates (18%).
+* **5 Sample Vouchers**: `HS7547`, `HS7548`, `PS1166`, `BC3505`, `PS1167`.
+
+---
+
+### 🎯 Key Production Takeaways for ERP Auto-Sync:
+1. **Official Sales Ledger**: Always credit **`GST SALES`** for taxable turnover.
+2. **Official Tax Ledgers**: Use exact Tally names: **`CGST`**, **`SGST`**, **`IGST`**.
+3. **Official Logistics Ledger**: Map delivery/transport charges to **`zForwarding Charge- Sale`**.
+4. **Official Rounding Ledger**: Map round-off adjustments to **`Round Off`**.
+5. **Bill-Wise Tracking**: Every invoice voucher must include `<BILLALLOCATIONS.LIST>` with `<BILLTYPE>New Ref</BILLTYPE>` and `<NAME>{Invoice Number}</NAME>`.
+
