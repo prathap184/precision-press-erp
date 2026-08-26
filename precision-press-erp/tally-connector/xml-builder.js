@@ -41,55 +41,56 @@ function toTallyDate(dateStr, educationalMode = true) {
 /**
  * Generates a Sales Voucher (Invoice) XML
  */
-function buildSalesInvoiceXML(payload, educationalMode = true) {
+function buildSalesInvoiceXML(payload, options = {}) {
+  const educationalMode = typeof options === 'boolean' ? options : (options.educationalMode !== undefined ? options.educationalMode : true);
+  const targetCompany = (typeof options === 'object' && options.companyName) ? options.companyName : (payload.tallyCompanyName || 'Hindustan Enterprises 25-26');
+
   let {
-    tallyCompanyName = 'Auravionx',
     invoiceNumber,
     invoiceDate,
     customerName,
-    items,
+    items = [],
     subTotal,
     cgst,
     sgst,
     igst,
     grandTotal,
-    salesLedgerName = 'Sales',
     debtorLedgerName,
   } = payload;
 
-  debtorLedgerName = debtorLedgerName || customerName || 'Sundry Debtors';
+  const salesLedgerName = payload.ledgers?.salesLedger || payload.salesLedgerName || 'GST SALES';
+  debtorLedgerName = payload.partyLedgerName || debtorLedgerName || customerName || 'Sundry Debtors';
   if (!invoiceNumber) invoiceNumber = `INV-${Date.now()}`;
   
   const tallyDate = toTallyDate(invoiceDate, educationalMode);
-  const state = payload.state || 'Karnataka';
+  const state = payload.placeOfSupply || payload.state || 'Karnataka';
   const narration = payload.narration || `Sales Invoice ${invoiceNumber}`;
-  const deliveryCharges = payload.deliveryCharges || 0;
+  const commonGodown = payload.commonGodown || 'B1';
 
-  // Calculate delivery/other charges to balance the invoice
-  const itemsTotal = items.reduce((sum, item) => sum + Number(item.amount), 0);
-  const taxesTotal = (cgst || 0) + (sgst || 0) + (igst || 0);
-  const deliveryAmount = Number(grandTotal) - (itemsTotal + taxesTotal);
-
-  // Line items — Quantity = Sq Ft, Rate = Rate per Sq Ft
+  // Calculate item entries
   const itemEntries = items.map(item => {
-    const sqft   = Number(item.sqft) || Number(item.quantity) || 1;
-    const rateSft = Number(item.rate) || 0;
-    const amount  = Number(item.amount) || 0;
-    const unit    = item.unit || 'Sq Ft';
+    const qty     = Number(item.quantity) || Number(item.sqft) || 1;
+    const rate    = Number(item.rate) || 0;
+    const amount  = Number(item.taxableAmount ?? item.amount ?? (rate * qty));
+    const unit    = item.unit || 'N';
+    const godown  = item.godownName || commonGodown || 'B1';
+    const hsnTag  = item.hsnCode ? `<GSTHSNNAME>${xmlEscape(item.hsnCode)}</GSTHSNNAME>` : '';
+
     return `
 <ALLINVENTORYENTRIES.LIST>
 <STOCKITEMNAME>${xmlEscape(item.productName)}</STOCKITEMNAME>
+${hsnTag}
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-<RATE>${rateSft}/${unit}</RATE>
+<RATE>${rate.toFixed(2)}/${unit}</RATE>
 <AMOUNT>${amount.toFixed(2)}</AMOUNT>
-<ACTUALQTY>${sqft} ${unit}</ACTUALQTY>
-<BILLEDQTY>${sqft} ${unit}</BILLEDQTY>
+<ACTUALQTY>${qty} ${unit}</ACTUALQTY>
+<BILLEDQTY>${qty} ${unit}</BILLEDQTY>
 <BATCHALLOCATIONS.LIST>
-<GODOWNNAME>Main Location</GODOWNNAME>
+<GODOWNNAME>${xmlEscape(godown)}</GODOWNNAME>
 <BATCHNAME>Primary Batch</BATCHNAME>
 <AMOUNT>${amount.toFixed(2)}</AMOUNT>
-<ACTUALQTY>${sqft} ${unit}</ACTUALQTY>
-<BILLEDQTY>${sqft} ${unit}</BILLEDQTY>
+<ACTUALQTY>${qty} ${unit}</ACTUALQTY>
+<BILLEDQTY>${qty} ${unit}</BILLEDQTY>
 </BATCHALLOCATIONS.LIST>
 <ACCOUNTINGALLOCATIONS.LIST>
 <LEDGERNAME>${xmlEscape(salesLedgerName)}</LEDGERNAME>
@@ -131,7 +132,11 @@ function buildSalesInvoiceXML(payload, educationalMode = true) {
 </LEDGERENTRIES.LIST>`);
   }
 
-  // Add delivery charges if there is a difference to balance the voucher
+  // Calculate delivery/freight charges to balance the invoice
+  const itemsTotal = items.reduce((sum, item) => sum + Number(item.taxableAmount ?? item.amount ?? ((item.rate || 0) * (item.quantity || 1))), 0);
+  const taxesTotal = (cgst || 0) + (sgst || 0) + (igst || 0);
+  const deliveryAmount = Number(grandTotal || 0) - (itemsTotal + taxesTotal);
+
   if (deliveryAmount > 0.01 || deliveryAmount < -0.01) {
     const freightLedger = payload.ledgers?.freightLedger || "zForwarding Charge- Sale";
     gstEntries.push(`
@@ -155,7 +160,7 @@ function buildSalesInvoiceXML(payload, educationalMode = true) {
 <REQUESTDESC>
 <REPORTNAME>Vouchers</REPORTNAME>
 <STATICVARIABLES>
-<SVCURRENTCOMPANY>${xmlEscape(tallyCompanyName)}</SVCURRENTCOMPANY>
+<SVCURRENTCOMPANY>${xmlEscape(targetCompany)}</SVCURRENTCOMPANY>
 </STATICVARIABLES>
 </REQUESTDESC>
 <REQUESTDATA>
@@ -197,6 +202,7 @@ ${itemEntries}
 
 ${gstEntries.join('')}
 
+<UDF:HECOMMONGODOWN>${xmlEscape(commonGodown)}</UDF:HECOMMONGODOWN>
 </VOUCHER>
         </TALLYMESSAGE>
       </REQUESTDATA>
