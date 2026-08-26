@@ -528,6 +528,34 @@ When any invoice is created in ERP and synced to TallyPrime, exactly 7 core plac
 7. **Bills Receivables & Aging (`Statement of Accounts` ➔ `Outstandings` ➔ `Receivables`)**:
    * Enters the bill into outstanding receivables tracking with age and due date until customer payment receipt is posted.
 
+---
+
+## 📑 18. Bank & Cash Accounts Synchronization & Master Hierarchy
+
+### 1. Bank and Cash Ledgers Populated in Tally:
+* **`Federal 2091`** (Parent: `Bank Accounts`):
+  * Running Balance: `₹915.00 Cr` (`-₹915.00`)
+* **`Cash` (Main Cash Drawer)** (Parent: `Cash-in-hand`):
+  * Running Balance: `₹31,73,956.41 Dr`
+* **`Cash B2` (Branch B2 Drawer)** (Parent: `Cash-in-hand`):
+  * Running Balance: `₹74,042.00 Dr`
+
+### 2. Stock Categories Configured:
+* `Acrylic`, `ACP`, `Flex & Banner`, `Vinyl & Lamination`, `Spray & Paints`, `Foam Board & Sunpack`, `LED & Power Supplies`, `Polycarbonate & Multiwall`, `Adhesives & Sealants`.
+
+### 3. Stock Groups Configured:
+* `Acrylic`, `Spray`, `ACP Sheets`, `Flex Material`, `Vinyl Rolls`, `Hardware & Accessories`, `Print Media`.
+
+### 4. Divisional Customer Debtors Hierarchy:
+* `Sundry Debtors`:
+  * `Debtors HO` (Head Office Credit Debtors)
+  * `Debtors Warehouse BO` (Branch Office Debtors)
+  * `Debtors Print PO` (Print Division Debtors)
+  * `Debtors Fiber Laser SO` (Laser & CNC Jobwork Debtors)
+  * `Debtors Glass GO` (Glass Division Debtors)
+  * `Debtors Aspire` (Aspire Project Division)
+
+
 
 
 
