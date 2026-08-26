@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { inventoryItem, journalEntry, journalLine, hsnMaster, hsnGstRates } from "@/lib/db/schema";
+import { inventoryItem, journalEntry, journalLine, hsnMaster, hsnGstRates, warehouse, warehouseStock } from "@/lib/db/schema";
 import { eq, and, or, ilike, desc, asc, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -34,6 +34,7 @@ const createSchema = z.object({
   isActive: z.boolean().default(true),
   hsnCode: z.string().nullable().optional(),
   gstRate: z.number().int().nullable().optional(),
+  warehouseId: z.string().uuid().nullable().optional(),
   workflowSteps: z.array(z.any()).optional().default([]),
   metadata: z.record(z.string(), z.any()).optional().default({}),
 });
@@ -245,6 +246,26 @@ export async function POST(request: Request) {
             { journalEntryId: entry.id, accountId: openingEquity.id, description: `Opening stock: ${item.name}`, debitAmount: 0, creditAmount: value, currencyCode: base },
           ]);
         }
+      }
+
+      // Associate with warehouse in warehouse_stock
+      let targetWarehouseId = parsed.warehouseId;
+      if (!targetWarehouseId) {
+        const defaultWh = await tx.query.warehouse.findFirst({
+          where: and(eq(warehouse.organizationId, ctx.organizationId), eq(warehouse.isDefault, true), notDeleted(warehouse.deletedAt)),
+        });
+        targetWarehouseId = defaultWh?.id;
+      }
+      if (targetWarehouseId) {
+        await tx.insert(warehouseStock).values({
+          organizationId: ctx.organizationId,
+          inventoryItemId: item.id,
+          warehouseId: targetWarehouseId,
+          quantity: openingQty,
+        }).onConflictDoUpdate({
+          target: [warehouseStock.organizationId, warehouseStock.inventoryItemId, warehouseStock.warehouseId],
+          set: { quantity: openingQty, updatedAt: new Date() }
+        });
       }
 
       return (

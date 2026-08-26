@@ -1250,6 +1250,25 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
   const [mediaImages, setMediaImages] = useState("");
   const [mediaVideo, setMediaVideo] = useState("");
 
+  const [warehouses, setWarehouses] = useState<{ id: string; name: string; code: string; isDefault: boolean }[]>([]);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
+    fetch("/api/v1/warehouses", { headers: { "x-organization-id": orgId } })
+      .then((r) => r.json())
+      .then((data) => {
+        const list = data.warehouses || data.data || [];
+        setWarehouses(list);
+        const def = list.find((w: any) => w.isDefault || w.is_default);
+        if (def) setSelectedWarehouseId(def.id);
+        else if (list.length > 0) setSelectedWarehouseId(list[0].id);
+      })
+      .catch(() => {});
+  }, [open]);
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
@@ -1271,6 +1290,7 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
           salePrice: Math.round(parseFloat(form.get("salePrice") as string || "0") * 100),
           quantityOnHand: parseInt(form.get("quantityOnHand") as string) || 0,
           reorderPoint: parseInt(form.get("reorderPoint") as string) || 0,
+          warehouseId: selectedWarehouseId || null,
           hsnCode: form.get("hsnCode") || null,
           gstRate: parseInt(form.get("gstRate") as string) || 0,
           workflowSteps: workflowSteps,
@@ -1457,8 +1477,23 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
             <div className="h-px bg-border" />
 
             <div className="space-y-4">
-              <SectionLabel>Stock</SectionLabel>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <SectionLabel>Stock & Location</SectionLabel>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="drawer-inv-wh">Warehouse / Godown</Label>
+                  <select
+                    id="drawer-inv-wh"
+                    value={selectedWarehouseId}
+                    onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {warehouses.map((wh) => (
+                      <option key={wh.id} value={wh.id}>
+                        {wh.name} ({wh.code}){wh.isDefault ? " - Default" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="drawer-inv-qty">{isDirectSelling ? "Initial Quantity" : "Initial Quantity (Sq.Ft)"}</Label>
                   <Input id="drawer-inv-qty" name="quantityOnHand" type="number" min={0} defaultValue={0} />

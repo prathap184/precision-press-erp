@@ -472,6 +472,80 @@ export async function POST(request: Request) {
       }
     }
 
+    // Auto-enqueue to tally_sync_queue for seamless TallyPrime synchronization
+    try {
+      const { enqueueTallySync, getTallySettings } = await import("@/lib/actions/tally-sync");
+      const settings = await getTallySettings();
+
+      // Fetch customer details
+      const customer = await db.query.contact.findFirst({
+        where: and(eq(contact.id, result.contactId), eq(contact.organizationId, ctx.organizationId)),
+      });
+
+      const customerLedgerName = customer?.displayName || customer?.businessName || customer?.name || "Cash Customer";
+
+      // Prepare payload matching Sales_HS7547.xml
+      const payload = {
+        tallyCompanyName: settings.companyName || "Hindustan Enterprises 25-26",
+        voucherType: "1.GST HO CS",
+        voucherClass: "GST Sale",
+        invoiceNumber: result.invoiceNumber,
+        invoiceDate: result.issueDate ? result.issueDate.replace(/-/g, "") : new Date().toISOString().slice(0, 10).replace(/-/g, ""),
+        date: result.issueDate || new Date().toISOString().slice(0, 10),
+        partyLedgerName: customerLedgerName,
+        customerName: customerLedgerName,
+        partyGstin: customer?.taxNumber || "",
+        placeOfSupply: customer?.state || "Karnataka",
+        isCreditSale: true,
+        billAllocations: {
+          name: result.invoiceNumber,
+          billType: "New Ref",
+          amount: -(result.total / 100),
+        },
+        items: processedLines.map((l) => ({
+          productName: l.description || "Printing Services",
+          hsnCode: l.hsnCode || "32141000",
+          quantity: l.quantity,
+          unit: "N",
+          rate: (l.unitPrice || 0) / 100,
+          taxableAmount: l.amount / 100,
+          godownName: "B1",
+          cgstRate: l.cgstRate || 9,
+          sgstRate: l.sgstRate || 9,
+          cgstAmount: (l.cgstAmount || 0) / 100,
+          sgstAmount: (l.sgstAmount || 0) / 100,
+        })),
+        ledgers: {
+          salesLedger: "GST SALES",
+          cgstLedger: "CGST",
+          sgstLedger: "SGST",
+          freightLedger: "zForwarding Charge- Sale",
+          roundOffLedger: "Round Off",
+        },
+        subTotal: result.subtotal / 100,
+        cgst: (result.cgstTotal || 0) / 100,
+        sgst: (result.sgstTotal || 0) / 100,
+        igst: (result.igstTotal || 0) / 100,
+        grandTotal: result.total / 100,
+        commonGodown: "B1",
+      };
+
+      await enqueueTallySync({
+        syncType: "SALES_INVOICE",
+        orderId: result.id,
+        customerId: result.contactId,
+        payload,
+        createdBy: ctx.userId,
+        voucherId: result.invoiceNumber,
+        voucherType: "1.GST HO CS",
+        refId: result.invoiceNumber,
+        customerName: customerLedgerName,
+        amountSnap: result.total / 100,
+      });
+    } catch (tallyErr) {
+      console.warn("[TallySync] Failed to auto-enqueue invoice:", tallyErr);
+    }
+
     return NextResponse.json({ invoice: result, creditLimitWarning }, { status: 201 });
   } catch (err) {
     return handleError(err);

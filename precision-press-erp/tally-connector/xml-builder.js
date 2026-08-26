@@ -133,14 +133,17 @@ function buildSalesInvoiceXML(payload, educationalMode = true) {
 
   // Add delivery charges if there is a difference to balance the voucher
   if (deliveryAmount > 0.01 || deliveryAmount < -0.01) {
+    const freightLedger = payload.ledgers?.freightLedger || "zForwarding Charge- Sale";
     gstEntries.push(`
 <LEDGERENTRIES.LIST>
-<LEDGERNAME>Delivery Charges</LEDGERNAME>
+<LEDGERNAME>${xmlEscape(freightLedger)}</LEDGERNAME>
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
 <ISPARTYLEDGER>No</ISPARTYLEDGER>
 <AMOUNT>${deliveryAmount.toFixed(2)}</AMOUNT>
 </LEDGERENTRIES.LIST>`);
   }
+
+  const vchType = payload.voucherType || "1.GST HO CS";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <ENVELOPE>
@@ -157,11 +160,12 @@ function buildSalesInvoiceXML(payload, educationalMode = true) {
 </REQUESTDESC>
 <REQUESTDATA>
 <TALLYMESSAGE xmlns:UDF="TallyUDF">
-<VOUCHER VCHTYPE="Sales" ACTION="Create" OBJVIEW="Invoice Voucher View">
+<VOUCHER VCHTYPE="${xmlEscape(vchType)}" ACTION="Create" OBJVIEW="Invoice Voucher View">
 <DATE>${tallyDate}</DATE>
 <VCHSTATUSDATE>${tallyDate}</VCHSTATUSDATE>
 <NARRATION>${xmlEscape(narration)}</NARRATION>
-<VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
+<VOUCHERTYPENAME>${xmlEscape(vchType)}</VOUCHERTYPENAME>
+<CLASSNAME>GST Sale</CLASSNAME>
 <VOUCHERNUMBER>${xmlEscape(invoiceNumber)}</VOUCHERNUMBER>
 <PARTYLEDGERNAME>${xmlEscape(debtorLedgerName)}</PARTYLEDGERNAME>
 <PARTYNAME>${xmlEscape(debtorLedgerName)}</PARTYNAME>

@@ -56,7 +56,9 @@ export async function GET(request: Request) {
       conditions.push(
         or(
           ilike(contact.name, `%${search}%`),
-          ilike(contact.email, `%${search}%`)
+          ilike(contact.email, `%${search}%`),
+          ilike(contact.phone, `%${search}%`),
+          ilike(contact.taxNumber, `%${search}%`)
         )!
       );
     }

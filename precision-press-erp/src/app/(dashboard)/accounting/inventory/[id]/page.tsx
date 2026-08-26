@@ -414,7 +414,7 @@ export default function InventoryItemDetailsPage() {
 
         <div className="h-px bg-border" />
 
-        <Section title="Stock" description="Get an alert when you're running low.">
+        <Section title="Stock & Reorder" description="Get an alert when you're running low.">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs" htmlFor="reorderPoint">Alert me when stock drops to</Label>
@@ -426,6 +426,73 @@ export default function InventoryItemDetailsPage() {
                 defaultValue={item.reorderPoint}
               />
             </div>
+          </div>
+        </Section>
+
+        <div className="h-px bg-border" />
+
+        <Section title="Warehouse & Godown Location" description="Physical warehouse and godown storage allocation for this item.">
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600 font-bold">
+                      <Warehouse className="size-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {warehouseStocks.length > 0 ? warehouseStocks[0].warehouseName : "Godown B1"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Godown Code: <span className="font-mono font-medium text-foreground">{warehouseStocks.length > 0 ? warehouseStocks[0].warehouseCode : "B1"}</span>
+                      </p>
+                    </div>
+                  </div>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    Primary Location
+                  </span>
+                </div>
+                <div className="pt-2 border-t flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Units in this Godown:</span>
+                  <span className="text-base font-mono font-bold text-foreground">
+                    {warehouseStocks.length > 0 ? warehouseStocks.reduce((acc, ws) => acc + ws.quantity, 0) : item.quantityOnHand} {item.unitOfMeasure || "Units"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border bg-slate-50 dark:bg-slate-900/50 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Package className="size-4 text-muted-foreground" />
+                  <p className="text-xs font-semibold text-foreground">Tally Stock Sync Location</p>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  When this item is billed on a Sales Invoice, Tally XML will automatically deduct inventory from Godown <strong className="text-foreground">{warehouseStocks.length > 0 ? warehouseStocks[0].warehouseCode : "B1"}</strong> using tag <code className="text-xs bg-muted px-1.5 py-0.5 rounded">&lt;GODOWNNAME&gt;{warehouseStocks.length > 0 ? warehouseStocks[0].warehouseCode : "B1"}&lt;/GODOWNNAME&gt;</code>.
+                </p>
+              </div>
+            </div>
+
+            {warehouseStocks.length > 1 && (
+              <div className="rounded-lg border divide-y">
+                {warehouseStocks.map((ws) => (
+                  <div key={ws.id} className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Warehouse className="size-3.5 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">{ws.warehouseName}</p>
+                        <p className="text-xs text-muted-foreground">{ws.warehouseCode}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-mono tabular-nums font-medium">{ws.quantity} {item.unitOfMeasure || "Units"}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {new Date(ws.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Section>
 

@@ -81,7 +81,7 @@ export function ContactPicker({ value, onChange, type, placeholder = "Select con
     const headers: Record<string, string> = {};
     if (orgId) headers["x-organization-id"] = orgId;
 
-    const params = new URLSearchParams({ limit: "500" });
+    const params = new URLSearchParams({ limit: "2500" });
     if (type) params.set("type", type);
 
     fetch(`/api/v1/contacts?${params}`, { headers })
@@ -161,7 +161,7 @@ export function ContactPicker({ value, onChange, type, placeholder = "Select con
                   {contacts.map((c) => (
                     <CommandItem
                       key={c.id}
-                      value={`${c.name} ${c.email || ""}`}
+                      value={`${c.name} ${c.phone || ""} ${c.email || ""} ${c.taxNumber || ""}`}
                       onSelect={() => {
                         onChange(c.id === value ? "" : c.id);
                         setOpen(false);
