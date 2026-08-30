@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { journalEntry, journalLine, customerCredit, contact, invoice, bill, payment, creditNote, debitNote, bankTransaction } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { journalEntry, journalLine, customerCredit, contact, invoice, bill, payment, creditNote, debitNote, bankTransaction, paymentAllocation } from "@/lib/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError } from "@/lib/api/response";
 import { centsToDecimal } from "@/lib/money";
 import { requireRole } from "@/lib/api/require-role";
 import { assertNotLocked } from "@/lib/api/period-lock";
+import { notDeleted } from "@/lib/db/soft-delete";
 import { logAudit } from "@/lib/api/audit";
 import { z } from "zod";
 import { currencyCodeSchema } from "@/lib/currency/zod";
@@ -110,10 +111,79 @@ export async function GET(
       }
     }
 
+    // Check if this journal entry is associated with an advance customer prepayment receipt
+    let creditDetails: any = null;
+    const creditRecord = await db.query.customerCredit.findFirst({
+      where: and(
+        eq(customerCredit.journalEntryId, id),
+        eq(customerCredit.organizationId, ctx.organizationId),
+        notDeleted(customerCredit.deletedAt)
+      ),
+      with: { contact: true },
+    });
+
+    if (creditRecord) {
+      const prepayAllocs = await db.query.paymentAllocation.findMany({
+        where: and(
+          eq(paymentAllocation.documentType, "prepayment"),
+          eq(paymentAllocation.documentId, creditRecord.id)
+        ),
+        with: { payment: true },
+      });
+
+      const pmtIds = prepayAllocs.map((a) => a.paymentId);
+      const invAllocs = pmtIds.length > 0
+        ? await db.query.paymentAllocation.findMany({
+            where: and(
+              eq(paymentAllocation.documentType, "invoice"),
+              inArray(paymentAllocation.paymentId, pmtIds)
+            ),
+          })
+        : [];
+
+      const invIds = invAllocs.map((a) => a.documentId);
+      const invRecords = invIds.length > 0
+        ? await db.query.invoice.findMany({
+            where: inArray(invoice.id, invIds),
+            with: { contact: true },
+          })
+        : [];
+
+      const invMap = new Map(invRecords.map((i) => [i.id, i]));
+
+      const timeline = prepayAllocs.map((alloc) => {
+        const matchedInvAlloc = invAllocs.find((ia) => ia.paymentId === alloc.paymentId);
+        const inv = matchedInvAlloc ? invMap.get(matchedInvAlloc.documentId) : null;
+        return {
+          id: alloc.id,
+          paymentId: alloc.paymentId,
+          paymentNumber: alloc.payment?.paymentNumber,
+          date: alloc.payment?.date || creditRecord.date,
+          amountApplied: alloc.amount,
+          invoiceId: inv?.id || null,
+          invoiceNumber: inv?.invoiceNumber || alloc.payment?.reference || "Invoice",
+          customerName: inv?.contact?.name || creditRecord.contact?.name || "Customer",
+          notes: alloc.payment?.notes || null,
+        };
+      });
+
+      creditDetails = {
+        id: creditRecord.id,
+        originalAmount: creditRecord.originalAmount,
+        amountRemaining: creditRecord.amountRemaining,
+        status: creditRecord.status,
+        notes: creditRecord.notes,
+        customerName: creditRecord.contact?.name,
+        currencyCode: creditRecord.currencyCode,
+        timeline,
+      };
+    }
+
     const result = {
       ...entry,
       contactName,
       contactId,
+      creditDetails,
       lines: entry.lines.map((l) => ({
         id: l.id,
         accountId: l.accountId,

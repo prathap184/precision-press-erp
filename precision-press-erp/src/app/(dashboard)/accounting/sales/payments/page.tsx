@@ -33,6 +33,7 @@ interface Payment {
   currencyCode: string;
   method: string;
   reference: string | null;
+  journalEntryId?: string | null;
   contact: { name: string } | null;
   allocations: { documentType: string; documentId: string; amount: number }[];
 }
@@ -332,7 +333,13 @@ export default function PaymentsPage() {
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
-            onRowClick={(r) => router.push(`/accounting/sales/payments/${r.id}`)}
+            onRowClick={(r) => {
+              if (r.journalEntryId) {
+                router.push(`/accounting/${r.journalEntryId}`);
+              } else {
+                router.push(`/accounting/sales/payments/${r.id}`);
+              }
+            }}
           />
         </ContentReveal>
       )}

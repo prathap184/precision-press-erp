@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   Pencil,
   Plus,
+  Wallet,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,29 @@ interface Line {
   creditAmount: string;
 }
 
+interface TimelineItem {
+  id: string;
+  paymentId: string;
+  paymentNumber: string;
+  date: string;
+  amountApplied: number;
+  invoiceId: string | null;
+  invoiceNumber: string;
+  customerName: string;
+  notes: string | null;
+}
+
+interface CreditDetails {
+  id: string;
+  originalAmount: number;
+  amountRemaining: number;
+  status: string;
+  notes: string | null;
+  customerName?: string | null;
+  currencyCode: string;
+  timeline: TimelineItem[];
+}
+
 interface Entry {
   id: string;
   entryNumber: number;
@@ -75,6 +99,7 @@ interface Entry {
   voidedAt: string | null;
   voidReason: string | null;
   createdAt: string;
+  creditDetails?: CreditDetails | null;
   lines: Line[];
 }
 
@@ -540,6 +565,126 @@ export default function EntryDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Advance Prepayment Balance & Settlement History */}
+        {entry.creditDetails && (
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border bg-card p-4">
+                <p className="text-xs text-muted-foreground font-medium">Original Advance Received</p>
+                <p className="text-xl font-bold font-mono mt-1">
+                  {formatMoney(entry.creditDetails.originalAmount, entry.creditDetails.currencyCode)}
+                </p>
+                {entry.creditDetails.customerName && (
+                  <p className="text-xs text-muted-foreground mt-1 truncate">
+                    Customer: <span className="font-semibold text-foreground">{entry.creditDetails.customerName}</span>
+                  </p>
+                )}
+              </div>
+              <div className="rounded-xl border bg-card p-4">
+                <p className="text-xs text-muted-foreground font-medium">Used / Adjusted So Far</p>
+                <p className="text-xl font-bold font-mono text-emerald-600 mt-1">
+                  {formatMoney(
+                    entry.creditDetails.originalAmount - entry.creditDetails.amountRemaining,
+                    entry.creditDetails.currencyCode
+                  )}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {entry.creditDetails.timeline.length} {entry.creditDetails.timeline.length === 1 ? "settlement" : "settlements"}
+                </p>
+              </div>
+              <div className="rounded-xl border bg-card p-4">
+                <div className="flex items-center gap-2">
+                  <Wallet className="size-3.5 text-amber-600" />
+                  <p className="text-xs text-muted-foreground font-medium">Remaining Available Balance</p>
+                </div>
+                <p className="text-xl font-bold font-mono text-amber-600 mt-1">
+                  {formatMoney(entry.creditDetails.amountRemaining, entry.creditDetails.currencyCode)}
+                </p>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px] px-1.5 py-0 mt-1 uppercase font-semibold",
+                    entry.creditDetails.amountRemaining > 0
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                      : "border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300"
+                  )}
+                >
+                  {entry.creditDetails.amountRemaining > 0 ? "Available for Invoices" : "Fully Settled"}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Invoices Applied / Usage Timeline Card */}
+            <div className="rounded-xl border bg-card overflow-hidden">
+              <div className="flex items-center justify-between border-b bg-muted/30 px-5 py-3.5">
+                <div className="flex items-center gap-2">
+                  <FileText className="size-4 text-emerald-600 dark:text-emerald-400" />
+                  <h3 className="text-sm font-semibold text-foreground">Invoices Settled & Usage Timeline</h3>
+                </div>
+                <span className="text-xs text-muted-foreground font-mono">
+                  {entry.creditDetails.timeline.length} {entry.creditDetails.timeline.length === 1 ? "invoice applied" : "invoices applied"}
+                </span>
+              </div>
+
+              {entry.creditDetails.timeline.length === 0 ? (
+                <div className="p-8 text-center text-sm text-muted-foreground">
+                  <p>No invoices have been settled against this advance yet.</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    When invoices are created using Agst Ref or this credit is applied, the settlement details will appear here.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {entry.creditDetails.timeline.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 px-5 gap-3 hover:bg-muted/10 transition-colors"
+                    >
+                      <div className="flex items-start gap-3 min-w-0">
+                        <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 shrink-0 mt-0.5">
+                          <FileText className="size-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {item.invoiceId ? (
+                              <Link
+                                href={`/accounting/sales/${item.invoiceId}`}
+                                className="font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                              >
+                                {item.invoiceNumber}
+                              </Link>
+                            ) : (
+                              <span className="font-mono text-sm font-semibold">{item.invoiceNumber}</span>
+                            )}
+                            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px] px-1.5 py-0 font-medium">
+                              Agst Ref
+                            </Badge>
+                            {item.paymentNumber && (
+                              <span className="text-xs font-mono text-muted-foreground">({item.paymentNumber})</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Settled on {formatDate(item.date)} · For: <span className="font-medium text-foreground">{item.customerName}</span>
+                            {item.notes ? ` · ${item.notes}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-left sm:text-right shrink-0">
+                        <p className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          - {formatMoney(item.amountApplied, entry.creditDetails!.currencyCode)}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Applied towards invoice
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Details cards row */}
         <div className="grid gap-4 sm:grid-cols-2">
