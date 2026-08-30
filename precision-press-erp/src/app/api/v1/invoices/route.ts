@@ -578,7 +578,28 @@ export async function POST(request: Request) {
 
       const customerLedgerName = customer?.displayName || customer?.businessName || customer?.name || "Cash Customer";
 
-      // Prepare payload matching Sales_HS7547.xml
+      // ── Determine bill allocation type ──────────────────────────────────────
+      // NEW_REF (default) → standard "New Ref" — customer pays later.
+      // AGST_REF → "Agst Ref" against the advance name — invoice is pre-paid.
+      // For Agst Ref we also need the advance reference name (ADV-XXXX).
+      let billType = "New Ref";
+      let billAllocationName = result.invoiceNumber;
+
+      if (parsed.referenceType === "AGST_REF" && parsed.advanceCreditId) {
+        // Fetch the advance credit to get its reference number (ADV-XXXX)
+        const [advCredit] = await db
+          .select()
+          .from(customerCredit)
+          .where(eq(customerCredit.id, parsed.advanceCreditId));
+        if (advCredit?.referenceNumber) {
+          // In Tally: the SALES INVOICE bill allocation uses "Agst Ref" pointing
+          // to the advance reference name (e.g. ADV-0001), not the invoice number.
+          billType = "Agst Ref";
+          billAllocationName = advCredit.referenceNumber;
+        }
+      }
+
+      // Prepare payload matching Sales_HS7547.xml / Memory Section 15
       const payload = {
         tallyCompanyName: settings.companyName || "Hindustan Enterprises 25-26",
         voucherType: "1.GST HO CS",
@@ -592,8 +613,8 @@ export async function POST(request: Request) {
         placeOfSupply: customer?.state || "Karnataka",
         isCreditSale: true,
         billAllocations: {
-          name: result.invoiceNumber,
-          billType: "New Ref",
+          name: billAllocationName,
+          billType,
           amount: -(result.total / 100),
         },
         items: processedLines.map((l) => ({
@@ -636,6 +657,73 @@ export async function POST(request: Request) {
         customerName: customerLedgerName,
         amountSnap: result.total / 100,
       });
+
+      // ── AGST REF: also enqueue a Journal Voucher for the advance settlement ──
+      // In Tally:  DR Customer Deposits (Advance) / CR Customer Ledger (AR)
+      // This mirrors the GL adjustment we already posted in ERP.
+      // Memory Section 15, Row 2: "Full Advance Prepayment" → JOURNAL_VOUCHER.
+      if (parsed.referenceType === "AGST_REF" && parsed.advanceCreditId) {
+        try {
+          const [advCredit] = await db
+            .select()
+            .from(customerCredit)
+            .where(eq(customerCredit.id, parsed.advanceCreditId));
+
+          if (advCredit) {
+            const applyAmt = Math.min(advCredit.originalAmount ?? advCredit.amountRemaining, result.total) / 100;
+            // Fetch Customer Deposits ledger name from chart of accounts (GL 2410)
+            const depositAccount = await db.query.chartAccount.findFirst({
+              where: and(
+                eq(chartAccount.code, "2410"),
+                eq(chartAccount.organizationId, ctx.organizationId)
+              ),
+            });
+            const depositLedger = depositAccount?.name || "Customer Deposits";
+
+            await enqueueTallySync({
+              syncType: "JOURNAL_VOUCHER",
+              orderId: result.id,
+              customerId: result.contactId,
+              createdBy: ctx.userId,
+              voucherId: `JV-${result.invoiceNumber}`,
+              voucherType: "Journal",
+              refId: advCredit.referenceNumber || parsed.advanceCreditId,
+              customerName: customerLedgerName,
+              amountSnap: applyAmt,
+              payload: {
+                tallyCompanyName: settings.companyName || "Hindustan Enterprises 25-26",
+                voucherNumber: `JV-${result.invoiceNumber}`,
+                voucherDate: result.issueDate || new Date().toISOString().slice(0, 10),
+                narration: `Advance settlement: ${advCredit.referenceNumber || "ADV"} applied against ${result.invoiceNumber} for ${customerLedgerName}`,
+                // DR: Customer Deposits (debit = reduces the advance liability)
+                // CR: Customer Ledger / AR (credit = clears invoice)
+                entries: [
+                  {
+                    ledgerName: depositLedger,
+                    isDeemedPositive: true,   // Debit
+                    amount: applyAmt,
+                  },
+                  {
+                    ledgerName: customerLedgerName,
+                    isDeemedPositive: false,  // Credit
+                    amount: applyAmt,
+                    // Bill allocation: Agst Ref closes the advance (ADV-XXXX)
+                    billAllocations: [
+                      {
+                        name: advCredit.referenceNumber || "ADV",
+                        billType: "Agst Ref",
+                        amount: applyAmt,
+                      },
+                    ],
+                  },
+                ],
+              },
+            });
+          }
+        } catch (jvErr) {
+          console.warn("[TallySync] Agst Ref Journal Voucher enqueue failed (non-fatal):", jvErr);
+        }
+      }
     } catch (tallyErr) {
       console.warn("[TallySync] Failed to auto-enqueue invoice:", tallyErr);
     }
