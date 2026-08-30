@@ -66,9 +66,11 @@ const createSchema = z.object({
   invoiceType: z.enum(["standard", "deposit", "retainer"]).default("standard"),
   // For deposit invoices: the deposit percentage in basis points (e.g. 2500 = 25%).
   depositPercent: z.number().int().min(0).max(10000).nullable().optional(),
-  // When true, create the invoice in 'pending_approval' rather than 'draft' so it
+  // When true, create the invoice in 'pending_approval' rather than 'sent' so it
   // enters the approval workflow immediately (and is not posted/sent).
   submitForApproval: z.boolean().optional().default(false),
+  // Default to 'sent' (finalized & active) unless explicitly set to 'draft'
+  status: z.enum(["draft", "sent"]).optional().default("sent"),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -376,9 +378,7 @@ export async function POST(request: Request) {
         currencyCode,
         invoiceType: parsed.invoiceType,
         depositPercent: parsed.depositPercent ?? null,
-        // Created as the schema default ('draft'); when submitForApproval is set
-        // we move it to 'pending_approval' below, but only after confirming an
-        // active approval workflow exists and an approval_request is created.
+        status: parsed.submitForApproval ? "draft" : parsed.status,
         createdBy: ctx.userId,
       })
       .returning();
@@ -389,6 +389,40 @@ export async function POST(request: Request) {
         ...l,
       }))
     );
+
+    // If created directly as 'sent', automatically post to General Ledger (DR AR 1200, CR Revenue 4000, CR GST)
+    if (created.status === "sent") {
+      try {
+        const { createInvoiceJournalEntry } = await import("@/lib/api/journal-automation");
+        const entry = await createInvoiceJournalEntry(
+          { organizationId: ctx.organizationId, userId: ctx.userId },
+          {
+            invoiceNumber: created.invoiceNumber,
+            total: created.total,
+            taxTotal: created.taxTotal,
+            cgstTotal: created.cgstTotal,
+            sgstTotal: created.sgstTotal,
+            igstTotal: created.igstTotal,
+            subtotal: created.subtotal,
+            lines: processedLines.map((l) => ({
+              accountId: l.accountId || null,
+              amount: l.amount,
+              taxAmount: l.taxAmount,
+            })),
+            date: created.issueDate,
+            currencyCode: created.currencyCode,
+          }
+        );
+        if (entry) {
+          await db
+            .update(invoice)
+            .set({ journalEntryId: entry.id })
+            .where(eq(invoice.id, created.id));
+        }
+      } catch (err) {
+        console.warn("Failed to create initial invoice journal entry", err);
+      }
+    }
 
     logAudit({ ctx, action: "create", entityType: "invoice", entityId: created.id, request });
 
