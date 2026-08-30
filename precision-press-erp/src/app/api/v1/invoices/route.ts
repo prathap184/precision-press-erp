@@ -468,20 +468,55 @@ export async function POST(request: Request) {
           // 3. Post GL adjustment: DR Customer Deposits (2410), CR AR (1200)
           let entryId: string | null = null;
           try {
-            const { createCreditApplicationJournal } = await import("@/lib/api/journal-automation");
-            const entry = await createCreditApplicationJournal(
-              { organizationId: ctx.organizationId, userId: ctx.userId },
-              {
-                creditId: credit.id,
-                invoiceId: created.id,
-                amount: applyAmount,
-                date: created.issueDate,
-                currencyCode: created.currencyCode,
-              }
+            const arAccount = await findAccountByCode(ctx.organizationId, "1200");
+            const deposits = await ensureControlAccount(
+              ctx.organizationId,
+              "customerDeposits",
+              created.currencyCode
             );
-            if (entry) entryId = entry.id;
+            if (arAccount && deposits) {
+              const entryNumber = await getNextEntryNumber(ctx.organizationId);
+              const desc = `Agst Ref Advance ${advRefName} applied to ${created.invoiceNumber}`;
+              const [je] = await db
+                .insert(journalEntry)
+                .values({
+                  organizationId: ctx.organizationId,
+                  entryNumber,
+                  date: created.issueDate,
+                  description: desc,
+                  reference: created.invoiceNumber,
+                  status: "posted",
+                  sourceType: "customer_credit_application",
+                  sourceId: credit.id,
+                  postedAt: new Date(),
+                  createdBy: ctx.userId,
+                })
+                .returning();
+
+              if (je) {
+                entryId = je.id;
+                await db.insert(journalLine).values([
+                  {
+                    journalEntryId: je.id,
+                    accountId: deposits.id,
+                    description: desc,
+                    debitAmount: applyAmount,
+                    creditAmount: 0,
+                    currencyCode: created.currencyCode,
+                  },
+                  {
+                    journalEntryId: je.id,
+                    accountId: arAccount.id,
+                    description: desc,
+                    debitAmount: 0,
+                    creditAmount: applyAmount,
+                    currencyCode: created.currencyCode,
+                  },
+                ]);
+              }
+            }
           } catch (jErr) {
-            console.warn("Agst Ref GL adjustment failed (non-fatal)", jErr);
+            console.warn("Agst Ref GL adjustment failed", jErr);
           }
 
           // 4. Create carrier payment record so it appears in Payment History & statements
