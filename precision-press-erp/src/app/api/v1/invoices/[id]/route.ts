@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice, invoiceLine, paymentAllocation } from "@/lib/db/schema";
+import { invoice, invoiceLine, paymentAllocation, customerCredit } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
