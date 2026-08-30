@@ -840,20 +840,22 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
               </div>
               {/* Advance picker — only visible when Agst Ref is chosen */}
               {refType === "AGST_REF" && (
-                <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-3">
-                  <Label className="text-amber-700 dark:text-amber-400 font-medium">Select Advance Receipt *</Label>
+                <div className="space-y-2.5 rounded-lg border border-amber-300 bg-amber-50/80 dark:border-amber-800/80 dark:bg-amber-950/30 p-3.5">
+                  <Label className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide flex items-center gap-1.5">
+                    <span>Select Advance Receipt *</span>
+                  </Label>
                   {availableCredits.length === 0 && !contactId && (
                     <p className="text-xs text-muted-foreground">Select a customer first to see their open advances.</p>
                   )}
                   {availableCredits.length === 0 && contactId && (
-                    <p className="text-xs text-amber-700 dark:text-amber-400">No open advances found for this customer.</p>
+                    <p className="text-xs font-medium text-amber-800 dark:text-amber-300">No open advances found for this customer.</p>
                   )}
                   {availableCredits.length > 0 && (
                     <Select value={selectedCreditId} onValueChange={setSelectedCreditId}>
-                      <SelectTrigger className="bg-white dark:bg-slate-900">
+                      <SelectTrigger className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-700 font-semibold shadow-sm h-10 px-3.5 focus:ring-2 focus:ring-amber-500">
                         <SelectValue placeholder="Pick an advance receipt..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-[9999]">
+                      <SelectContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-2xl z-[9999]">
                         {availableCredits.map((c: any) => {
                           const refName =
                             c.journalEntry?.reference ||
@@ -863,7 +865,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                             c.notes ||
                             "Advance";
                           return (
-                            <SelectItem key={c.id} value={c.id}>
+                            <SelectItem key={c.id} value={c.id} className="font-medium">
                               {refName} · Available: ₹{(c.amountRemaining / 100).toFixed(2)}
                             </SelectItem>
                           );
@@ -871,7 +873,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                       </SelectContent>
                     </Select>
                   )}
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                  <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
                     The advance will be automatically applied when you create the invoice — no extra steps needed.
                   </p>
                 </div>
