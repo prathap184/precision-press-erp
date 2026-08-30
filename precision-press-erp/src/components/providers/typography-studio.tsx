@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
-import { Sliders, Check, X, Search, RefreshCw, Type, Monitor, Apple, Terminal } from "lucide-react";
+import { Sliders, Check, X, Search, RefreshCw, Type, Monitor, Apple, Terminal, ChevronLeft } from "lucide-react";
 
 export interface TypographySettings {
   fontFamily: string;
@@ -616,25 +616,16 @@ export function TypographyStudio() {
   if (!mounted) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-[999999] font-sans antialiased">
-      {/* Floating Trigger Pill */}
+    <div className="fixed bottom-4 right-4 z-[999999] font-sans antialiased">
+      {/* Small subtle arrow trigger button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-3 rounded-full bg-slate-900/95 text-white px-5 py-3 shadow-[0_12px_45px_rgba(0,0,0,0.4)] backdrop-blur-md border border-slate-700/80 hover:bg-slate-950 hover:scale-105 transition-all duration-200 group cursor-pointer"
-          title="Open Live Font & Typography Studio"
+          className="flex items-center justify-center w-7 h-7 rounded-full bg-slate-900/60 hover:bg-slate-900 text-slate-400 hover:text-white border border-slate-700/50 shadow-md backdrop-blur-md hover:scale-110 opacity-50 hover:opacity-100 transition-all duration-200 cursor-pointer group"
+          title="Open Font Studio"
+          aria-label="Open Font Studio"
         >
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-blue-600 text-xs font-black text-white shadow-sm">
-            Aa
-          </span>
-          <div className="text-left">
-            <span className="text-xs font-black tracking-wider uppercase block leading-tight">
-              Font Studio
-            </span>
-            <span className="text-[10px] text-blue-300 font-bold">
-              {settings.fontFamily} • {settings.fontSize}px • {settings.fontWeight}
-            </span>
-          </div>
+          <ChevronLeft size={14} className="group-hover:-translate-x-0.5 transition-transform" />
         </button>
       )}
 
