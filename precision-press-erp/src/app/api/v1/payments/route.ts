@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { payment, paymentAllocation, invoice, bill, bankAccount, bankTransaction } from "@/lib/db/schema";
+import { payment, paymentAllocation, invoice, bill, bankAccount, bankTransaction, customerCredit } from "@/lib/db/schema";
 import { eq, and, desc, sql, notInArray, inArray } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -86,8 +86,34 @@ export async function GET(request: Request) {
       .from(payment)
       .where(and(...conditions));
 
+    // Enrich payments with master journalEntryId for advance receipts
+    const allCredits = await db.query.customerCredit.findMany({
+      where: and(
+        eq(customerCredit.organizationId, ctx.organizationId),
+        notDeleted(customerCredit.deletedAt)
+      ),
+      columns: { id: true, journalEntryId: true, notes: true },
+      with: { journalEntry: { columns: { id: true, reference: true, entryNumber: true } } },
+    });
+
+    const enrichedPayments = payments.map((p) => {
+      const ref = p.reference || p.paymentNumber;
+      const creditMatch = allCredits.find(
+        (c) =>
+          c.journalEntry?.reference === ref ||
+          c.journalEntry?.id === p.journalEntryId ||
+          c.notes?.includes(ref)
+      );
+
+      const targetJeId = creditMatch?.journalEntryId || creditMatch?.journalEntry?.id || p.journalEntryId;
+      return {
+        ...p,
+        journalEntryId: targetJeId,
+      };
+    });
+
     return NextResponse.json(
-      paginatedResponse(payments, Number(countResult?.count || 0), page, limit)
+      paginatedResponse(enrichedPayments, Number(countResult?.count || 0), page, limit)
     );
   } catch (err) {
     return handleError(err);
