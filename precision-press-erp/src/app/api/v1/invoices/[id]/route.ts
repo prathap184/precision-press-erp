@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { invoice, invoiceLine, paymentAllocation } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
 import { handleError, notFound } from "@/lib/api/response";
@@ -74,6 +74,18 @@ export async function GET(
       with: { payment: true },
     });
 
+    const paymentIds = allocations.map((a) => a.paymentId);
+    const prepaymentAllocs = paymentIds.length > 0
+      ? await db.query.paymentAllocation.findMany({
+          where: and(
+            eq(paymentAllocation.documentType, "prepayment"),
+            inArray(paymentAllocation.paymentId, paymentIds)
+          ),
+        })
+      : [];
+
+    const prepaymentMap = new Map(prepaymentAllocs.map((pa) => [pa.paymentId, pa.documentId]));
+
     const payments = allocations
       .filter((a) => a.payment)
       .map((a) => ({
@@ -84,6 +96,7 @@ export async function GET(
         method: a.payment.method,
         reference: a.payment.reference,
         notes: a.payment.notes,
+        creditId: prepaymentMap.get(a.paymentId) || null,
       }));
 
     // Base-currency equivalents (for dual-currency display) at the issue rate.

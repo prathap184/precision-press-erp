@@ -72,9 +72,22 @@ interface InvoiceOption {
   contact: { name: string } | null;
 }
 
+interface TimelineItem {
+  id: string;
+  paymentId: string;
+  paymentNumber: string;
+  date: string;
+  amountApplied: number;
+  invoiceId: string | null;
+  invoiceNumber: string;
+  invoiceTotal: number | null;
+  notes: string | null;
+}
+
 export default function CustomerPrepaymentDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [cc, setCc] = useState<CustomerCreditDetail | null>(null);
+  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyLoading, setApplyLoading] = useState(false);
@@ -94,6 +107,7 @@ export default function CustomerPrepaymentDetailPage() {
       .then((r) => r.json())
       .then((data) => {
         if (data.customerCredit) setCc(data.customerCredit);
+        if (data.timeline) setTimeline(data.timeline);
       })
       .finally(() => setLoading(false));
   }, [id, orgId]);
@@ -139,6 +153,14 @@ export default function CustomerPrepaymentDetailPage() {
       if (res.ok) {
         const data = await res.json();
         setCc((prev) => prev ? { ...prev, ...data.customerCredit } : prev);
+        // Refresh timeline
+        fetch(`/api/v1/customer-credits/${id}`, {
+          headers: { "x-organization-id": orgId },
+        })
+          .then((r) => r.json())
+          .then((d) => {
+            if (d.timeline) setTimeline(d.timeline);
+          });
         setApplyOpen(false);
         setApplyInvoiceId("");
         setApplyAmount("");
@@ -159,9 +181,9 @@ export default function CustomerPrepaymentDetailPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Prepayment" description={`From: ${cc.contact?.name || "Unknown"}`}>
+      <PageHeader title="Advance Prepayment" description={`From: ${cc.contact?.name || "Unknown"}`}>
         <Button variant="outline" size="sm" asChild>
-          <Link href="/sales/customer-prepayments"><ArrowLeft className="mr-2 size-4" />Back</Link>
+          <Link href="/accounting/sales/customer-prepayments"><ArrowLeft className="mr-2 size-4" />Back</Link>
         </Button>
         {cc.status === "open" && cc.amountRemaining > 0 && (
           <Dialog open={applyOpen} onOpenChange={setApplyOpen}>
@@ -234,11 +256,11 @@ export default function CustomerPrepaymentDetailPage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="rounded-lg border p-4">
-          <p className="text-xs text-muted-foreground">Original</p>
+          <p className="text-xs text-muted-foreground">Original Advance</p>
           <p className="text-xl font-bold font-mono">{formatMoney(cc.originalAmount, cc.currencyCode)}</p>
         </div>
         <div className="rounded-lg border p-4">
-          <p className="text-xs text-muted-foreground">Used so far</p>
+          <p className="text-xs text-muted-foreground">Used / Adjusted so far</p>
           <p className="text-xl font-bold font-mono text-emerald-600">{formatMoney(amountApplied, cc.currencyCode)}</p>
         </div>
         <div className="rounded-lg border p-4">
@@ -256,6 +278,71 @@ export default function CustomerPrepaymentDetailPage() {
           <p className="text-sm">{cc.notes}</p>
         </div>
       )}
+
+      {/* Full Usage Timeline / Invoices Settled */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="flex items-center justify-between border-b bg-muted/30 px-5 py-3.5">
+          <div className="flex items-center gap-2">
+            <FileText className="size-4 text-emerald-600 dark:text-emerald-400" />
+            <h3 className="text-sm font-semibold text-foreground">Usage Timeline & Invoices Settled</h3>
+          </div>
+          <span className="text-xs text-muted-foreground font-mono">
+            {timeline.length} {timeline.length === 1 ? "settlement" : "settlements"}
+          </span>
+        </div>
+
+        {timeline.length === 0 ? (
+          <div className="p-8 text-center text-sm text-muted-foreground">
+            <p>No invoices have been settled against this advance yet.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              When an invoice uses Agst Ref or applies this credit, the settlement history will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {timeline.map((item) => (
+              <div key={item.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 px-5 gap-3 hover:bg-muted/10 transition-colors">
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 shrink-0 mt-0.5">
+                    <FileText className="size-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {item.invoiceId ? (
+                        <Link
+                          href={`/accounting/sales/${item.invoiceId}`}
+                          className="font-mono text-sm font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1"
+                        >
+                          {item.invoiceNumber}
+                        </Link>
+                      ) : (
+                        <span className="font-mono text-sm font-semibold">{item.invoiceNumber}</span>
+                      )}
+                      <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] px-1.5 py-0">
+                        Agst Ref
+                      </Badge>
+                      {item.paymentNumber && (
+                        <span className="text-xs font-mono text-muted-foreground">({item.paymentNumber})</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Settled on {item.date} {item.notes ? ` · ${item.notes}` : ""}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left sm:text-right shrink-0">
+                  <p className="text-sm font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    - {formatMoney(item.amountApplied, cc.currencyCode)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Applied towards bill
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

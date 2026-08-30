@@ -168,6 +168,7 @@ interface PaymentRecord {
   method: string;
   reference?: string | null;
   notes?: string | null;
+  creditId?: string | null;
 }
 
 function formatDate(dateStr: string) {
@@ -1122,26 +1123,34 @@ export default function InvoiceDetailPage() {
                 </div>
               </div>
             </div>
-            {payments.some((p) => p.notes?.includes("Advance") || p.reference?.startsWith("ADV")) && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/20 p-3 mt-4 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="flex size-7 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 shrink-0">
-                    <Wallet className="size-3.5" />
+            {payments.some((p) => p.notes?.includes("Advance") || p.reference?.startsWith("ADV")) && (() => {
+              const advPmt = payments.find((p) => p.reference?.startsWith("ADV") || p.notes?.includes("Advance"));
+              const totalAdv = payments.filter((p) => p.notes?.includes("Advance") || p.reference?.startsWith("ADV")).reduce((sum, p) => sum + p.amount, 0);
+              const targetUrl = advPmt?.creditId ? `/accounting/sales/customer-prepayments/${advPmt.creditId}` : `/accounting/sales/customer-prepayments`;
+              return (
+                <Link
+                  href={targetUrl}
+                  className="rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100/70 dark:border-amber-900/30 dark:bg-amber-950/20 dark:hover:bg-amber-950/40 p-3 mt-4 flex items-center justify-between transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex size-7 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 shrink-0">
+                      <Wallet className="size-3.5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-amber-900 dark:text-amber-300 group-hover:underline flex items-center gap-1">
+                        Settled via Advance: {advPmt?.reference || "ADV"} →
+                      </p>
+                      <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                        {formatMoney(totalAdv, inv.currencyCode)} applied from customer prepayment pool · Click to view receipt details
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-amber-900 dark:text-amber-300">
-                      Settled via Advance: {payments.find((p) => p.reference?.startsWith("ADV") || p.notes?.includes("Advance"))?.reference || "ADV"}
-                    </p>
-                    <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                      {formatMoney(payments.filter((p) => p.notes?.includes("Advance") || p.reference?.startsWith("ADV")).reduce((sum, p) => sum + p.amount, 0), inv.currencyCode)} applied from customer prepayment pool
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="border-amber-300 bg-amber-100/60 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] uppercase font-bold tracking-wider">
-                  Agst Ref
-                </Badge>
-              </div>
-            )}
+                  <Badge variant="outline" className="border-amber-300 bg-amber-100/60 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] uppercase font-bold tracking-wider">
+                    Agst Ref
+                  </Badge>
+                </Link>
+              );
+            })()}
           </div>
 
           {/* Notes / Reference */}
@@ -1325,15 +1334,23 @@ export default function InvoiceDetailPage() {
             <div className="divide-y">
               {payments.map((p) => {
                 const isAdvance = p.notes?.includes("Advance") || p.reference?.startsWith("ADV") || p.method === "other";
+                const targetUrl = isAdvance
+                  ? p.creditId ? `/accounting/sales/customer-prepayments/${p.creditId}` : `/accounting/sales/customer-prepayments`
+                  : `/accounting/sales/payments/${p.id}`;
+
                 return (
-                  <div key={p.id} className="flex items-center justify-between px-5 py-3">
+                  <Link
+                    key={p.id}
+                    href={targetUrl}
+                    className="flex items-center justify-between px-5 py-3 hover:bg-muted/20 transition-colors group cursor-pointer"
+                  >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`flex size-8 items-center justify-center rounded-lg ${isAdvance ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"} shrink-0`}>
+                      <div className={`flex size-8 items-center justify-center rounded-lg ${isAdvance ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 group-hover:scale-105" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 group-hover:scale-105"} shrink-0 transition-transform`}>
                         {isAdvance ? <Wallet className="size-4" /> : <Banknote className="size-4" />}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-mono font-medium">{p.paymentNumber}</span>
+                          <span className="text-sm font-mono font-medium group-hover:underline">{p.paymentNumber}</span>
                           {isAdvance ? (
                             <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px] px-1.5 py-0 font-medium">
                               Advance Receipt {p.reference ? `(${p.reference})` : ""}
@@ -1347,8 +1364,11 @@ export default function InvoiceDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <span className="text-sm font-mono font-semibold text-emerald-600 shrink-0">{formatMoney(p.amount, inv.currencyCode)}</span>
-                  </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-sm font-mono font-semibold text-emerald-600">{formatMoney(p.amount, inv.currencyCode)}</span>
+                      <span className="text-xs text-muted-foreground group-hover:translate-x-0.5 transition-transform">→</span>
+                    </div>
+                  </Link>
                 );
               })}
             </div>

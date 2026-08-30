@@ -101,19 +101,6 @@ function buildColumns(): Column<Payment>[] {
         </span>
       ),
     },
-    {
-      key: "allocations",
-      header: "Allocations",
-      className: "w-28",
-      render: (r) => {
-        const count = r.allocations?.length || 0;
-        return (
-          <span className="text-sm text-muted-foreground">
-            {count === 0 ? "-" : `${count} invoice${count !== 1 ? "s" : ""}`}
-          </span>
-        );
-      },
-    },
   ];
 }
 
@@ -237,7 +224,7 @@ export default function PaymentsPage() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="size-8" asChild>
-            <Link href="/sales"><ArrowLeft className="size-4" /></Link>
+            <Link href="/accounting/sales"><ArrowLeft className="size-4" /></Link>
           </Button>
           <div>
             <h1 className="text-lg font-semibold tracking-tight">Payments</h1>
@@ -345,7 +332,7 @@ export default function PaymentsPage() {
             sortBy={sortBy}
             sortOrder={sortOrder}
             onSort={handleSort}
-            onRowClick={(r) => router.push(`/sales/payments/${r.id}`)}
+            onRowClick={(r) => router.push(`/accounting/sales/payments/${r.id}`)}
           />
         </ContentReveal>
       )}
