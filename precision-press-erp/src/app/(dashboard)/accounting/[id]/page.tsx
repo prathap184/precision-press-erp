@@ -83,6 +83,20 @@ interface CreditDetails {
   timeline: TimelineItem[];
 }
 
+interface InvoiceDetails {
+  id: string;
+  invoiceNumber: string;
+  reference: string | null;
+  total: number;
+  amountPaid: number;
+  amountDue: number;
+  status: string;
+  isAgstRef: boolean;
+  advanceReference: string;
+  advanceJournalEntryId: string | null;
+  currencyCode: string;
+}
+
 interface Entry {
   id: string;
   entryNumber: number;
@@ -100,6 +114,7 @@ interface Entry {
   voidReason: string | null;
   createdAt: string;
   creditDetails?: CreditDetails | null;
+  invoiceDetails?: InvoiceDetails | null;
   lines: Line[];
 }
 
@@ -682,6 +697,61 @@ export default function EntryDetailPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Advance Prepayment details (if linked to a customer credit / advance receipt) */}
+        {entry.invoiceDetails && entry.invoiceDetails.isAgstRef && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50/90 dark:border-amber-900/50 dark:bg-amber-950/30 p-5 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-start gap-3.5">
+                <div className="flex size-9 items-center justify-center rounded-lg bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 shrink-0 mt-0.5">
+                  <Wallet className="size-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200">
+                      Payment / Bill Allocation:
+                    </span>
+                    {entry.invoiceDetails.advanceJournalEntryId ? (
+                      <Link
+                        href={`/accounting/${entry.invoiceDetails.advanceJournalEntryId}`}
+                        className="inline-flex items-center gap-1 text-sm font-semibold font-mono text-amber-900 hover:text-amber-950 dark:text-amber-300 dark:hover:text-amber-200 underline"
+                      >
+                        Agst Ref: {entry.invoiceDetails.advanceReference} (Advance Receipt) →
+                      </Link>
+                    ) : (
+                      <span className="text-sm font-semibold font-mono text-amber-900 dark:text-amber-300">
+                        Agst Ref: {entry.invoiceDetails.advanceReference} (Advance Receipt)
+                      </span>
+                    )}
+                    <Badge variant="outline" className="border-amber-400 bg-amber-100/80 text-amber-900 dark:border-amber-800 dark:bg-amber-900/40 dark:text-amber-300 font-semibold text-xs">
+                      AGST REF
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Payment Status:</span>
+                    <Badge className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs">
+                      PAID (Settled via {entry.invoiceDetails.advanceReference})
+                    </Badge>
+                    {entry.invoiceDetails.reference && (
+                      <span className="text-xs text-muted-foreground ml-1">
+                        Order Ref: <span className="font-mono font-medium text-foreground">{entry.invoiceDetails.reference}</span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Link
+                  href={`/accounting/sales/${entry.invoiceDetails.id}`}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-amber-300 hover:bg-amber-50 text-slate-800 dark:bg-slate-900 dark:border-amber-800 dark:text-slate-200 shadow-sm transition-colors"
+                >
+                  <FileText className="size-3.5 text-amber-600 dark:text-amber-400" />
+                  View Full Sales Invoice →
+                </Link>
+              </div>
             </div>
           </div>
         )}

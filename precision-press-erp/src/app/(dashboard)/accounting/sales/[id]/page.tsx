@@ -1132,26 +1132,40 @@ export default function InvoiceDetailPage() {
                 : advPmt?.creditId
                 ? `/accounting/sales/customer-prepayments/${advPmt.creditId}`
                 : `/accounting/sales/customer-prepayments`;
+              const advRefName = advPmt?.reference || "ADV-0001";
               return (
                 <Link
                   href={targetUrl}
-                  className="rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100/70 dark:border-amber-900/30 dark:bg-amber-950/20 dark:hover:bg-amber-950/40 p-3 mt-4 flex items-center justify-between transition-colors group cursor-pointer"
+                  className="rounded-xl border border-amber-300 bg-amber-50 hover:bg-amber-100/80 dark:border-amber-900/50 dark:bg-amber-950/30 dark:hover:bg-amber-950/50 p-3.5 mt-4 flex items-center justify-between transition-colors group cursor-pointer shadow-sm"
                 >
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex size-7 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 shrink-0">
-                      <Wallet className="size-3.5" />
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-8 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 shrink-0">
+                      <Wallet className="size-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-amber-900 dark:text-amber-300 group-hover:underline flex items-center gap-1">
-                        Settled via Advance: {advPmt?.reference || "ADV"} →
-                      </p>
-                      <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                        {formatMoney(totalAdv, inv.currencyCode)} applied from customer prepayment pool · Click to view receipt details
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-amber-950 dark:text-amber-200">
+                          Payment / Bill Allocation:
+                        </span>
+                        <span className="text-xs font-mono font-semibold text-amber-900 dark:text-amber-300 group-hover:underline">
+                          Agst Ref: {advRefName} (Advance Receipt) →
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300">
+                          Payment Status:
+                        </span>
+                        <span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                          PAID (Settled via {advRefName})
+                        </span>
+                        <span className="text-[11px] text-muted-foreground">
+                          · {formatMoney(totalAdv, inv.currencyCode)} applied
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <Badge variant="outline" className="border-amber-300 bg-amber-100/60 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] uppercase font-bold tracking-wider">
-                    Agst Ref
+                  <Badge variant="outline" className="border-amber-400 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-900/50 dark:text-amber-300 text-[10px] uppercase font-bold tracking-wider shrink-0">
+                    AGST REF
                   </Badge>
                 </Link>
               );

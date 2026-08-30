@@ -179,11 +179,79 @@ export async function GET(
       };
     }
 
+    // Look up invoice details & Agst Ref allocation if this entry is for an invoice
+    let invoiceDetails: any = null;
+    let invRecord: any = null;
+
+    if (entry.sourceType === "invoice" && entry.sourceId) {
+      invRecord = await db.query.invoice.findFirst({
+        where: eq(invoice.id, entry.sourceId),
+        with: { contact: true },
+      });
+    } else if (entry.reference?.startsWith("INV-")) {
+      invRecord = await db.query.invoice.findFirst({
+        where: and(
+          eq(invoice.invoiceNumber, entry.reference),
+          eq(invoice.organizationId, ctx.organizationId),
+          notDeleted(invoice.deletedAt)
+        ),
+        with: { contact: true },
+      });
+    }
+
+    if (invRecord) {
+      const allocations = await db.query.paymentAllocation.findMany({
+        where: and(
+          eq(paymentAllocation.documentType, "invoice"),
+          eq(paymentAllocation.documentId, invRecord.id)
+        ),
+        with: { payment: true },
+      });
+
+      const pmtIds = allocations.map((a) => a.paymentId);
+      const prepayAllocs = pmtIds.length > 0
+        ? await db.query.paymentAllocation.findMany({
+            where: and(
+              eq(paymentAllocation.documentType, "prepayment"),
+              inArray(paymentAllocation.paymentId, pmtIds)
+            ),
+          })
+        : [];
+
+      const creditIds = Array.from(new Set(prepayAllocs.map((pa) => pa.documentId)));
+      const creditRecords = creditIds.length > 0
+        ? await db.query.customerCredit.findMany({
+            where: inArray(customerCredit.id, creditIds),
+            with: { journalEntry: { columns: { id: true, reference: true, entryNumber: true } } },
+          })
+        : [];
+
+      const isAgstRef = prepayAllocs.length > 0;
+      const mainCredit = creditRecords[0] || null;
+      const advRef = mainCredit?.journalEntry?.reference || mainCredit?.journalEntry?.entryNumber || "ADV-0001";
+      const advJournalEntryId = mainCredit?.journalEntryId || mainCredit?.journalEntry?.id || null;
+
+      invoiceDetails = {
+        id: invRecord.id,
+        invoiceNumber: invRecord.invoiceNumber,
+        reference: invRecord.reference, // Order number
+        total: invRecord.total,
+        amountPaid: invRecord.amountPaid,
+        amountDue: invRecord.amountDue,
+        status: invRecord.status,
+        isAgstRef,
+        advanceReference: advRef,
+        advanceJournalEntryId: advJournalEntryId,
+        currencyCode: invRecord.currencyCode,
+      };
+    }
+
     const result = {
       ...entry,
       contactName,
       contactId,
       creditDetails,
+      invoiceDetails,
       lines: entry.lines.map((l) => ({
         id: l.id,
         accountId: l.accountId,
