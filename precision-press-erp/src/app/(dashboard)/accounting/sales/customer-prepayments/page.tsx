@@ -33,6 +33,7 @@ interface CustomerCredit {
   amountRemaining: number;
   sourceType: string;
   currencyCode: string;
+  journalEntryId?: string | null;
   contact: { name: string } | null;
   journalEntry?: { reference: string | null; entryNumber: string } | null;
 }
@@ -504,7 +505,13 @@ export default function CustomerPrepaymentsPage() {
               data={filteredCredits}
               loading={false}
               emptyMessage="No prepayments match your filters."
-              onRowClick={(r) => router.push(`/sales/customer-prepayments/${r.id}`)}
+              onRowClick={(r) => {
+                if (r.journalEntryId) {
+                  router.push(`/accounting/${r.journalEntryId}`);
+                } else {
+                  router.push(`/accounting/sales/customer-prepayments/${r.id}`);
+                }
+              }}
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSort={handleSort}

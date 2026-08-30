@@ -85,19 +85,32 @@ export async function GET(
       : [];
 
     const prepaymentMap = new Map(prepaymentAllocs.map((pa) => [pa.paymentId, pa.documentId]));
+    const creditIds = Array.from(new Set(prepaymentAllocs.map((pa) => pa.documentId)));
+    const creditRecords = creditIds.length > 0
+      ? await db.query.customerCredit.findMany({
+          where: inArray(customerCredit.id, creditIds),
+          columns: { id: true, journalEntryId: true },
+        })
+      : [];
+    const creditJeMap = new Map(creditRecords.map((cr) => [cr.id, cr.journalEntryId]));
 
     const payments = allocations
       .filter((a) => a.payment)
-      .map((a) => ({
-        id: a.payment.id,
-        paymentNumber: a.payment.paymentNumber,
-        date: a.payment.date,
-        amount: a.amount,
-        method: a.payment.method,
-        reference: a.payment.reference,
-        notes: a.payment.notes,
-        creditId: prepaymentMap.get(a.paymentId) || null,
-      }));
+      .map((a) => {
+        const cId = prepaymentMap.get(a.paymentId) || null;
+        return {
+          id: a.payment.id,
+          paymentNumber: a.payment.paymentNumber,
+          date: a.payment.date,
+          amount: a.amount,
+          method: a.payment.method,
+          reference: a.payment.reference,
+          notes: a.payment.notes,
+          creditId: cId,
+          journalEntryId: a.payment.journalEntryId,
+          creditJournalEntryId: cId ? creditJeMap.get(cId) || null : null,
+        };
+      });
 
     // Base-currency equivalents (for dual-currency display) at the issue rate.
     const base = await toBaseAmounts(

@@ -169,6 +169,7 @@ interface PaymentRecord {
   reference?: string | null;
   notes?: string | null;
   creditId?: string | null;
+  creditJournalEntryId?: string | null;
 }
 
 function formatDate(dateStr: string) {
@@ -1126,7 +1127,11 @@ export default function InvoiceDetailPage() {
             {payments.some((p) => p.notes?.includes("Advance") || p.reference?.startsWith("ADV")) && (() => {
               const advPmt = payments.find((p) => p.reference?.startsWith("ADV") || p.notes?.includes("Advance"));
               const totalAdv = payments.filter((p) => p.notes?.includes("Advance") || p.reference?.startsWith("ADV")).reduce((sum, p) => sum + p.amount, 0);
-              const targetUrl = advPmt?.creditId ? `/accounting/sales/customer-prepayments/${advPmt.creditId}` : `/accounting/sales/customer-prepayments`;
+              const targetUrl = advPmt?.creditJournalEntryId
+                ? `/accounting/${advPmt.creditJournalEntryId}`
+                : advPmt?.creditId
+                ? `/accounting/sales/customer-prepayments/${advPmt.creditId}`
+                : `/accounting/sales/customer-prepayments`;
               return (
                 <Link
                   href={targetUrl}
@@ -1335,7 +1340,11 @@ export default function InvoiceDetailPage() {
               {payments.map((p) => {
                 const isAdvance = p.notes?.includes("Advance") || p.reference?.startsWith("ADV") || p.method === "other";
                 const targetUrl = isAdvance
-                  ? p.creditId ? `/accounting/sales/customer-prepayments/${p.creditId}` : `/accounting/sales/customer-prepayments`
+                  ? p.creditJournalEntryId
+                    ? `/accounting/${p.creditJournalEntryId}`
+                    : p.creditId
+                    ? `/accounting/sales/customer-prepayments/${p.creditId}`
+                    : `/accounting`
                   : `/accounting/sales/payments/${p.id}`;
 
                 return (
