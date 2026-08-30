@@ -854,11 +854,20 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                         <SelectValue placeholder="Pick an advance receipt..." />
                       </SelectTrigger>
                       <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-[9999]">
-                        {availableCredits.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.referenceNumber} · Available: ₹{(c.amountRemaining / 100).toFixed(2)}
-                          </SelectItem>
-                        ))}
+                        {availableCredits.map((c: any) => {
+                          const refName =
+                            c.journalEntry?.reference ||
+                            c.journalEntry?.entryNumber ||
+                            c.referenceNumber ||
+                            c.reference ||
+                            c.notes ||
+                            "Advance";
+                          return (
+                            <SelectItem key={c.id} value={c.id}>
+                              {refName} · Available: ₹{(c.amountRemaining / 100).toFixed(2)}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   )}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice, invoiceLine, contact, organization, customerCredit, inventoryItem, member } from "@/lib/db/schema";
+import { invoice, invoiceLine, contact, organization, customerCredit, inventoryItem, member, payment, paymentAllocation } from "@/lib/db/schema";
 import { eq, and, desc, asc, gte, lte, ne, inArray, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -433,15 +433,13 @@ export async function POST(request: Request) {
     // ── AGST REF: settle against an existing customer advance at creation time ──
     if (parsed.referenceType === "AGST_REF" && parsed.advanceCreditId) {
       try {
-        const [credit] = await db
-          .select()
-          .from(customerCredit)
-          .where(
-            and(
-              eq(customerCredit.id, parsed.advanceCreditId),
-              eq(customerCredit.organizationId, ctx.organizationId)
-            )
-          );
+        const credit = await db.query.customerCredit.findFirst({
+          where: and(
+            eq(customerCredit.id, parsed.advanceCreditId),
+            eq(customerCredit.organizationId, ctx.organizationId)
+          ),
+          with: { journalEntry: { columns: { reference: true, entryNumber: true } } },
+        });
 
         if (credit && credit.amountRemaining > 0) {
           const applyAmount = Math.min(credit.amountRemaining, created.total);
@@ -449,6 +447,11 @@ export async function POST(request: Request) {
           const newAmountDue = created.total - applyAmount;
           const newStatus = newAmountDue === 0 ? "paid" : "partial";
           const creditStatus = newRemaining === 0 ? "applied" : "open";
+          const advRefName =
+            credit.journalEntry?.reference ||
+            credit.journalEntry?.entryNumber ||
+            credit.notes ||
+            "Advance";
 
           // 1. Decrement the advance balance
           await db
@@ -463,9 +466,10 @@ export async function POST(request: Request) {
             .where(eq(invoice.id, created.id));
 
           // 3. Post GL adjustment: DR Customer Deposits (2410), CR AR (1200)
+          let entryId: string | null = null;
           try {
             const { createCreditApplicationJournal } = await import("@/lib/api/journal-automation");
-            await createCreditApplicationJournal(
+            const entry = await createCreditApplicationJournal(
               { organizationId: ctx.organizationId, userId: ctx.userId },
               {
                 creditId: credit.id,
@@ -475,8 +479,55 @@ export async function POST(request: Request) {
                 currencyCode: created.currencyCode,
               }
             );
+            if (entry) entryId = entry.id;
           } catch (jErr) {
             console.warn("Agst Ref GL adjustment failed (non-fatal)", jErr);
+          }
+
+          // 4. Create carrier payment record so it appears in Payment History & statements
+          try {
+            const paymentNumber = await getNextNumber(
+              ctx.organizationId,
+              "payment",
+              "payment_number",
+              "PAY"
+            );
+            const [createdPayment] = await db
+              .insert(payment)
+              .values({
+                organizationId: ctx.organizationId,
+                contactId: created.contactId,
+                paymentNumber,
+                type: "received",
+                date: created.issueDate,
+                amount: applyAmount,
+                method: "other",
+                reference: advRefName,
+                notes: `Settled against Advance Receipt ${advRefName}`,
+                currencyCode: created.currencyCode,
+                journalEntryId: entryId,
+                createdBy: ctx.userId,
+              })
+              .returning();
+
+            if (createdPayment) {
+              await db.insert(paymentAllocation).values([
+                {
+                  paymentId: createdPayment.id,
+                  documentType: "prepayment",
+                  documentId: credit.id,
+                  amount: applyAmount,
+                },
+                {
+                  paymentId: createdPayment.id,
+                  documentType: "invoice",
+                  documentId: created.id,
+                  amount: applyAmount,
+                },
+              ]);
+            }
+          } catch (payErr) {
+            console.warn("Agst Ref carrier payment row failed (non-fatal):", payErr);
           }
         }
       } catch (settleErr) {

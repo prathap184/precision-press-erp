@@ -82,6 +82,8 @@ export async function GET(
         date: a.payment.date,
         amount: a.amount,
         method: a.payment.method,
+        reference: a.payment.reference,
+        notes: a.payment.notes,
       }));
 
     // Base-currency equivalents (for dual-currency display) at the issue rate.

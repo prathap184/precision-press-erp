@@ -166,6 +166,8 @@ interface PaymentRecord {
   date: string;
   amount: number;
   method: string;
+  reference?: string | null;
+  notes?: string | null;
 }
 
 function formatDate(dateStr: string) {
@@ -1120,6 +1122,26 @@ export default function InvoiceDetailPage() {
                 </div>
               </div>
             </div>
+            {payments.some((p) => p.notes?.includes("Advance") || p.reference?.startsWith("ADV")) && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-900/30 dark:bg-amber-950/20 p-3 mt-4 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-7 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 shrink-0">
+                    <Wallet className="size-3.5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-amber-900 dark:text-amber-300">
+                      Settled via Advance: {payments.find((p) => p.reference?.startsWith("ADV") || p.notes?.includes("Advance"))?.reference || "ADV"}
+                    </p>
+                    <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                      {formatMoney(payments.filter((p) => p.notes?.includes("Advance") || p.reference?.startsWith("ADV")).reduce((sum, p) => sum + p.amount, 0), inv.currencyCode)} applied from customer prepayment pool
+                    </p>
+                  </div>
+                </div>
+                <Badge variant="outline" className="border-amber-300 bg-amber-100/60 text-amber-800 dark:border-amber-800 dark:bg-amber-900/30 dark:text-amber-300 text-[10px] uppercase font-bold tracking-wider">
+                  Agst Ref
+                </Badge>
+              </div>
+            )}
           </div>
 
           {/* Notes / Reference */}
@@ -1301,23 +1323,34 @@ export default function InvoiceDetailPage() {
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment History</p>
             </div>
             <div className="divide-y">
-              {payments.map((p) => (
-                <div key={p.id} className="flex items-center justify-between px-5 py-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="flex size-8 items-center justify-center rounded-lg bg-emerald-50 dark:bg-emerald-950/40 shrink-0">
-                      <Banknote className="size-4 text-emerald-600 dark:text-emerald-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-mono font-medium">{p.paymentNumber}</span>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{methodLabels[p.method] || p.method}</Badge>
+              {payments.map((p) => {
+                const isAdvance = p.notes?.includes("Advance") || p.reference?.startsWith("ADV") || p.method === "other";
+                return (
+                  <div key={p.id} className="flex items-center justify-between px-5 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`flex size-8 items-center justify-center rounded-lg ${isAdvance ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400" : "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"} shrink-0`}>
+                        {isAdvance ? <Wallet className="size-4" /> : <Banknote className="size-4" />}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{formatDate(p.date)}</p>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-mono font-medium">{p.paymentNumber}</span>
+                          {isAdvance ? (
+                            <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px] px-1.5 py-0 font-medium">
+                              Advance Receipt {p.reference ? `(${p.reference})` : ""}
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{methodLabels[p.method] || p.method}</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatDate(p.date)}{p.notes ? ` · ${p.notes}` : ""}
+                        </p>
+                      </div>
                     </div>
+                    <span className="text-sm font-mono font-semibold text-emerald-600 shrink-0">{formatMoney(p.amount, inv.currencyCode)}</span>
                   </div>
-                  <span className="text-sm font-mono font-semibold text-emerald-600 shrink-0">{formatMoney(p.amount, inv.currencyCode)}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
