@@ -71,6 +71,12 @@ const createSchema = z.object({
   submitForApproval: z.boolean().optional().default(false),
   // Default to 'sent' (finalized & active) unless explicitly set to 'draft'
   status: z.enum(["draft", "sent"]).optional().default("sent"),
+  // Bill-Wise reference type (mirrors TallyPrime New Ref / Agst Ref semantics).
+  // NEW_REF (default) = normal outstanding invoice.
+  // AGST_REF = settle against an existing customer advance at invoice creation time.
+  referenceType: z.enum(["NEW_REF", "AGST_REF"]).optional().default("NEW_REF"),
+  // The customer_credit UUID to settle against (required when referenceType === 'AGST_REF').
+  advanceCreditId: z.string().nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -421,6 +427,60 @@ export async function POST(request: Request) {
         }
       } catch (err) {
         console.warn("Failed to create initial invoice journal entry", err);
+      }
+    }
+
+    // ── AGST REF: settle against an existing customer advance at creation time ──
+    if (parsed.referenceType === "AGST_REF" && parsed.advanceCreditId) {
+      try {
+        const [credit] = await db
+          .select()
+          .from(customerCredit)
+          .where(
+            and(
+              eq(customerCredit.id, parsed.advanceCreditId),
+              eq(customerCredit.organizationId, ctx.organizationId)
+            )
+          );
+
+        if (credit && credit.amountRemaining > 0) {
+          const applyAmount = Math.min(credit.amountRemaining, created.total);
+          const newRemaining = credit.amountRemaining - applyAmount;
+          const newAmountDue = created.total - applyAmount;
+          const newStatus = newAmountDue === 0 ? "paid" : "partial";
+          const creditStatus = newRemaining === 0 ? "applied" : "open";
+
+          // 1. Decrement the advance balance
+          await db
+            .update(customerCredit)
+            .set({ amountRemaining: newRemaining, status: creditStatus })
+            .where(eq(customerCredit.id, credit.id));
+
+          // 2. Mark the invoice as paid / partial immediately
+          await db
+            .update(invoice)
+            .set({ amountPaid: applyAmount, amountDue: newAmountDue, status: newStatus })
+            .where(eq(invoice.id, created.id));
+
+          // 3. Post GL adjustment: DR Customer Deposits (2410), CR AR (1200)
+          try {
+            const { createCreditApplicationJournal } = await import("@/lib/api/journal-automation");
+            await createCreditApplicationJournal(
+              { organizationId: ctx.organizationId, userId: ctx.userId },
+              {
+                creditId: credit.id,
+                invoiceId: created.id,
+                amount: applyAmount,
+                date: created.issueDate,
+                currencyCode: created.currencyCode,
+              }
+            );
+          } catch (jErr) {
+            console.warn("Agst Ref GL adjustment failed (non-fatal)", jErr);
+          }
+        }
+      } catch (settleErr) {
+        console.warn("Agst Ref settlement failed (non-fatal):", settleErr);
       }
     }
 

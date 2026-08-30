@@ -577,6 +577,10 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
   const [lines, setLines] = useState<LineItem[]>([
     { description: "", quantity: "1", unitPrice: "", accountId: "", taxRateId: "" },
   ]);
+  // New Ref vs Agst Ref (settle against an existing advance at creation time)
+  const [refType, setRefType] = useState<"NEW_REF" | "AGST_REF">("NEW_REF");
+  const [availableCredits, setAvailableCredits] = useState<{ id: string; referenceNumber: string; amountRemaining: number }[]>([]);
+  const [selectedCreditId, setSelectedCreditId] = useState("");
 
   function normalizeDeliveryMode(mode?: string): string {
     if (!mode) return "";
@@ -672,6 +676,21 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
   }, [contactId, initialData?.deliveryAddress]);
 
   useEffect(() => {
+    if (refType !== "AGST_REF" || !contactId) {
+      setAvailableCredits([]);
+      setSelectedCreditId("");
+      return;
+    }
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
+    fetch(`/api/v1/customer-credits?contactId=${contactId}&status=open`, { headers })
+      .then((r) => r.json())
+      .then((data) => setAvailableCredits(data.data || []))
+      .catch(() => {});
+  }, [refType, contactId]);
+
+  useEffect(() => {
     if (open && initialData) {
       if (initialData.reference) setReference(initialData.reference);
       if (initialData.lines && initialData.lines.length > 0) setLines(initialData.lines);
@@ -683,6 +702,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
       setDeliveryMode(""); setDeliveryAddress("");
       setIsDepositRetainer(false); setInvoiceType("deposit"); setDepositPercent("");
       setForApproval(false);
+      setRefType("NEW_REF"); setSelectedCreditId(""); setAvailableCredits([]);
       setIssueDate(new Date().toISOString().split("T")[0]);
       const d = new Date(); d.setDate(d.getDate() + 30);
       setDueDate(d.toISOString().split("T")[0]);
@@ -693,6 +713,10 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!contactId) { toast.error("Please select a customer"); return; }
+    if (refType === "AGST_REF" && !selectedCreditId) {
+      toast.error("Please select an advance receipt to settle against");
+      return;
+    }
     setSaving(true);
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
@@ -719,6 +743,8 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
           invoiceType: isDepositRetainer ? invoiceType : "standard",
           depositPercent: isDepositRetainer ? depositBasisPoints : null,
           ...(forApproval ? { submitForApproval: true } : {}),
+          referenceType: refType,
+          ...(refType === "AGST_REF" && selectedCreditId ? { advanceCreditId: selectedCreditId } : {}),
           lines: lines.map((l) => ({
             description: l.description,
             quantity: parseFloat(l.quantity) || 1,
@@ -740,13 +766,18 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
         throw new Error(data.error || "Failed to create invoice");
       }
       const data = await res.json();
+      const inv = data.invoice;
       toast.success(
-        data.invoice.status === "pending_approval"
+        inv.status === "pending_approval"
           ? "Invoice saved for approval — approve it from the invoice's page to send it"
-          : "Invoice created"
+          : inv.status === "paid"
+            ? `Invoice created & fully settled via advance!`
+            : inv.status === "partial"
+              ? `Invoice created — partially settled via advance`
+              : "Invoice created"
       );
       onClose();
-      router.push(`/sales/${data.invoice.id}`);
+      router.push(`/sales/${inv.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create invoice");
     } finally {
@@ -780,6 +811,62 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                   <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number, etc." />
                 </div>
               </div>
+              {/* Reference Type: New Ref (default) or Agst Ref (settle against advance) */}
+              <div className="space-y-2">
+                <Label>Reference Type</Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={refType === "NEW_REF" ? "default" : "outline"}
+                    className={refType === "NEW_REF" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
+                    onClick={() => { setRefType("NEW_REF"); setSelectedCreditId(""); setAvailableCredits([]); }}
+                  >
+                    New Ref
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={refType === "AGST_REF" ? "default" : "outline"}
+                    className={refType === "AGST_REF" ? "bg-amber-600 hover:bg-amber-700" : ""}
+                    onClick={() => setRefType("AGST_REF")}
+                  >
+                    Agst Ref (Settle Advance)
+                  </Button>
+                </div>
+                {refType === "NEW_REF" && (
+                  <p className="text-xs text-muted-foreground">Normal invoice — customer will pay later.</p>
+                )}
+              </div>
+              {/* Advance picker — only visible when Agst Ref is chosen */}
+              {refType === "AGST_REF" && (
+                <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 p-3">
+                  <Label className="text-amber-700 dark:text-amber-400 font-medium">Select Advance Receipt *</Label>
+                  {availableCredits.length === 0 && !contactId && (
+                    <p className="text-xs text-muted-foreground">Select a customer first to see their open advances.</p>
+                  )}
+                  {availableCredits.length === 0 && contactId && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">No open advances found for this customer.</p>
+                  )}
+                  {availableCredits.length > 0 && (
+                    <Select value={selectedCreditId} onValueChange={setSelectedCreditId}>
+                      <SelectTrigger className="bg-white dark:bg-slate-900">
+                        <SelectValue placeholder="Pick an advance receipt..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-[9999]">
+                        {availableCredits.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.referenceNumber} · Available: ₹{(c.amountRemaining / 100).toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    The advance will be automatically applied when you create the invoice — no extra steps needed.
+                  </p>
+                </div>
+              )}
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Issue Date</Label>
