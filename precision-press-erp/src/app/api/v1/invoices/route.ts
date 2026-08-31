@@ -617,18 +617,28 @@ export async function POST(request: Request) {
       let billType = "New Ref";
       let billAllocationName = result.invoiceNumber;
 
-      if (parsed.referenceType === "AGST_REF" && parsed.advanceCreditId) {
-        // Fetch the advance credit to get its reference number (ADV-XXXX)
-        const [advCredit] = await db
-          .select()
-          .from(customerCredit)
-          .where(eq(customerCredit.id, parsed.advanceCreditId));
-        if (advCredit?.referenceNumber) {
-          // In Tally: the SALES INVOICE bill allocation uses "Agst Ref" pointing
-          // to the advance reference name (e.g. ADV-0001), not the invoice number.
-          billType = "Agst Ref";
-          billAllocationName = advCredit.referenceNumber;
+      if (parsed.referenceType === "AGST_REF") {
+        let advRef = parsed.advanceReference || "";
+        if (!advRef && parsed.advanceCreditId) {
+          const [advCredit] = await db
+            .select()
+            .from(customerCredit)
+            .where(eq(customerCredit.id, parsed.advanceCreditId));
+          if (advCredit?.notes) {
+            const match = advCredit.notes.match(/ADV-\d+/i);
+            if (match) advRef = match[0].toUpperCase();
+          }
+          if (!advRef && advCredit?.journalEntryId) {
+            const je = await db.query.journalEntry.findFirst({
+              where: eq(journalEntry.id, advCredit.journalEntryId),
+            });
+            if (je?.referenceNumber) advRef = je.referenceNumber;
+          }
         }
+        if (!advRef) advRef = "ADV-0001";
+
+        billType = "Agst Ref";
+        billAllocationName = advRef;
       }
 
       // Prepare payload matching Sales_HS7547.xml / Memory Section 15
