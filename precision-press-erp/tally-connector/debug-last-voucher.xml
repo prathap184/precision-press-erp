@@ -16,9 +16,9 @@
           <VOUCHER VCHTYPE="Rec1 B1 Bank" ACTION="Create" OBJVIEW="Accounting Voucher View">
             <DATE>20260801</DATE>
             <VOUCHERTYPENAME>Rec1 B1 Bank</VOUCHERTYPENAME>
-            <VOUCHERNUMBER>REC-00036</VOUCHERNUMBER>
+            <VOUCHERNUMBER>ADV-0001</VOUCHERNUMBER>
             <PARTYLEDGERNAME>Festive Events- Mys- FTM- BO</PARTYLEDGERNAME>
-            <NARRATION>Receipt | Receipt REC-00036 against INV-00047</NARRATION>
+            <NARRATION>Receipt | Customer Receipt ADV-0001</NARRATION>
             <PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>
 
             <!-- Cash/Bank Dr side -->
@@ -26,7 +26,7 @@
               <LEDGERNAME>Federal 2091</LEDGERNAME>
               <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
               <ISPARTYLEDGER>No</ISPARTYLEDGER>
-              <AMOUNT>-169.28</AMOUNT>
+              <AMOUNT>-1000.00</AMOUNT>
             </ALLLEDGERENTRIES.LIST>
 
             <!-- Customer Cr side with bill allocations -->
@@ -34,12 +34,12 @@
               <LEDGERNAME>Festive Events- Mys- FTM- BO</LEDGERNAME>
               <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
               <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
-              <AMOUNT>169.28</AMOUNT>
+              <AMOUNT>1000.00</AMOUNT>
               
               <BILLALLOCATIONS.LIST>
-                <NAME>INV-00047</NAME>
-                <BILLTYPE>Agst Ref</BILLTYPE>
-                <AMOUNT>169.28</AMOUNT>
+                <NAME>ADV-0001</NAME>
+                <BILLTYPE>Advance</BILLTYPE>
+                <AMOUNT>1000.00</AMOUNT>
               </BILLALLOCATIONS.LIST>
             </ALLLEDGERENTRIES.LIST>
 
