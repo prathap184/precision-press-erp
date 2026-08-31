@@ -244,17 +244,19 @@ function buildReceiptVoucherXML(payload, educationalMode = true) {
   const amountNum    = totalAmount;
 
 
-  // Determine cash/bank ledger from paymentMode
-  let cashBankLedger = 'ICICI 4415';
+  // Determine cash/bank ledger from paymentMode matching Tally chart of accounts:
+  // Bank: Federal 2091, ICICI Bank, HDFC Bank, Canara Bank
+  // Cash: Cash, Cash B2
+  let cashBankLedger = 'Federal 2091';
   if (paymentMode === 'CASH') {
-    cashBankLedger = (cashLedger && !cashLedger.startsWith('Rec')) ? cashLedger : 'Cash';
+    cashBankLedger = (cashLedger && !cashLedger.startsWith('Rec') && !cashLedger.startsWith('Main')) ? cashLedger : 'Cash';
   } else if (paymentMode === 'UPI') {
-    cashBankLedger = upiApp || 'PhonePe- HO A/c -3';
+    cashBankLedger = (bankLedger && !bankLedger.startsWith('Rec')) ? bankLedger : 'Federal 2091';
   } else if (paymentMode === 'BANK') {
     if (bankLedger && !bankLedger.startsWith('Rec')) {
       cashBankLedger = bankLedger;
     } else {
-      cashBankLedger = bankName || legacyBankLedger || 'ICICI 4415';
+      cashBankLedger = bankName || legacyBankLedger || 'Federal 2091';
     }
   } else {
     cashBankLedger = 'Cash';
