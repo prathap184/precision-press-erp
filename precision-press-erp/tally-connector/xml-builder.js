@@ -43,7 +43,9 @@ function toTallyDate(dateStr, educationalMode = true) {
  */
 function buildSalesInvoiceXML(payload, options = {}) {
   const educationalMode = typeof options === 'boolean' ? options : (options.educationalMode !== undefined ? options.educationalMode : true);
-  const targetCompany = (typeof options === 'object' && options.companyName) ? options.companyName : (payload.tallyCompanyName || 'Hindustan Enterprises 25-26');
+  const targetCompany = (typeof options === 'object' && options.companyName)
+    ? options.companyName
+    : ((payload.tallyCompanyName && payload.tallyCompanyName !== 'Auravionx') ? payload.tallyCompanyName : 'Hindustan Enterprises 25-26');
 
   let {
     invoiceNumber,
@@ -353,7 +355,6 @@ function buildReceiptVoucherXML(payload, educationalMode = true) {
  */
 function buildPaymentVoucherXML(payload, educationalMode = true) {
   const {
-    tallyCompanyName = 'Auravionx',
     voucherNumber,
     voucherDate,
     amount,
@@ -368,6 +369,7 @@ function buildPaymentVoucherXML(payload, educationalMode = true) {
     narration = '',
     isSupplierPayment = true,
   } = payload;
+  const tallyCompanyName = (payload.tallyCompanyName && payload.tallyCompanyName !== 'Auravionx') ? payload.tallyCompanyName : 'Hindustan Enterprises 25-26';
 
   const tallyDate = toTallyDate(voucherDate, educationalMode);
   const amountNum = Number(amount);
