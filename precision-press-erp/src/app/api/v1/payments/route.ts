@@ -11,6 +11,7 @@ import { parsePagination, paginatedResponse } from "@/lib/api/pagination";
 import { assertNotLocked } from "@/lib/api/period-lock";
 import { getNextNumber } from "@/lib/api/numbering";
 import { createPaymentJournalEntry } from "@/lib/api/journal-automation";
+import { enqueueTallySync } from "@/lib/actions/tally-sync";
 import { isValidCurrencyCode } from "@/lib/currency/iso4217";
 import { z } from "zod";
 
@@ -399,6 +400,66 @@ export async function POST(request: Request) {
     });
 
     logAudit({ ctx, action: "create", entityType: "payment", entityId: created.id, request });
+
+    // Enqueue to Tally Sync Queue
+    if (parsed.type === "received") {
+      try {
+        const customerLedgerName = result?.contact?.name || "Sundry Debtors";
+        const voucherType = parsed.method === "cash" ? "Rec10 B8 Cash" : "Rec1 B1 Bank";
+        
+        // Build bill allocations for each invoice allocation
+        const billAllocs = (result?.allocations || []).map((a) => {
+          const invMatch = invoiceMap.get(a.documentId);
+          return {
+            name: invMatch?.invoiceNumber || a.documentId,
+            billType: "Agst Ref",
+            amount: a.amount / 100,
+          };
+        });
+
+        const receiptPayload = {
+          tallyCompanyName: "Hindustan Enterprises 25-26",
+          voucherType,
+          receiptEntryNumber: paymentNumber,
+          voucherNumber: paymentNumber,
+          voucherDate: parsed.date,
+          invoiceDate: parsed.date,
+          date: parsed.date,
+          totalAmount: parsed.amount / 100,
+          amount: parsed.amount / 100,
+          paymentMode: parsed.method === "cash" ? "CASH" : "BANK",
+          bankLedger: voucherType,
+          cashLedger: "Cash",
+          debtorLedgerName: customerLedgerName,
+          customerName: customerLedgerName,
+          partyGstin: result?.contact?.taxNumber || "",
+          cmpGstin: "29AFHPP0687G1Z2",
+          cmpState: "Karnataka",
+          remarks: parsed.notes || `Receipt ${paymentNumber}`,
+          allocations: billAllocs,
+          billAllocations: billAllocs.length > 0 ? billAllocs : {
+            name: paymentNumber,
+            billType: "On Account",
+            amount: parsed.amount / 100,
+          },
+        };
+
+        await enqueueTallySync({
+          syncType: "RECEIPT_VOUCHER",
+          paymentId: created.id,
+          customerId: parsed.contactId,
+          payload: receiptPayload,
+          createdBy: ctx.userId,
+          voucherId: paymentNumber,
+          voucherType: "Receipt",
+          refId: paymentNumber,
+          customerName: customerLedgerName,
+          amountSnap: parsed.amount / 100,
+        });
+      } catch (tErr) {
+        console.warn("Failed to enqueue receipt to Tally queue:", tErr);
+      }
+    }
 
     return NextResponse.json({ payment: result }, { status: 201 });
   } catch (err) {
