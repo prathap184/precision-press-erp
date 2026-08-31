@@ -274,11 +274,30 @@ export async function markTallySyncResult({
           try {
             await supabaseServer
               .from(tableName)
-              .update({ is_synced_to_erp: true })
+              .update({ is_synced_to_erp: true, is_tally_synced: true, tally_synced_at: now })
               .eq('id', recordId);
           } catch (e) {
             console.error(`[TallyQueue] Failed to update source table ${tableName}:`, e);
           }
+        }
+
+        // Also update orders & payments tables directly
+        try {
+          if (existing.syncType === 'SALES_INVOICE') {
+            const invRef = existing.refId || existing.orderId || recordId;
+            await supabaseServer
+              .from('orders')
+              .update({ is_tally_synced: true, tally_synced_at: now })
+              .or(`invoice_number.eq.${invRef},id.eq.${invRef},invoice_id.eq.${invRef}`);
+          } else if (existing.syncType === 'RECEIPT_VOUCHER') {
+            const pId = existing.paymentId || existing.refId || recordId;
+            await supabaseServer
+              .from('payments')
+              .update({ is_tally_synced: true, tally_synced_at: now })
+              .or(`id.eq.${pId},payment_number.eq.${pId}`);
+          }
+        } catch (srcErr) {
+          console.warn('[TallyQueue] Non-fatal: source record tally sync update failed:', srcErr);
         }
       }
     } else {
