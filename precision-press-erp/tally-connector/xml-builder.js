@@ -217,7 +217,7 @@ ${gstEntries.join('')}
 function buildReceiptVoucherXML(payload, educationalMode = true) {
   // Support both old field names (voucherNumber/amount/bankLedgerName)
   // and new field names (receiptEntryNumber/totalAmount/cashLedger)
-  const tallyCompanyName = payload.tallyCompanyName || 'Auravionx';
+  const tallyCompanyName = payload.tallyCompanyName || 'Hindustan Enterprises 25-26';
   const receiptEntryNumber = payload.receiptEntryNumber || payload.voucherNumber || '';
   const voucherDate        = payload.voucherDate || payload.invoiceDate || null;
   const totalAmount        = Number(payload.totalAmount ?? payload.amount ?? 0);
@@ -229,8 +229,9 @@ function buildReceiptVoucherXML(payload, educationalMode = true) {
   const upiApp             = payload.upiApp;
   const customerName       = payload.debtorLedgerName || payload.customerName || 'Sundry Debtors';
   const remarks            = payload.remarks || '';
+  const voucherType        = payload.voucherType || (paymentMode === 'CASH' ? 'Rec10 B8 Cash' : 'Rec1 B1 Bank');
   // "Create" for brand-new, "Alter" to update existing (manually-entered) vouchers
-  const action             = payload.action || 'Alter';
+  const action             = payload.action || 'Create';
 
   // Backward compat: old builder had bankLedgerName
   const legacyBankLedger   = payload.bankLedgerName;
@@ -246,27 +247,28 @@ function buildReceiptVoucherXML(payload, educationalMode = true) {
   } else if (paymentMode === 'UPI') {
     cashBankLedger = bankLedger || upiApp || legacyBankLedger || 'Bank';
   } else if (paymentMode === 'BANK') {
-    cashBankLedger = bankLedger || bankName || legacyBankLedger || 'Bank';
+    cashBankLedger = bankLedger || bankName || legacyBankLedger || 'Rec1 B1 Bank';
   } else {
     cashBankLedger = cashLedger || legacyBankLedger || 'Cash';
   }
 
   // ── Build BILLALLOCATIONS.LIST ──────────────────────────────────────────────
-  // Tally requires bill allocations when bill-by-bill tracking is ON for the ledger.
-  // Rule:
-  //   allocations = []                   → On Acct (no invoice linked)
-  //   allocations = [{invoiceNumber,amt}] → Agst Ref + optional Advance if excess
-  const allocatedTotal = allocations.reduce((s, a) => s + Number(a.amount || 0), 0);
-  const advanceAmount  = Math.max(0, amountNum - allocatedTotal);
-
   let billAllocs = '';
 
-  if (allocations.length === 0) {
+  if (payload.billAllocations) {
+    const bAllocs = Array.isArray(payload.billAllocations) ? payload.billAllocations : [payload.billAllocations];
+    billAllocs = bAllocs.map(b => `
+              <BILLALLOCATIONS.LIST>
+                <NAME>${xmlEscape(b.name || receiptEntryNumber)}</NAME>
+                <BILLTYPE>${xmlEscape(b.billType || 'On Account')}</BILLTYPE>
+                <AMOUNT>${Number(b.amount || amountNum).toFixed(2)}</AMOUNT>
+              </BILLALLOCATIONS.LIST>`).join('');
+  } else if (allocations.length === 0) {
     // No invoice linked → On Account (required for bill-by-bill tracking ledgers)
     billAllocs = `
               <BILLALLOCATIONS.LIST>
                 <NAME>${xmlEscape(receiptEntryNumber || 'Advance')}</NAME>
-                <BILLTYPE>On Acct</BILLTYPE>
+                <BILLTYPE>On Account</BILLTYPE>
                 <AMOUNT>${amountNum.toFixed(2)}</AMOUNT>
               </BILLALLOCATIONS.LIST>`;
   } else {
@@ -279,15 +281,6 @@ function buildReceiptVoucherXML(payload, educationalMode = true) {
                 <NAME>${xmlEscape(alloc.invoiceNumber || alloc.refId || '')}</NAME>
                 <BILLTYPE>Agst Ref</BILLTYPE>
                 <AMOUNT>${allocAmt.toFixed(2)}</AMOUNT>
-              </BILLALLOCATIONS.LIST>`;
-    }
-    // If excess, put as Advance
-    if (advanceAmount > 0.01) {
-      billAllocs += `
-              <BILLALLOCATIONS.LIST>
-                <NAME>Advance</NAME>
-                <BILLTYPE>Advance</BILLTYPE>
-                <AMOUNT>${advanceAmount.toFixed(2)}</AMOUNT>
               </BILLALLOCATIONS.LIST>`;
     }
   }
@@ -311,9 +304,9 @@ function buildReceiptVoucherXML(payload, educationalMode = true) {
       </REQUESTDESC>
       <REQUESTDATA>
         <TALLYMESSAGE xmlns:UDF="TallyUDF">
-          <VOUCHER VCHTYPE="Receipt" ACTION="${action}" OBJVIEW="Accounting Voucher View">
+          <VOUCHER VCHTYPE="${xmlEscape(voucherType)}" ACTION="${action}" OBJVIEW="Accounting Voucher View">
             <DATE>${tallyDate}</DATE>
-            <VOUCHERTYPENAME>Receipt</VOUCHERTYPENAME>
+            <VOUCHERTYPENAME>${xmlEscape(voucherType)}</VOUCHERTYPENAME>
             <VOUCHERNUMBER>${xmlEscape(receiptEntryNumber)}</VOUCHERNUMBER>
             <PARTYLEDGERNAME>${xmlEscape(customerName)}</PARTYLEDGERNAME>
             <NARRATION>${xmlEscape(narration)}</NARRATION>
