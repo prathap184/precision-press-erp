@@ -454,10 +454,16 @@ export default function BankAccountDetailLayout({ children }: { children: React.
         </div>
 
         {/* Stats row */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-4 mb-8">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 sm:grid-cols-5 mb-8">
           <div>
-            <p className="text-[11px] text-muted-foreground">Balance</p>
-            <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums">{formatMoney(account.balance, cur)}</p>
+            <p className="text-[11px] text-muted-foreground">Opening Balance</p>
+            <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-muted-foreground">
+              {account.chartAccount?.openingBalance != null
+                ? `₹${Number(account.chartAccount.openingBalance).toLocaleString("en-IN", { minimumFractionDigits: 2 })} ${account.chartAccount.openingBalanceType || "Dr"}`
+                : account.openingBalance != null
+                ? `₹${Number(account.openingBalance).toLocaleString("en-IN", { minimumFractionDigits: 2 })} ${account.openingBalanceType || "Dr"}`
+                : formatMoney(account.balance, cur)}
+            </p>
           </div>
           <div>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1"><ArrowDownRight className="size-3 text-emerald-500" />Money In</p>
@@ -466,6 +472,10 @@ export default function BankAccountDetailLayout({ children }: { children: React.
           <div>
             <p className="text-[11px] text-muted-foreground flex items-center gap-1"><ArrowUpRight className="size-3 text-red-500" />Money Out</p>
             <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-red-600">{formatMoney(summary.debits, cur)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] text-muted-foreground">Closing Balance</p>
+            <p className="mt-0.5 font-mono text-xl font-semibold tabular-nums">{formatMoney(account.balance, cur)}</p>
           </div>
           <div>
             <p className="text-[11px] text-muted-foreground">Done</p>
