@@ -7,7 +7,9 @@ import {
   journalEntry,
   journalLine,
   payment,
+  contact,
 } from "@/lib/db/schema";
+import { enqueueTallySync } from "@/lib/actions/tally-sync";
 import { eq, and, desc, asc, gte, lte, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -285,6 +287,49 @@ export async function POST(request: Request) {
       entityId: created.id,
       request,
     });
+
+    // Enqueue Receipt Voucher to Tally Sync Queue
+    try {
+      const customer = await db.query.contact.findFirst({
+        where: eq(contact.id, parsed.contactId),
+      });
+      const customerLedgerName = customer?.name || "Sundry Debtors";
+      const receiptRef = parsed.referenceName || `ADV-${created.id.slice(0, 6).toUpperCase()}`;
+
+      const receiptPayload = {
+        receiptEntryNumber: receiptRef,
+        voucherNumber: receiptRef,
+        voucherDate: parsed.date,
+        invoiceDate: parsed.date,
+        totalAmount: parsed.amount / 100,
+        amount: parsed.amount / 100,
+        paymentMode: parsed.bankAccountId ? "BANK" : "CASH",
+        debtorLedgerName: customerLedgerName,
+        customerName: customerLedgerName,
+        remarks: parsed.notes || `Advance Receipt ${receiptRef}`,
+        allocations: [],
+        billAllocations: {
+          name: receiptRef,
+          billType: parsed.adjustmentType === "ON_ACCOUNT" ? "On Account" : "Advance",
+          amount: parsed.amount / 100,
+        },
+      };
+
+      await enqueueTallySync({
+        syncType: "RECEIPT_VOUCHER",
+        paymentId: created.id,
+        customerId: parsed.contactId,
+        payload: receiptPayload,
+        createdBy: ctx.userId,
+        voucherId: receiptRef,
+        voucherType: "Receipt",
+        refId: receiptRef,
+        customerName: customerLedgerName,
+        amountSnap: parsed.amount / 100,
+      });
+    } catch (tErr) {
+      console.warn("Failed to enqueue Receipt Voucher to Tally queue:", tErr);
+    }
 
     return NextResponse.json({ customerCredit: created }, { status: 201 });
   } catch (err) {
