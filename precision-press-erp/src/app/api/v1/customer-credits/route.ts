@@ -21,6 +21,7 @@ import { logAudit } from "@/lib/api/audit";
 import { checkMultiCurrency } from "@/lib/api/check-limit";
 import { resolveDocumentCurrency } from "@/lib/currency/resolve-currency";
 import { currencyCodeSchema } from "@/lib/currency/zod";
+import { getNextNumber } from "@/lib/api/numbering";
 import {
   getNextEntryNumber,
   resolveBaseRate,
@@ -187,7 +188,9 @@ export async function POST(request: Request) {
       }
 
       const entryNumber = await getNextEntryNumber(ctx.organizationId, tx);
-      const recRef = parsed.referenceName || `REC-${entryNumber}`;
+      const recRef =
+        parsed.referenceName ||
+        (await getNextNumber(ctx.organizationId, "payment", "payment_number", "REC"));
       const description = `Customer Receipt ${recRef}`;
       const [entry] = await tx
         .insert(journalEntry)
@@ -277,14 +280,14 @@ export async function POST(request: Request) {
       //   parsed.date
       // );
 
-      return row;
+      return { row, recRef };
     });
 
     logAudit({
       ctx,
       action: "create",
       entityType: "customer_credit",
-      entityId: created.id,
+      entityId: created.row.id,
       request,
     });
 
@@ -294,19 +297,27 @@ export async function POST(request: Request) {
         where: eq(contact.id, parsed.contactId),
       });
       const customerLedgerName = customer?.name || "Sundry Debtors";
-      const receiptRef = parsed.referenceName || `ADV-${created.id.slice(0, 6).toUpperCase()}`;
+      const receiptRef = created.recRef || parsed.referenceName || `REC-${created.row.id.slice(0, 6).toUpperCase()}`;
 
       const receiptPayload = {
+        tallyCompanyName: "Hindustan Enterprises 25-26",
+        voucherType: parsed.bankAccountId ? "Rec1 B1 Bank" : "Rec10 B8 Cash",
         receiptEntryNumber: receiptRef,
         voucherNumber: receiptRef,
         voucherDate: parsed.date,
         invoiceDate: parsed.date,
+        date: parsed.date,
         totalAmount: parsed.amount / 100,
         amount: parsed.amount / 100,
         paymentMode: parsed.bankAccountId ? "BANK" : "CASH",
+        bankLedger: parsed.bankAccountId ? "Rec1 B1 Bank" : "Cash",
+        cashLedger: "Cash",
         debtorLedgerName: customerLedgerName,
         customerName: customerLedgerName,
-        remarks: parsed.notes || `Advance Receipt ${receiptRef}`,
+        partyGstin: customer?.taxNumber || "",
+        cmpGstin: "29AFHPP0687G1Z2",
+        cmpState: "Karnataka",
+        remarks: parsed.notes || `Customer Receipt ${receiptRef}`,
         allocations: [],
         billAllocations: {
           name: receiptRef,
@@ -317,7 +328,7 @@ export async function POST(request: Request) {
 
       await enqueueTallySync({
         syncType: "RECEIPT_VOUCHER",
-        paymentId: created.id,
+        paymentId: created.row.id,
         customerId: parsed.contactId,
         payload: receiptPayload,
         createdBy: ctx.userId,
@@ -331,7 +342,7 @@ export async function POST(request: Request) {
       console.warn("Failed to enqueue Receipt Voucher to Tally queue:", tErr);
     }
 
-    return NextResponse.json({ customerCredit: created }, { status: 201 });
+    return NextResponse.json({ customerCredit: created.row }, { status: 201 });
   } catch (err) {
     return handleError(err);
   }
