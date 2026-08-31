@@ -31,9 +31,17 @@ export default function BankSettingsPage() {
   const [bankCurrency, setBankCurrency] = useState(account?.currencyCode || "INR");
   const [chartAccountId, setChartAccountId] = useState(account?.chartAccountId ?? "");
   const [formOpeningBalance, setFormOpeningBalance] = useState(
-    account?.openingBalance ? String(account.openingBalance) : (account?.balance ? String(account.balance / 100) : "")
+    account?.chartAccount?.openingBalance != null
+      ? String(account.chartAccount.openingBalance)
+      : account?.openingBalance
+      ? String(account.openingBalance)
+      : account?.balance
+      ? String(account.balance / 100)
+      : ""
   );
-  const [formOpeningBalanceType, setFormOpeningBalanceType] = useState(account?.openingBalanceType || "Dr");
+  const [formOpeningBalanceType, setFormOpeningBalanceType] = useState(
+    account?.chartAccount?.openingBalanceType || account?.openingBalanceType || "Dr"
+  );
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
 
