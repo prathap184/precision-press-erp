@@ -39,21 +39,57 @@ interface CustomerCredit {
 }
 
 const statusColors: Record<string, string> = {
-  open: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300",
+  open: "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
   applied:
-    "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
+    "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300",
   refunded:
     "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300",
   void: "border-gray-200 bg-gray-50 text-gray-700 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-300",
 };
 
-// Tally-compliant status & source labels
-const statusLabels: Record<string, string> = {
-  open: "unadjusted",
-  applied: "adjusted",
-  refunded: "refunded",
-  void: "cancelled",
-};
+function getStatusBadge(r: CustomerCredit) {
+  const ref = r.journalEntry?.reference || r.journalEntry?.entryNumber || "";
+  const isOnAccount = ref.startsWith("REC-") || r.sourceType === "prepayment";
+  const isAdvance = ref.startsWith("ADV-");
+
+  if (r.status === "applied" || r.amountRemaining === 0) {
+    return (
+      <Badge variant="outline" className="border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+        Settled
+      </Badge>
+    );
+  }
+
+  if (r.amountRemaining < r.originalAmount && r.amountRemaining > 0) {
+    return (
+      <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+        {isAdvance ? "Advance (Partial)" : "Partial"}
+      </Badge>
+    );
+  }
+
+  if (ref.startsWith("REC-") || (!isAdvance && isOnAccount)) {
+    return (
+      <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+        On Account
+      </Badge>
+    );
+  }
+
+  if (isAdvance) {
+    return (
+      <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300">
+        Advance (Open)
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="outline" className={statusColors[r.status] || ""}>
+      On Account
+    </Badge>
+  );
+}
 
 const sourceLabels: Record<string, string> = {
   prepayment: "Receipt Voucher",
@@ -68,7 +104,7 @@ function buildColumns(): Column<CustomerCredit>[] {
       header: "Reference",
       className: "w-32",
       render: (r) => (
-        <span className="font-mono text-sm">
+        <span className="font-mono text-sm font-semibold">
           {r.journalEntry?.reference || r.journalEntry?.entryNumber || "-"}
         </span>
       ),
@@ -91,21 +127,21 @@ function buildColumns(): Column<CustomerCredit>[] {
       key: "source",
       header: "Source",
       className: "w-36",
-      render: (r) => (
-        <span className="text-sm text-muted-foreground">
-          {sourceLabels[r.sourceType] || r.sourceType}
-        </span>
-      ),
+      render: (r) => {
+        const ref = r.journalEntry?.reference || r.journalEntry?.entryNumber || "";
+        const label = ref.startsWith("ADV-") ? "Advance Receipt" : ref.startsWith("REC-") ? "On Account Receipt" : (sourceLabels[r.sourceType] || r.sourceType);
+        return (
+          <span className="text-sm text-muted-foreground">
+            {label}
+          </span>
+        );
+      },
     },
     {
       key: "status",
       header: "Status",
-      className: "w-24",
-      render: (r) => (
-        <Badge variant="outline" className={statusColors[r.status] || ""}>
-          {statusLabels[r.status] || r.status}
-        </Badge>
-      ),
+      className: "w-28",
+      render: (r) => getStatusBadge(r),
     },
     {
       key: "amount",
