@@ -245,15 +245,19 @@ function buildReceiptVoucherXML(payload, educationalMode = true) {
 
 
   // Determine cash/bank ledger from paymentMode
-  let cashBankLedger = 'Cash';
+  let cashBankLedger = 'ICICI 4415';
   if (paymentMode === 'CASH') {
-    cashBankLedger = cashLedger || legacyBankLedger || 'Cash';
+    cashBankLedger = (cashLedger && !cashLedger.startsWith('Rec')) ? cashLedger : 'Cash';
   } else if (paymentMode === 'UPI') {
-    cashBankLedger = bankLedger || upiApp || legacyBankLedger || 'Bank';
+    cashBankLedger = upiApp || 'PhonePe- HO A/c -3';
   } else if (paymentMode === 'BANK') {
-    cashBankLedger = bankLedger || bankName || legacyBankLedger || 'Rec1 B1 Bank';
+    if (bankLedger && !bankLedger.startsWith('Rec')) {
+      cashBankLedger = bankLedger;
+    } else {
+      cashBankLedger = bankName || legacyBankLedger || 'ICICI 4415';
+    }
   } else {
-    cashBankLedger = cashLedger || legacyBankLedger || 'Cash';
+    cashBankLedger = 'Cash';
   }
 
   // ── Build BILLALLOCATIONS.LIST ──────────────────────────────────────────────
