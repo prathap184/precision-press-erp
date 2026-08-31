@@ -1,450 +1,898 @@
+'use strict';
+
 /**
- * XML BUILDER — Tally Sync Engine
- * ─────────────────────────────────
- * Converts ERP JSON payloads into strict Tally XML.
- * 
- * Handles:
- *   ✅ Sales Invoice  (F8) with New Ref
- *   ✅ Receipt Voucher (F6) with New Ref / Agst Ref / On Account
- *   ✅ Customer Ledger with Alias (ERP contact.id)
- *   ✅ Supplier Ledger with Alias
- *   ✅ Fetch Masters (Export Data request)
- *   ✅ XML Sanitization (& < > " ')
- *   ✅ Rounding Fix (auto-balance debits/credits)
- *   ✅ GST Split (CGST+SGST or IGST)
+ * Utility to escape XML characters
  */
-
-// ─── XML Sanitization ─────────────────────────────────────────────────────────
-
-function sanitize(str) {
-  if (str === null || str === undefined) return '';
+function xmlEscape(str) {
+  if (!str) return '';
   return String(str)
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
-    .substring(0, 100); // Tally field length limit
+    .replace(/'/g, '&apos;');
 }
 
-function toFixed2(num) {
-  return (Math.round(Number(num) * 100) / 100).toFixed(2);
-}
-
-function toTallyDate(dateStr) {
-  // Accepts: "2026-08-11", "20260811", or ISO string
-  if (!dateStr) {
-    const d = new Date();
-    return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
-  }
-  return dateStr.replace(/-/g, '').substring(0, 8);
-}
-
-// ─── SALES INVOICE (F8) ───────────────────────────────────────────────────────
-
-function buildSalesInvoiceXML(payload) {
-  const p = payload;
-  const companyName = sanitize(p.tallyCompanyName);
-  const invoiceNumber = sanitize(p.invoiceNumber);
-  const invoiceDate = toTallyDate(p.invoiceDate || p.voucherDate);
-  const customerName = sanitize(p.customerName);
-  const customerGST = sanitize(p.customerGST || p.gstin || '');
-  const narration = sanitize(p.narration || `ERP Invoice: ${p.invoiceNumber}`);
-
-  const subTotal = Number(p.subTotal) || 0;
-  const cgst = Number(p.cgst) || 0;
-  const sgst = Number(p.sgst) || 0;
-  const igst = Number(p.igst) || 0;
-  const deliveryCharges = Number(p.deliveryCharges) || 0;
-  const grandTotal = Number(p.grandTotal) || 0;
-
-  // Auto-balance: ensure debits = credits
-  const totalTax = cgst + sgst + igst;
-  const computedGrand = subTotal + totalTax + deliveryCharges;
-  const roundingDiff = Number(toFixed2(grandTotal - computedGrand));
-
-  // Build inventory entries for each item
-  let inventoryEntries = '';
-  const items = p.items || [];
-  for (const item of items) {
-    const itemName = sanitize(item.productName || item.name || 'Printing Services');
-    const qty = Number(item.quantity || item.sqft || 1);
-    const rate = Number(item.rate || 0);
-    const amount = Number(item.amount || 0);
-
-    inventoryEntries += `
-            <ALLINVENTORYENTRIES.LIST>
-                <STOCKITEMNAME>${itemName}</STOCKITEMNAME>
-                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-                <RATE>${toFixed2(rate)}/${sanitize(item.unit || 'Sq Ft')}</RATE>
-                <AMOUNT>-${toFixed2(amount)}</AMOUNT>
-                <ACTUALQTY>${toFixed2(qty)} ${sanitize(item.unit || 'Sq Ft')}</ACTUALQTY>
-                <BILLEDQTY>${toFixed2(qty)} ${sanitize(item.unit || 'Sq Ft')}</BILLEDQTY>
-            </ALLINVENTORYENTRIES.LIST>`;
-  }
-
-  // Build GST ledger entries
-  let gstEntries = '';
-  if (igst > 0) {
-    gstEntries = `
-            <LEDGERENTRIES.LIST>
-                <LEDGERNAME>Output IGST</LEDGERNAME>
-                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-                <AMOUNT>-${toFixed2(igst)}</AMOUNT>
-            </LEDGERENTRIES.LIST>`;
+/**
+ * Normalizes a date to Tally's expected format YYYYMMDD
+ */
+function toTallyDate(dateStr, educationalMode = true) {
+  let tallyDate;
+  if (!dateStr || dateStr === 'undefined' || dateStr === 'null') {
+    tallyDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  } else if (String(dateStr).length === 8 && !isNaN(Number(dateStr))) {
+    tallyDate = String(dateStr);
   } else {
-    if (cgst > 0) {
-      gstEntries += `
-            <LEDGERENTRIES.LIST>
-                <LEDGERNAME>Output CGST</LEDGERNAME>
-                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-                <AMOUNT>-${toFixed2(cgst)}</AMOUNT>
-            </LEDGERENTRIES.LIST>`;
-    }
-    if (sgst > 0) {
-      gstEntries += `
-            <LEDGERENTRIES.LIST>
-                <LEDGERNAME>Output SGST</LEDGERNAME>
-                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-                <AMOUNT>-${toFixed2(sgst)}</AMOUNT>
-            </LEDGERENTRIES.LIST>`;
+    try {
+      tallyDate = new Date(dateStr).toISOString().slice(0, 10).replace(/-/g, '');
+    } catch (e) {
+      tallyDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     }
   }
 
-  // Delivery charges entry
-  let deliveryEntry = '';
-  if (deliveryCharges > 0) {
-    deliveryEntry = `
-            <LEDGERENTRIES.LIST>
-                <LEDGERNAME>Transport Charges</LEDGERNAME>
-                <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-                <AMOUNT>-${toFixed2(deliveryCharges)}</AMOUNT>
-            </LEDGERENTRIES.LIST>`;
+  // Educational Mode: Tally's trial copy only accepts the 1st, 2nd, and 31st.
+  if (educationalMode) {
+    tallyDate = tallyDate.substring(0, 6) + '01';
   }
 
-  // Rounding entry (auto-balance fix)
-  let roundingEntry = '';
-  if (Math.abs(roundingDiff) > 0.001) {
-    roundingEntry = `
-            <LEDGERENTRIES.LIST>
-                <LEDGERNAME>Rounding Off</LEDGERNAME>
-                <ISDEEMEDPOSITIVE>${roundingDiff > 0 ? 'No' : 'Yes'}</ISDEEMEDPOSITIVE>
-                <AMOUNT>${toFixed2(-roundingDiff)}</AMOUNT>
-            </LEDGERENTRIES.LIST>`;
+  return tallyDate;
+}
+
+/**
+ * Generates a Sales Voucher (Invoice) XML
+ */
+function buildSalesInvoiceXML(payload, options = {}) {
+  const educationalMode = typeof options === 'boolean' ? options : (options.educationalMode !== undefined ? options.educationalMode : true);
+  const targetCompany = (typeof options === 'object' && options.companyName)
+    ? options.companyName
+    : ((payload.tallyCompanyName && payload.tallyCompanyName !== 'Auravionx') ? payload.tallyCompanyName : 'Hindustan Enterprises 25-26');
+
+  let {
+    invoiceNumber,
+    invoiceDate,
+    customerName,
+    items = [],
+    subTotal,
+    cgst,
+    sgst,
+    igst,
+    grandTotal,
+    debtorLedgerName,
+  } = payload;
+
+  const salesLedgerName = payload.ledgers?.salesLedger || payload.salesLedgerName || 'GST SALES';
+  debtorLedgerName = payload.partyLedgerName || debtorLedgerName || customerName || 'Sundry Debtors';
+  if (!invoiceNumber) invoiceNumber = `INV-${Date.now()}`;
+  
+  const tallyDate = toTallyDate(invoiceDate, educationalMode);
+  const state = payload.placeOfSupply || payload.state || 'Karnataka';
+  const narration = payload.narration || `Sales Invoice ${invoiceNumber}`;
+  const commonGodown = payload.commonGodown || 'B1';
+
+  // Calculate item entries
+  const itemEntries = items.map(item => {
+    const qty     = Number(item.quantity) || Number(item.sqft) || 1;
+    const rate    = Number(item.rate) || 0;
+    const amount  = Number(item.taxableAmount ?? item.amount ?? (rate * qty));
+    const unit    = item.unit || 'N';
+    const godown  = item.godownName || commonGodown || 'B1';
+    const hsnTag  = item.hsnCode ? `<GSTHSNNAME>${xmlEscape(item.hsnCode)}</GSTHSNNAME>` : '';
+
+    return `
+<ALLINVENTORYENTRIES.LIST>
+<STOCKITEMNAME>${xmlEscape(item.productName)}</STOCKITEMNAME>
+${hsnTag}
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<RATE>${rate.toFixed(2)}/${unit}</RATE>
+<AMOUNT>${amount.toFixed(2)}</AMOUNT>
+<ACTUALQTY>${qty} ${unit}</ACTUALQTY>
+<BILLEDQTY>${qty} ${unit}</BILLEDQTY>
+<BATCHALLOCATIONS.LIST>
+<GODOWNNAME>${xmlEscape(godown)}</GODOWNNAME>
+<BATCHNAME>Primary Batch</BATCHNAME>
+<AMOUNT>${amount.toFixed(2)}</AMOUNT>
+<ACTUALQTY>${qty} ${unit}</ACTUALQTY>
+<BILLEDQTY>${qty} ${unit}</BILLEDQTY>
+</BATCHALLOCATIONS.LIST>
+<ACCOUNTINGALLOCATIONS.LIST>
+<LEDGERNAME>${xmlEscape(salesLedgerName)}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<ISPARTYLEDGER>No</ISPARTYLEDGER>
+<AMOUNT>${amount.toFixed(2)}</AMOUNT>
+</ACCOUNTINGALLOCATIONS.LIST>
+</ALLINVENTORYENTRIES.LIST>`;
+  }).join('');
+
+  // GST entries (Optional)
+  const gstEntries = [];
+  const cgstName = payload.cgstLedgerName || 'CGST';
+  const sgstName = payload.sgstLedgerName || 'SGST';
+  const igstName = payload.igstLedgerName || 'IGST';
+
+  if (cgst > 0) {
+    gstEntries.push(`
+<LEDGERENTRIES.LIST>
+<LEDGERNAME>${xmlEscape(cgstName)}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<ISPARTYLEDGER>No</ISPARTYLEDGER>
+<AMOUNT>${cgst.toFixed(2)}</AMOUNT>
+</LEDGERENTRIES.LIST>`);
+    gstEntries.push(`
+<LEDGERENTRIES.LIST>
+<LEDGERNAME>${xmlEscape(sgstName)}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<ISPARTYLEDGER>No</ISPARTYLEDGER>
+<AMOUNT>${sgst.toFixed(2)}</AMOUNT>
+</LEDGERENTRIES.LIST>`);
+  } else if (igst > 0) {
+    gstEntries.push(`
+<LEDGERENTRIES.LIST>
+<LEDGERNAME>${xmlEscape(igstName)}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<ISPARTYLEDGER>No</ISPARTYLEDGER>
+<AMOUNT>${igst.toFixed(2)}</AMOUNT>
+</LEDGERENTRIES.LIST>`);
   }
 
-  return `
-<ENVELOPE>
-    <HEADER>
-        <TALLYREQUEST>Import Data</TALLYREQUEST>
-    </HEADER>
-    <BODY>
-        <IMPORTDATA>
-            <REQUESTDESC>
-                <REPORTNAME>Vouchers</REPORTNAME>
-                <STATICVARIABLES>
-                    <SVCURRENTCOMPANY>${companyName}</SVCURRENTCOMPANY>
-                </STATICVARIABLES>
-            </REQUESTDESC>
-            <REQUESTDATA>
-                <TALLYMESSAGE xmlns:UDF="TallyUDF">
-                    <VOUCHER VCHTYPE="Sales" ACTION="Create">
-                        <DATE>${invoiceDate}</DATE>
-                        <VOUCHERTYPENAME>Sales</VOUCHERTYPENAME>
-                        <VOUCHERNUMBER>${invoiceNumber}</VOUCHERNUMBER>
-                        <REFERENCE>${invoiceNumber}</REFERENCE>
-                        <PARTYLEDGERNAME>${customerName}</PARTYLEDGERNAME>
-                        <PARTYGSTIN>${customerGST}</PARTYGSTIN>
-                        <PERSISTEDVIEW>Invoice Voucher View</PERSISTEDVIEW>
-                        <ISINVOICE>Yes</ISINVOICE>
-                        <NARRATION>${narration}</NARRATION>
-                        <HASAUTOENTRY>No</HASAUTOENTRY>
-                        <LEDGERENTRIES.LIST>
-                            <LEDGERNAME>${customerName}</LEDGERNAME>
-                            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-                            <AMOUNT>${toFixed2(grandTotal)}</AMOUNT>
-                            <BILLALLOCATIONS.LIST>
-                                <BILLTYPE>New Ref</BILLTYPE>
-                                <NAME>${invoiceNumber}</NAME>
-                                <AMOUNT>${toFixed2(grandTotal)}</AMOUNT>
-                            </BILLALLOCATIONS.LIST>
-                        </LEDGERENTRIES.LIST>${inventoryEntries}${gstEntries}${deliveryEntry}${roundingEntry}
-                    </VOUCHER>
-                </TALLYMESSAGE>
-            </REQUESTDATA>
-        </IMPORTDATA>
-    </BODY>
-</ENVELOPE>`;
-}
+  // Calculate delivery/freight charges to balance the invoice
+  const itemsTotal = items.reduce((sum, item) => sum + Number(item.taxableAmount ?? item.amount ?? ((item.rate || 0) * (item.quantity || 1))), 0);
+  const taxesTotal = (cgst || 0) + (sgst || 0) + (igst || 0);
+  const deliveryAmount = Number(grandTotal || 0) - (itemsTotal + taxesTotal);
 
-// ─── RECEIPT VOUCHER (F6) ─────────────────────────────────────────────────────
-
-function buildReceiptXML(payload) {
-  const p = payload;
-  const companyName = sanitize(p.tallyCompanyName);
-  const voucherNumber = sanitize(p.receiptEntryNumber || p.voucherNumber || '');
-  const voucherDate = toTallyDate(p.voucherDate);
-  const customerName = sanitize(p.customerName);
-  const amount = Number(p.totalAmount || p.amount || 0);
-  const narration = sanitize(p.narration || `ERP Receipt: ${voucherNumber}`);
-
-  // Determine the payment ledger (Cash or Bank)
-  const mode = (p.paymentMode || 'CASH').toUpperCase();
-  let paymentLedger = 'Cash';
-  if (mode === 'CASH') {
-    paymentLedger = sanitize(p.cashLedger || 'Cash');
-  } else if (mode === 'UPI') {
-    paymentLedger = sanitize(p.bankLedger || p.upiLedger || 'Bank');
-  } else {
-    paymentLedger = sanitize(p.bankLedger || 'Bank');
+  if (deliveryAmount > 0.01 || deliveryAmount < -0.01) {
+    const freightLedger = payload.ledgers?.freightLedger || "zForwarding Charge- Sale";
+    gstEntries.push(`
+<LEDGERENTRIES.LIST>
+<LEDGERNAME>${xmlEscape(freightLedger)}</LEDGERNAME>
+<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+<ISPARTYLEDGER>No</ISPARTYLEDGER>
+<AMOUNT>${deliveryAmount.toFixed(2)}</AMOUNT>
+</LEDGERENTRIES.LIST>`);
   }
 
-  // ── Bill Allocation Logic ──────────────────────────────────────────────────
-  // This is the CRITICAL part that the old code got wrong.
-  //
-  // 3 scenarios:
-  //   1. Agst Ref  → Receipt is against a specific invoice (allocations has entries)
-  //   2. New Ref   → Receipt is a customer advance/prepayment (no invoice linked, but tracked)
-  //   3. On Account → Floating money, no tracking (rare, only if explicitly flagged)
+  // Bill allocations: supports both New Ref and Agst Ref (e.g. against ADV-0001)
+  const vchType = payload.voucherType || "1.GST HO CS";
+  const billAllocName = payload.billAllocations?.name || invoiceNumber;
+  const billAllocType = payload.billAllocations?.billType || "New Ref";
+  const billAllocAmount = payload.billAllocations?.amount != null ? Number(payload.billAllocations.amount) : -grandTotal;
 
-  const allocations = p.allocations || [];
-  let billAllocXml = '';
-
-  if (allocations.length > 0) {
-    // SCENARIO 1: Agst Ref — paying against specific invoices
-    for (const alloc of allocations) {
-      billAllocXml += `
-                            <BILLALLOCATIONS.LIST>
-                                <BILLTYPE>Agst Ref</BILLTYPE>
-                                <NAME>${sanitize(alloc.invoiceNumber)}</NAME>
-                                <AMOUNT>-${toFixed2(alloc.amount)}</AMOUNT>
-                            </BILLALLOCATIONS.LIST>`;
-    }
-  } else if (p.billType === 'On Account') {
-    // SCENARIO 3: On Account — explicit floating money
-    billAllocXml = `
-                            <BILLALLOCATIONS.LIST>
-                                <BILLTYPE>On Account</BILLTYPE>
-                                <AMOUNT>-${toFixed2(amount)}</AMOUNT>
-                            </BILLALLOCATIONS.LIST>`;
-  } else {
-    // SCENARIO 2: New Ref — customer prepayment/advance (DEFAULT for unlinked receipts)
-    // This is what the OLD code was MISSING. It used On Account instead of New Ref.
-    // New Ref creates a trackable bucket that can be linked later via Agst Ref.
-    const refName = sanitize(p.refName || voucherNumber);
-    billAllocXml = `
-                            <BILLALLOCATIONS.LIST>
-                                <BILLTYPE>New Ref</BILLTYPE>
-                                <NAME>${refName}</NAME>
-                                <AMOUNT>-${toFixed2(amount)}</AMOUNT>
-                            </BILLALLOCATIONS.LIST>`;
-  }
-
-  return `
+  return `<?xml version="1.0" encoding="UTF-8"?>
 <ENVELOPE>
-    <HEADER>
-        <TALLYREQUEST>Import Data</TALLYREQUEST>
-    </HEADER>
-    <BODY>
-        <IMPORTDATA>
-            <REQUESTDESC>
-                <REPORTNAME>Vouchers</REPORTNAME>
-                <STATICVARIABLES>
-                    <SVCURRENTCOMPANY>${companyName}</SVCURRENTCOMPANY>
-                </STATICVARIABLES>
-            </REQUESTDESC>
-            <REQUESTDATA>
-                <TALLYMESSAGE xmlns:UDF="TallyUDF">
-                    <VOUCHER VCHTYPE="Receipt" ACTION="Create">
-                        <DATE>${voucherDate}</DATE>
-                        <VOUCHERTYPENAME>Receipt</VOUCHERTYPENAME>
-                        <VOUCHERNUMBER>${voucherNumber}</VOUCHERNUMBER>
-                        <REFERENCE>${voucherNumber}</REFERENCE>
-                        <PARTYLEDGERNAME>${customerName}</PARTYLEDGERNAME>
-                        <NARRATION>${narration}</NARRATION>
-                        <HASAUTOENTRY>No</HASAUTOENTRY>
-                        <ALLLEDGERENTRIES.LIST>
-                            <LEDGERNAME>${paymentLedger}</LEDGERNAME>
-                            <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-                            <AMOUNT>-${toFixed2(amount)}</AMOUNT>
-                        </ALLLEDGERENTRIES.LIST>
-                        <ALLLEDGERENTRIES.LIST>
-                            <LEDGERNAME>${customerName}</LEDGERNAME>
-                            <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-                            <AMOUNT>${toFixed2(amount)}</AMOUNT>${billAllocXml}
-                        </ALLLEDGERENTRIES.LIST>
-                    </VOUCHER>
-                </TALLYMESSAGE>
-            </REQUESTDATA>
-        </IMPORTDATA>
-    </BODY>
-</ENVELOPE>`;
-}
+<HEADER>
+<TALLYREQUEST>Import Data</TALLYREQUEST>
+</HEADER>
+<BODY>
+<IMPORTDATA>
+<REQUESTDESC>
+<REPORTNAME>Vouchers</REPORTNAME>
+<STATICVARIABLES>
+<SVCURRENTCOMPANY>${xmlEscape(targetCompany)}</SVCURRENTCOMPANY>
+</STATICVARIABLES>
+</REQUESTDESC>
+<REQUESTDATA>
+<TALLYMESSAGE xmlns:UDF="TallyUDF">
+<VOUCHER VCHTYPE="${xmlEscape(vchType)}" ACTION="Create" OBJVIEW="Invoice Voucher View">
+<DATE>${tallyDate}</DATE>
+<VCHSTATUSDATE>${tallyDate}</VCHSTATUSDATE>
+<NARRATION>${xmlEscape(narration)}</NARRATION>
+<VOUCHERTYPENAME>${xmlEscape(vchType)}</VOUCHERTYPENAME>
+<CLASSNAME>GST Sale</CLASSNAME>
+<VOUCHERNUMBER>${xmlEscape(invoiceNumber)}</VOUCHERNUMBER>
+<PARTYLEDGERNAME>${xmlEscape(debtorLedgerName)}</PARTYLEDGERNAME>
+<PARTYNAME>${xmlEscape(debtorLedgerName)}</PARTYNAME>
+<BASICBUYERNAME>${xmlEscape(debtorLedgerName)}</BASICBUYERNAME>
+<PARTYMAILINGNAME>${xmlEscape(debtorLedgerName)}</PARTYMAILINGNAME>
+<STATENAME>${xmlEscape(state)}</STATENAME>
+<PLACEOFSUPPLY>${xmlEscape(state)}</PLACEOFSUPPLY>
+<COUNTRYOFRESIDENCE>India</COUNTRYOFRESIDENCE>
+<GSTREGISTRATIONTYPE>Regular</GSTREGISTRATIONTYPE>
+<CMPGSTREGISTRATIONTYPE>Regular</CMPGSTREGISTRATIONTYPE>
+<CMPGSTSTATE>${xmlEscape(state)}</CMPGSTSTATE>
+<VCHENTRYMODE>Item Invoice</VCHENTRYMODE>
+<ISINVOICE>Yes</ISINVOICE>
+<ISDELETED>No</ISDELETED>
 
-// ─── CUSTOMER LEDGER (with Alias) ─────────────────────────────────────────────
+${itemEntries}
 
-function buildCustomerLedgerXML(payload) {
-  const p = payload;
-  const companyName = sanitize(p.tallyCompanyName);
-  const ledgerName = sanitize(p.ledgerName);
-  const parentGroup = sanitize(p.parentGroup || 'Sundry Debtors');
-  const state = sanitize(p.state || 'Karnataka');
-  const country = sanitize(p.country || 'India');
-  const address = sanitize(p.address || '');
-  const gstin = sanitize(p.gstin || '');
-  const pinCode = sanitize(p.pinCode || '');
-  const mobile = sanitize(p.mobile || p.phone || '');
-  const email = sanitize(p.email || '');
+<LEDGERENTRIES.LIST>
+  <LEDGERNAME>${xmlEscape(debtorLedgerName)}</LEDGERNAME>
+  <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+  <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
+  <AMOUNT>-${grandTotal.toFixed(2)}</AMOUNT>
+  <BILLALLOCATIONS.LIST>
+    <NAME>${xmlEscape(billAllocName)}</NAME>
+    <BILLTYPE>${xmlEscape(billAllocType)}</BILLTYPE>
+    <AMOUNT>${billAllocAmount.toFixed(2)}</AMOUNT>
+  </BILLALLOCATIONS.LIST>
+</LEDGERENTRIES.LIST>
 
-  // THE ALIAS FIX: Inject ERP contact.id as a permanent Alias
-  // This is what the OLD code was MISSING.
-  // Even if the accountant renames the ledger in Tally, the Alias stays.
-  const erpId = sanitize(p.erpContactId || p.customerId || '');
+${gstEntries.join('')}
 
-  return `
-<ENVELOPE>
-    <HEADER>
-        <TALLYREQUEST>Import Data</TALLYREQUEST>
-    </HEADER>
-    <BODY>
-        <IMPORTDATA>
-            <REQUESTDESC>
-                <REPORTNAME>All Masters</REPORTNAME>
-                <STATICVARIABLES>
-                    <SVCURRENTCOMPANY>${companyName}</SVCURRENTCOMPANY>
-                </STATICVARIABLES>
-            </REQUESTDESC>
-            <REQUESTDATA>
-                <TALLYMESSAGE xmlns:UDF="TallyUDF">
-                    <LEDGER NAME="${ledgerName}" ACTION="Create">
-                        <NAME.LIST>
-                            <NAME>${ledgerName}</NAME>${erpId ? `
-                            <NAME>${erpId}</NAME>` : ''}
-                        </NAME.LIST>
-                        <PARENT>${parentGroup}</PARENT>
-                        <ISBILLWISEON>Yes</ISBILLWISEON>
-                        <LEDSTATENAME>${state}</LEDSTATENAME>
-                        <COUNTRYNAME>${country}</COUNTRYNAME>${address ? `
-                        <ADDRESS.LIST>
-                            <ADDRESS>${address}</ADDRESS>
-                        </ADDRESS.LIST>` : ''}${gstin ? `
-                        <PARTYGSTIN>${gstin}</PARTYGSTIN>
-                        <GSTREGISTRATIONTYPE>Regular</GSTREGISTRATIONTYPE>` : ''}${pinCode ? `
-                        <PINCODE>${pinCode}</PINCODE>` : ''}${mobile ? `
-                        <LEDGERMOBILE>${mobile}</LEDGERMOBILE>` : ''}${email ? `
-                        <LEDGEREMAIL>${email}</LEDGEREMAIL>` : ''}
-                    </LEDGER>
-                </TALLYMESSAGE>
-            </REQUESTDATA>
-        </IMPORTDATA>
-    </BODY>
-</ENVELOPE>`;
-}
-
-// ─── SUPPLIER LEDGER (with Alias) ─────────────────────────────────────────────
-
-function buildSupplierLedgerXML(payload) {
-  // Suppliers use the exact same XML structure, just under "Sundry Creditors"
-  return buildCustomerLedgerXML({
-    ...payload,
-    parentGroup: payload.parentGroup || 'Sundry Creditors',
-  });
-}
-
-// ─── FETCH MASTERS (Export Data) ──────────────────────────────────────────────
-
-function buildFetchMastersXML(companyName) {
-  const finalCompanyName = companyName || process.env.TALLY_COMPANY_NAME || '';
-
-  return `
-<ENVELOPE>
-  <HEADER>
-    <VERSION>1</VERSION>
-    <TALLYREQUEST>Export</TALLYREQUEST>
-    <TYPE>Data</TYPE>
-    <ID>LedgerMaster</ID>
-  </HEADER>
-  <BODY>
-    <DESC>
-      <STATICVARIABLES>
-        <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-        ${finalCompanyName ? `<SVCURRENTCOMPANY>${sanitize(finalCompanyName)}</SVCURRENTCOMPANY>` : ''}
-      </STATICVARIABLES>
-      <TDL>
-        <TDLMESSAGE>
-          <REPORT NAME="LedgerMaster">
-            <FORMS>LedgerMaster</FORMS>
-          </REPORT>
-          <FORM NAME="LedgerMaster">
-            <PARTS>LedgerMaster</PARTS>
-          </FORM>
-          <PART NAME="LedgerMaster">
-            <LINES>LedgerMaster</LINES>
-            <REPEAT>LedgerMaster : AllLedgers</REPEAT>
-            <SCROLLED>Vertical</SCROLLED>
-          </PART>
-          <LINE NAME="LedgerMaster">
-            <XMLTAG>"LEDGER"</XMLTAG>
-            <FIELDS>LName, LParent, LOpBal, LClBal, LGSTIN</FIELDS>
-          </LINE>
-          <FIELD NAME="LName">
-            <SET>$Name</SET>
-            <XMLTAG>"NAME"</XMLTAG>
-          </FIELD>
-          <FIELD NAME="LParent">
-            <SET>$Parent</SET>
-            <XMLTAG>"PARENT"</XMLTAG>
-          </FIELD>
-          <FIELD NAME="LOpBal">
-            <SET>$OpeningBalance</SET>
-            <XMLTAG>"OPENINGBALANCE"</XMLTAG>
-          </FIELD>
-          <FIELD NAME="LClBal">
-            <SET>$ClosingBalance</SET>
-            <XMLTAG>"CLOSINGBALANCE"</XMLTAG>
-          </FIELD>
-          <FIELD NAME="LGSTIN">
-            <SET>$PartyGSTIN</SET>
-            <XMLTAG>"PARTYGSTIN"</XMLTAG>
-          </FIELD>
-          <COLLECTION NAME="AllLedgers">
-            <TYPE>Ledger</TYPE>
-          </COLLECTION>
-        </TDLMESSAGE>
-      </TDL>
-    </DESC>
+<UDF:HECOMMONGODOWN>${xmlEscape(commonGodown)}</UDF:HECOMMONGODOWN>
+</VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
   </BODY>
 </ENVELOPE>`;
 }
 
-// ─── MASTER ROUTER ────────────────────────────────────────────────────────────
+/**
+ * Generates a Receipt Voucher XML
+ */
+function buildReceiptVoucherXML(payload, educationalMode = true) {
+  // Support both old field names (voucherNumber/amount/bankLedgerName)
+  // and new field names (receiptEntryNumber/totalAmount/cashLedger)
+  const tallyCompanyName = payload.tallyCompanyName || 'Hindustan Enterprises 25-26';
+  const receiptEntryNumber = payload.receiptEntryNumber || payload.voucherNumber || '';
+  const voucherDate        = payload.voucherDate || payload.invoiceDate || null;
+  const totalAmount        = Number(payload.totalAmount ?? payload.amount ?? 0);
+  const paymentMode        = (payload.paymentMode || 'CASH').toUpperCase();
+  const allocations        = Array.isArray(payload.allocations) ? payload.allocations : [];
+  const cashLedger         = payload.cashLedger;
+  const bankLedger         = payload.bankLedger;
+  const bankName           = payload.bankName;
+  const upiApp             = payload.upiApp;
+  const customerName       = payload.debtorLedgerName || payload.customerName || 'Sundry Debtors';
+  const remarks            = payload.remarks || '';
+  const voucherType        = payload.voucherType || (paymentMode === 'CASH' ? 'Rec10 B8 Cash' : 'Rec1 B1 Bank');
+  // "Create" for brand-new, "Alter" to update existing (manually-entered) vouchers
+  const action             = payload.action || 'Create';
+
+  // Backward compat: old builder had bankLedgerName
+  const legacyBankLedger   = payload.bankLedgerName;
+
+  const tallyDate    = toTallyDate(voucherDate, educationalMode);
+  const amountNum    = totalAmount;
 
 
-function buildXML(syncType, payload) {
-  switch (syncType) {
-    case 'SALES_INVOICE':
-      return buildSalesInvoiceXML(payload);
-    case 'RECEIPT_VOUCHER':
-      return buildReceiptXML(payload);
-    case 'CREATE_CUSTOMER':
-      return buildCustomerLedgerXML(payload);
-    case 'CREATE_SUPPLIER':
-      return buildSupplierLedgerXML(payload);
-    case 'FETCH_MASTERS':
-      return buildFetchMastersXML(payload.tallyCompanyName);
-    default:
-      throw new Error(`Unsupported sync type: ${syncType}`);
+  // Determine cash/bank ledger from paymentMode matching Tally chart of accounts:
+  // Bank: Federal 2091, ICICI Bank, HDFC Bank, Canara Bank
+  // Cash: Cash, Cash B2
+  let cashBankLedger = 'Federal 2091';
+  if (paymentMode === 'CASH') {
+    cashBankLedger = (cashLedger && !cashLedger.startsWith('Rec') && !cashLedger.startsWith('Main')) ? cashLedger : 'Cash';
+  } else if (paymentMode === 'UPI') {
+    cashBankLedger = (bankLedger && !bankLedger.startsWith('Rec')) ? bankLedger : 'Federal 2091';
+  } else if (paymentMode === 'BANK') {
+    if (bankLedger && !bankLedger.startsWith('Rec')) {
+      cashBankLedger = bankLedger;
+    } else {
+      cashBankLedger = bankName || legacyBankLedger || 'Federal 2091';
+    }
+  } else {
+    cashBankLedger = 'Cash';
   }
+
+  // ── Build BILLALLOCATIONS.LIST ──────────────────────────────────────────────
+  let billAllocs = '';
+
+  if (payload.billAllocations) {
+    const bAllocs = Array.isArray(payload.billAllocations) ? payload.billAllocations : [payload.billAllocations];
+    billAllocs = bAllocs.map(b => `
+              <BILLALLOCATIONS.LIST>
+                <NAME>${xmlEscape(b.name || receiptEntryNumber)}</NAME>
+                <BILLTYPE>${xmlEscape(b.billType || 'On Account')}</BILLTYPE>
+                <AMOUNT>${Number(b.amount || amountNum).toFixed(2)}</AMOUNT>
+              </BILLALLOCATIONS.LIST>`).join('');
+  } else if (allocations.length === 0) {
+    // No invoice linked → On Account (required for bill-by-bill tracking ledgers)
+    billAllocs = `
+              <BILLALLOCATIONS.LIST>
+                <NAME>${xmlEscape(receiptEntryNumber || 'Advance')}</NAME>
+                <BILLTYPE>On Account</BILLTYPE>
+                <AMOUNT>${amountNum.toFixed(2)}</AMOUNT>
+              </BILLALLOCATIONS.LIST>`;
+  } else {
+    // Agst Ref for each invoice
+    for (const alloc of allocations) {
+      const allocAmt = Number(alloc.amount || 0);
+      if (allocAmt <= 0) continue;
+      billAllocs += `
+              <BILLALLOCATIONS.LIST>
+                <NAME>${xmlEscape(alloc.invoiceNumber || alloc.refId || '')}</NAME>
+                <BILLTYPE>Agst Ref</BILLTYPE>
+                <AMOUNT>${allocAmt.toFixed(2)}</AMOUNT>
+              </BILLALLOCATIONS.LIST>`;
+    }
+  }
+
+  const narration = remarks
+    ? `Receipt | ${remarks}`
+    : `Receipt from ${customerName} | Mode: ${paymentMode}`;
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>${xmlEscape(tallyCompanyName)}</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="${xmlEscape(voucherType)}" ACTION="${action}" OBJVIEW="Accounting Voucher View">
+            <DATE>${tallyDate}</DATE>
+            <VOUCHERTYPENAME>${xmlEscape(voucherType)}</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>${xmlEscape(receiptEntryNumber)}</VOUCHERNUMBER>
+            <PARTYLEDGERNAME>${xmlEscape(customerName)}</PARTYLEDGERNAME>
+            <NARRATION>${xmlEscape(narration)}</NARRATION>
+            <PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>
+
+            <!-- Cash/Bank Dr side -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>${xmlEscape(cashBankLedger)}</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>No</ISPARTYLEDGER>
+              <AMOUNT>-${amountNum.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <!-- Customer Cr side with bill allocations -->
+            <ALLLEDGERENTRIES.LIST>
+              <LEDGERNAME>${xmlEscape(customerName)}</LEDGERNAME>
+              <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+              <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
+              <AMOUNT>${amountNum.toFixed(2)}</AMOUNT>
+              ${billAllocs}
+            </ALLLEDGERENTRIES.LIST>
+
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+}
+
+
+/**
+ * Generates a Payment Voucher XML
+ */
+function buildPaymentVoucherXML(payload, educationalMode = true) {
+  const {
+    voucherNumber,
+    voucherDate,
+    amount,
+    supplierName,
+    bankLedgerName, // legacy fallback
+    paymentMode = 'CASH',
+    cashLedger = 'Cash',
+    upiApp,
+    bankName,
+    action = 'Alter',
+    allocations = [],
+    narration = '',
+    isSupplierPayment = true,
+  } = payload;
+  const tallyCompanyName = (payload.tallyCompanyName && payload.tallyCompanyName !== 'Auravionx') ? payload.tallyCompanyName : 'Hindustan Enterprises 25-26';
+
+  const tallyDate = toTallyDate(voucherDate, educationalMode);
+  const amountNum = Number(amount);
+
+  let cashBankLedger = 'Cash';
+  if (paymentMode === 'CASH') {
+    cashBankLedger = cashLedger || bankLedgerName || 'Cash';
+  } else if (paymentMode === 'UPI') {
+    cashBankLedger = upiApp || bankLedgerName || 'Bank';
+  } else if (paymentMode === 'BANK_TRANSFER' || paymentMode === 'BANK') {
+    cashBankLedger = bankName || bankLedgerName || 'Bank';
+  } else {
+    cashBankLedger = cashLedger || bankLedgerName || 'Cash';
+  }
+
+  // Tally Payment voucher: Debit Supplier (-amount), Credit Bank (+amount)
+  const allocatedTotal = allocations.reduce((s, a) => s + Number(a.amount || 0), 0);
+  const advanceAmount  = Math.max(0, amountNum - allocatedTotal);
+
+  let billAllocs = '';
+  if (isSupplierPayment) {
+    if (allocations.length === 0) {
+      billAllocs = `
+              <BILLALLOCATIONS.LIST>
+                <NAME>${xmlEscape(voucherNumber || 'Advance')}</NAME>
+                <BILLTYPE>On Acct</BILLTYPE>
+                <AMOUNT>-${amountNum.toFixed(2)}</AMOUNT>
+              </BILLALLOCATIONS.LIST>`;
+    } else {
+      allocations.forEach(a => {
+        billAllocs += `
+              <BILLALLOCATIONS.LIST>
+                <NAME>${xmlEscape(a.invoiceNumber)}</NAME>
+                <BILLTYPE>Agst Ref</BILLTYPE>
+                <AMOUNT>-${Number(a.amount).toFixed(2)}</AMOUNT>
+              </BILLALLOCATIONS.LIST>`;
+      });
+      if (advanceAmount > 0) {
+        billAllocs += `
+              <BILLALLOCATIONS.LIST>
+                <NAME>${xmlEscape(voucherNumber || 'Advance')}</NAME>
+                <BILLTYPE>Advance</BILLTYPE>
+                <AMOUNT>-${advanceAmount.toFixed(2)}</AMOUNT>
+              </BILLALLOCATIONS.LIST>`;
+      }
+    }
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>${xmlEscape(tallyCompanyName)}</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Payment" ACTION="${action}" OBJVIEW="Accounting Voucher View">
+            <DATE>${tallyDate}</DATE>
+            <VOUCHERTYPENAME>Payment</VOUCHERTYPENAME>
+            <PARTYLEDGERNAME>${xmlEscape(supplierName)}</PARTYLEDGERNAME>
+            <VOUCHERNUMBER>${xmlEscape(voucherNumber)}</VOUCHERNUMBER>
+            <NARRATION>${xmlEscape(narration)}</NARRATION>
+            <PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>
+            <VCHSTATUSVOUCHERTYPE>Payment</VCHSTATUSVOUCHERTYPE>
+
+            <ALLLEDGERENTRIES.LIST>
+             <LEDGERNAME>${xmlEscape(supplierName)}</LEDGERNAME>
+             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+             <ISPARTYLEDGER>${isSupplierPayment ? 'Yes' : 'No'}</ISPARTYLEDGER>
+             <AMOUNT>-${amountNum.toFixed(2)}</AMOUNT>
+             ${billAllocs}
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+             <LEDGERNAME>${xmlEscape(cashBankLedger)}</LEDGERNAME>
+             <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+             <ISPARTYLEDGER>No</ISPARTYLEDGER>
+             <AMOUNT>${amountNum.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+}
+
+/**
+ * Generates a Journal Voucher XML
+ */
+function buildJournalVoucherXML(payload, educationalMode = true) {
+  const {
+    tallyCompanyName = 'Auravionx',
+    voucherNumber,
+    voucherDate,
+    entries, // array of { ledgerName, amount, isDebit: true/false }
+  } = payload;
+
+  const tallyDate = toTallyDate(voucherDate, educationalMode);
+
+  const entryXML = entries.map(entry => {
+      // In Tally Journal: Debit is Yes/Negative Amount. Credit is No/Positive Amount.
+      const isDebit = entry.isDebit ? 'Yes' : 'No';
+      const amt = entry.isDebit ? -Math.abs(entry.amount) : Math.abs(entry.amount);
+      return `
+            <ALLLEDGERENTRIES.LIST>
+             <LEDGERNAME>${xmlEscape(entry.ledgerName)}</LEDGERNAME>
+             <ISDEEMEDPOSITIVE>${isDebit}</ISDEEMEDPOSITIVE>
+             <AMOUNT>${amt.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>`;
+  }).join('');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>${xmlEscape(tallyCompanyName)}</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Journal" ACTION="Create" OBJVIEW="Accounting Voucher View">
+            <DATE>${tallyDate}</DATE>
+            <VOUCHERTYPENAME>Journal</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>${xmlEscape(voucherNumber)}</VOUCHERNUMBER>
+            <PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>
+            <VCHSTATUSVOUCHERTYPE>Journal</VCHSTATUSVOUCHERTYPE>
+            ${entryXML}
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+}
+
+/**
+ * Generates a Contra Voucher XML
+ */
+function buildContraVoucherXML(payload, educationalMode = true) {
+  const {
+    tallyCompanyName = 'Auravionx',
+    voucherNumber,
+    voucherDate,
+    amount,
+    fromLedgerName, // The ledger giving money (Credit - Positive Amount)
+    toLedgerName,   // The ledger receiving money (Debit - Negative Amount)
+  } = payload;
+
+  const tallyDate = toTallyDate(voucherDate, educationalMode);
+  const amountNum = Number(amount);
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>Vouchers</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>${xmlEscape(tallyCompanyName)}</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <VOUCHER VCHTYPE="Contra" ACTION="Create" OBJVIEW="Accounting Voucher View">
+            <DATE>${tallyDate}</DATE>
+            <VOUCHERTYPENAME>Contra</VOUCHERTYPENAME>
+            <VOUCHERNUMBER>${xmlEscape(voucherNumber)}</VOUCHERNUMBER>
+            <PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>
+            <VCHSTATUSVOUCHERTYPE>Contra</VCHSTATUSVOUCHERTYPE>
+
+            <ALLLEDGERENTRIES.LIST>
+             <LEDGERNAME>${xmlEscape(fromLedgerName)}</LEDGERNAME>
+             <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+             <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
+             <AMOUNT>${amountNum.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+            <ALLLEDGERENTRIES.LIST>
+             <LEDGERNAME>${xmlEscape(toLedgerName)}</LEDGERNAME>
+             <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
+             <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
+             <AMOUNT>-${amountNum.toFixed(2)}</AMOUNT>
+            </ALLLEDGERENTRIES.LIST>
+
+          </VOUCHER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+}
+
+/**
+ * Generates a Customer Ledger XML
+ */
+function buildCustomerLedgerXML(payload) {
+  const {
+    tallyCompanyName = 'Auravionx',
+    ledgerName,
+    parentGroup = 'Sundry Debtors',
+    state = 'Karnataka',
+    country = 'India',
+    address = '',
+    gstin = '',
+    pinCode = '',
+    mobile = '',
+  } = payload;
+
+  const addressTag = address ? `
+       <LEDMAILINGDETAILS.LIST>
+        <ADDRESS.LIST TYPE="String">
+         <ADDRESS>${xmlEscape(address)}</ADDRESS>
+        </ADDRESS.LIST>
+        <APPLICABLEFROM>20260401</APPLICABLEFROM>
+        <MAILINGNAME>${xmlEscape(ledgerName)}</MAILINGNAME>
+        <STATE>${xmlEscape(state)}</STATE>
+        <COUNTRY>${xmlEscape(country)}</COUNTRY>
+       </LEDMAILINGDETAILS.LIST>` : `
+       <LEDMAILINGDETAILS.LIST>
+        <APPLICABLEFROM>20260401</APPLICABLEFROM>
+        <MAILINGNAME>${xmlEscape(ledgerName)}</MAILINGNAME>
+        <STATE>${xmlEscape(state)}</STATE>
+        <COUNTRY>${xmlEscape(country)}</COUNTRY>
+       </LEDMAILINGDETAILS.LIST>`;
+
+  const gstTag = gstin ? `
+       <LEDGSTREGDETAILS.LIST>
+        <APPLICABLEFROM>20260401</APPLICABLEFROM>
+        <GSTREGISTRATIONTYPE>Regular</GSTREGISTRATIONTYPE>
+        <GSTIN>${xmlEscape(gstin)}</GSTIN>
+        <PLACEOFSUPPLY>${xmlEscape(state)}</PLACEOFSUPPLY>
+       </LEDGSTREGDETAILS.LIST>` : `
+       <LEDGSTREGDETAILS.LIST>
+        <APPLICABLEFROM>20260401</APPLICABLEFROM>
+        <GSTREGISTRATIONTYPE>Regular</GSTREGISTRATIONTYPE>
+        <PLACEOFSUPPLY>${xmlEscape(state)}</PLACEOFSUPPLY>
+       </LEDGSTREGDETAILS.LIST>`;
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Import Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <IMPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>All Masters</REPORTNAME>
+        <STATICVARIABLES>
+          <SVCURRENTCOMPANY>${xmlEscape(tallyCompanyName)}</SVCURRENTCOMPANY>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+      <REQUESTDATA>
+        <TALLYMESSAGE xmlns:UDF="TallyUDF">
+          <LEDGER NAME="${xmlEscape(ledgerName)}" ACTION="Create">
+            <NAME.LIST>
+              <NAME>${xmlEscape(ledgerName)}</NAME>
+            </NAME.LIST>
+            <PARENT>${xmlEscape(parentGroup)}</PARENT>
+            <CURRENCYNAME>&#8377;</CURRENCYNAME>
+            <ISBILLWISEON>Yes</ISBILLWISEON>
+            <AFFECTSSTOCK>No</AFFECTSSTOCK>
+            <COUNTRYOFRESIDENCE>${xmlEscape(country)}</COUNTRYOFRESIDENCE>
+            <PRIORSTATENAME>${xmlEscape(state)}</PRIORSTATENAME>
+            <PINCODE>${xmlEscape(pinCode)}</PINCODE>
+            <LEDGERPHONE>${xmlEscape(mobile)}</LEDGERPHONE>
+            ${addressTag}
+            ${gstTag}
+          </LEDGER>
+        </TALLYMESSAGE>
+      </REQUESTDATA>
+    </IMPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+}
+
+/**
+ * Generates a Supplier Ledger XML
+ */
+function buildSupplierLedgerXML(payload) {
+  const {
+    tallyCompanyName = 'Auravionx',
+    ledgerName,
+    parentGroup = 'Sundry Creditors',
+    state = 'Karnataka',
+    country = 'India',
+    address = '',
+    gstin = '',
+    pinCode = '',
+    mobile = '',
+  } = payload;
+
+  // The structure is identical to Customer, just the default parentGroup is different
+  return buildCustomerLedgerXML({
+    ...payload,
+    tallyCompanyName,
+    ledgerName,
+    parentGroup,
+    state,
+    country,
+    address,
+    gstin,
+    pinCode,
+    mobile,
+  });
+}
+
+/**
+ * Generates an Export XML for fetching masters or Trial Balance.
+ */
+function buildFetchXML(reportName) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+  <HEADER>
+    <TALLYREQUEST>Export Data</TALLYREQUEST>
+  </HEADER>
+  <BODY>
+    <EXPORTDATA>
+      <REQUESTDESC>
+        <REPORTNAME>${reportName}</REPORTNAME>
+        <STATICVARIABLES>
+          <EXPLODEFLAG>Yes</EXPLODEFLAG>
+          <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+        </STATICVARIABLES>
+      </REQUESTDESC>
+    </EXPORTDATA>
+  </BODY>
+</ENVELOPE>`;
+}
+
+/**
+ * Generates a Stock Group (Category) XML
+ */
+function buildStockGroupXML(payload) {
+  const {
+    tallyCompanyName = 'Auravionx',
+    groupName,
+    parentGroup = '', // blank means top-level
+    hsnCode = '',
+    gstRate = 0
+  } = payload;
+
+  const gstTag = gstRate > 0 ? `
+      <GSTAPPLICABLE>&#4; Applicable</GSTAPPLICABLE>
+      <HSNCODE>${xmlEscape(hsnCode)}</HSNCODE>
+      <TAXABILITY>Taxable</TAXABILITY>
+      <STATEWISEDETAILS.LIST>
+       <STATENAME>&#4; Any</STATENAME>
+       <RATEDETAILS.LIST>
+        <GSTRATEDUTYHEAD>CGST</GSTRATEDUTYHEAD>
+        <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+        <GSTRATE>${gstRate / 2}</GSTRATE>
+       </RATEDETAILS.LIST>
+       <RATEDETAILS.LIST>
+        <GSTRATEDUTYHEAD>SGST/UTGST</GSTRATEDUTYHEAD>
+        <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+        <GSTRATE>${gstRate / 2}</GSTRATE>
+       </RATEDETAILS.LIST>
+       <RATEDETAILS.LIST>
+        <GSTRATEDUTYHEAD>IGST</GSTRATEDUTYHEAD>
+        <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+        <GSTRATE>${gstRate}</GSTRATE>
+       </RATEDETAILS.LIST>
+      </STATEWISEDETAILS.LIST>` : `
+      <GSTAPPLICABLE>&#4; Not Applicable</GSTAPPLICABLE>`;
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+ <HEADER>
+  <TALLYREQUEST>Import Data</TALLYREQUEST>
+ </HEADER>
+ <BODY>
+  <IMPORTDATA>
+   <REQUESTDESC>
+    <REPORTNAME>All Masters</REPORTNAME>
+    <STATICVARIABLES>
+     <SVCURRENTCOMPANY>${xmlEscape(tallyCompanyName)}</SVCURRENTCOMPANY>
+    </STATICVARIABLES>
+   </REQUESTDESC>
+   <REQUESTDATA>
+    <TALLYMESSAGE xmlns:UDF="TallyUDF">
+     <STOCKGROUP NAME="${xmlEscape(groupName)}" ACTION="Create">
+      <NAME.LIST>
+       <NAME>${xmlEscape(groupName)}</NAME>
+      </NAME.LIST>
+      <PARENT>${xmlEscape(parentGroup)}</PARENT>
+      <ISADDABLE>Yes</ISADDABLE>
+      <ISDELETED>No</ISDELETED>
+      <ASORIGINAL>Yes</ASORIGINAL>
+${gstTag}
+      <LANGUAGENAME.LIST>
+       <NAME.LIST TYPE="String">
+        <NAME>${xmlEscape(groupName)}</NAME>
+       </NAME.LIST>
+       <LANGUAGEID>1033</LANGUAGEID>
+      </LANGUAGENAME.LIST>
+     </STOCKGROUP>
+    </TALLYMESSAGE>
+   </REQUESTDATA>
+  </IMPORTDATA>
+ </BODY>
+</ENVELOPE>`;
+}
+
+/**
+ * Generates a Stock Item (Product) XML
+ */
+function buildStockItemXML(payload) {
+  const {
+    tallyCompanyName = 'Auravionx',
+    itemName,
+    parentGroup = 'Primary',
+    baseUnit = 'Nos',
+    hsnCode = '',
+    gstRate = 0,
+    openingQty = 0,
+    openingRate = 0,
+    openingValue = 0,
+  } = payload;
+
+  const gstTag = gstRate > 0 ? `
+      <GSTDETAILS.LIST>
+       <APPLICABLEFROM>20260401</APPLICABLEFROM>
+       <HSNCODE>${xmlEscape(hsnCode)}</HSNCODE>
+       <TAXABILITY>Taxable</TAXABILITY>
+       <ISREVERSECHARGEAPPLICABLE>No</ISREVERSECHARGEAPPLICABLE>
+       <ISNONGSTGOODS>No</ISNONGSTGOODS>
+       <STATEWISEDETAILS.LIST>
+        <STATENAME>&#4; Any</STATENAME>
+        <RATEDETAILS.LIST>
+         <GSTRATEDUTYHEAD>CGST</GSTRATEDUTYHEAD>
+         <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+         <GSTRATE>${gstRate / 2}</GSTRATE>
+        </RATEDETAILS.LIST>
+        <RATEDETAILS.LIST>
+         <GSTRATEDUTYHEAD>SGST/UTGST</GSTRATEDUTYHEAD>
+         <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+         <GSTRATE>${gstRate / 2}</GSTRATE>
+        </RATEDETAILS.LIST>
+        <RATEDETAILS.LIST>
+         <GSTRATEDUTYHEAD>IGST</GSTRATEDUTYHEAD>
+         <GSTRATEVALUATIONTYPE>Based on Value</GSTRATEVALUATIONTYPE>
+         <GSTRATE>${gstRate}</GSTRATE>
+        </RATEDETAILS.LIST>
+       </STATEWISEDETAILS.LIST>
+      </GSTDETAILS.LIST>` : '';
+
+  const openingTag = openingQty > 0 ? `
+      <OPENINGBALANCE>${openingQty} ${xmlEscape(baseUnit)}</OPENINGBALANCE>
+      <OPENINGRATE>${openingRate}/${xmlEscape(baseUnit)}</OPENINGRATE>
+      <OPENINGVALUE>${openingValue}</OPENINGVALUE>` : '';
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<ENVELOPE>
+ <HEADER>
+  <TALLYREQUEST>Import Data</TALLYREQUEST>
+ </HEADER>
+ <BODY>
+  <IMPORTDATA>
+   <REQUESTDESC>
+    <REPORTNAME>All Masters</REPORTNAME>
+    <STATICVARIABLES>
+     <SVCURRENTCOMPANY>${xmlEscape(tallyCompanyName)}</SVCURRENTCOMPANY>
+    </STATICVARIABLES>
+   </REQUESTDESC>
+   <REQUESTDATA>
+    <TALLYMESSAGE xmlns:UDF="TallyUDF">
+     <STOCKITEM NAME="${xmlEscape(itemName)}" ACTION="Create">
+      <NAME.LIST>
+        <NAME>${xmlEscape(itemName)}</NAME>
+      </NAME.LIST>
+      <PARENT>${xmlEscape(parentGroup)}</PARENT>
+      <CATEGORY>&#4; Not Applicable</CATEGORY>
+      <BASEUNITS>${xmlEscape(baseUnit)}</BASEUNITS>
+      <ISBATCHWISEON>No</ISBATCHWISEON>
+      <ISPERISHABLEON>No</ISPERISHABLEON>
+      <ISENTRYTAXAPPLICABLE>No</ISENTRYTAXAPPLICABLE>
+      <ISCOSTTRACKINGON>No</ISCOSTTRACKINGON>
+      <ISUPDATINGTARGETID>No</ISUPDATINGTARGETID>
+      <ISDELETED>No</ISDELETED>
+      <ASORIGINAL>Yes</ASORIGINAL>
+${gstTag}
+${openingTag}
+      <LANGUAGENAME.LIST>
+       <NAME.LIST TYPE="String">
+        <NAME>${xmlEscape(itemName)}</NAME>
+       </NAME.LIST>
+       <LANGUAGEID>1033</LANGUAGEID>
+      </LANGUAGENAME.LIST>
+     </STOCKITEM>
+    </TALLYMESSAGE>
+   </REQUESTDATA>
+  </IMPORTDATA>
+ </BODY>
+</ENVELOPE>`;
 }
 
 module.exports = {
-  buildXML,
   buildSalesInvoiceXML,
-  buildReceiptXML,
+  buildReceiptVoucherXML,
+  buildPaymentVoucherXML,
+  buildJournalVoucherXML,
+  buildContraVoucherXML,
   buildCustomerLedgerXML,
   buildSupplierLedgerXML,
-  buildFetchMastersXML,
-  sanitize,
-  toFixed2,
-  toTallyDate,
+  buildStockItemXML,
+  buildStockGroupXML,
+  buildFetchXML,
 };

@@ -1,319 +1,339 @@
 /**
- * CONNECTOR.JS — Tally Sync Engine
- * ──────────────────────────────────
- * The main polling engine that runs on the accountant's PC.
- * 
- * Flow:
- *   1. Polls ERP API for PENDING sync events
- *   2. Translates each event to Tally XML via xml-builder.js
- *   3. Pushes the XML to Tally on localhost:9000
- *   4. Reports SUCCESS or FAILED back to ERP API
- * 
- * Self-Healing:
- *   ✅ Network drops → sleep and retry
- *   ✅ Tally busy/locked → sleep 5s and retry
- *   ✅ Duplicate ledger → auto switch to Alter
- *   ✅ Missing ledger → auto create then retry
- *   ✅ Tally closed → queue holds, resumes on open
+ * ╔══════════════════════════════════════════════════════════════════════════════╗
+ * ║        PRECISION PRESS ERP — TALLY CONNECTOR SERVICE                       ║
+ * ║        Version: 1.0.0                                                      ║
+ * ║        Runs ONLY on: Accounts Department PC                                ║
+ * ╚══════════════════════════════════════════════════════════════════════════════╝
+ *
+ * ARCHITECTURE:
+ *   Cloud ERP (Firebase/Vercel)
+ *     └─▶ tally_sync_queue (Firestore)
+ *              └─▶ This Service (polls every ~8s)
+ *                      └─▶ Generates Tally XML
+ *                              └─▶ POST to localhost:9000
+ *                                      └─▶ TallyPrime
+ *                                              └─▶ Mark result back to ERP
+ *
+ * REQUIREMENTS:
+ *   - Node.js 18+
+ *   - TallyPrime running on this PC with HTTP server enabled on port 9000
+ *   - .env file configured (copy from .env.example)
+ *
+ * SETUP:
+ *   1. npm install
+ *   2. cp .env.example .env  (then fill in your values)
+ *   3. node connector.js
  */
 
+'use strict';
+
 require('dotenv').config();
-const axios = require('axios');
-const xml2js = require('xml2js');
-const { buildXML, buildFetchMastersXML } = require('./xml-builder');
+const axios    = require('axios');
+const winston  = require('winston');
+const xml2js   = require('xml2js');
+const fs       = require('fs');
+const path     = require('path');
 
-// ─── Configuration ────────────────────────────────────────────────────────────
+// ─── Validate Environment ─────────────────────────────────────────────────────
 
-const ERP_BASE_URL = process.env.ERP_BASE_URL || 'http://40.81.236.61:3000';
-const CONNECTOR_SECRET = process.env.TALLY_CONNECTOR_SECRET || '';
-const TALLY_URL = process.env.TALLY_URL || 'http://localhost:9000';
-const POLL_INTERVAL = parseInt(process.env.POLL_INTERVAL_MS || '10000', 10);
-
-// ─── Logging ──────────────────────────────────────────────────────────────────
-
-function log(level, msg, data) {
-  const ts = new Date().toISOString();
-  const prefix = `[${ts}] [${level}]`;
-  if (data) {
-    console.log(`${prefix} ${msg}`, typeof data === 'string' ? data : JSON.stringify(data).substring(0, 200));
-  } else {
-    console.log(`${prefix} ${msg}`);
+const REQUIRED_ENV = ['ERP_BASE_URL', 'CONNECTOR_SECRET', 'TALLY_HOST', 'TALLY_PORT'];
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    console.error(`❌ Missing required environment variable: ${key}`);
+    console.error('   Copy .env.example to .env and fill in all values.');
+    process.exit(1);
   }
 }
 
-// ─── ERP API Helpers ──────────────────────────────────────────────────────────
+const ERP_BASE_URL   = process.env.ERP_BASE_URL.replace(/\/$/, '');
+const CONNECTOR_SECRET = process.env.CONNECTOR_SECRET;
+const TALLY_URL      = `${process.env.TALLY_HOST}:${process.env.TALLY_PORT}`;
+const POLL_MS        = parseInt(process.env.POLL_INTERVAL_MS || '8000', 10);
+const LOG_FILE       = process.env.LOG_FILE || './logs/connector.log';
 
-async function fetchPendingEvents() {
-  const res = await axios.get(`${ERP_BASE_URL}/api/tally/connector/pending`, {
-    headers: { 'x-connector-secret': CONNECTOR_SECRET },
-    timeout: 15000,
-  });
-  return res.data.events || [];
-}
+// TALLY_EDUCATIONAL_MODE=true → clamp dates to 1st of month so Tally's
+// Educational (trial) copy accepts them. Set to false on a licensed copy.
+const EDUCATIONAL_MODE = (process.env.TALLY_EDUCATIONAL_MODE || 'true').toLowerCase() === 'true';
 
-async function markResult(eventId, status, tallyResponse, error) {
-  await axios.post(
-    `${ERP_BASE_URL}/api/tally/connector/mark-result`,
-    { eventId, status, tallyResponse, error },
-    {
-      headers: {
-        'x-connector-secret': CONNECTOR_SECRET,
-        'Content-Type': 'application/json',
-      },
-      timeout: 15000,
-    }
-  );
-}
+// ─── Logger ───────────────────────────────────────────────────────────────────
 
-// ─── Tally XML Push ───────────────────────────────────────────────────────────
+const logDir = path.dirname(LOG_FILE);
+if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
 
-async function pushToTally(xmlString) {
-  const res = await axios.post(TALLY_URL, xmlString, {
-    headers: { 'Content-Type': 'text/xml; charset=utf-8' },
-    timeout: 60000,
-    responseType: 'arraybuffer',
-  });
-  
-  let text = res.data.toString('utf8');
-  if (text.includes('\u0000')) {
-    text = text.replace(/\0/g, '');
-  }
-  return text;
-}
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.printf(({ timestamp, level, message }) =>
+      `[${timestamp}] ${level.toUpperCase().padEnd(5)} ${message}`)
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: LOG_FILE, maxsize: 5 * 1024 * 1024, maxFiles: 5 }),
+  ],
+});
 
-function parseTallyResponse(rawXml) {
-  // Quick parse to check if Tally accepted or rejected
-  const result = {
-    accepted: false,
-    created: 0,
-    altered: 0,
-    error: null,
-    rawXml: String(rawXml).substring(0, 500),
-  };
+// ─── ERP API Client ───────────────────────────────────────────────────────────
 
-  const raw = String(rawXml);
+const erpApi = axios.create({
+  baseURL: ERP_BASE_URL,
+  headers: { 'x-connector-secret': CONNECTOR_SECRET },
+  timeout: 15000,
+});
 
-  // Check for CREATED count
-  const createdMatch = raw.match(/<CREATED>(\d+)<\/CREATED>/i);
-  if (createdMatch) result.created = parseInt(createdMatch[1], 10);
+// ─── Tally API Client ─────────────────────────────────────────────────────────
 
-  // Check for ALTERED count
-  const alteredMatch = raw.match(/<ALTERED>(\d+)<\/ALTERED>/i);
-  if (alteredMatch) result.altered = parseInt(alteredMatch[1], 10);
+const tallyApi = axios.create({
+  baseURL: TALLY_URL,
+  headers: { 'Content-Type': 'application/xml' },
+  timeout: 30000,
+});
 
-  // Check for LINEERROR
-  const errorMatch = raw.match(/<LINEERROR>([\s\S]*?)<\/LINEERROR>/i);
-  if (errorMatch) result.error = errorMatch[1].trim();
+// ─── XML Generators ───────────────────────────────────────────────────────────
 
-  // Check for general errors
-  const generalError = raw.match(/<ERRORMSG>([\s\S]*?)<\/ERRORMSG>/i);
-  if (generalError) result.error = generalError[1].trim();
+const {
+  buildSalesInvoiceXML,
+  buildReceiptVoucherXML,
+  buildPaymentVoucherXML,
+  buildJournalVoucherXML,
+  buildContraVoucherXML,
+  buildCustomerLedgerXML,
+  buildSupplierLedgerXML,
+  buildStockItemXML,
+  buildStockGroupXML,
+  buildFetchXML,
+} = require('./xml-builder');
 
-  result.accepted = (result.created > 0 || result.altered > 0) && !result.error;
+// ─── Parse Tally Response ─────────────────────────────────────────────────────
 
-  return result;
-}
-
-// ─── Check if Tally is Running ────────────────────────────────────────────────
-
-async function isTallyAlive() {
+async function parseTallyResponse(rawXml) {
   try {
-    await axios.get(TALLY_URL, { timeout: 3000 });
-    return true;
-  } catch (err) {
-    // Tally returns weird responses to GET, but if we get a connection, it's alive
-    if (err.response) return true;
-    return false;
+    const parsed = await xml2js.parseStringPromise(rawXml, { explicitArray: false });
+
+    // Tally returns a flat <RESPONSE> element (not wrapped in ENVELOPE) for import operations.
+    // Primary path: parsed.RESPONSE
+    // Fallback path: parsed.ENVELOPE.BODY.IMPORTDATA.IMPORTRESULT (older TDL schemas)
+    const flat   = parsed?.RESPONSE;
+    const nested = parsed?.ENVELOPE?.BODY?.IMPORTDATA?.IMPORTRESULT
+                || parsed?.ENVELOPE?.BODY?.DATA?.IMPORTRESULT;
+    const response = flat || nested;
+
+    if (!response) {
+      logger.warn('Tally response has unexpected structure — treating as failure.');
+      logger.warn('Raw response: ' + rawXml.substring(0, 400));
+      return { success: false, rawXml: rawXml?.substring(0, 1000) };
+    }
+
+    const created    = parseInt(response.CREATED    || '0', 10);
+    const altered    = parseInt(response.ALTERED    || '0', 10);
+    const errors     = parseInt(response.ERRORS     || '0', 10);
+    const exceptions = parseInt(response.EXCEPTIONS || '0', 10);
+    const lineerror  = response.LINEERROR || '';
+
+    // SUCCESS = at least one record created/altered, AND no errors or exceptions.
+    const success = (created + altered) > 0 && errors === 0 && exceptions === 0;
+
+    logger.info(`📊 Tally result: created=${created} altered=${altered} errors=${errors} exceptions=${exceptions}${lineerror ? ' lineerror=' + lineerror : ''}`);
+
+    return {
+      success,
+      created,
+      altered,
+      errors,
+      exceptions,
+      lastdesc: lineerror || '',
+      rawXml: rawXml.substring(0, 1000),
+    };
+  } catch (e) {
+    logger.warn(`Failed to parse Tally XML response: ${e.message}`);
+    return { success: false, rawXml: rawXml?.substring(0, 500) };
   }
 }
 
 // ─── Process a Single Event ───────────────────────────────────────────────────
 
 async function processEvent(event) {
-  const { id, syncType, payload } = event;
-  log('INFO', `Processing: ${id} (${syncType})`);
+  logger.info(`Processing: ${event.id} | type: ${event.syncType} | order: ${event.orderId || event.paymentId}`);
 
+  let xml;
+  let isExport = false;
   try {
-    // Build the XML
-    const xml = buildXML(syncType, payload);
-
-    // Push to Tally
-    const rawResponse = await pushToTally(xml);
-
-    // ── Special handling for FETCH_MASTERS (Export Data) ──
-    if (syncType === 'FETCH_MASTERS') {
-      // 🔍 DEBUG: Show first 800 chars of raw XML so we can see the actual structure
-      log('INFO', `🔍 RAW TALLY XML (first 800 chars):\n${rawResponse.substring(0, 800)}`);
-      
-      // Match either <LEDGER NAME="...">...</LEDGER> OR <LEDGER>...<NAME>...</NAME>...</LEDGER>
-      const ledgerRegex = /<LEDGER(?: NAME="([^"]*)")?[^>]*>([\s\S]*?)<\/LEDGER>/gi;
-      const ledgers = [];
-      let match;
-
-      while ((match = ledgerRegex.exec(rawResponse)) !== null) {
-        const ledgerBody = match[2];
-        let ledgerName = match[1]; // from NAME attribute
-        if (!ledgerName) {
-           const nameMatch = ledgerBody.match(/<NAME>([^<]*)<\/NAME>/i);
-           ledgerName = nameMatch ? nameMatch[1].replace(/&amp;/g, '&') : 'Unknown';
-        }
-
-        const parentMatch = ledgerBody.match(/<PARENT>([^<]*)<\/PARENT>/i);
-        const gstinMatch = ledgerBody.match(/<PARTYGSTIN>([^<]*)<\/PARTYGSTIN>/i);
-        const stateMatch = ledgerBody.match(/<LEDSTATENAME>([^<]*)<\/LEDSTATENAME>/i);
-        const balMatch = ledgerBody.match(/<OPENINGBALANCE>([^<]*)<\/OPENINGBALANCE>/i);
-        const closingBalMatch = ledgerBody.match(/<CLOSINGBALANCE>([^<]*)<\/CLOSINGBALANCE>/i);
-
-        const aliases = [];
-        const nameListMatch = ledgerBody.match(/<NAME\.LIST>([\s\S]*?)<\/NAME\.LIST>/i);
-        if (nameListMatch) {
-          const nameRegex = /<NAME>([^<]*)<\/NAME>/gi;
-          let nameMatch;
-          let first = true;
-          while ((nameMatch = nameRegex.exec(nameListMatch[1])) !== null) {
-            if (first) { first = false; continue; }
-            aliases.push(nameMatch[1]);
-          }
-        }
-
-        ledgers.push({
-          name: ledgerName,
-          aliases,
-          parent: parentMatch ? parentMatch[1] : '',
-          openingBalance: balMatch ? balMatch[1].trim() : '0',
-          closingBalance: closingBalMatch ? closingBalMatch[1].trim() : '0',
-          gstin: gstinMatch ? gstinMatch[1] : '',
-          state: stateMatch ? stateMatch[1] : '',
-        });
-      }
-
-      if (ledgers.length === 0) {
-        log('WARN', `⚠️ Tally returned 0 ledgers. Raw Response preview: ${rawResponse.substring(0, 300)}`);
-      } else {
-        log('SUCCESS', `✅ ${id} → Tally exported ${ledgers.length} ledgers`);
-        // 🔍 DEBUG: Print all unique parent group names so we know how to filter
-        const uniqueParents = [...new Set(ledgers.map(l => l.parent))].sort();
-        log('INFO', `📋 Parent groups found in Tally: ${JSON.stringify(uniqueParents)}`);
-      }
-      
-      await markResult(id, 'SUCCESS', {
-        status: 'Accepted',
-        json: { ledgers },
-      });
-      return;
-    }
-
-    // ── Standard Voucher Handling (Create/Alter) ──
-    const result = parseTallyResponse(rawResponse);
-
-    if (result.accepted) {
-      log('SUCCESS', `✅ ${id} → Tally accepted (created: ${result.created}, altered: ${result.altered})`);
-      await markResult(id, 'SUCCESS', {
-        status: 'Accepted',
-        rawXml: result.rawXml,
-      });
-    } else if (result.error && result.error.includes('already exists')) {
-      // ── SELF-HEAL: Duplicate Ledger → Switch to Alter ──
-      log('WARN', `⚠️ ${id} → Duplicate detected, switching to Alter mode`);
-      const alteredPayload = { ...payload };
-      const alteredXml = buildXML(syncType, alteredPayload)
-        .replace('ACTION="Create"', 'ACTION="Alter"');
-      
-      const alteredResponse = await pushToTally(alteredXml);
-      const alteredResult = parseTallyResponse(alteredResponse);
-
-      if (alteredResult.accepted) {
-        log('SUCCESS', `✅ ${id} → Self-healed via Alter`);
-        await markResult(id, 'SUCCESS', {
-          status: 'Accepted',
-          rawXml: alteredResult.rawXml,
-        });
-      } else {
-        throw new Error(`Alter also failed: ${alteredResult.error || 'Unknown'}`);
-      }
+    if (event.syncType === 'SALES_INVOICE') {
+      xml = buildSalesInvoiceXML(event.payload, EDUCATIONAL_MODE);
+    } else if (event.syncType === 'RECEIPT_VOUCHER') {
+      xml = buildReceiptVoucherXML(event.payload, EDUCATIONAL_MODE);
+    } else if (event.syncType === 'PAYMENT_VOUCHER') {
+      xml = buildPaymentVoucherXML(event.payload, EDUCATIONAL_MODE);
+    } else if (event.syncType === 'JOURNAL_VOUCHER') {
+      xml = buildJournalVoucherXML(event.payload, EDUCATIONAL_MODE);
+    } else if (event.syncType === 'CONTRA_VOUCHER') {
+      xml = buildContraVoucherXML(event.payload, EDUCATIONAL_MODE);
+    } else if (event.syncType === 'CREATE_CUSTOMER') {
+      xml = buildCustomerLedgerXML(event.payload);
+    } else if (event.syncType === 'CREATE_SUPPLIER') {
+      xml = buildSupplierLedgerXML(event.payload);
+    } else if (event.syncType === 'CREATE_STOCKGROUP') {
+      xml = buildStockGroupXML(event.payload);
+    } else if (event.syncType === 'CREATE_PRODUCT') {
+      xml = buildStockItemXML(event.payload);
+    } else if (event.syncType === 'FETCH_MASTERS') {
+      xml = buildFetchXML('List of Accounts');
+      isExport = true;
+    } else if (event.syncType === 'FETCH_BALANCES') {
+      xml = buildFetchXML('Trial Balance'); // Export trial balance with closing balances
+      isExport = true;
     } else {
-      throw new Error(result.error || 'Tally did not accept the voucher');
+      logger.warn(`Unknown syncType: ${event.syncType} — skipping`);
+      await markResult(event.id, 'FAILED', null, `Unsupported syncType: ${event.syncType}`);
+      return;
     }
-  } catch (err) {
-    const errMsg = err.message || 'Unknown error';
+  } catch (buildErr) {
+    const isValidationError = buildErr.message.startsWith('FAILED_VALIDATION:');
+    logger.error(`XML build failed for ${event.id}: ${buildErr.message}`);
+    // Validation errors are not retryable — the payload data is bad.
+    // Force retryCount to max so the ERP queue item transitions to FAILED permanently.
+    const errMsg = isValidationError
+      ? `FAILED_NON_RETRYABLE: ${buildErr.message}`
+      : `XML build error: ${buildErr.message}`;
+    await markResult(event.id, 'FAILED', null, errMsg);
+    return;
+  }
 
-    // Check if Tally is busy/locked
-    if (errMsg.includes('ECONNREFUSED') || errMsg.includes('ECONNRESET')) {
-      log('WARN', `⏳ ${id} → Tally appears closed or busy. Will retry on next poll.`);
-      // Don't mark as failed — the ERP already set it to IN_FLIGHT.
-      // It will be retried on the next connector restart or manual retry.
+  // Debug: Save the XML payload to a file
+  try {
+    fs.writeFileSync(path.join(__dirname, 'debug-last-voucher.xml'), xml);
+    logger.debug(`Saved generated XML to debug-last-voucher.xml for inspection.`);
+  } catch (err) {
+    logger.warn(`Could not write debug XML file: ${err.message}`);
+  }
+
+  // ── Post to TallyPrime ────────────────────────────────────────────────────
+  try {
+    const response = await tallyApi.post('/', xml);
+    
+    if (isExport) {
+      // For export requests, Tally returns the requested data in XML format.
+      // We parse it into JSON before passing back to ERP to save them parsing effort.
+      logger.info(`✅ SUCCESS (Export): ${event.id} → Fetched data from Tally`);
+      try {
+        const parsedJson = await xml2js.parseStringPromise(response.data, { explicitArray: false });
+        await markResult(event.id, 'SUCCESS', {
+          status: 'Accepted',
+          json: parsedJson,
+        });
+      } catch (err) {
+        logger.warn(`Failed to parse exported XML for ${event.id}: ${err.message}`);
+        await markResult(event.id, 'SUCCESS', {
+          status: 'Accepted',
+          rawXml: response.data,
+        });
+      }
       return;
     }
 
-    log('ERROR', `❌ ${id} → ${errMsg}`);
-    await markResult(id, 'FAILED', null, errMsg);
+    const tallyResult = await parseTallyResponse(response.data);
+
+    if (tallyResult.success) {
+      logger.info(`✅ SUCCESS: ${event.id} → Tally created=${tallyResult.created} altered=${tallyResult.altered}`);
+      await markResult(event.id, 'SUCCESS', {
+        status: 'Accepted',
+        rawXml: tallyResult.rawXml,
+        lineno: String(tallyResult.created),
+      });
+    } else {
+      const errMsg = tallyResult.lastdesc
+        ? `Tally rejected: ${tallyResult.lastdesc}`
+        : `Tally rejected: errors=${tallyResult.errors} exceptions=${tallyResult.exceptions}`;
+      logger.warn(`⚠️  FAILED: ${event.id} → ${errMsg}`);
+      logger.info(`Raw Tally Response XML:\n${tallyResult.rawXml}`);
+      await markResult(event.id, 'FAILED', { status: 'Not Accepted', rawXml: tallyResult.rawXml }, errMsg);
+    }
+  } catch (netErr) {
+    const errMsg = netErr.code === 'ECONNREFUSED'
+      ? 'Cannot connect to TallyPrime. Is Tally open and HTTP server enabled on port 9000?'
+      : `Network error: ${netErr.message}`;
+
+    logger.error(`❌ NET ERROR: ${event.id} → ${errMsg}`);
+    await markResult(event.id, 'FAILED', null, errMsg);
+  }
+}
+
+// ─── Mark Result Back to ERP ──────────────────────────────────────────────────
+
+async function markResult(eventId, status, tallyResponse, error) {
+  try {
+    await erpApi.post('/api/tally/connector/mark-result', {
+      eventId,
+      status,
+      tallyResponse: tallyResponse || undefined,
+      error: error || undefined,
+    });
+  } catch (err) {
+    logger.error(`Failed to mark result for ${eventId}: ${err.message}`);
   }
 }
 
 // ─── Main Poll Loop ───────────────────────────────────────────────────────────
 
-async function pollOnce() {
+let isProcessing = false;
+
+async function poll() {
+  if (isProcessing) return; // Skip if previous batch still running
+  isProcessing = true;
+
   try {
-    // Step 1: Check if Tally is alive
-    const tallyAlive = await isTallyAlive();
-    if (!tallyAlive) {
-      log('WARN', '⏳ Tally is not running. Waiting...');
-      return;
-    }
+    const res = await erpApi.get('/api/tally/connector/pending');
+    const { events, count } = res.data;
 
-    // Step 2: Fetch pending events from ERP
-    const events = await fetchPendingEvents();
-
-    if (events.length === 0) {
-      // Silent — no spam logging when idle
-      return;
-    }
-
-    log('INFO', `📥 Fetched ${events.length} pending event(s)`);
-
-    // Step 3: Process events ONE AT A TIME (single-threaded, no collisions)
-    for (const event of events) {
-      await processEvent(event);
-      // Small delay between events to not overwhelm Tally
-      await new Promise(r => setTimeout(r, 500));
+    if (count > 0) {
+      logger.info(`📥 Fetched ${count} pending event(s)`);
+      // Process sequentially to respect Tally's single-threaded nature
+      for (const event of events) {
+        await processEvent(event);
+        // Small delay between events to avoid overwhelming Tally
+        await new Promise(r => setTimeout(r, 500));
+      }
     }
   } catch (err) {
-    // Network drop, ERP down, etc — just log and wait
-    log('WARN', `🌐 Poll failed (ERP or network issue): ${err.message}`);
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND') {
+      logger.warn(`Cannot reach ERP at ${ERP_BASE_URL} — will retry in ${POLL_MS}ms`);
+    } else if (err.response?.status === 401) {
+      logger.error('❌ CONNECTOR_SECRET is wrong. Update .env and restart.');
+    } else {
+      logger.error(`Poll error: ${err.message}`);
+    }
+  } finally {
+    isProcessing = false;
   }
 }
 
-async function startPolling() {
-  console.log('');
-  console.log('═══════════════════════════════════════════════════');
-  console.log('  TALLY SYNC ENGINE — Precision Press ERP');
-  console.log('═══════════════════════════════════════════════════');
-  console.log(`  ERP Server:   ${ERP_BASE_URL}`);
-  console.log(`  Tally URL:    ${TALLY_URL}`);
-  console.log(`  Poll Every:   ${POLL_INTERVAL / 1000}s`);
-  console.log('═══════════════════════════════════════════════════');
-  console.log('');
+// ─── Startup ──────────────────────────────────────────────────────────────────
 
-  // Validate config
-  if (!CONNECTOR_SECRET) {
-    console.error('❌ FATAL: TALLY_CONNECTOR_SECRET is not set in .env');
-    process.exit(1);
-  }
+logger.info('════════════════════════════════════════════════════════');
+logger.info('  Precision Press ERP — TallyPrime Connector Service    ');
+logger.info('════════════════════════════════════════════════════════');
+logger.info(`  ERP:   ${ERP_BASE_URL}`);
+logger.info(`  Tally: ${TALLY_URL}`);
+logger.info(`  Poll:  every ${POLL_MS / 1000}s`);
+logger.info('  IMPORTANT: TallyPrime must be open with company loaded');
+logger.info('════════════════════════════════════════════════════════');
 
-  log('INFO', '🚀 Connector started. Polling for events...');
+// Initial poll immediately, then on interval
+poll();
+setInterval(poll, POLL_MS);
 
-  // Initial poll
-  await pollOnce();
+// ─── Graceful Shutdown ────────────────────────────────────────────────────────
 
-  // Recurring poll
-  setInterval(async () => {
-    await pollOnce();
-  }, POLL_INTERVAL);
-}
+process.on('SIGINT', () => {
+  logger.info('Connector shutting down gracefully...');
+  process.exit(0);
+});
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+process.on('uncaughtException', (err) => {
+  logger.error(`Uncaught exception: ${err.message}`);
+  // Don't exit — keep the service running
+});
 
-startPolling().catch(err => {
-  console.error('Fatal error:', err);
-  process.exit(1);
+process.on('unhandledRejection', (reason) => {
+  logger.error(`Unhandled rejection: ${reason}`);
 });
