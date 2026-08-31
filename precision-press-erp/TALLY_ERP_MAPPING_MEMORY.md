@@ -555,7 +555,81 @@ When any invoice is created in ERP and synced to TallyPrime, exactly 7 core plac
   * `Debtors Glass GO` (Glass Division Debtors)
   * `Debtors Aspire` (Aspire Project Division)
 
+---
 
+## 📑 19. Complete Receipt & Agst Ref Synchronization Architecture (25 Pin-to-Pin Fields & FIFO Engine)
 
+### 1. The 3 Types of Customer Receipts in TallyPrime:
 
+```
+ ┌────────────────────────────────────────────────────────────────────────────────────────┐
+ │                              THE 3 CUSTOMER RECEIPT TYPES                              │
+ ├────────────────────────────────────────────────────────────────────────────────────────┤
+ │ 1. ON ACCOUNT: Lump-sum payment received with no specific invoice specified.          │
+ │    • Bill Allocation: <BILLTYPE>On Account</BILLTYPE>                                  │
+ │    • Bill Name: <NAME>REC-0001</NAME> (Exact Receipt Table ID)                         │
+ ├────────────────────────────────────────────────────────────────────────────────────────┤
+ │ 2. NEW REF / ADVANCE: Prepayment received before an invoice is billed.                │
+ │    • Bill Allocation: <BILLTYPE>Advance</BILLTYPE> (or <BILLTYPE>New Ref</BILLTYPE>)   │
+ │    • Bill Name: <NAME>ADV-0001</NAME> (Unique Advance Reference ID)                    │
+ ├────────────────────────────────────────────────────────────────────────────────────────┤
+ │ 3. AGST REF (Against Reference): Payment clearing one or multiple specific bills.     │
+ │    • Bill Allocation: <BILLTYPE>Agst Ref</BILLTYPE>                                    │
+ │    • Bill Name: <NAME>INV-00045</NAME> or <NAME>BC515</NAME> (Target Bill Number)      │
+ └────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
+---
+
+### 2. The 25 Pin-to-Pin Fields Required for 100% Tally XML Compliance:
+
+| Category | # | XML Field Tag | Mandatory | Example Value | Description |
+| :--- | :---: | :--- | :---: | :--- | :--- |
+| **Envelope & Company Header** | **1** | `<TALLYREQUEST>` | **YES** | `Import Data` | Core Tally request type |
+| | **2** | `<REPORTNAME>` | **YES** | `Vouchers` | Specifies voucher payload |
+| | **3** | `<SVCURRENTCOMPANY>` | **YES** | `Hindustan Enterprises 25-26` | Active target company in Tally |
+| **Voucher Header & Audit** | **4** | `VCHTYPE` / `<VOUCHERTYPENAME>` | **YES** | `Rec1 B1 Bank` / `1.GST HO CS` | Exact voucher type series in Tally |
+| | **5** | `ACTION` | **YES** | `Create` | Action mode |
+| | **6** | `OBJVIEW` | **YES** | `Accounting Voucher View` | Standard double-entry view |
+| | **7** | `<DATE>` | **YES** | `20260831` | Transaction date (`YYYYMMDD`) |
+| | **8** | `<VCHSTATUSDATE>` | **YES** | `20260831` | Audit status posting date |
+| | **9** | `<EFFECTIVEDATE>` | **YES** | `20260831` | Effective ledger posting date |
+| | **10** | `<GUID>` | **YES** | `TSYNC-R-1787726900000-ADV` | Unique ID preventing duplicates |
+| | **11** | `<VOUCHERNUMBER>` | **YES** | **`ADV-0001`** / **`INV-00045`** | **Exact DB Table ID / Number** |
+| | **12** | `<PARTYLEDGERNAME>` | **YES** | `Festive Events- Mys- FTM- BO` | Customer name in Sundry Debtors |
+| | **13** | `<NARRATION>` | Optional | `Receipt against ADV-0001` | Transaction narration in Day Book |
+| | **14** | `<CMPGSTIN>` | **YES** | `29AFHPP0687G1Z2` | Company GSTIN |
+| **Customer Party Ledger & Bill Allocation** | **15** | `<LEDGERNAME>` (Party) | **YES** | `Festive Events- Mys- FTM- BO` | Customer ledger |
+| | **16** | `<ISDEEMEDPOSITIVE>` (Party) | **YES** | `No` (Receipt) / `Yes` (Sales) | Debit/Credit balance indicator |
+| | **17** | `<ISPARTYLEDGER>` | **YES** | `Yes` | Enables bill-by-bill table |
+| | **18** | `<AMOUNT>` (Party) | **YES** | `1000.00` | Customer transaction amount |
+| | **19** | `<BILLALLOCATIONS.LIST>` | **YES** | `Block` | Starts bill-wise allocation |
+| | **20** | **`<NAME>`** | **YES** | **`ADV-0001`** / **`INV-00045`** | **Reference ID (From Table ID)** |
+| | **21** | **`<BILLTYPE>`** | **YES** | **`Advance` / `On Account` / `Agst Ref`** | Allocation mechanism |
+| **Bank / Cash Ledger Entry** | **22** | `<LEDGERNAME>` (Bank/Cash) | **YES** | `Rec1 B1 Bank` / `ICICI 4415` | Bank or Cash account |
+| | **23** | `<ISDEEMEDPOSITIVE>` (Bank) | **YES** | `Yes` | Bank Debit indicator |
+| | **24** | `<ISPARTYLEDGER>` (Bank) | **YES** | `No` | Bank is an asset account |
+| | **25** | `<AMOUNT>` (Bank) | **YES** | `-1000.00` | Balancing negative debit |
+
+---
+
+### 3. Chronological FIFO Engine & Advance Settlement Rules:
+
+1. **Chronological Sorting (`ORDER BY createdAt ASC`)**:
+   * Advance receipt **`ADV-0001` (Timestamp: `2026-08-26`)** syncs to Tally **FIRST**.
+   * Invoices **`INV-00045` & `INV-00046` (Timestamp: `2026-08-30`)** sync to Tally **SECOND**.
+   * Tally finds existing `ADV-0001` and consumes the advance with **0 reference errors**!
+
+2. **Self-Contained Payload Architecture**:
+   * Every record in `tally_sync_queue` stores the entire 25-field dataset inside `payload` JSON.
+   * Local connector requires **ZERO external table lookups** during execution.
+
+3. **Two-Way Synchronization Status Update**:
+   * Upon `<CREATED>1</CREATED>` response from Tally:
+     * `tally_sync_queue` $\rightarrow$ `status: 'SUCCESS'`, `processedAt: NOW()`, `tallyResponse: rawXml`.
+     * Source records (`orders`, `invoices`, `payments`, `customer_credit`) $\rightarrow$ `is_tally_synced: true`, `tally_synced_at: NOW()`.
+   * UI displays green **`✓ Synced to Tally`** badge across all invoice and receipt screens.
+
+4. **Clean Ledger Guarantee (Zero Duplicate Day Book Entries)**:
+   * Removed redundant `customer_credit_application` journal vouchers.
+   * `Agst Ref` invoices settle directly against `ADV-0001` inside the native Sales Invoice voucher, keeping Day Book and Financial Statements completely clean.
