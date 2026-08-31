@@ -348,7 +348,7 @@ export async function getPendingTallySyncEvents(limit = 20): Promise<TallySyncEv
   const { data, error } = await supabaseServer
     .from('tally_sync_queue')
     .select('*')
-    .eq('status', 'PENDING')
+    .in('status', ['PENDING', 'IN_FLIGHT'])
     .order('createdAt', { ascending: true })
     .limit(limit);
 
