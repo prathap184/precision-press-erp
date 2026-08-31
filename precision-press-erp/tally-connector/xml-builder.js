@@ -323,12 +323,13 @@ function buildReceiptVoucherXML(payload, educationalMode = true) {
             <PARTYLEDGERNAME>${xmlEscape(customerName)}</PARTYLEDGERNAME>
             <NARRATION>${xmlEscape(narration)}</NARRATION>
             <PERSISTEDVIEW>Accounting Voucher View</PERSISTEDVIEW>
+            <HASCASHFLOW>Yes</HASCASHFLOW>
 
             <!-- Cash/Bank Dr side -->
             <ALLLEDGERENTRIES.LIST>
               <LEDGERNAME>${xmlEscape(cashBankLedger)}</LEDGERNAME>
               <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
-              <ISPARTYLEDGER>No</ISPARTYLEDGER>
+              <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
               <AMOUNT>-${amountNum.toFixed(2)}</AMOUNT>
             </ALLLEDGERENTRIES.LIST>
 
