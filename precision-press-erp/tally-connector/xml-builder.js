@@ -148,7 +148,11 @@ ${hsnTag}
 </LEDGERENTRIES.LIST>`);
   }
 
+  // Bill allocations: supports both New Ref and Agst Ref (e.g. against ADV-0001)
   const vchType = payload.voucherType || "1.GST HO CS";
+  const billAllocName = payload.billAllocations?.name || invoiceNumber;
+  const billAllocType = payload.billAllocations?.billType || "New Ref";
+  const billAllocAmount = payload.billAllocations?.amount != null ? Number(payload.billAllocations.amount) : -grandTotal;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <ENVELOPE>
@@ -194,9 +198,9 @@ ${itemEntries}
   <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
   <AMOUNT>-${grandTotal.toFixed(2)}</AMOUNT>
   <BILLALLOCATIONS.LIST>
-    <NAME>${xmlEscape(invoiceNumber)}</NAME>
-    <BILLTYPE>New Ref</BILLTYPE>
-    <AMOUNT>-${grandTotal.toFixed(2)}</AMOUNT>
+    <NAME>${xmlEscape(billAllocName)}</NAME>
+    <BILLTYPE>${xmlEscape(billAllocType)}</BILLTYPE>
+    <AMOUNT>${billAllocAmount.toFixed(2)}</AMOUNT>
   </BILLALLOCATIONS.LIST>
 </LEDGERENTRIES.LIST>
 
