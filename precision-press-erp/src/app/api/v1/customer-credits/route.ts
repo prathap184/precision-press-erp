@@ -299,9 +299,15 @@ export async function POST(request: Request) {
       const customerLedgerName = customer?.name || "Sundry Debtors";
       const receiptRef = created.recRef || parsed.referenceName || `REC-${created.row.id.slice(0, 6).toUpperCase()}`;
 
+      const selectedBank = parsed.bankAccountId
+        ? await db.query.bankAccount.findFirst({ where: eq(bankAccount.id, parsed.bankAccountId) })
+        : null;
+      const bankLedgerName = selectedBank?.tally_ledger_name || (parsed.bankAccountId ? "Federal 2091" : "Cash");
+      const voucherType = (bankLedgerName.toLowerCase().includes("cash") || !parsed.bankAccountId) ? "Rec10 B8 Cash" : "Rec1 B1 Bank";
+
       const receiptPayload = {
         tallyCompanyName: "Hindustan Enterprises 25-26",
-        voucherType: parsed.bankAccountId ? "Rec1 B1 Bank" : "Rec10 B8 Cash",
+        voucherType,
         receiptEntryNumber: receiptRef,
         voucherNumber: receiptRef,
         voucherDate: parsed.date,
@@ -309,9 +315,9 @@ export async function POST(request: Request) {
         date: parsed.date,
         totalAmount: parsed.amount / 100,
         amount: parsed.amount / 100,
-        paymentMode: parsed.bankAccountId ? "BANK" : "CASH",
-        bankLedger: parsed.bankAccountId ? "Rec1 B1 Bank" : "Cash",
-        cashLedger: "Cash",
+        paymentMode: (bankLedgerName.toLowerCase().includes("cash") || !parsed.bankAccountId) ? "CASH" : "BANK",
+        bankLedger: bankLedgerName,
+        cashLedger: bankLedgerName,
         debtorLedgerName: customerLedgerName,
         customerName: customerLedgerName,
         partyGstin: customer?.taxNumber || "",

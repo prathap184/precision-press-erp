@@ -404,8 +404,11 @@ export async function POST(request: Request) {
     // Enqueue to Tally Sync Queue
     if (parsed.type === "received") {
       try {
-        const customerLedgerName = result?.contact?.name || "Sundry Debtors";
-        const voucherType = parsed.method === "cash" ? "Rec10 B8 Cash" : "Rec1 B1 Bank";
+        const selectedBank = selectedBankAccountId
+          ? await db.query.bankAccount.findFirst({ where: eq(bankAccount.id, selectedBankAccountId) })
+          : null;
+        const bankLedgerName = selectedBank?.tally_ledger_name || (parsed.method === "cash" ? "Cash" : "Federal 2091");
+        const voucherType = (bankLedgerName.toLowerCase().includes("cash") || parsed.method === "cash") ? "Rec10 B8 Cash" : "Rec1 B1 Bank";
         
         // Build bill allocations for each invoice allocation
         const billAllocs = (result?.allocations || []).map((a) => {
@@ -427,9 +430,9 @@ export async function POST(request: Request) {
           date: parsed.date,
           totalAmount: parsed.amount / 100,
           amount: parsed.amount / 100,
-          paymentMode: parsed.method === "cash" ? "CASH" : "BANK",
-          bankLedger: voucherType,
-          cashLedger: "Cash",
+          paymentMode: (bankLedgerName.toLowerCase().includes("cash") || parsed.method === "cash") ? "CASH" : "BANK",
+          bankLedger: bankLedgerName,
+          cashLedger: bankLedgerName,
           debtorLedgerName: customerLedgerName,
           customerName: customerLedgerName,
           partyGstin: result?.contact?.taxNumber || "",
