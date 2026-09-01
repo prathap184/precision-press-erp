@@ -282,6 +282,25 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
       .catch(() => {});
   }, []);
 
+  // Auto-assign default 18% GST tax rate to sales lines if not already set
+  useEffect(() => {
+    if (taxRates.length > 0) {
+      const defaultTax = taxRates.find(t => t.rate === 1800) || taxRates.find(t => t.name?.includes("18")) || taxRates[0];
+      if (defaultTax) {
+        const needsUpdate = lines.some(l => !l.taxRateId && l.description !== "Logistics / Shipping");
+        if (needsUpdate) {
+          const updated = lines.map(l => {
+            if (!l.taxRateId && l.description !== "Logistics / Shipping") {
+              return { ...l, taxRateId: defaultTax.id };
+            }
+            return l;
+          });
+          onChange(updated);
+        }
+      }
+    }
+  }, [taxRates, lines]);
+
   function updateLine(index: number, field: keyof LineItem, value: string) {
     const updated = lines.map((l, i) =>
       i === index ? { ...l, [field]: value } : l
@@ -290,6 +309,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
   }
 
   function addLine() {
+    const defaultTax = taxRates.find(t => t.rate === 1800) || taxRates.find(t => t.name?.includes("18")) || taxRates[0];
     onChange([
       ...lines,
       { 
@@ -297,7 +317,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
         quantity: "1", 
         unitPrice: "", 
         accountId: "", 
-        taxRateId: "", 
+        taxRateId: defaultTax?.id || "", 
         inventoryItemId: "",
         width: "",
         length: "",
@@ -346,13 +366,25 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-slate-200/90 overflow-x-auto bg-white shadow-xs">
+      {/* Top Header with Add Row button matching Proxy Order */}
+      <div className="flex items-center justify-between pb-2">
+        <div className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</div>
+        <button
+          type="button"
+          onClick={addLine}
+          className="flex items-center gap-1 rounded-lg bg-slate-900 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-colors cursor-pointer shadow-xs"
+        >
+          <Plus size={12} /> Add Row
+        </button>
+      </div>
+
+      <div className="overflow-x-auto">
         <div className="min-w-[1050px]">
           {/* Header Row Matching Proxy Order */}
-          <div className="grid grid-cols-[36px_1.8fr_1.1fr_75px_70px_70px_65px_65px_95px_90px_100px_36px] gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-[11px] font-black uppercase tracking-wider text-slate-500">
+          <div className="grid grid-cols-[36px_1.8fr_1.1fr_75px_70px_70px_65px_65px_95px_90px_100px_36px] gap-2 border-b-2 border-slate-100 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
             <span className="text-center">#</span>
             <span>Name of Item</span>
-            <span>Project <span className="text-[9px] font-normal normal-case text-slate-400">(opt)</span></span>
+            <span>Project <span className="text-[9px] font-normal normal-case text-slate-400 italic">(optional)</span></span>
             <span className="text-center">GST%</span>
             <span className="text-center">Width</span>
             <span className="text-center">Length</span>

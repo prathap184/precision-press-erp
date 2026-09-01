@@ -903,10 +903,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
             </div>
 
             {/* ORDER ITEMS CARD */}
-            <div className="rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</h3>
-              </div>
+            <div className="rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
               <LineItemsEditor lines={lines} onChange={setLines} accountTypeFilter={["revenue"]} taxContext="sales" />
             </div>
 

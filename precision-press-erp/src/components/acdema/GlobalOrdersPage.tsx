@@ -186,39 +186,55 @@ export function GlobalOrdersPage() {
       let orderDelivery: any = {};
 
       for (const order of ordersToProcess) {
-        const parsedItems = parseJson(order.items) || (Array.isArray(order.items) ? order.items : []);
+        const parsedItems = parseJson(order.items) || parseJson((order as any).order_items) || parseJson((order as any).orderItems) || (Array.isArray(order.items) ? order.items : []) || (Array.isArray((order as any).order_items) ? (order as any).order_items : []);
         const parsedAmounts = parseJson(order.amounts) || (order.amounts || {});
-        const orderGstDecimal = ((Number(order.cgst_percentage || 0) + Number(order.sgst_percentage || 0)) || Number(order.igst_percentage || 0)) / 100;
+        const orderGstDecimal = ((Number(order.cgst_percentage || 0) + Number(order.sgst_percentage || 0)) || Number(order.igst_percentage || 0) || Number((order as any).tax_rate || 0) || Number((order as any).gst_rate || 0)) / 100;
+
+        const default18Tax = taxRates.find((t: any) => t.rate === 1800 || t.name?.includes('18')) || taxRates[0];
 
         const mappedLines = (Array.isArray(parsedItems) ? parsedItems : []).map((i: any) => {
           const rawWidth = Number(i.specs?.width ?? i.width ?? 0);
           const rawHeight = Number(i.specs?.height ?? i.height ?? 0);
-          const widthUnit = i.specs?.widthUnit ?? 'FT';
-          const heightUnit = i.specs?.heightUnit ?? 'FT';
+          const widthUnit = i.specs?.widthUnit ?? i.widthUnit ?? 'FT';
+          const heightUnit = i.specs?.heightUnit ?? i.heightUnit ?? 'FT';
           const widthFt = widthUnit === 'IN' ? rawWidth / 12 : rawWidth;
           const heightFt = heightUnit === 'IN' ? rawHeight / 12 : rawHeight;
           const qty = Number(i.specs?.quantity ?? i.quantity ?? 1);
           const pricingSnap = parseJson(i.pricingSnapshot ?? i.pricing_snapshot) || {};
-          const eyeletType = pricingSnap.selectedEyeletType ?? 'NONE';
+          const eyeletType = pricingSnap.selectedEyeletType ?? i.eyeletType ?? 'NONE';
           const eyeletRate = Number(pricingSnap.eyeletRate ?? 0);
           const eyeletCount = eyeletType !== 'NONE' ? qty : 0;
           const finishAmount = (eyeletCount * eyeletRate).toFixed(2);
-          let gstDecimal = Number(pricingSnap.tax ?? 0);
+          
+          let gstDecimal = Number(pricingSnap.tax ?? i.gst_rate ?? i.gstRate ?? i.tax ?? 0);
+          if (gstDecimal > 1) gstDecimal = gstDecimal / 100;
           if (gstDecimal === 0 && orderGstDecimal > 0) gstDecimal = orderGstDecimal;
           else if (gstDecimal === 0) gstDecimal = 0.18;
+          
           const gstBasisPts = Math.round(gstDecimal * 10000);
-          const matchedTax = taxRates.find((t: any) => t.rate === gstBasisPts);
-          const matchedInventory = inventory.find((inv: any) => inv.name.toLowerCase() === (i.productName || '').toLowerCase());
-          let desc = i.productName || 'Custom Print';
+          const matchedTax = taxRates.find((t: any) => t.rate === gstBasisPts || t.rate === Math.round(gstDecimal * 100)) || default18Tax;
+          const matchedInventory = inventory.find((inv: any) => inv.name.toLowerCase() === (i.productName || i.name || '').toLowerCase() || inv.id === (i.productId || i.inventoryItemId));
+          let desc = i.productName || i.name || 'Custom Print';
           if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
           if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
           const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
           const totalFinish = parseFloat(finishAmount || '0');
-          return { description: desc, quantity: qty.toString(), unitPrice: baseRate.toFixed(2), accountId: defaultSalesAccountId, taxRateId: matchedTax?.id ?? '', inventoryItemId: matchedInventory?.id ?? '', width: widthFt > 0 ? widthFt.toString() : '', length: heightFt > 0 ? heightFt.toString() : '', sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '', finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : '' };
+          return {
+            description: desc,
+            quantity: qty.toString(),
+            unitPrice: baseRate.toFixed(2),
+            accountId: defaultSalesAccountId,
+            taxRateId: matchedTax?.id ?? default18Tax?.id ?? '',
+            inventoryItemId: matchedInventory?.id ?? (i.productId || ''),
+            width: widthFt > 0 ? widthFt.toString() : '',
+            length: heightFt > 0 ? heightFt.toString() : '',
+            sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '',
+            finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : ''
+          };
         });
 
         if (mappedLines.length === 0) {
-          mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: defaultSalesAccountId, taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+          mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: defaultSalesAccountId, taxRateId: default18Tax?.id ?? '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
         }
         allMappedLines.push(...mappedLines);
 
