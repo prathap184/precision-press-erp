@@ -92,6 +92,14 @@ export async function GET(request: Request) {
         sql`${inventoryItem.quantityOnHand} <= ${inventoryItem.reorderPoint}`,
         eq(inventoryItem.isActive, true)
       );
+    } else if (status === "direct_selling") {
+      conditions.push(
+        sql`(${inventoryItem.metadata}->>'isDirectSelling' = 'true' OR UPPER(COALESCE(${inventoryItem.metadata}->>'unit', '')) IN ('NOS', 'PCS', 'N', 'UNT') OR UPPER(COALESCE(${inventoryItem.unitOfMeasure}, '')) IN ('NOS', 'PCS', 'N', 'UNT'))`
+      );
+    } else if (status === "custom_selling") {
+      conditions.push(
+        sql`(${inventoryItem.metadata}->>'isDirectSelling' IS DISTINCT FROM 'true' AND UPPER(COALESCE(${inventoryItem.metadata}->>'unit', '')) NOT IN ('NOS', 'PCS', 'N', 'UNT') AND UPPER(COALESCE(${inventoryItem.unitOfMeasure}, '')) NOT IN ('NOS', 'PCS', 'N', 'UNT'))`
+      );
     }
 
     const sortCol = SORT_COLUMNS[sortBy] || inventoryItem.createdAt;

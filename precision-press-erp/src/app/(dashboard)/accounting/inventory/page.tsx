@@ -79,7 +79,7 @@ interface InventoryItem {
   metadata?: any;
 }
 
-type FilterTab = "all" | "low_stock" | "active" | "inactive";
+type FilterTab = "all" | "direct_selling" | "custom_selling" | "low_stock" | "active" | "inactive";
 type SortKey = "name" | "code" | "quantity" | "salePrice" | "purchasePrice" | "createdAt";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -91,7 +91,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "purchasePrice", label: "Cost" },
 ];
 
-const PAGE_SIZE = 30;
+const PAGE_SIZE = 50;
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -166,6 +166,8 @@ export default function InventoryPage() {
     if (tab === "low_stock") params.set("status", "low_stock");
     else if (tab === "active") params.set("status", "active");
     else if (tab === "inactive") params.set("status", "inactive");
+    else if (tab === "direct_selling") params.set("status", "direct_selling");
+    else if (tab === "custom_selling") params.set("status", "custom_selling");
     if (categoryFilter) params.set("categoryId", categoryFilter);
     params.set("sortBy", sortBy);
     params.set("sortOrder", sortOrder);
@@ -551,8 +553,10 @@ export default function InventoryPage() {
               className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <Tabs value={tab} onValueChange={(v) => setTab(v as FilterTab)}>
-                <TabsList>
+                <TabsList className="flex flex-wrap h-auto p-1 gap-1">
                   <TabsTrigger value="all">All</TabsTrigger>
+                  <TabsTrigger value="direct_selling">Direct Selling</TabsTrigger>
+                  <TabsTrigger value="custom_selling">Custom / Raw Material</TabsTrigger>
                   <TabsTrigger value="low_stock">Running low</TabsTrigger>
                   <TabsTrigger value="active">Shown</TabsTrigger>
                   <TabsTrigger value="inactive">Hidden</TabsTrigger>
@@ -766,13 +770,34 @@ export default function InventoryPage() {
             );
           })}
 
-          {!hasMore && items.length > 0 && (
-            <div className="py-3 text-center">
-              <span className="text-[11px] text-muted-foreground">
-                Showing all {items.length} item{items.length !== 1 ? "s" : ""}
+          {/* Pagination & Load More 50 Items */}
+          <div className="p-4 border-t bg-slate-50/70 dark:bg-slate-900/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <span className="text-xs font-medium text-slate-500">
+              Showing {items.length} of {totalCount || items.length} items
+            </span>
+            {hasMore ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadMore}
+                disabled={loadingMore}
+                className="bg-white hover:bg-slate-50 border-slate-200 text-slate-700 font-semibold rounded-xl px-4 py-2 shadow-xs transition-all"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="size-3.5 mr-2 animate-spin text-emerald-600" />
+                    Loading another 50 items...
+                  </>
+                ) : (
+                  <>Load another 50 items</>
+                )}
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground font-medium">
+                All {items.length} items loaded
               </span>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         </motion.div>
         </MotionConfig>
@@ -780,11 +805,7 @@ export default function InventoryPage() {
 
       {/* Infinite scroll sentinel */}
       {hasMore && !refetching && (
-        <div ref={sentinelRef} className="flex items-center justify-center py-6">
-          {loadingMore && (
-            <Loader2 className="size-5 animate-spin text-muted-foreground" />
-          )}
-        </div>
+        <div ref={sentinelRef} className="h-4 w-full pointer-events-none" />
       )}
 
       {/* Bulk set category sheet */}

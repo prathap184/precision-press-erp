@@ -34,6 +34,26 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
       const tagName = target.tagName.toLowerCase();
       const inputType = (target instanceof HTMLInputElement ? target.type || "text" : "").toLowerCase();
 
+      // Global shortcut: press 'z' or 'Z' (when not in an input) to navigate to /accounting
+      if (
+        (e.key === "z" || e.key === "Z") &&
+        !e.altKey &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.shiftKey
+      ) {
+        const isEditing =
+          tagName === "input" ||
+          tagName === "textarea" ||
+          target.isContentEditable ||
+          tagName === "select";
+        if (!isEditing) {
+          e.preventDefault();
+          window.location.href = "/accounting";
+          return;
+        }
+      }
+
       // Active container (Modal Dialog, Drawer/Sheet, or entire page)
       const activeModal = document.querySelector<HTMLElement>("[role='dialog']:not([aria-hidden='true'])");
       const container =

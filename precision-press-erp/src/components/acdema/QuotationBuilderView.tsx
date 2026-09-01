@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast';
 
 export function QuotationBuilderView({ vm }: { vm: any }) {
   const {
-    bootstrapLoading, profile, roles, customerSearch, setCustomerSearch,
+    bootstrapLoading, profile, roles, customerSearch, setCustomerSearch, customerSearching,
     selectedCustomerId, setSelectedCustomerId, filteredCustomers,
     selectedCustomer, rows, addRow, updateRow, removeRow, products,
     calculateRowSubtotal, paymentMode, setPaymentMode, deliveryType,
@@ -198,19 +198,28 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                   
                   <div className="relative">
                     <div id="error-customer" className={`flex h-12 w-full items-center rounded-xl bg-slate-50 px-4 transition-all ${validationErrors['customer'] ? 'border-2 border-red-500' : 'border border-slate-200 focus-within:border-slate-400'}`}>
-                      <Search size={16} className="text-slate-400 mr-2" />
+                      {customerSearching ? (
+                        <Loader2 size={16} className="text-blue-600 animate-spin mr-2 shrink-0" />
+                      ) : (
+                        <Search size={16} className="text-slate-400 mr-2 shrink-0" />
+                      )}
                       <input
-                        value={customerDropdownOpen ? customerSearch : (selectedCustomer?.displayName || selectedCustomer?.name || '')}
-                        placeholder="Search customer..."
+                        value={customerSearch !== '' ? customerSearch : (selectedCustomer?.displayName || selectedCustomer?.name || '')}
+                        placeholder="Search customer by name, phone, GSTIN..."
                         data-dropdown-open={customerDropdownOpen ? "true" : "false"}
                         onChange={(e) => {
                           setCustomerDropdownOpen(true);
                           setCustomerSearch(e.target.value);
                           setHighlightCustomerIndex(0);
                         }}
-                        onFocus={() => {
+                        onFocus={(e) => {
                           setCustomerDropdownOpen(true);
-                          setCustomerSearch('');
+                          if (selectedCustomer) {
+                            setCustomerSearch(selectedCustomer.displayName || selectedCustomer.name || '');
+                            e.target.select();
+                          } else {
+                            setCustomerSearch('');
+                          }
                           setHighlightCustomerIndex(0);
                         }}
                         onKeyDown={(e) => {
@@ -250,14 +259,19 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         }}
                         className="h-full w-full border-0 focus:ring-0 p-0 bg-transparent text-sm font-bold text-slate-800 outline-none placeholder-slate-400"
                       />
-                      <ChevronDown size={16} className="text-slate-400 ml-2" />
+                      <ChevronDown size={16} className="text-slate-400 ml-2 shrink-0" />
                     </div>
 
                     {customerDropdownOpen && (
                       <div
-                        className="absolute left-0 top-full mt-2 w-full z-[9999] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl"
+                        className="absolute left-0 top-full mt-2 w-full z-[9999] max-h-64 overflow-y-auto rounded-xl border-2 border-slate-900 bg-white shadow-2xl divide-y divide-slate-100"
                       >
-                        {filteredCustomers.length === 0 ? (
+                        {customerSearching && (
+                          <div className="px-4 py-2 text-xs font-semibold text-blue-600 bg-blue-50/70 flex items-center gap-2">
+                            <Loader2 size={13} className="animate-spin" /> Searching server contacts database...
+                          </div>
+                        )}
+                        {filteredCustomers.length === 0 && !customerSearching ? (
                           <div className="p-4 text-xs italic text-slate-400">No matches found.</div>
                         ) : (
                           filteredCustomers.map((customer: any, idx: number) => {

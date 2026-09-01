@@ -249,11 +249,60 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
     };
   }, [quotationId]);
 
+  const [customerSearching, setCustomerSearching] = useState(false);
+
+  // Live server customer search from contacts table
+  useEffect(() => {
+    const term = customerSearch.trim();
+    if (!term || term.length < 2) return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setCustomerSearching(true);
+      try {
+        const res = await fetch(`/api/v1/contacts?type=customer&limit=50&search=${encodeURIComponent(term)}`);
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data) && !cancelled) {
+          const serverCustomers = json.data.map((c: any) => ({
+            id: c.id,
+            uid: c.id,
+            name: c.name || 'Unknown',
+            displayName: c.name || 'Unknown',
+            businessName: c.name || 'Unknown',
+            email: c.email || '',
+            phone: c.phone || '',
+            role: 'CUSTOMER',
+            customerType: (c.paymentTermsDays && c.paymentTermsDays > 0) ? 'CREDIT' : 'CASH',
+            creditLimit: Number(c.creditLimit ?? 0),
+            gstNumber: c.taxNumber || '',
+            ...c,
+          }));
+
+          setCustomers((prev) => {
+            const map = new Map();
+            prev.forEach((item) => map.set(item.uid || (item as any).id, item));
+            serverCustomers.forEach((item: any) => map.set(item.uid || item.id, item));
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        console.error('Server customer search failed:', err);
+      } finally {
+        if (!cancelled) setCustomerSearching(false);
+      }
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [customerSearch]);
+
   const filteredCustomers = useMemo(() => {
     const term = customerSearch.trim().toLowerCase();
     if (!term) return customers;
     return customers.filter((customer) => {
-      return [customer.name, customer.displayName, customer.phone, customer.businessName, customer.email]
+      return [customer.name, customer.displayName, customer.phone, customer.businessName, customer.email, (customer as any).gstNumber, (customer as any).taxNumber]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term));
     });
@@ -761,6 +810,7 @@ ${parts.join(', ')}`;
     roles,
     customerSearch,
     setCustomerSearch,
+    customerSearching,
     selectedCustomerId,
     setSelectedCustomerId,
     filteredCustomers,
