@@ -401,7 +401,12 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           updateLine(i, "inventoryItemId", "");
                           return;
                         }
-                        const matchingTax = item.gstRate ? taxRates.find(t => (t.rate / 100) === item.gstRate) : null;
+                        const gstVal = item.gstRate ?? item.metadata?.gstRate ?? item.metadata?.gst_rate ?? 18;
+                        const targetBp = gstVal <= 1 ? Math.round(gstVal * 10000) : (gstVal <= 100 ? Math.round(gstVal * 100) : gstVal);
+                        const matchingTax = taxRates.find(t => t.rate === targetBp || Math.round(t.rate / 100) === Math.round(gstVal)) 
+                          || taxRates.find(t => t.rate === 1800) 
+                          || (taxRates.length > 0 ? taxRates[0] : null);
+
                         const isItemDirectSelling = item.metadata?.isDirectSelling === true;
                         const effectiveRate = isItemDirectSelling
                           ? (Number(item.salePrice || 0) / 100)
@@ -413,7 +418,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           description: item.name,
                           unitPrice: effectiveRate.toString(),
                           accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
-                          taxRateId: matchingTax ? matchingTax.id : updated[i].taxRateId,
+                          taxRateId: matchingTax ? matchingTax.id : (taxRates.find(t => t.rate === 1800)?.id || updated[i].taxRateId),
                         };
                         onChange(updated);
                       }}
@@ -448,7 +453,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 {/* GST% Selector */}
                 <div>
                   <Select
-                    value={line.taxRateId || "none"}
+                    value={line.taxRateId || (taxRates.find(t => t.rate === 1800)?.id || "none")}
                     onValueChange={(v) => updateLine(i, "taxRateId", v === "none" ? "" : v)}
                   >
                     <SelectTrigger className="h-9 text-xs font-bold bg-slate-50 border-slate-200 rounded-xl">
@@ -564,31 +569,50 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
             );
           })}
 
-          {/* Add Line & Summary Footer */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200 bg-slate-50/70 p-4">
+          {/* Add Line & Summary Footer (Vertical Pricing Breakdown matching Image 2) */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-slate-200 bg-slate-50/80 p-5">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={addLine}
-              className="bg-white hover:bg-slate-50 border-slate-200 text-slate-800 font-bold text-xs rounded-xl shadow-xs gap-1.5 h-9 px-4"
+              className="bg-white hover:bg-slate-50 border-slate-200 text-slate-800 font-bold text-xs rounded-xl shadow-xs gap-1.5 h-10 px-5"
             >
-              <Plus className="size-3.5 text-blue-600" />
+              <Plus className="size-4 text-blue-600" />
               <span>Add Another Item</span>
             </Button>
 
-            <div className="flex items-center gap-6 text-xs font-mono text-slate-600">
-              <div>
-                <span className="text-slate-400 mr-2 font-sans font-medium">Items Subtotal:</span>
-                <span className="font-bold text-slate-800">₹{productSubtotal.toFixed(2)}</span>
+            {/* Vertical Pricing Breakdown exactly as Image 2 & 5 */}
+            <div className="w-full sm:w-72 bg-white rounded-2xl border border-slate-200/90 p-4 shadow-xs space-y-2 text-xs font-medium">
+              <div className="flex justify-between items-center text-slate-600">
+                <span className="font-bold text-slate-700">Subtotal</span>
+                <span className="font-mono font-bold text-slate-900">{productSubtotal.toFixed(2)}</span>
               </div>
-              <div>
-                <span className="text-slate-400 mr-2 font-sans font-medium">GST Total:</span>
-                <span className="font-bold text-slate-800">₹{taxTotal.toFixed(2)}</span>
+              <div className="flex justify-between items-center text-slate-600">
+                <span className="font-bold text-slate-700">Tax</span>
+                <span className="font-mono font-bold text-slate-900">{taxTotal.toFixed(2)}</span>
               </div>
-              <div className="text-sm bg-blue-50 text-blue-900 border border-blue-200/80 px-3 py-1 rounded-xl">
-                <span className="text-blue-600 mr-2 font-sans font-bold">Total:</span>
-                <span className="font-black text-blue-950">₹{total.toFixed(2)}</span>
+              {taxTotal > 0 && (
+                <>
+                  <div className="flex justify-between items-center text-slate-500 pl-2 text-[11px]">
+                    <span className="font-bold text-slate-700">CGST Breakdown</span>
+                    <span className="font-mono font-bold text-slate-900">{(taxTotal / 2).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-500 pl-2 text-[11px]">
+                    <span className="font-bold text-slate-700">SGST Breakdown</span>
+                    <span className="font-mono font-bold text-slate-900">{(taxTotal / 2).toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+              {logisticsTotal > 0 && (
+                <div className="flex justify-between items-center text-slate-600">
+                  <span className="font-bold text-slate-700">Logistics</span>
+                  <span className="font-mono font-bold text-slate-900">{logisticsTotal.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center border-t border-slate-200/80 pt-2 text-sm">
+                <span className="font-black text-slate-900">Total</span>
+                <span className="font-mono font-black text-slate-950 text-base">₹{total.toFixed(2)}</span>
               </div>
             </div>
           </div>

@@ -830,7 +830,8 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                   type="customer"
                   initialContactName={initialData?.contactName}
                 />
-                <div className="mt-3">
+                <div className="mt-3 space-y-1">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reference / PO Number</h4>
                   <Input
                     value={reference}
                     onChange={(e) => setReference(e.target.value)}
