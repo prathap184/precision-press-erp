@@ -478,10 +478,10 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
           )}
         >
           <Plus size={19} strokeWidth={3} className="flex-shrink-0" />
-          {visualExpanded && <span>New Print Job</span>}
+          {visualExpanded && <span>(N) New Print Job</span>}
           {!visualExpanded && (
             <div className="absolute left-[54px] px-2.5 py-1 bg-slate-900/90 backdrop-blur-md text-white text-[11px] font-bold rounded-xl shadow-xl whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-150 z-50 translate-x-1 group-hover:translate-x-0">
-              New Print Job
+              (N) New Print Job
             </div>
           )}
         </Link>

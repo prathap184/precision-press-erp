@@ -65,7 +65,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
 
   // ── Staff / Ops Hub ──────────────────────────────────────────────────────
   { label: 'Command Center',       href: '/staff',                  icon: Command,              roles: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACDEMA', 'DESIGNER', 'PRINTER', 'DISPATCH', 'DELIVERY', 'ACCOUNTANT', 'SUPPORT'], group: 'main' },
-  { label: 'Global Orders',        href: '/acdema/orders',         icon: ClipboardList,        roles: ['ACDEMA'],                                                             group: 'main' },
+  { label: '(G) Global Orders',    href: '/acdema/orders',         icon: ClipboardList,        roles: ['ACDEMA'],                                                             group: 'main' },
   // { label: 'Job Management',       href: '#job-management',         icon: ClipboardList,        roles: ['ACDEMA'],                                                             group: 'main', subItems: [
   //   { label: 'Jobs Passed By Me', href: '/acdema?view=passed' },
   //   { label: 'All Jobs', href: '/acdema?view=all' },
@@ -78,7 +78,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     { label: 'HSN Master', href: '/admin/hsn-master' },
     { label: 'GST & Invoice Settings', href: '/admin/settings/gst-invoice' },
   ] },
-  { label: 'Global Orders',        href: '/admin/orders',           icon: ClipboardList,        roles: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'DESIGNER', 'PRINTER', 'DISPATCH', 'ACCOUNTANT', 'SUPPORT'], group: 'main'    },
+  { label: '(G) Global Orders',    href: '/admin/orders',           icon: ClipboardList,        roles: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'DESIGNER', 'PRINTER', 'DISPATCH', 'ACCOUNTANT', 'SUPPORT'], group: 'main'    },
   // { label: 'Invoices',             href: '/admin/invoices',         icon: FileText,             roles: ['ADMIN', 'SUPER_ADMIN'],                                               group: 'main'    },
   { label: 'Invoice Generation',   href: '/admin/invoice-generation', icon: FilePlus2,           roles: ['ACCOUNTANT'],                                 group: 'main'    },
   { label: 'Unassigned Backlog',   href: '/manager/unassigned',      icon: ClipboardList,        roles: ['MANAGER'],                                                            group: 'main'    },
@@ -108,8 +108,8 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   { label: 'Pending Deliveries',   href: '/delivary',               icon: ClipboardList,        roles: ['DELIVERY'],                                                           group: 'main'    },
   { label: 'Delivered Orders',     href: '/delivared',              icon: CheckCircle,          roles: ['DELIVERY'],                                                           group: 'main'    },
 
-  // ── Accounting Dashboard (Dubbl) ─────────────────────────────────────────
-  { label: 'Dubbl Accounting', href: '#dubbl-accounting', icon: BookOpen, roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'MANAGER', 'ACDEMA'], group: 'main', subItems: [
+  // ── Accounting Dashboard (Pixel Accounting) ─────────────────────────────
+  { label: '(Z) Pixel Accounting', href: '#dubbl-accounting', icon: BookOpen, roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'MANAGER', 'ACDEMA'], group: 'main', subItems: [
     { label: 'Banking & Cash Drawer', href: '/accounting/banking' },
     { label: 'Contra Voucher', href: '/accounting/contra' },
     { label: 'Journal Voucher', href: '/accounting/journal' },
