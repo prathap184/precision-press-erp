@@ -346,9 +346,9 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border overflow-x-auto">
+      <div className="rounded-xl border border-slate-200 overflow-x-auto bg-white shadow-xs">
         <div className="min-w-[1000px]">
-          <div className="grid grid-cols-[1.5fr_1fr_60px_60px_60px_80px_100px_100px_100px_40px] gap-2 border-b bg-muted/50 px-3 py-2 text-xs font-medium text-muted-foreground">
+          <div className="grid grid-cols-[1.5fr_1fr_60px_60px_60px_80px_100px_100px_100px_40px] gap-2 border-b border-slate-200 bg-slate-50/90 px-3 py-2 text-xs font-bold text-slate-600">
             <span>Description</span>
             <span>Project</span>
             <span className="text-right">W</span>
