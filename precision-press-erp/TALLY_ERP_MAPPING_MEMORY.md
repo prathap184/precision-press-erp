@@ -705,3 +705,70 @@ In Tally XML, customer and supplier addresses are output as multiple `<ADDRESS>`
 ---
 *Memory Updated & Persisted on: 2026-09-01*
 
+---
+
+## 🖥️ 24. Standalone Windows Executable (`TallyConnector.exe`) & 1-Click Sync Architecture
+
+> **Purpose**: Allow the accounts department PC to run real-time Tally Prime sync without installing Node.js, npm, or dev tools.
+
+### A. Overview & Packaging Architecture
+`TallyConnector.exe` is a fully compiled standalone binary created from `tally-connector/connector.js` and `tally-connector/xml-builder.js`:
+- Contains the Node.js V8 runtime embedded inside the `.exe`.
+- Contains all required dependencies (`axios`, `dotenv`, `winston`, `xml2js`) bundled in bytecode.
+- **Client PC Requirement**: **Zero software installations** (No Node.js / npm required).
+
+```
+📁 C:\Precision-Tally-Sync\
+├── 📄 TallyConnector.exe     <-- Standalone Compiled Application (~45 MB)
+├── ⚙️ .env                  <-- Company Configuration (ERP URL, Port, Company Name)
+└── 📁 logs/                 <-- Auto-created log directory (connector.log)
+```
+
+### B. Compilation Procedure (When Ready to Build)
+Run inside the `tally-connector/` folder:
+```bash
+# Package into Windows x64 Standalone Executable
+npx @yao-pkg/pkg . --targets node18-win-x64 --output TallyConnector.exe
+```
+
+### C. Client Configuration (`.env`)
+```env
+ERP_BASE_URL=http://40.81.236.61:3000
+CONNECTOR_SECRET=your_secure_secret_token
+TALLY_HOST=http://127.0.0.1
+TALLY_PORT=9000
+TALLY_COMPANY_NAME=Hindustan Enterprises 25-26
+POLL_INTERVAL_MS=8000
+TALLY_EDUCATIONAL_MODE=false
+```
+
+### D. Alternative 1-Click Launcher (`Start-Sync.bat`)
+If Node.js is already present on the PC:
+```bat
+@echo off
+title Precision Press ERP - Tally Sync Connector
+color 0A
+cd /d "%~dp0"
+
+echo ========================================================
+echo   PRECISION PRESS ERP -> TALLY PRIME REAL-TIME SYNC
+echo ========================================================
+echo.
+echo Connecting to ERP Cloud Queue & Local Tally Port 9000...
+echo Keep this window open during business hours.
+echo.
+
+node connector.js
+
+pause
+```
+
+### E. Automatic Background Windows Startup (Zero-Touch)
+To start syncing automatically when Windows boots up:
+1. Press `Win + R` $\rightarrow$ type `shell:startup` $\rightarrow$ press Enter.
+2. Create a shortcut to `TallyConnector.exe` in this folder.
+3. Every morning when the Accounts PC turns on, `TallyConnector.exe` starts and syncs every ERP invoice & receipt to Tally Prime automatically.
+
+---
+
+
