@@ -4884,111 +4884,144 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
         </SheetHeader>
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto space-y-6 p-6 sm:p-8 bg-[#e2ecf8] text-slate-800">
-            <div className="space-y-4 bg-white/95 backdrop-blur-md border border-white/70 rounded-2xl p-5 sm:p-6 shadow-xs text-slate-800">
-              <SectionLabel>Receipt Details</SectionLabel>
+            {/* Main Receipt Details Card */}
+            <div className="rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 space-y-5">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Receipt Details</h3>
+              
               <div className="space-y-2">
-                <Label>Customer *</Label>
+                <Label className="text-xs font-bold text-slate-500">Customer *</Label>
                 <ContactPicker value={contactId} onChange={setContactId} type="customer" initialContactName={initialData?.contactName} />
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Method of Adjustment *</Label>
-                  <Select value={settlementMode} onValueChange={(v) => setSettlementMode(v as "on_account" | "against_ref" | "new_ref")}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="on_account">On Account (General Advance)</SelectItem>
-                      <SelectItem value="new_ref">New Ref (Named Advance — e.g. ADV-0001)</SelectItem>
-                      <SelectItem value="against_ref">Agst Ref (Against Invoice)</SelectItem>
+              {/* Settlement Mode Pills */}
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-slate-500">Method of Adjustment *</Label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSettlementMode("on_account")}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                      settlementMode === "on_account"
+                        ? "bg-slate-900 text-white shadow-md"
+                        : "bg-white/80 text-slate-600 hover:bg-white border border-slate-200"
+                    }`}
+                  >
+                    On Account (General Advance)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSettlementMode("new_ref")}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                      settlementMode === "new_ref"
+                        ? "bg-blue-600 text-white shadow-md"
+                        : "bg-blue-50/70 text-blue-700 hover:bg-blue-100/70 border border-blue-200"
+                    }`}
+                  >
+                    New Ref (Named Advance)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSettlementMode("against_ref")}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                      settlementMode === "against_ref"
+                        ? "bg-amber-600 text-white shadow-md"
+                        : "bg-amber-50/70 text-amber-800 hover:bg-amber-100/70 border border-amber-200"
+                    }`}
+                  >
+                    Agst Ref (Against Invoice)
+                  </button>
+                </div>
+              </div>
+
+              {settlementMode === "new_ref" && (
+                <div className="space-y-2 rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
+                  <Label className="text-xs font-bold text-blue-900 uppercase tracking-wide">Reference Name *</Label>
+                  <Input
+                    value={referenceName}
+                    onChange={(e) => setReferenceName(e.target.value)}
+                    placeholder="e.g. ADV-0001, ADV-ALPHA, PROJECT-X"
+                    className="h-10 text-xs rounded-xl bg-white border-blue-200 font-semibold"
+                  />
+                  <p className="text-[11px] text-blue-700 font-medium">
+                    A unique name for this advance so you can track and settle it later against future invoices.
+                  </p>
+                </div>
+              )}
+
+              {settlementMode === "against_ref" && (
+                <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+                  <Label className="text-xs font-bold text-amber-900 uppercase tracking-wide">Against Invoice *</Label>
+                  <Select value={selectedInvoiceId} onValueChange={handleInvoiceSelect} disabled={!contactId || loadingInvoices}>
+                    <SelectTrigger className="h-10 text-xs rounded-xl bg-white border-amber-200 font-semibold">
+                      <SelectValue placeholder={!contactId ? "Select customer first..." : loadingInvoices ? "Loading pending invoices..." : invoices.length === 0 ? "No pending invoices found" : "Select invoice to settle..."} />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border border-slate-200 shadow-2xl z-[9999]">
+                      {invoices.map((inv) => (
+                        <SelectItem key={inv.id} value={inv.id} className="font-medium">
+                          {inv.invoiceNumber} · Due: {formatMoney(inv.amountDue, inv.currencyCode)}
+                          {inv.status === "partial" ? " (Partially Paid)" : ""}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-
-                {settlementMode === "new_ref" && (
-                  <div className="space-y-2">
-                    <Label>Reference Name *</Label>
-                    <Input
-                      value={referenceName}
-                      onChange={(e) => setReferenceName(e.target.value)}
-                      placeholder="e.g. ADV-0001, ADV-ALPHA, PROJECT-X"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      A unique name for this advance so you can track and settle it later.
-                    </p>
-                  </div>
-                )}
-
-                {settlementMode === "against_ref" && (
-                  <div className="space-y-2">
-                    <Label>Against Invoice *</Label>
-                    <Select value={selectedInvoiceId} onValueChange={handleInvoiceSelect} disabled={!contactId || loadingInvoices}>
-                      <SelectTrigger>
-                        <SelectValue placeholder={!contactId ? "Select customer first..." : loadingInvoices ? "Loading..." : invoices.length === 0 ? "No pending invoices" : "Select invoice..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {invoices.map((inv) => (
-                          <SelectItem key={inv.id} value={inv.id}>
-                            {inv.invoiceNumber} · Due: {formatMoney(inv.amountDue, inv.currencyCode)}
-                            {inv.status === "partial" ? " (Partially Paid)" : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
+              )}
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Date</Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-500">Date Received</Label>
                   <DatePicker value={date} onChange={setDate} placeholder="Date received" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="drawer-credit-amount">Amount</Label>
-                  <CurrencyInput id="drawer-credit-amount" value={amount} onChange={setAmount} />
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-500" htmlFor="drawer-credit-amount">Amount</Label>
+                  <CurrencyInput id="drawer-credit-amount" value={amount} onChange={setAmount} className="rounded-xl" />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Currency</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-500">Currency</Label>
                 <CurrencySelect value={currencyCode} onValueChange={setCurrencyCode} />
               </div>
             </div>
 
-            <div className="hidden" />
-
-            <div className="space-y-4 bg-white/95 backdrop-blur-md border border-white/70 rounded-2xl p-5 sm:p-6 shadow-xs text-slate-800">
-              <SectionLabel>Payment</SectionLabel>
+            {/* Payment Bank/Cash Account Card */}
+            <div className="rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Payment Account</h3>
               <div className="space-y-2">
-                <Label>Paid into *</Label>
+                <Label className="text-xs font-bold text-slate-500">Paid into *</Label>
                 <Select value={bankAccountId} onValueChange={setBankAccountId}>
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 text-xs rounded-xl bg-slate-50 border-slate-200 focus:bg-white font-medium">
                     <SelectValue placeholder="Choose where the money landed..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white border border-slate-200 shadow-2xl z-[9999]">
                     {bankAccounts.map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>
+                      <SelectItem key={acc.id} value={acc.id} className="font-semibold">
                         {acc.accountName} · {acc.currencyCode}
                       </SelectItem>
                     ))}
                     {bankAccounts.length === 0 && (
-                      <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                        No bank or cash accounts yet
+                      <div className="px-2 py-4 text-center text-xs text-muted-foreground">
+                        No bank or cash accounts found
                       </div>
                     )}
                   </SelectContent>
                 </Select>
-                <p className="text-[11px] text-muted-foreground">
-                  The cash or bank account the customer paid into.
+                <p className="text-[11px] text-muted-foreground font-medium">
+                  The cash, UPI, or bank ledger account the customer deposited funds into.
                 </p>
               </div>
             </div>
 
-            <div className="hidden" />
-
-            <div className="space-y-4 bg-white/95 backdrop-blur-md border border-white/70 rounded-2xl p-5 sm:p-6 shadow-xs text-slate-800">
-              <SectionLabel>Notes</SectionLabel>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes about this receipt..." rows={3} />
+            {/* Notes Card */}
+            <div className="rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Notes & Remarks</h3>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Specific remarks, transaction ref, UTR number..."
+                rows={3}
+                className="rounded-xl border-slate-200 bg-slate-50 focus:bg-white text-xs font-medium"
+              />
             </div>
           </div>
           <DrawerFooter onClose={onClose} saving={saving} label={settlementMode === "against_ref" ? "Record Receipt" : settlementMode === "new_ref" ? `Record Advance (${referenceName || "New Ref"})` : "Record on Account"} />
