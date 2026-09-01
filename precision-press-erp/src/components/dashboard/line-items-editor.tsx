@@ -345,209 +345,253 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
   const total = subtotal + taxTotal;
 
   return (
-    <div className="space-y-3">
-      <div className="rounded-xl border border-slate-200 overflow-x-auto bg-white shadow-xs">
-        <div className="min-w-[1000px]">
-          <div className="grid grid-cols-[1.5fr_1fr_60px_60px_60px_80px_100px_100px_100px_40px] gap-2 border-b border-slate-200 bg-slate-50/90 px-3 py-2 text-xs font-bold text-slate-600">
-            <span>Description</span>
-            <span>Project</span>
-            <span className="text-right">W</span>
-            <span className="text-right">L</span>
-            <span className="text-right">Qty</span>
-            <span className="text-right">Rate</span>
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-slate-200/90 overflow-x-auto bg-white shadow-xs">
+        <div className="min-w-[1050px]">
+          {/* Header Row Matching Proxy Order */}
+          <div className="grid grid-cols-[36px_1.8fr_1.1fr_75px_70px_70px_65px_65px_95px_90px_100px_36px] gap-2 border-b border-slate-200 bg-slate-50/80 px-4 py-3 text-[11px] font-black uppercase tracking-wider text-slate-500">
+            <span className="text-center">#</span>
+            <span>Name of Item</span>
+            <span>Project <span className="text-[9px] font-normal normal-case text-slate-400">(opt)</span></span>
+            <span className="text-center">GST%</span>
+            <span className="text-center">Width</span>
+            <span className="text-center">Length</span>
+            <span className="text-center">Sq.Ft.</span>
+            <span className="text-center">Qty</span>
+            <span className="text-right">Rate/Sft</span>
             <span className="text-right">Finish</span>
             <span className="text-right">Amount</span>
-            <span>Tax</span>
             <span />
           </div>
-        {lines.map((line, i) => {
-          if (line.description === "Logistics / Shipping") return null;
-          
-          const selectedRate = line.taxRateId
-            ? taxRates.find((t) => t.id === line.taxRateId)
-            : undefined;
-          const hint =
-            taxContext === "purchase" && selectedRate ? reclaimHint(selectedRate) : null;
-          
-          const itemMetadata = inventoryItems.find((itm) => itm.id === line.inventoryItemId)?.metadata;
-          const isDirectSelling = itemMetadata?.isDirectSelling === true;
 
-          return (
-            <div
-              key={i}
-              className="grid grid-cols-[1.5fr_1fr_60px_60px_60px_80px_100px_100px_100px_40px] gap-2 border-b px-3 py-2 last:border-b-0 items-start"
-            >
-              <div className="space-y-1">
-                {inventoryItems.length > 0 && (
-                  <SearchableProductSelect
-                    value={line.inventoryItemId || ""}
-                    inventoryItems={inventoryItems}
-                    onSelect={(item) => {
-                      if (!item) {
-                        updateLine(i, "inventoryItemId", "");
-                        return;
-                      }
-                      const matchingTax = item.gstRate ? taxRates.find(t => (t.rate / 100) === item.gstRate) : null;
-                      const isItemDirectSelling = item.metadata?.isDirectSelling === true;
-                      const effectiveRate = isItemDirectSelling
-                        ? (Number(item.salePrice || 0) / 100)
-                        : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
-                      const updated = [...lines];
-                      updated[i] = {
-                        ...updated[i],
-                        inventoryItemId: item.id,
-                        description: item.name,
-                        unitPrice: effectiveRate.toString(),
-                        accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
-                        taxRateId: matchingTax ? matchingTax.id : updated[i].taxRateId,
-                      };
-                      onChange(updated);
-                    }}
-                  />
-                )}
-                <Input
-                  className="h-8 text-sm"
-                  value={line.description}
-                  onChange={(e) => updateLine(i, "description", e.target.value)}
-                  placeholder="Item description"
-                />
-                <AccountPicker
-                  value={line.accountId}
-                  onChange={(v) => updateLine(i, "accountId", v)}
-                  typeFilter={accountTypeFilter}
-                  placeholder="Account"
-                />
-              </div>
-              <Input
-                className="h-8 text-sm"
-                value={line.projectId || ""}
-                onChange={(e) => updateLine(i, "projectId", e.target.value)}
-                placeholder="Project"
-              />
-              {isDirectSelling ? (
-                <div className="h-8 flex items-center justify-center text-muted-foreground bg-muted/20 rounded-md border border-dashed border-muted">-</div>
-              ) : (
-                <Input
-                  className="h-8 text-right text-sm font-mono tabular-nums"
-                  type="number"
-                  value={line.width || ""}
-                  onChange={(e) => updateLine(i, "width", e.target.value)}
-                  placeholder="W"
-                />
-              )}
-              {isDirectSelling ? (
-                <div className="h-8 flex items-center justify-center text-muted-foreground bg-muted/20 rounded-md border border-dashed border-muted">-</div>
-              ) : (
-                <Input
-                  className="h-8 text-right text-sm font-mono tabular-nums"
-                  type="number"
-                  value={line.length || ""}
-                  onChange={(e) => updateLine(i, "length", e.target.value)}
-                  placeholder="L"
-                />
-              )}
-              <Input
-                className="h-8 text-right text-sm font-mono tabular-nums"
-                type="number"
-                value={line.quantity}
-                onChange={(e) => updateLine(i, "quantity", e.target.value)}
-              />
-              <CurrencyInput
-                size="sm"
-                value={line.unitPrice}
-                onChange={(v) => updateLine(i, "unitPrice", v)}
-              />
-              {isDirectSelling ? (
-                <div className="h-8 flex items-center justify-center text-muted-foreground bg-muted/20 rounded-md border border-dashed border-muted">-</div>
-              ) : (
-                <CurrencyInput
-                  size="sm"
-                  value={line.finishAmount || ""}
-                  onChange={(v) => updateLine(i, "finishAmount", v)}
-                />
-              )}
-              <span className="flex h-8 items-center justify-end text-sm font-mono font-medium tabular-nums">
-                {lineAmount(line).toFixed(2)}
-              </span>
-              <div className="space-y-1">
-                <Select
-                  value={line.taxRateId || "none"}
-                  onValueChange={(v) => updateLine(i, "taxRateId", v === "none" ? "" : v)}
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="No tax" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No tax</SelectItem>
-                    {taxRates.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>
-                        {t.name} ({formatRatePct(t.rate)}%)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {hint && (
-                  <p className="text-[11px] text-muted-foreground">{hint}</p>
-                )}
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                tabIndex={-1}
-                className="size-8"
-                onClick={() => removeLine(i)}
-                disabled={lines.length <= 1}
+          {/* Line Rows */}
+          {lines.map((line, i) => {
+            if (line.description === "Logistics / Shipping") return null;
+
+            const selectedRate = line.taxRateId
+              ? taxRates.find((t) => t.id === line.taxRateId)
+              : undefined;
+            const hint =
+              taxContext === "purchase" && selectedRate ? reclaimHint(selectedRate) : null;
+
+            const itemMetadata = inventoryItems.find((itm) => itm.id === line.inventoryItemId)?.metadata;
+            const isDirectSelling = itemMetadata?.isDirectSelling === true;
+            const widthNum = parseFloat(line.width || "0");
+            const lengthNum = parseFloat(line.length || "0");
+            const calculatedSqFt = (widthNum > 0 && lengthNum > 0) ? (widthNum * lengthNum).toFixed(2) : "--";
+
+            return (
+              <div
+                key={i}
+                className="grid grid-cols-[36px_1.8fr_1.1fr_75px_70px_70px_65px_65px_95px_90px_100px_36px] gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors"
               >
-                <Trash2 className="size-3.5 text-muted-foreground" />
-              </Button>
-            </div>
-          );
-        })}
-        <div className="flex items-center justify-between gap-3 border-t bg-muted/30 px-3 py-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={addLine}
-            className="text-xs"
-          >
-            <Plus className="mr-1 size-3" />
-            Add line
-          </Button>
-          <div className="space-y-0.5 text-right text-sm font-mono tabular-nums">
-            <div className="flex justify-between gap-6">
-              <span className="text-muted-foreground">Subtotal</span>
-              <span>{productSubtotal.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between gap-6">
-              <span className="text-muted-foreground">Tax</span>
-              <span>{taxTotal.toFixed(2)}</span>
-            </div>
-            {taxTotal > 0 && (
-              <>
-                <div className="flex justify-between gap-6 text-xs text-muted-foreground">
-                  <span>CGST Breakdown</span>
-                  <span>{(taxTotal / 2).toFixed(2)}</span>
+                {/* Index # */}
+                <div className="text-center font-bold text-xs text-slate-400">
+                  {i + 1}
                 </div>
-                <div className="flex justify-between gap-6 text-xs text-muted-foreground">
-                  <span>SGST Breakdown</span>
-                  <span>{(taxTotal / 2).toFixed(2)}</span>
+
+                {/* Name of Item */}
+                <div className="space-y-1.5 min-w-0">
+                  {inventoryItems.length > 0 && (
+                    <SearchableProductSelect
+                      value={line.inventoryItemId || ""}
+                      inventoryItems={inventoryItems}
+                      onSelect={(item) => {
+                        if (!item) {
+                          updateLine(i, "inventoryItemId", "");
+                          return;
+                        }
+                        const matchingTax = item.gstRate ? taxRates.find(t => (t.rate / 100) === item.gstRate) : null;
+                        const isItemDirectSelling = item.metadata?.isDirectSelling === true;
+                        const effectiveRate = isItemDirectSelling
+                          ? (Number(item.salePrice || 0) / 100)
+                          : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
+                        const updated = [...lines];
+                        updated[i] = {
+                          ...updated[i],
+                          inventoryItemId: item.id,
+                          description: item.name,
+                          unitPrice: effectiveRate.toString(),
+                          accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
+                          taxRateId: matchingTax ? matchingTax.id : updated[i].taxRateId,
+                        };
+                        onChange(updated);
+                      }}
+                    />
+                  )}
+                  <Input
+                    className="h-7 text-xs bg-slate-50/70 border-slate-200 rounded-lg placeholder:text-slate-400"
+                    value={line.description}
+                    onChange={(e) => updateLine(i, "description", e.target.value)}
+                    placeholder="Custom description / item notes..."
+                  />
+                  <div className="hidden">
+                    <AccountPicker
+                      value={line.accountId}
+                      onChange={(v) => updateLine(i, "accountId", v)}
+                      typeFilter={accountTypeFilter}
+                      placeholder="Account"
+                    />
+                  </div>
                 </div>
-              </>
-            )}
-            {logisticsTotal > 0 && (
-              <div className="flex justify-between gap-6">
-                <span className="text-muted-foreground">Logistics</span>
-                <span>{logisticsTotal.toFixed(2)}</span>
+
+                {/* Project */}
+                <div>
+                  <Input
+                    className="h-9 text-xs bg-slate-50 border-slate-200 rounded-xl focus:bg-white transition-all font-medium placeholder:text-slate-400"
+                    value={line.projectId || ""}
+                    onChange={(e) => updateLine(i, "projectId", e.target.value)}
+                    placeholder="Project name"
+                  />
+                </div>
+
+                {/* GST% Selector */}
+                <div>
+                  <Select
+                    value={line.taxRateId || "none"}
+                    onValueChange={(v) => updateLine(i, "taxRateId", v === "none" ? "" : v)}
+                  >
+                    <SelectTrigger className="h-9 text-xs font-bold bg-slate-50 border-slate-200 rounded-xl">
+                      <SelectValue placeholder="0%" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 shadow-xl z-[9999]">
+                      <SelectItem value="none">0% No Tax</SelectItem>
+                      {taxRates.map((t) => (
+                        <SelectItem key={t.id} value={t.id} className="font-semibold">
+                          {formatRatePct(t.rate)}% ({t.name})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Width */}
+                <div>
+                  {isDirectSelling ? (
+                    <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
+                  ) : (
+                    <div className="relative">
+                      <Input
+                        className="h-9 text-center text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white pr-4"
+                        type="number"
+                        value={line.width || ""}
+                        onChange={(e) => updateLine(i, "width", e.target.value)}
+                        placeholder="W"
+                      />
+                      <span className="absolute right-1.5 top-2.5 text-[9px] font-bold text-slate-400 pointer-events-none">ft</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Length */}
+                <div>
+                  {isDirectSelling ? (
+                    <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
+                  ) : (
+                    <div className="relative">
+                      <Input
+                        className="h-9 text-center text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white pr-4"
+                        type="number"
+                        value={line.length || ""}
+                        onChange={(e) => updateLine(i, "length", e.target.value)}
+                        placeholder="L"
+                      />
+                      <span className="absolute right-1.5 top-2.5 text-[9px] font-bold text-slate-400 pointer-events-none">ft</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sq.Ft. Readout */}
+                <div className="text-center font-mono font-bold text-xs text-slate-600 bg-slate-100/80 py-2 rounded-xl border border-slate-200/50">
+                  {calculatedSqFt}
+                </div>
+
+                {/* Qty */}
+                <div>
+                  <Input
+                    className="h-9 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                    type="number"
+                    min="1"
+                    value={line.quantity}
+                    onChange={(e) => updateLine(i, "quantity", e.target.value)}
+                  />
+                </div>
+
+                {/* Rate/Sft */}
+                <div>
+                  <CurrencyInput
+                    size="sm"
+                    className="h-9 text-right text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                    value={line.unitPrice}
+                    onChange={(v) => updateLine(i, "unitPrice", v)}
+                  />
+                </div>
+
+                {/* Finish */}
+                <div>
+                  {isDirectSelling ? (
+                    <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
+                  ) : (
+                    <CurrencyInput
+                      size="sm"
+                      placeholder="0.00"
+                      className="h-9 text-right text-xs font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                      value={line.finishAmount || ""}
+                      onChange={(v) => updateLine(i, "finishAmount", v)}
+                    />
+                  )}
+                </div>
+
+                {/* Row Total Amount */}
+                <div className="text-right font-mono font-black text-xs text-slate-900 pr-1">
+                  ₹{lineAmount(line).toFixed(2)}
+                </div>
+
+                {/* Delete Row Button */}
+                <div className="text-center">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    onClick={() => removeLine(i)}
+                    disabled={lines.length <= 1}
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
               </div>
-            )}
-            <div className="flex justify-between gap-6 font-semibold border-t border-dashed mt-1 pt-1">
-              <span>Total</span>
-              <span>{total.toFixed(2)}</span>
+            );
+          })}
+
+          {/* Add Line & Summary Footer */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200 bg-slate-50/70 p-4">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={addLine}
+              className="bg-white hover:bg-slate-50 border-slate-200 text-slate-800 font-bold text-xs rounded-xl shadow-xs gap-1.5 h-9 px-4"
+            >
+              <Plus className="size-3.5 text-blue-600" />
+              <span>Add Another Item</span>
+            </Button>
+
+            <div className="flex items-center gap-6 text-xs font-mono text-slate-600">
+              <div>
+                <span className="text-slate-400 mr-2 font-sans font-medium">Items Subtotal:</span>
+                <span className="font-bold text-slate-800">₹{productSubtotal.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 mr-2 font-sans font-medium">GST Total:</span>
+                <span className="font-bold text-slate-800">₹{taxTotal.toFixed(2)}</span>
+              </div>
+              <div className="text-sm bg-blue-50 text-blue-900 border border-blue-200/80 px-3 py-1 rounded-xl">
+                <span className="text-blue-600 mr-2 font-sans font-bold">Total:</span>
+                <span className="font-black text-blue-950">₹{total.toFixed(2)}</span>
+              </div>
             </div>
           </div>
-        </div>
         </div>
       </div>
     </div>

@@ -799,212 +799,276 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
         </SheetHeader>
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto space-y-6 p-6 sm:p-8 bg-[#e2ecf8] text-slate-800">
-            <div className="space-y-4 bg-white/95 backdrop-blur-md border border-white/70 rounded-2xl p-5 sm:p-6 shadow-xs text-slate-800">
-              <SectionLabel>Invoice Details</SectionLabel>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Customer *</Label>
-                  <ContactPicker value={contactId} onChange={setContactId} type="customer" initialContactName={initialData?.contactName} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Reference</Label>
-                  <Input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number, etc." />
+            {/* Top Row: Brand Banner Card, Customer Selector Card, Logistics Card */}
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-[1.2fr_2fr_2fr] xl:grid-cols-[1fr_2fr_2fr] items-stretch">
+              {/* Image / Brand Banner Card */}
+              <div className="relative z-10 rounded-[2rem] bg-white/70 p-2.5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 flex flex-col justify-center min-h-[190px]">
+                <div className="w-full h-full rounded-[1.5rem] overflow-hidden relative bg-slate-100 min-h-[170px]">
+                  <img
+                    src="https://images.unsplash.com/photo-1626282874430-c11ae32d2898?auto=format&fit=crop&w=1200"
+                    className="absolute inset-0 w-full h-full object-cover"
+                    alt="Invoice banner"
+                  />
                 </div>
               </div>
-              {/* Reference Type: New Ref (default) or Agst Ref (settle against advance) */}
-              <div className="space-y-2">
-                <Label>Reference Type</Label>
-                <div className="flex gap-2">
-                  <Button
+
+              {/* Customer Card */}
+              <div className="relative z-20 rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 flex flex-col justify-between">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Customer *</h3>
+                  <button
                     type="button"
-                    size="sm"
-                    variant={refType === "NEW_REF" ? "default" : "outline"}
-                    className={refType === "NEW_REF" ? "bg-emerald-600 hover:bg-emerald-700" : ""}
-                    onClick={() => { setRefType("NEW_REF"); setSelectedCreditId(""); setAvailableCredits([]); }}
+                    onClick={() => openDrawer("customer")}
+                    className="text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors"
                   >
-                    New Ref
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={refType === "AGST_REF" ? "default" : "outline"}
-                    className={refType === "AGST_REF" ? "bg-amber-600 hover:bg-amber-700" : ""}
-                    onClick={() => setRefType("AGST_REF")}
-                  >
-                    Agst Ref (Settle Advance)
-                  </Button>
+                    + New
+                  </button>
                 </div>
-                {refType === "NEW_REF" && (
-                  <p className="text-xs text-muted-foreground">Normal invoice — customer will pay later.</p>
-                )}
+                <ContactPicker
+                  value={contactId}
+                  onChange={setContactId}
+                  type="customer"
+                  initialContactName={initialData?.contactName}
+                />
+                <div className="mt-3">
+                  <Input
+                    value={reference}
+                    onChange={(e) => setReference(e.target.value)}
+                    placeholder="Customer PO / Reference..."
+                    className="h-10 text-xs rounded-xl bg-slate-50 border-slate-200 focus:bg-white font-medium placeholder:text-slate-400"
+                  />
+                </div>
               </div>
-              {/* Advance picker — only visible when Agst Ref is chosen */}
-              {refType === "AGST_REF" && (
-                <div className="space-y-2.5 rounded-lg border border-amber-300 bg-amber-50/80 dark:border-amber-800/80 dark:bg-amber-950/30 p-3.5">
-                  <Label className="text-xs font-bold text-amber-900 dark:text-amber-200 uppercase tracking-wide flex items-center gap-1.5">
-                    <span>Select Advance Receipt *</span>
-                  </Label>
-                  {availableCredits.length === 0 && !contactId && (
-                    <p className="text-xs text-muted-foreground">Select a customer first to see their open advances.</p>
-                  )}
-                  {availableCredits.length === 0 && contactId && (
-                    <p className="text-xs font-medium text-amber-800 dark:text-amber-300">No open advances found for this customer.</p>
-                  )}
-                  {availableCredits.length > 0 && (
-                    <Select value={selectedCreditId} onValueChange={setSelectedCreditId}>
-                      <SelectTrigger className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-slate-700 font-semibold shadow-sm h-10 px-3.5 focus:ring-2 focus:ring-amber-500">
-                        <SelectValue placeholder="Pick an advance receipt..." />
+
+              {/* Logistics Card */}
+              <div className="relative z-10 rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 flex flex-col justify-between">
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
+                  {savedAddresses.length > 0 && (
+                    <Select
+                      onValueChange={(val) => {
+                        if (val === "CUSTOM") return;
+                        setDeliveryAddress(val);
+                      }}
+                    >
+                      <SelectTrigger className="h-6 text-[10px] w-[140px] bg-blue-50 text-blue-700 border-blue-200 rounded-lg">
+                        <SelectValue placeholder="Saved..." />
                       </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-2xl z-[9999]">
-                        {availableCredits.map((c: any) => {
-                          const refName =
-                            c.journalEntry?.reference ||
-                            c.journalEntry?.entryNumber ||
-                            c.referenceNumber ||
-                            c.reference ||
-                            c.notes ||
-                            "Advance";
-                          return (
-                            <SelectItem key={c.id} value={c.id} className="font-medium">
-                              {refName} · Available: ₹{(c.amountRemaining / 100).toFixed(2)}
-                            </SelectItem>
-                          );
-                        })}
+                      <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 shadow-2xl z-[9999]">
+                        {savedAddresses.map((a, idx) => (
+                          <SelectItem key={idx} value={a.address}>
+                            <span className="font-bold">{a.label}:</span> <span className="text-xs">{a.address}</span>
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
-                  <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
-                    The advance will be automatically applied when you create the invoice — no extra steps needed.
-                  </p>
                 </div>
-              )}
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Issue Date</Label>
-                  <DatePicker value={issueDate} onChange={setIssueDate} placeholder="Issue date" />
+
+                <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/50">
+                  {(["PICKUP", "DOOR", "COURIER", "TRANSPORT"] as const).map((mode) => {
+                    const isActive = deliveryMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => {
+                          setDeliveryMode(mode);
+                          if (mode !== "PICKUP" && savedAddresses.length > 0 && !deliveryAddress) {
+                            setDeliveryAddress(savedAddresses[0].address);
+                          }
+                        }}
+                        className={`py-2 text-[10px] font-black tracking-wider uppercase rounded-xl transition-all ${
+                          isActive
+                            ? "bg-slate-900 text-white shadow-md"
+                            : "text-slate-500 hover:text-slate-900 hover:bg-white/60"
+                        }`}
+                      >
+                        {mode}
+                      </button>
+                    );
+                  })}
                 </div>
-                <div className="space-y-2">
-                  <Label>Due Date</Label>
-                  <DatePicker value={dueDate} onChange={setDueDate} placeholder="Due date" />
+
+                <div className="mt-3">
+                  <Input
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    placeholder={deliveryMode === "PICKUP" ? "Self Pickup" : "Delivery address / location..."}
+                    className="h-10 text-xs rounded-xl bg-slate-50 border-slate-200 focus:bg-white font-medium placeholder:text-slate-400"
+                  />
                 </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+            </div>
+
+            {/* ORDER ITEMS CARD */}
+            <div className="rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</h3>
+              </div>
+              <LineItemsEditor lines={lines} onChange={setLines} accountTypeFilter={["revenue"]} taxContext="sales" />
+            </div>
+
+            {/* Bottom Row: Reference/Advance Terms & Additional Options */}
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+              {/* Terms & Dates Card */}
+              <div className="rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-5">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Reference & Terms</h3>
+                
+                {/* Reference Type Pills */}
                 <div className="space-y-2">
-                  <Label>Delivery Mode</Label>
-                  <Select
-                    value={deliveryMode}
-                    onValueChange={(val) => {
-                      setDeliveryMode(val);
-                      if (val !== "PICKUP" && savedAddresses.length > 0 && !deliveryAddress) {
-                        setDeliveryAddress(savedAddresses[0].address);
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="bg-muted/30"><SelectValue placeholder="Select mode" /></SelectTrigger>
-                    <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-[9999]">
-                      <SelectItem value="DOOR">Door</SelectItem>
-                      <SelectItem value="PICKUP">Pickup</SelectItem>
-                      <SelectItem value="COURIER">Courier</SelectItem>
-                      <SelectItem value="TRANSPORT">Transport</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setRefType("NEW_REF"); setSelectedCreditId(""); setAvailableCredits([]); }}
+                      className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                        refType === "NEW_REF"
+                          ? "bg-slate-900 text-white shadow-md"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      New Ref (Normal Bill)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRefType("AGST_REF")}
+                      className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                        refType === "AGST_REF"
+                          ? "bg-amber-600 text-white shadow-md"
+                          : "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100"
+                      }`}
+                    >
+                      Agst Ref (Settle Advance)
+                    </button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label>Delivery Address</Label>
-                    {savedAddresses.length > 0 && (
-                      <Select
-                        onValueChange={(val) => {
-                          if (val === "CUSTOM") return;
-                          setDeliveryAddress(val);
-                        }}
-                      >
-                        <SelectTrigger className="h-6 text-[11px] w-[170px] bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800">
-                          <SelectValue placeholder="Saved addresses..." />
+
+                {/* Advance Picker when AGST_REF */}
+                {refType === "AGST_REF" && (
+                  <div className="space-y-2.5 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+                    <Label className="text-xs font-bold text-amber-900 uppercase tracking-wide">
+                      Select Customer Advance Receipt *
+                    </Label>
+                    {availableCredits.length === 0 && !contactId && (
+                      <p className="text-xs text-muted-foreground">Select a customer above to see their open advances.</p>
+                    )}
+                    {availableCredits.length === 0 && contactId && (
+                      <p className="text-xs font-medium text-amber-800">No open advances found for this customer.</p>
+                    )}
+                    {availableCredits.length > 0 && (
+                      <Select value={selectedCreditId} onValueChange={setSelectedCreditId}>
+                        <SelectTrigger className="w-full bg-white text-slate-900 border-amber-200 font-semibold shadow-xs h-10 px-3.5 rounded-xl">
+                          <SelectValue placeholder="Pick an advance receipt..." />
                         </SelectTrigger>
-                        <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl z-[9999]">
-                          {savedAddresses.map((a, idx) => (
-                            <SelectItem key={idx} value={a.address}>
-                              <span className="font-semibold">{a.label}:</span> <span className="text-xs">{a.address}</span>
-                            </SelectItem>
-                          ))}
-                          <SelectItem value="CUSTOM">✍️ Custom address</SelectItem>
+                        <SelectContent className="bg-white border border-slate-200 shadow-2xl z-[9999]">
+                          {availableCredits.map((c: any) => {
+                            const refName =
+                              c.journalEntry?.reference ||
+                              c.journalEntry?.entryNumber ||
+                              c.referenceNumber ||
+                              c.reference ||
+                              c.notes ||
+                              "Advance";
+                            return (
+                              <SelectItem key={c.id} value={c.id} className="font-medium">
+                                {refName} · Available: ₹{(c.amountRemaining / 100).toFixed(2)}
+                              </SelectItem>
+                            );
+                          })}
                         </SelectContent>
                       </Select>
                     )}
                   </div>
-                  <Input value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Full address" />
+                )}
+
+                {/* Dates */}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-500">Issue Date</Label>
+                    <DatePicker value={issueDate} onChange={setIssueDate} placeholder="Issue date" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-500">Due Date</Label>
+                    <DatePicker value={dueDate} onChange={setDueDate} placeholder="Due date" />
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-500">Notes to Customer</Label>
+                  <Textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Specific notes, delivery instructions, remarks..."
+                    rows={3}
+                    className="rounded-xl border-slate-200 bg-slate-50 focus:bg-white text-xs font-medium"
+                  />
                 </div>
               </div>
-              <label className="flex items-start gap-3 rounded-lg border bg-muted/30 px-3 py-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isDepositRetainer}
-                  onChange={(e) => setIsDepositRetainer(e.target.checked)}
-                  className="mt-0.5 size-4 accent-emerald-600"
-                />
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-medium">This is a deposit / retainer invoice</span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    Bill the customer up front for a deposit or an ongoing retainer rather than for work already done.
+
+              {/* Additional Options Card */}
+              <div className="rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-5">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Additional Options</h3>
+                
+                <label className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={isDepositRetainer}
+                    onChange={(e) => setIsDepositRetainer(e.target.checked)}
+                    className="mt-0.5 size-4 accent-slate-900 rounded"
+                  />
+                  <span className="space-y-0.5">
+                    <span className="block text-xs font-bold text-slate-800">Deposit / Retainer Invoice</span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      Bill the customer upfront for an initial deposit or retainer.
+                    </span>
                   </span>
-                </span>
-              </label>
-              {isDepositRetainer && (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Invoice type</Label>
-                    <Select value={invoiceType} onValueChange={(v) => setInvoiceType(v as "deposit" | "retainer")}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="deposit">Deposit</SelectItem>
-                        <SelectItem value="retainer">Retainer</SelectItem>
-                      </SelectContent>
-                    </Select>
+                </label>
+
+                {isDepositRetainer && (
+                  <div className="grid gap-4 sm:grid-cols-2 p-4 bg-slate-100/70 rounded-2xl border border-slate-200/60">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold">Invoice type</Label>
+                      <Select value={invoiceType} onValueChange={(v) => setInvoiceType(v as "deposit" | "retainer")}>
+                        <SelectTrigger className="rounded-xl bg-white"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="deposit">Deposit</SelectItem>
+                          <SelectItem value="retainer">Retainer</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold" htmlFor="drawer-invoice-deposit-pct">Deposit %</Label>
+                      <Input
+                        id="drawer-invoice-deposit-pct"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step="0.01"
+                        value={depositPercent}
+                        onChange={(e) => setDepositPercent(e.target.value)}
+                        placeholder="e.g. 25"
+                        className="rounded-xl bg-white"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="drawer-invoice-deposit-pct">Deposit % (optional)</Label>
-                    <Input
-                      id="drawer-invoice-deposit-pct"
-                      type="number"
-                      min={0}
-                      max={100}
-                      step="0.01"
-                      value={depositPercent}
-                      onChange={(e) => setDepositPercent(e.target.value)}
-                      placeholder="e.g. 25"
-                    />
-                  </div>
-                </div>
-              )}
-              <label className="flex items-start gap-3 rounded-lg border bg-muted/30 px-3 py-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={forApproval}
-                  onChange={(e) => setForApproval(e.target.checked)}
-                  className="mt-0.5 size-4 accent-emerald-600"
-                />
-                <span className="space-y-0.5">
-                  <span className="block text-sm font-medium">Submit for approval instead of sending</span>
-                  <span className="block text-[11px] text-muted-foreground">
-                    Save the invoice for someone to approve. It won&apos;t be sent until it&apos;s approved.
+                )}
+
+                <label className="flex items-start gap-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4 cursor-pointer hover:bg-slate-100/60 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={forApproval}
+                    onChange={(e) => setForApproval(e.target.checked)}
+                    className="mt-0.5 size-4 accent-slate-900 rounded"
+                  />
+                  <span className="space-y-0.5">
+                    <span className="block text-xs font-bold text-slate-800">Submit for Approval</span>
+                    <span className="block text-[11px] text-muted-foreground">
+                      Save invoice as draft for management sign-off before sending.
+                    </span>
                   </span>
-                </span>
-              </label>
-            </div>
-
-            <div className="hidden" />
-
-            <div className="space-y-4 bg-white/95 backdrop-blur-md border border-white/70 rounded-2xl p-5 sm:p-6 shadow-xs text-slate-800">
-              <SectionLabel>Line Items</SectionLabel>
-              <LineItemsEditor lines={lines} onChange={setLines} accountTypeFilter={["revenue"]} taxContext="sales" />
-            </div>
-
-            <div className="hidden" />
-
-            <div className="space-y-4 bg-white/95 backdrop-blur-md border border-white/70 rounded-2xl p-5 sm:p-6 shadow-xs text-slate-800">
-              <SectionLabel>Notes</SectionLabel>
-              <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes to customer..." rows={3} />
+                </label>
+              </div>
             </div>
           </div>
           <DrawerFooter onClose={onClose} saving={saving} label="Create Invoice" />
