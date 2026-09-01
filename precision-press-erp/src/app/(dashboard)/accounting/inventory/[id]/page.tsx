@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Trash2, Save, Loader2, Warehouse, Printer, Scale } from "lucide-react";
+import { Trash2, Save, Loader2, Warehouse, Printer, Scale, Package } from "lucide-react";
 import { Section } from "@/components/dashboard/section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
