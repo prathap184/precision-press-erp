@@ -252,7 +252,7 @@ function ContactDrawer({ open, onClose }: { open: boolean; onClose: () => void }
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Users className="size-5" /></DrawerIcon>
@@ -409,7 +409,7 @@ function ProjectDrawer({ open, onClose }: { open: boolean; onClose: () => void }
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><FolderKanban className="size-5" /></DrawerIcon>
@@ -787,7 +787,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><FileText className="size-5" /></DrawerIcon>
@@ -1107,7 +1107,7 @@ function BillDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><ShoppingCart className="size-5" /></DrawerIcon>
@@ -1282,7 +1282,7 @@ function EntryDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><BookOpen className="size-5" /></DrawerIcon>
@@ -1433,7 +1433,7 @@ function InventoryDrawer({ open, onClose }: { open: boolean; onClose: () => void
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Package className="size-5" /></DrawerIcon>
@@ -1782,7 +1782,7 @@ function QuoteDrawer({ open, onClose }: { open: boolean; onClose: () => void }) 
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><FileText className="size-5" /></DrawerIcon>
@@ -1922,7 +1922,7 @@ function SalesReceiptDrawer({ open, onClose }: { open: boolean; onClose: () => v
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Banknote className="size-5" /></DrawerIcon>
@@ -2073,7 +2073,7 @@ function PurchaseOrderDrawer({ open, onClose }: { open: boolean; onClose: () => 
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Receipt className="size-5" /></DrawerIcon>
@@ -2261,7 +2261,7 @@ function ExpenseDrawer({ open, onClose }: { open: boolean; onClose: () => void }
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Receipt className="size-5" /></DrawerIcon>
@@ -2486,7 +2486,7 @@ function FixedAssetDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Building2 className="size-5" /></DrawerIcon>
@@ -2794,7 +2794,7 @@ function BudgetDrawer({ open, onClose }: { open: boolean; onClose: () => void })
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Target className="size-5" /></DrawerIcon>
@@ -3009,7 +3009,7 @@ function EmployeeDrawer({ open, onClose }: { open: boolean; onClose: () => void 
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Users className="size-5" /></DrawerIcon>
@@ -3162,7 +3162,7 @@ function CreditNoteDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><CreditCard className="size-5" /></DrawerIcon>
@@ -3287,7 +3287,7 @@ function RecurringDrawer({ open, onClose }: { open: boolean; onClose: () => void
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><RefreshCw className="size-5" /></DrawerIcon>
@@ -3423,7 +3423,7 @@ function AccountDrawer({ open, onClose }: { open: boolean; onClose: () => void }
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><BookOpen className="size-5" /></DrawerIcon>
@@ -3557,7 +3557,7 @@ function BankAccountDrawer({ open, onClose }: { open: boolean; onClose: () => vo
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Landmark className="size-5" /></DrawerIcon>
@@ -3699,7 +3699,7 @@ function WarehouseDrawer({ open, onClose }: { open: boolean; onClose: () => void
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Warehouse className="size-5" /></DrawerIcon>
@@ -3782,7 +3782,7 @@ function StockTakeDrawer({ open, onClose }: { open: boolean; onClose: () => void
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) { onClose(); setWarehouseId(""); } }}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><ClipboardList className="size-5" /></DrawerIcon>
@@ -3866,7 +3866,7 @@ function CategoryDrawer({ open, onClose }: { open: boolean; onClose: () => void 
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Tag className="size-5" /></DrawerIcon>
@@ -3988,7 +3988,7 @@ function TransferDrawer({ open, onClose }: { open: boolean; onClose: () => void 
 
   return (
     <Sheet open={open} onOpenChange={(v) => { if (!v) { onClose(); resetState(); } }}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><ArrowLeftRight className="size-5" /></DrawerIcon>
@@ -4134,7 +4134,7 @@ function BankTransferDrawer({ open, onClose }: { open: boolean; onClose: () => v
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><ArrowLeftRight className="size-5" /></DrawerIcon>
@@ -4257,7 +4257,7 @@ function ContractorDrawer({ open, onClose }: { open: boolean; onClose: () => voi
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Briefcase className="size-5" /></DrawerIcon>
@@ -4420,7 +4420,7 @@ function DealDrawer({ open, onClose, initialData }: { open: boolean; onClose: ()
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && handleClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Target className="size-5" /></DrawerIcon>
@@ -4602,7 +4602,7 @@ function DebitNoteDrawer({ open, onClose }: { open: boolean; onClose: () => void
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Undo2 className="size-5" /></DrawerIcon>
@@ -4810,7 +4810,7 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Wallet className="size-5" /></DrawerIcon>
@@ -5083,7 +5083,7 @@ function PaymentVoucherDrawer({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><ArrowUpRight className="size-5" /></DrawerIcon>
@@ -5309,7 +5309,7 @@ function LoanDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Landmark className="size-5" /></DrawerIcon>
@@ -5487,7 +5487,7 @@ function OpeningBalanceDrawer({ open, onClose }: { open: boolean; onClose: () =>
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Scale className="size-5" /></DrawerIcon>
@@ -5645,7 +5645,7 @@ function AccrualScheduleDrawer({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><CalendarClock className="size-5" /></DrawerIcon>
@@ -5777,7 +5777,7 @@ function RevenueScheduleDrawer({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><TrendingUp className="size-5" /></DrawerIcon>
@@ -5951,7 +5951,7 @@ function RecurringJournalDrawer({ open, onClose }: { open: boolean; onClose: () 
 
   return (
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="sm:max-w-[80vw] w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <DrawerIcon><Repeat className="size-5" /></DrawerIcon>

@@ -699,7 +699,7 @@ export function ImportSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-2xl w-full p-0 flex flex-col">
+      <SheetContent className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6 sm:pb-4 border-b space-y-3">
           <div className="flex items-center gap-3">
             <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
@@ -934,7 +934,7 @@ export function MatchToBillSheet({
 
   return (
     <Sheet open={!!transaction} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0">
+      <SheetContent side="right" className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-5 pb-4 sm:px-6 border-b shrink-0">
           <SheetTitle className="text-lg">Match to a bill you owe</SheetTitle>
           <SheetDescription>
@@ -1159,7 +1159,7 @@ export function CreateExpenseSheet({
 
   return (
     <Sheet open={!!transaction} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0">
+      <SheetContent side="right" className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-5 pb-4 sm:px-6 border-b shrink-0">
           <SheetTitle className="text-lg">Record as an expense</SheetTitle>
           <SheetDescription>
@@ -1517,7 +1517,7 @@ export function CategorizeSheet({
 
   return (
     <Sheet open={!!transaction} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0">
+      <SheetContent side="right" className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-5 pb-4 sm:px-6 border-b shrink-0">
           <SheetTitle className="text-lg">{isEditing ? "Edit category" : "Assign to a category"}</SheetTitle>
           <SheetDescription>
@@ -1730,7 +1730,7 @@ export function MatchToInvoiceSheet({
 
   return (
     <Sheet open={!!transaction} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0">
+      <SheetContent side="right" className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-5 pb-4 sm:px-6 border-b shrink-0">
           <SheetTitle className="text-lg">Match to an invoice you sent</SheetTitle>
           <SheetDescription>
@@ -1982,7 +1982,7 @@ export function MatchSheet({
 
   return (
     <Sheet open={!!transaction} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0">
+      <SheetContent side="right" className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-5 pb-4 sm:px-6 border-b shrink-0">
           <SheetTitle className="text-lg">Find a match</SheetTitle>
           <SheetDescription>
@@ -2214,7 +2214,7 @@ export function TransferSheet({
 
   return (
     <Sheet open={!!transaction} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-lg flex flex-col p-0">
+      <SheetContent side="right" className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-5 pb-4 sm:px-6 border-b shrink-0">
           <SheetTitle className="text-lg">Record a transfer between accounts</SheetTitle>
           <SheetDescription>
@@ -2422,7 +2422,7 @@ export function SplitAccountSheet({
 
   return (
     <Sheet open={!!transaction} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col p-0">
+      <SheetContent side="right" className="sm:max-w-[95vw] w-full p-0 flex flex-col bg-[#f8fafc] dark:bg-[#0b0f19] border-l border-slate-200/80 dark:border-slate-800 shadow-2xl">
         <SheetHeader className="px-4 pt-5 pb-4 sm:px-6 border-b shrink-0">
           <SheetTitle className="text-lg">Split across categories</SheetTitle>
           <SheetDescription>
