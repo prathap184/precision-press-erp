@@ -131,7 +131,11 @@ function SearchableProductSelect({
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="flex h-8 w-full items-center rounded-md border border-input bg-background px-2.5 shadow-sm transition-colors focus-within:ring-1 focus-within:ring-ring focus-within:border-primary">
+      <div className={`flex h-10 w-full items-center rounded-xl px-3 transition-all duration-150 ${
+        isOpen
+          ? "border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-md"
+          : "border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white"
+      }`}>
         <input
           value={isOpen ? search : (selectedItem?.name ?? "")}
           placeholder="Select item..."
@@ -171,17 +175,17 @@ function SearchableProductSelect({
               }
             }
           }}
-          className="w-full border-0 bg-transparent p-0 text-xs font-semibold text-foreground outline-none focus:ring-0 placeholder:text-muted-foreground"
+          className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0 placeholder:text-slate-400"
         />
         <ChevronDown
-          size={14}
-          className="text-muted-foreground shrink-0 ml-1 cursor-pointer transition-transform duration-200"
+          size={16}
+          className={`shrink-0 ml-1 cursor-pointer transition-colors ${isOpen ? "text-blue-600" : "text-slate-400"}`}
           onClick={() => setIsOpen(!isOpen)}
         />
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 w-[320px] z-[99999] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white dark:bg-slate-900 dark:border-slate-800 shadow-2xl divide-y divide-slate-100 dark:divide-slate-800">
+        <div className="absolute left-0 top-full mt-2 w-[480px] sm:w-[560px] z-[99999] max-h-80 overflow-y-auto rounded-2xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100">
           <div
             onMouseDown={(e) => {
               e.preventDefault();
@@ -190,22 +194,22 @@ function SearchableProductSelect({
               setSearch("");
               setHighlightIndex(0);
             }}
-            className="cursor-pointer p-2.5 px-3 bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 text-xs text-slate-400 italic flex justify-between items-center transition-colors"
+            className="cursor-pointer p-3 px-4 bg-slate-50/80 hover:bg-slate-100 text-xs font-bold text-slate-500 italic flex justify-between items-center transition-colors border-b border-slate-100"
           >
-            <span>Custom item (no inventory link)</span>
-            {!value && <Check className="size-3.5 text-blue-600 shrink-0" />}
+            <span>✍️ Custom item (no inventory catalog link)</span>
+            {!value && <Check className="size-4 text-blue-600 shrink-0" />}
           </div>
 
           {matched.length === 0 ? (
-            <div className="p-3 text-xs text-slate-400 dark:text-slate-500 italic text-center bg-white dark:bg-slate-900">
-              No products found.
+            <div className="p-4 text-xs text-slate-400 italic text-center bg-white">
+              No products found matching &ldquo;{search}&rdquo;.
             </div>
           ) : (
             (() => {
               let runningIdx = 0;
               return Object.entries(grouped).map(([cat, prods]) => (
-                <div key={cat} className="bg-white dark:bg-slate-900">
-                  <div className="bg-slate-100 dark:bg-slate-800 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 sticky top-0 z-10 border-b border-slate-200 dark:border-slate-700 shadow-sm">
+                <div key={cat} className="bg-white">
+                  <div className="bg-slate-100/90 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10 border-b border-slate-200/80 shadow-xs">
                     {cat.replace(/_/g, " ")}
                   </div>
                   {prods.map((p) => {
@@ -213,6 +217,7 @@ function SearchableProductSelect({
                     const isHighlighted = currentIdx === highlightIndex;
                     const isSelected = p.id === value;
                     const code = p.metadata?.code || p.metadata?.sku || p.id.slice(0, 8);
+                    const price = p.salePrice ? (p.salePrice / 100).toFixed(2) : (p.metadata?.baseRate ? Number(p.metadata.baseRate).toFixed(2) : null);
 
                     return (
                       <div
@@ -229,20 +234,29 @@ function SearchableProductSelect({
                           setSearch("");
                           setHighlightIndex(0);
                         }}
-                        className={`cursor-pointer border-b border-slate-100 dark:border-slate-800 p-2.5 px-3 flex justify-between items-center transition-colors ${
+                        className={`cursor-pointer border-b border-slate-100 p-3 px-4 flex justify-between items-center transition-colors ${
                           isHighlighted
                             ? "bg-blue-600 text-white font-extrabold shadow-sm"
                             : isSelected
-                              ? "bg-blue-50/80 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-extrabold"
-                              : "hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+                              ? "bg-blue-50 text-blue-800 font-extrabold"
+                              : "hover:bg-slate-50 text-slate-800"
                         }`}
                       >
-                        <span className="truncate pr-2 font-medium text-xs">{p.name}</span>
+                        <div className="min-w-0 pr-3">
+                          <div className={`text-xs font-bold truncate ${isHighlighted ? "text-white" : "text-slate-900"}`}>
+                            {p.name}
+                          </div>
+                          {price && (
+                            <div className={`text-[11px] font-mono mt-0.5 ${isHighlighted ? "text-blue-100" : "text-slate-500"}`}>
+                              Base Rate: ₹{price}
+                            </div>
+                          )}
+                        </div>
                         {code && (
-                          <span className={`text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded-md shrink-0 uppercase border ${
+                          <span className={`text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-lg shrink-0 uppercase border ${
                             isHighlighted
                               ? "bg-blue-700 text-white border-blue-500"
-                              : "text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
+                              : "text-slate-600 bg-slate-100 border-slate-200"
                           }`}>
                             {code}
                           </span>
