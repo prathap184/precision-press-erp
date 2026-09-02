@@ -1,7 +1,7 @@
 /**
  * ╔══════════════════════════════════════════════════════════════════════════════╗
  * ║        PRECISION PRESS ERP — PUSH ALL MASTERS TO TALLY PRIME (PORT 9000)     ║
- * ║        Company: Hindustan Enterprises 25-26                                 ║
+ * ║        Company: Dynamic (Website Testing Hindustan)                         ║
  * ╚══════════════════════════════════════════════════════════════════════════════╝
  */
 

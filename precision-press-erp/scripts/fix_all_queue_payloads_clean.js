@@ -48,7 +48,7 @@ async function fixAll() {
       })
       .eq('id', item.id);
 
-    console.log(`  ✅ Fixed [${item.syncType}] ${item.voucherId || item.id} → Company: "Hindustan Enterprises 25-26", Bank: "${payload.bankLedger}"`);
+    console.log(`  ✅ Fixed [${item.syncType}] ${item.voucherId || item.id} → Company: "${payload.tallyCompanyName}", Bank: "${payload.bankLedger}"`);
   }
 
   console.log('\n🎉 ALL 9 PAYLOADS ARE CLEAN & RESET TO PENDING IN SUPABASE!');

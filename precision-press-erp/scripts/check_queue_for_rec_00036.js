@@ -17,7 +17,7 @@ async function check() {
   if (!data || data.length === 0) {
     console.log('Not in queue yet! Enqueuing REC-00036 now...');
     const receiptPayload = {
-      tallyCompanyName: "Hindustan Enterprises 25-26",
+      tallyCompanyName: process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
       voucherType: "Rec1 B1 Bank",
       receiptEntryNumber: "REC-00036",
       voucherNumber: "REC-00036",
