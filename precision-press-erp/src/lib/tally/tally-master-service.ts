@@ -534,15 +534,43 @@ export async function executeMasterSync(type: MasterType) {
       }
     }
   } else if (type === 'items') {
+    // 1. Load all inventory categories into memory
+    const { data: existingCats } = await supabaseServer.from('inventory_category').select('id, name');
+    const catMap = new Map<string, string>();
+    for (const c of existingCats || []) {
+      if (c.name) catMap.set(cleanStr(c.name).toLowerCase(), c.id);
+    }
+
     for (const item of tallyItems) {
       const lookupName = cleanStr(item.name).toLowerCase();
       const existing = (item.tallyGuid && erpMapByGuid.get(item.tallyGuid)) || erpMapByName.get(lookupName);
+
+      // Resolve or auto-create category
+      let categoryId: string | null = null;
+      const groupKey = cleanStr(item.group).toLowerCase();
+      if (groupKey) {
+        if (catMap.has(groupKey)) {
+          categoryId = catMap.get(groupKey)!;
+        } else {
+          const { data: newCat } = await supabaseServer.from('inventory_category').insert({
+            organization_id: DEFAULT_ORG_ID,
+            name: item.group,
+            tally_stock_group: item.group,
+            description: `Tally Stock Group: ${item.group}`,
+          }).select('id').maybeSingle();
+          if (newCat?.id) {
+            categoryId = newCat.id;
+            catMap.set(groupKey, categoryId);
+          }
+        }
+      }
 
       const payload: any = {
         organization_id: DEFAULT_ORG_ID,
         name: item.name,
         tally_item_name: item.name,
         tally_stock_group: item.group,
+        category_id: categoryId,
         tally_uom: item.uom,
         unit_of_measure: item.uom,
         hsn_code: item.hsnCode,
@@ -559,6 +587,52 @@ export async function executeMasterSync(type: MasterType) {
         addedCount++;
       } else {
         await supabaseServer.from('inventory_item').update(payload).eq('id', existing.id);
+        updatedCount++;
+      }
+    }
+  } else if (type === 'accounts') {
+    // 2. Chart of Accounts code assignment
+    const { data: chartList } = await supabaseServer.from('chart_account').select('id, code, name, type');
+    const usedCodes = new Set<string>((chartList || []).map(c => String(c.code)));
+
+    for (const acc of tallyItems) {
+      const lookupName = cleanStr(acc.name).toLowerCase();
+      const existing = (acc.tallyGuid && erpMapByGuid.get(acc.tallyGuid)) || erpMapByName.get(lookupName);
+
+      if (!existing) {
+        // Determine type and code range
+        let accType = 'EXPENSE';
+        let baseCode = 5000;
+        const g = (acc.group || '').toLowerCase();
+        if (g.includes('asset') || g.includes('cash') || g.includes('bank')) { accType = 'ASSET'; baseCode = 1400; }
+        else if (g.includes('liability') || g.includes('duties') || g.includes('tax') || g.includes('payable')) { accType = 'LIABILITY'; baseCode = 2400; }
+        else if (g.includes('income') || g.includes('sales') || g.includes('revenue')) { accType = 'REVENUE'; baseCode = 4100; }
+
+        let newCode = baseCode;
+        while (usedCodes.has(String(newCode))) {
+          newCode += 10;
+        }
+        usedCodes.add(String(newCode));
+
+        await supabaseServer.from('chart_account').insert({
+          organization_id: DEFAULT_ORG_ID,
+          name: acc.name,
+          tally_ledger_name: acc.name,
+          tally_parent_group: acc.group,
+          tally_guid: acc.tallyGuid,
+          code: String(newCode),
+          type: accType,
+          opening_balance: acc.openingBalance || 0,
+          is_active: true,
+        });
+        addedCount++;
+      } else {
+        await supabaseServer.from('chart_account').update({
+          tally_ledger_name: acc.name,
+          tally_parent_group: acc.group,
+          tally_guid: acc.tallyGuid || existing.tally_guid,
+          opening_balance: acc.openingBalance || existing.opening_balance,
+        }).eq('id', existing.id);
         updatedCount++;
       }
     }
