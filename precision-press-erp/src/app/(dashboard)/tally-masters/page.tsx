@@ -56,6 +56,9 @@ export default function TallyMastersPage() {
   const [syncExecuting, setSyncExecuting] = useState<boolean>(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
 
+  // Verify confirmation dialog state
+  const [verifyConfirmOpen, setVerifyConfirmOpen] = useState<boolean>(false);
+
   // ─── Trigger Verification Audit ─────────────────────────────────────────────
   const runVerification = useCallback(async (tab: MasterType) => {
     setLoading(true);
@@ -171,7 +174,7 @@ export default function TallyMastersPage() {
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            onClick={() => runVerification(activeTab)}
+            onClick={() => setVerifyConfirmOpen(true)}
             disabled={loading}
             className="flex items-center gap-2 border-slate-300 shadow-sm"
           >
@@ -480,6 +483,42 @@ export default function TallyMastersPage() {
                 </Button>
               </>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Verify Confirmation Modal ────────────────────────────────────────── */}
+      <Dialog open={verifyConfirmOpen} onOpenChange={setVerifyConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="w-5 h-5 text-blue-600" />
+              Confirm Verification Audit
+            </DialogTitle>
+            <DialogDescription>
+              Run a live, field-by-field verification against Tally for <strong>{TABS.find(t => t.id === activeTab)?.label}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-2 text-xs text-slate-500 space-y-1 bg-slate-50 dark:bg-slate-900 p-3 rounded-md border">
+            <div>• Matches records primarily by <strong>Tally GUID</strong>.</div>
+            <div>• Cross-checks Names, Addresses, Phones, GSTIN, PAN, and Balances.</div>
+            <div>• Read-only audit: does not alter or overwrite any ERP database records.</div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setVerifyConfirmOpen(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                setVerifyConfirmOpen(false);
+                await runVerification(activeTab);
+              }}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5"
+            >
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Start Verification
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
