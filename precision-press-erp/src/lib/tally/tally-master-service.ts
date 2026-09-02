@@ -1,10 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 import http from 'http';
+import axios from 'axios';
 import { supabaseServer } from '@/lib/supabase-server';
 
 const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000002';
-const TALLY_HOST = process.env.TALLY_HOST || 'localhost';
+const TALLY_HOST = process.env.TALLY_HOST || '127.0.0.1';
 const TALLY_PORT = parseInt(process.env.TALLY_PORT || '9000', 10);
 const TARGET_COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
@@ -91,54 +92,58 @@ export function resolvePrinterCategory(groupName: string): string {
   return 'HO';
 }
 
-function fetchLiveTally(reportName: string): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const xmlPayload = `
-<ENVELOPE>
+async function fetchLiveTally(type: MasterType): Promise<string> {
+  let collectionName = 'LedgerCollection';
+  let tdlXml = '';
+
+  if (type === 'items') {
+    collectionName = 'StockItemCollection';
+    tdlXml = `<COLLECTION NAME="StockItemCollection" ISMODIFY="No">
+      <TYPE>StockItem</TYPE>
+      <FETCH>Name,Parent,Guid,AlterId,BaseUnits,GstHsnName,HsnCode,Rate,OpeningBalance</FETCH>
+     </COLLECTION>`;
+  } else {
+    collectionName = 'LedgerCollection';
+    tdlXml = `<COLLECTION NAME="LedgerCollection" ISMODIFY="No">
+      <TYPE>Ledger</TYPE>
+      <FETCH>Name,Parent,Guid,AlterId,PartyGSTIN,LedgerMobile,LedgerPhone,OpeningBalance,Pincode,LedgerStateName,Address</FETCH>
+     </COLLECTION>`;
+  }
+
+  const payload = `<ENVELOPE>
  <HEADER>
-  <TALLYREQUEST>Export Data</TALLYREQUEST>
+  <VERSION>1</VERSION>
+  <TALLYREQUEST>Export</TALLYREQUEST>
+  <TYPE>Collection</TYPE>
+  <ID>${collectionName}</ID>
  </HEADER>
  <BODY>
-  <EXPORTDATA>
-   <REQUESTDESC>
-    <REPORTNAME>${reportName}</REPORTNAME>
-    <STATICVARIABLES>
-     <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
-     <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-    </STATICVARIABLES>
-   </REQUESTDESC>
-  </EXPORTDATA>
+  <DESC>
+   <STATICVARIABLES>
+    <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
+    <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+   </STATICVARIABLES>
+   <TDL>
+    <TDLMESSAGE>
+     ${tdlXml}
+    </TDLMESSAGE>
+   </TDL>
+  </DESC>
  </BODY>
 </ENVELOPE>`;
 
-    const req = http.request({
-      hostname: TALLY_HOST,
-      port: TALLY_PORT,
-      path: '/',
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/xml; charset=utf-8',
-        'Content-Length': Buffer.byteLength(xmlPayload),
-      },
-      timeout: 3000,
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(data));
+  try {
+    const res = await axios.post(`http://${TALLY_HOST}:${TALLY_PORT}`, payload, {
+      headers: { 'Content-Type': 'application/xml; charset=utf-8' },
+      timeout: 60000,
     });
-
-    req.on('error', (err) => reject(err));
-    req.on('timeout', () => {
-      req.destroy();
-      reject(new Error('Tally Port 9000 timeout'));
-    });
-
-    req.write(xmlPayload);
-    req.end();
-  });
+    return res.data;
+  } catch (err: any) {
+    throw new Error(`Failed to query Tally Port 9000: ${err.message}. Ensure TallyPrime is open with ${TARGET_COMPANY} active.`);
+  }
 }
 
-// ─── Tally Data Loaders ────────────────────────────────────────────────────────
+// ─── Tally Data Loaders (100% Port 9000 Live) ───────────────────────────────
 
 const CUSTOMER_GROUPS = ['debtor', 'sundry debtor', 'customer', 'client', 'bo debtor', 'so debtor', 'uv debtor', 'psd debtor'];
 const SUPPLIER_GROUPS = ['creditor', 'sundry creditor', 'supplier', 'vendor', 'raw material'];
@@ -158,15 +163,10 @@ function isSupplierGroup(group: string) {
 }
 
 export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'suppliers'): Promise<any[]> {
-  let xml = '';
-  try {
-    xml = await fetchLiveTally('List of Accounts');
-    if (!xml || xml.includes('<LINEERROR>') || !xml.includes('<LEDGER')) {
-      throw new Error('Live Tally response invalid');
-    }
-  } catch {
-    const xmlPath = resolveXmlPath('listofledgers.xml');
-    xml = readXmlFile(xmlPath);
+  const xml = await fetchLiveTally(type);
+
+  if (!xml || !xml.includes('<LEDGER')) {
+    throw new Error(`Tally Port 9000 responded, but no ledgers were found for ${TARGET_COMPANY}.`);
   }
 
   if (!xml) return [];
@@ -179,19 +179,19 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
     const name = cleanStr(m[1]);
     const body = m[2];
 
-    const parentM = body.match(/<PARENT>([^<]*)<\/PARENT>/i);
+    const parentM = body.match(/<PARENT[^>]*>([^<]*)<\/PARENT>/i);
     const parentGroup = parentM ? cleanStr(parentM[1]) : '';
 
     if (type === 'customers' && !isCustomerGroup(parentGroup)) continue;
     if (type === 'suppliers' && !isSupplierGroup(parentGroup)) continue;
 
-    const guidM = body.match(/<GUID>([^<]*)<\/GUID>/i);
-    const alterM = body.match(/<ALTERID>([^<]*)<\/ALTERID>/i);
-    const gstinM = body.match(/<PARTYGSTIN>([^<]*)<\/PARTYGSTIN>/i) || body.match(/<GSTIN>([^<]*)<\/GSTIN>/i);
-    const mobileM = body.match(/<LEDGERMOBILE>([^<]*)<\/LEDGERMOBILE>/i) || body.match(/<LEDGERPHONE>([^<]*)<\/LEDGERPHONE>/i);
-    const balM = body.match(/<OPENINGBALANCE>([^<]*)<\/OPENINGBALANCE>/i);
-    const pinM = body.match(/<PINCODE>([^<]*)<\/PINCODE>/i);
-    const stateM = body.match(/<STATE>([^<]*)<\/STATE>/i) || body.match(/<OLDLEDSTATENAME>([^<]*)<\/OLDLEDSTATENAME>/i);
+    const guidM = body.match(/<GUID[^>]*>([^<]*)<\/GUID>/i);
+    const alterM = body.match(/<ALTERID[^>]*>([^<]*)<\/ALTERID>/i);
+    const gstinM = body.match(/<PARTYGSTIN[^>]*>([^<]*)<\/PARTYGSTIN>/i) || body.match(/<GSTIN[^>]*>([^<]*)<\/GSTIN>/i);
+    const mobileM = body.match(/<LEDGERMOBILE[^>]*>([^<]*)<\/LEDGERMOBILE>/i) || body.match(/<LEDGERPHONE[^>]*>([^<]*)<\/LEDGERPHONE>/i);
+    const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i);
+    const pinM = body.match(/<PINCODE[^>]*>([^<]*)<\/PINCODE>/i);
+    const stateM = body.match(/<LEDGERSTATENAME[^>]*>([^<]*)<\/LEDGERSTATENAME>/i) || body.match(/<STATE[^>]*>([^<]*)<\/STATE>/i) || body.match(/<OLDLEDSTATENAME[^>]*>([^<]*)<\/OLDLEDSTATENAME>/i);
 
     const guid = guidM ? cleanStr(guidM[1]) : null;
     const alterId = alterM ? parseInt(alterM[1].trim(), 10) || null : null;
@@ -206,7 +206,7 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
     }
 
     const addressLines: string[] = [];
-    const addrRegex = /<ADDRESS>([^<]*)<\/ADDRESS>/gi;
+    const addrRegex = /<ADDRESS[^>]*>([^<]*)<\/ADDRESS>/gi;
     let aM;
     while ((aM = addrRegex.exec(body)) !== null) {
       const line = cleanStr(aM[1]);
@@ -250,20 +250,11 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
 }
 
 export async function loadTallyStockItems(): Promise<any[]> {
-  let xml = '';
-  try {
-    xml = await fetchLiveTally('Stock Summary');
-    if (!xml || xml.includes('<LINEERROR>') || !xml.includes('<STOCKITEM')) {
-      throw new Error('Live Tally response did not contain stock items');
-    }
-  } catch {
-    const xmlPath = resolveXmlPath('stockitems.xml');
-    if (fs.existsSync(xmlPath)) {
-      xml = fs.readFileSync(xmlPath, 'utf8');
-    }
-  }
+  const xml = await fetchLiveTally('items');
 
-  if (!xml) return [];
+  if (!xml || !xml.includes('<STOCKITEM')) {
+    throw new Error(`Tally Port 9000 responded, but no stock items were found for ${TARGET_COMPANY}.`);
+  }
 
   const itemRegex = /<STOCKITEM\s+NAME="([^"]+)"[^>]*>([\s\S]*?)<\/STOCKITEM>/gi;
   const items: any[] = [];
@@ -273,12 +264,12 @@ export async function loadTallyStockItems(): Promise<any[]> {
     const name = cleanStr(m[1]);
     const body = m[2];
 
-    const parentM = body.match(/<PARENT>([^<]*)<\/PARENT>/i);
-    const uomM = body.match(/<BASEUNITS>([^<]*)<\/BASEUNITS>/i);
-    const hsnM = body.match(/<GSTHSNNAME>([^<]*)<\/GSTHSNNAME>/i) || body.match(/<HSNCODE>([^<]*)<\/HSNCODE>/i);
-    const rateM = body.match(/<RATE>([^<]*)<\/RATE>/i);
-    const balM = body.match(/<OPENINGBALANCE>([^<]*)<\/OPENINGBALANCE>/i);
-    const guidM = body.match(/<GUID>([^<]*)<\/GUID>/i);
+    const parentM = body.match(/<PARENT[^>]*>([^<]*)<\/PARENT>/i);
+    const uomM = body.match(/<BASEUNITS[^>]*>([^<]*)<\/BASEUNITS>/i);
+    const hsnM = body.match(/<GSTHSNNAME[^>]*>([^<]*)<\/GSTHSNNAME>/i) || body.match(/<HSNCODE[^>]*>([^<]*)<\/HSNCODE>/i);
+    const rateM = body.match(/<RATE[^>]*>([^<]*)<\/RATE>/i);
+    const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i);
+    const guidM = body.match(/<GUID[^>]*>([^<]*)<\/GUID>/i);
 
     const group = parentM ? cleanStr(parentM[1]) : 'General';
     const uom = uomM ? cleanStr(uomM[1]).toLowerCase() : 'n';
@@ -312,15 +303,10 @@ export async function loadTallyStockItems(): Promise<any[]> {
 }
 
 export async function loadTallyAccounts(): Promise<any[]> {
-  let xml = '';
-  try {
-    xml = await fetchLiveTally('List of Accounts');
-    if (!xml || xml.includes('<LINEERROR>') || !xml.includes('<LEDGER')) {
-      throw new Error('Live Tally response did not contain accounts');
-    }
-  } catch {
-    const xmlPath = resolveXmlPath('listofledgers.xml');
-    xml = readXmlFile(xmlPath);
+  const xml = await fetchLiveTally('accounts');
+
+  if (!xml || !xml.includes('<LEDGER')) {
+    throw new Error(`Tally Port 9000 responded, but no accounts were found for ${TARGET_COMPANY}.`);
   }
 
   if (!xml) return [];
@@ -333,14 +319,14 @@ export async function loadTallyAccounts(): Promise<any[]> {
     const name = cleanStr(m[1]);
     const body = m[2];
 
-    const parentM = body.match(/<PARENT>([^<]*)<\/PARENT>/i);
+    const parentM = body.match(/<PARENT[^>]*>([^<]*)<\/PARENT>/i);
     const parentGroup = parentM ? cleanStr(parentM[1]) : 'Primary';
 
     // Exclude customer and supplier debtors/creditors
     if (isCustomerGroup(parentGroup) || isSupplierGroup(parentGroup)) continue;
 
-    const guidM = body.match(/<GUID>([^<]*)<\/GUID>/i);
-    const balM = body.match(/<OPENINGBALANCE>([^<]*)<\/OPENINGBALANCE>/i);
+    const guidM = body.match(/<GUID[^>]*>([^<]*)<\/GUID>/i);
+    const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i);
 
     let balNum = 0;
     if (balM) {

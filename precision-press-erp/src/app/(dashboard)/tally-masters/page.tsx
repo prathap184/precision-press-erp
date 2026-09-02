@@ -277,8 +277,9 @@ export default function TallyMastersPage() {
                 : '...'}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-slate-500">
-            Source: TallyPrime Master Export
+          <CardContent className="text-xs text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse inline-block" />
+            Source: TallyPrime Live (Port 9000)
           </CardContent>
         </Card>
 
