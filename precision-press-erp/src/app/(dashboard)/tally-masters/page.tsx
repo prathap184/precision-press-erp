@@ -80,13 +80,12 @@ export default function TallyMastersPage() {
     }
   }, []);
 
-  // Run verification when switching tabs
+  // Reset audit state when switching tabs
   useEffect(() => {
     setAuditResult(null);
     setSearchQuery('');
     setFilterMode('ALL');
-    runVerification(activeTab);
-  }, [activeTab, runVerification]);
+  }, [activeTab]);
 
   // ─── Trigger Sync Preview (Opens Confirmation Modal) ─────────────────────────
   async function handleOpenSyncPreview() {
