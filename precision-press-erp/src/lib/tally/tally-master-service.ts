@@ -8,10 +8,18 @@ const TALLY_HOST = process.env.TALLY_HOST || 'localhost';
 const TALLY_PORT = parseInt(process.env.TALLY_PORT || '9000', 10);
 const TARGET_COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
-const ALL_LEDGERS_DIR = path.resolve(process.cwd(), 'tally_sync/all ledgers');
-const CUSTOMER_XML_PATH = path.join(ALL_LEDGERS_DIR, 'listofledgers.xml');
-const GROUPS_XML_PATH = path.join(ALL_LEDGERS_DIR, 'listofstockgroups.xml');
-const ITEMS_XML_PATH = path.join(ALL_LEDGERS_DIR, 'stockitems.xml');
+function resolveXmlPath(filename: string): string {
+  const candidates = [
+    path.join(process.cwd(), 'tally_sync/all ledgers', filename),
+    path.join(process.cwd(), 'precision-press-erp/tally_sync/all ledgers', filename),
+    path.resolve(__dirname, '../../../tally_sync/all ledgers', filename),
+    path.resolve(__dirname, '../../../../tally_sync/all ledgers', filename),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return path.join(process.cwd(), 'tally_sync/all ledgers', filename);
+}
 
 export type MasterType = 'customers' | 'suppliers' | 'items' | 'accounts';
 
@@ -143,10 +151,14 @@ function isSupplierGroup(group: string) {
 export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'suppliers'): Promise<any[]> {
   let xml = '';
   try {
-    xml = await fetchLiveTally('List of Ledgers');
+    xml = await fetchLiveTally('List of Accounts');
+    if (!xml || xml.includes('<LINEERROR>') || !xml.includes('<LEDGER')) {
+      throw new Error('Live Tally response invalid');
+    }
   } catch {
-    if (fs.existsSync(CUSTOMER_XML_PATH)) {
-      xml = fs.readFileSync(CUSTOMER_XML_PATH, 'utf8');
+    const xmlPath = resolveXmlPath('listofledgers.xml');
+    if (fs.existsSync(xmlPath)) {
+      xml = fs.readFileSync(xmlPath, 'utf8');
     }
   }
 
@@ -234,9 +246,13 @@ export async function loadTallyStockItems(): Promise<any[]> {
   let xml = '';
   try {
     xml = await fetchLiveTally('Stock Summary');
+    if (!xml || xml.includes('<LINEERROR>') || !xml.includes('<STOCKITEM')) {
+      throw new Error('Live Tally response did not contain stock items');
+    }
   } catch {
-    if (fs.existsSync(ITEMS_XML_PATH)) {
-      xml = fs.readFileSync(ITEMS_XML_PATH, 'utf8');
+    const xmlPath = resolveXmlPath('stockitems.xml');
+    if (fs.existsSync(xmlPath)) {
+      xml = fs.readFileSync(xmlPath, 'utf8');
     }
   }
 
@@ -291,10 +307,14 @@ export async function loadTallyStockItems(): Promise<any[]> {
 export async function loadTallyAccounts(): Promise<any[]> {
   let xml = '';
   try {
-    xml = await fetchLiveTally('List of Ledgers');
+    xml = await fetchLiveTally('List of Accounts');
+    if (!xml || xml.includes('<LINEERROR>') || !xml.includes('<LEDGER')) {
+      throw new Error('Live Tally response did not contain accounts');
+    }
   } catch {
-    if (fs.existsSync(CUSTOMER_XML_PATH)) {
-      xml = fs.readFileSync(CUSTOMER_XML_PATH, 'utf8');
+    const xmlPath = resolveXmlPath('listofledgers.xml');
+    if (fs.existsSync(xmlPath)) {
+      xml = fs.readFileSync(xmlPath, 'utf8');
     }
   }
 
