@@ -36,6 +36,7 @@
     "@types/jsbarcode": "^3.11.4",
     "@types/nodemailer": "^8.0.1",
     "@upstash/redis": "^1.38.0",
+    "axios": "^1.7.9",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.10.0",

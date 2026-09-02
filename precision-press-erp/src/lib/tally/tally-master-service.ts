@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { supabaseServer } from '@/lib/supabase-server';
 
 const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000002';
@@ -108,11 +107,16 @@ async function fetchLiveTally(type: MasterType): Promise<string> {
 </ENVELOPE>`;
 
   try {
-    const res = await axios.post(`http://${TALLY_HOST}:${TALLY_PORT}`, payload, {
+    const res = await fetch(`http://${TALLY_HOST}:${TALLY_PORT}`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/xml; charset=utf-8' },
-      timeout: 60000,
+      body: payload,
+      signal: AbortSignal.timeout(60000),
     });
-    return res.data;
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} ${res.statusText}`);
+    }
+    return await res.text();
   } catch (err: any) {
     throw new Error(`Failed to query Tally Port 9000: ${err.message}. Ensure TallyPrime is open with ${TARGET_COMPANY} active.`);
   }
