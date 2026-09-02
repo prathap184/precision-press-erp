@@ -33,10 +33,10 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { id: 'customers', label: 'Customer Ledgers', icon: <Users className="w-4 h-4 mr-2" />, countLabel: '1,260 Debtors' },
-  { id: 'suppliers', label: 'Supplier Ledgers', icon: <Building2 className="w-4 h-4 mr-2" />, countLabel: '133 Creditors' },
-  { id: 'items', label: 'Stock Items & Groups', icon: <Package className="w-4 h-4 mr-2" />, countLabel: '582 Items / 221 Groups' },
-  { id: 'accounts', label: 'Bank & GL Accounts', icon: <Landmark className="w-4 h-4 mr-2" />, countLabel: '140+ Ledgers' },
+  { id: 'customers', label: 'Customer Ledgers', icon: <Users className="w-4 h-4 mr-2" />, countLabel: '4,167 Debtors' },
+  { id: 'suppliers', label: 'Supplier Ledgers', icon: <Building2 className="w-4 h-4 mr-2" />, countLabel: '667 Creditors' },
+  { id: 'items', label: 'Stock Items & Groups', icon: <Package className="w-4 h-4 mr-2" />, countLabel: '1,800 Items / 184 Groups' },
+  { id: 'accounts', label: 'Bank & GL Accounts', icon: <Landmark className="w-4 h-4 mr-2" />, countLabel: '351 Ledgers' },
 ];
 
 export default function TallyMastersPage() {

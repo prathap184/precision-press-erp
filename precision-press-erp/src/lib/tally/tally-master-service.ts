@@ -21,6 +21,15 @@ function resolveXmlPath(filename: string): string {
   return path.join(process.cwd(), 'tally_sync/all ledgers', filename);
 }
 
+function readXmlFile(filePath: string): string {
+  if (!fs.existsSync(filePath)) return '';
+  const buf = fs.readFileSync(filePath);
+  if (buf.length >= 2 && buf[0] === 0xFF && buf[1] === 0xFE) {
+    return buf.toString('utf16le');
+  }
+  return buf.toString('utf8');
+}
+
 export type MasterType = 'customers' | 'suppliers' | 'items' | 'accounts';
 
 // ─── Helpers & Normalization ──────────────────────────────────────────────────
@@ -157,9 +166,7 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
     }
   } catch {
     const xmlPath = resolveXmlPath('listofledgers.xml');
-    if (fs.existsSync(xmlPath)) {
-      xml = fs.readFileSync(xmlPath, 'utf8');
-    }
+    xml = readXmlFile(xmlPath);
   }
 
   if (!xml) return [];
@@ -313,9 +320,7 @@ export async function loadTallyAccounts(): Promise<any[]> {
     }
   } catch {
     const xmlPath = resolveXmlPath('listofledgers.xml');
-    if (fs.existsSync(xmlPath)) {
-      xml = fs.readFileSync(xmlPath, 'utf8');
-    }
+    xml = readXmlFile(xmlPath);
   }
 
   if (!xml) return [];
