@@ -154,41 +154,22 @@ export default function TallyMastersPage() {
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* ─── Header ───────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
-              Tally Masters Synchronization & Verification Hub
-            </h1>
-            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400">
-              Website Testing Hindustan
-            </Badge>
+      {/* ─── Page Header ───────────────────────────────────────────────────────────── */}
+      <div className="border-b pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                Tally Masters Synchronization & Verification Hub
+              </h1>
+              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-400 text-xs font-semibold">
+                Website Testing Hindustan
+              </Badge>
+            </div>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+              Select a master module below to run live verification and synchronization against TallyPrime.
+            </p>
           </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Bi-directional synchronization, multi-line address normalization, and field-by-field verification against TallyPrime.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setVerifyConfirmOpen(true)}
-            disabled={loading}
-            className="flex items-center gap-2 border-slate-300 shadow-sm"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Verify Sync
-          </Button>
-
-          <Button
-            onClick={handleOpenSyncPreview}
-            disabled={loading || syncPreviewLoading}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Sync Master
-          </Button>
         </div>
       </div>
 
@@ -200,20 +181,64 @@ export default function TallyMastersPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center px-5 py-3 text-sm font-medium border-b-2 transition-all ${
                 isActive
-                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 font-semibold'
+                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 font-semibold bg-blue-50/40 dark:bg-blue-950/20'
                   : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300 dark:text-slate-400'
               }`}
             >
               {tab.icon}
               {tab.label}
-              <Badge variant="secondary" className="ml-2 text-xs font-normal">
+              <Badge variant={isActive ? 'default' : 'secondary'} className="ml-2.5 text-xs font-normal">
                 {tab.countLabel}
               </Badge>
             </button>
           );
         })}
+      </div>
+
+      {/* ─── Dedicated Section Header with Category-Specific Action Buttons ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 rounded-lg">
+            {TABS.find(t => t.id === activeTab)?.icon}
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              {TABS.find(t => t.id === activeTab)?.label}
+              <span className="text-xs font-normal text-slate-500">
+                ({TABS.find(t => t.id === activeTab)?.countLabel})
+              </span>
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {activeTab === 'customers' && 'Syncs & verifies 1,260 Sundry Debtors, multi-line addresses, mobile numbers, GSTIN, and branch categories.'}
+              {activeTab === 'suppliers' && 'Syncs & verifies 133 Sundry Creditors, payment terms, GSTIN, and vendor balances.'}
+              {activeTab === 'items' && 'Syncs & verifies 582 Stock Items across 221 Stock Groups with HSN codes, UOM (sqft/N), and Godown B1.'}
+              {activeTab === 'accounts' && 'Syncs & verifies Bank Ledgers (Federal 2091, Cash B2), Tax Accounts (CGST/SGST/IGST), and GL codes.'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <Button
+            variant="outline"
+            onClick={() => setVerifyConfirmOpen(true)}
+            disabled={loading}
+            className="flex items-center gap-2 border-slate-300 dark:border-slate-700 shadow-sm text-xs font-medium h-9"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Verify {TABS.find(t => t.id === activeTab)?.label.split(' ')[0]}
+          </Button>
+
+          <Button
+            onClick={handleOpenSyncPreview}
+            disabled={loading || syncPreviewLoading}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm text-xs font-medium h-9"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Sync {TABS.find(t => t.id === activeTab)?.label.split(' ')[0]}
+          </Button>
+        </div>
       </div>
 
       {/* ─── Scorecard & Status Banner ───────────────────────────────────────── */}
