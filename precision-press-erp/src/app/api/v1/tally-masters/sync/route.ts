@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { previewMasterSync, executeMasterSync, MasterType } from '@/lib/tally/tally-master-service';
+import { previewMasterSync, executeMasterSync, getMasterSummaryCounts, MasterType } from '@/lib/tally/tally-master-service';
+
+export async function GET() {
+  try {
+    const summary = await getMasterSummaryCounts();
+    return NextResponse.json({ success: true, summary });
+  } catch (err: any) {
+    console.error('[tally-masters/summary] Error:', err);
+    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {

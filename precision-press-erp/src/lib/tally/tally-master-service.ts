@@ -780,3 +780,26 @@ export async function verifyMasterSync(type: MasterType) {
     results: results.slice(0, 300), // top 300 for snappy UI
   };
 }
+
+// ─── Live Dynamic Summary Counts ──────────────────────────────────────────────
+
+export async function getMasterSummaryCounts() {
+  const [cust, supp, items, accs] = await Promise.all([
+    loadTallyCustomersOrSuppliers('customers'),
+    loadTallyCustomersOrSuppliers('suppliers'),
+    loadTallyStockItems(),
+    loadTallyAccounts(),
+  ]);
+
+  const { count: erpCust } = await supabaseServer.from('contact').select('*', { count: 'exact', head: true }).eq('type', 'customer');
+  const { count: erpSupp } = await supabaseServer.from('contact').select('*', { count: 'exact', head: true }).eq('type', 'supplier');
+  const { count: erpItems } = await supabaseServer.from('inventory_item').select('*', { count: 'exact', head: true });
+  const { count: erpAccs } = await supabaseServer.from('chart_account').select('*', { count: 'exact', head: true });
+
+  return {
+    customers: { tally: cust.length, erp: erpCust || 0 },
+    suppliers: { tally: supp.length, erp: erpSupp || 0 },
+    items: { tally: items.length, erp: erpItems || 0 },
+    accounts: { tally: accs.length, erp: erpAccs || 0 },
+  };
+}

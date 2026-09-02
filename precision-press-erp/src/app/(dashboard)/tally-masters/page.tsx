@@ -29,14 +29,14 @@ interface TabConfig {
   id: MasterType;
   label: string;
   icon: React.ReactNode;
-  countLabel: string;
+  unit: string;
 }
 
 const TABS: TabConfig[] = [
-  { id: 'customers', label: 'Customer Ledgers', icon: <Users className="w-4 h-4 mr-2" />, countLabel: '4,167 Debtors' },
-  { id: 'suppliers', label: 'Supplier Ledgers', icon: <Building2 className="w-4 h-4 mr-2" />, countLabel: '667 Creditors' },
-  { id: 'items', label: 'Stock Items & Groups', icon: <Package className="w-4 h-4 mr-2" />, countLabel: '1,800 Items / 184 Groups' },
-  { id: 'accounts', label: 'Bank & GL Accounts', icon: <Landmark className="w-4 h-4 mr-2" />, countLabel: '351 Ledgers' },
+  { id: 'customers', label: 'Customer Ledgers', icon: <Users className="w-4 h-4 mr-2" />, unit: 'Debtors' },
+  { id: 'suppliers', label: 'Supplier Ledgers', icon: <Building2 className="w-4 h-4 mr-2" />, unit: 'Creditors' },
+  { id: 'items', label: 'Stock Items & Groups', icon: <Package className="w-4 h-4 mr-2" />, unit: 'Items' },
+  { id: 'accounts', label: 'Bank & GL Accounts', icon: <Landmark className="w-4 h-4 mr-2" />, unit: 'Ledgers' },
 ];
 
 export default function TallyMastersPage() {
@@ -45,9 +45,28 @@ export default function TallyMastersPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterMode, setFilterMode] = useState<'ALL' | 'MATCHED' | 'DISCREPANCY'>('ALL');
 
+  // Dynamic summary counts from live API
+  const [summary, setSummary] = useState<any | null>(null);
+
   // Stats & Verification state
   const [auditResult, setAuditResult] = useState<any | null>(null);
   const [lastVerifiedTime, setLastVerifiedTime] = useState<string | null>(null);
+
+  // Load dynamic counts on mount
+  useEffect(() => {
+    async function loadSummary() {
+      try {
+        const res = await fetch('/api/v1/tally-masters/sync');
+        const data = await res.json();
+        if (data.success && data.summary) {
+          setSummary(data.summary);
+        }
+      } catch (err) {
+        console.error('Failed to load summary counts:', err);
+      }
+    }
+    loadSummary();
+  }, []);
 
   // Sync confirmation dialog state
   const [syncPreviewOpen, setSyncPreviewOpen] = useState<boolean>(false);
@@ -190,7 +209,9 @@ export default function TallyMastersPage() {
               {tab.icon}
               {tab.label}
               <Badge variant={isActive ? 'default' : 'secondary'} className="ml-2.5 text-xs font-normal">
-                {tab.countLabel}
+                {summary?.[tab.id]?.tally != null
+                  ? `${summary[tab.id].tally.toLocaleString()} ${tab.unit}`
+                  : 'Loading...'}
               </Badge>
             </button>
           );
@@ -206,15 +227,17 @@ export default function TallyMastersPage() {
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               {TABS.find(t => t.id === activeTab)?.label}
-              <span className="text-xs font-normal text-slate-500">
-                ({TABS.find(t => t.id === activeTab)?.countLabel})
-              </span>
+              {summary?.[activeTab]?.tally != null && (
+                <span className="text-xs font-normal text-slate-500">
+                  ({summary[activeTab].tally.toLocaleString()} {TABS.find(t => t.id === activeTab)?.unit})
+                </span>
+              )}
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {activeTab === 'customers' && 'Syncs & verifies 1,260 Sundry Debtors, multi-line addresses, mobile numbers, GSTIN, and branch categories.'}
-              {activeTab === 'suppliers' && 'Syncs & verifies 133 Sundry Creditors, payment terms, GSTIN, and vendor balances.'}
-              {activeTab === 'items' && 'Syncs & verifies 582 Stock Items across 221 Stock Groups with HSN codes, UOM (sqft/N), and Godown B1.'}
-              {activeTab === 'accounts' && 'Syncs & verifies Bank Ledgers (Federal 2091, Cash B2), Tax Accounts (CGST/SGST/IGST), and GL codes.'}
+              {activeTab === 'customers' && 'Syncs & verifies Sundry Debtors, multi-line addresses, mobile numbers, GSTIN, and branch categories.'}
+              {activeTab === 'suppliers' && 'Syncs & verifies Sundry Creditors, payment terms, GSTIN, and vendor balances.'}
+              {activeTab === 'items' && 'Syncs & verifies Stock Items across Stock Groups with HSN codes, UOM, and Godown locations.'}
+              {activeTab === 'accounts' && 'Syncs & verifies Bank Ledgers, Tax Accounts (CGST/SGST/IGST), and GL codes.'}
             </p>
           </div>
         </div>
@@ -247,7 +270,11 @@ export default function TallyMastersPage() {
           <CardHeader className="pb-2">
             <CardDescription className="text-xs uppercase font-semibold">Tally Total Records</CardDescription>
             <CardTitle className="text-2xl font-bold">
-              {auditResult ? auditResult.totalTally.toLocaleString() : '...'}
+              {auditResult
+                ? auditResult.totalTally.toLocaleString()
+                : summary?.[activeTab]?.tally != null
+                ? summary[activeTab].tally.toLocaleString()
+                : '...'}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-slate-500">
@@ -259,7 +286,11 @@ export default function TallyMastersPage() {
           <CardHeader className="pb-2">
             <CardDescription className="text-xs uppercase font-semibold">ERP Database Records</CardDescription>
             <CardTitle className="text-2xl font-bold">
-              {auditResult ? auditResult.totalErp.toLocaleString() : '...'}
+              {auditResult
+                ? auditResult.totalErp.toLocaleString()
+                : summary?.[activeTab]?.erp != null
+                ? summary[activeTab].erp.toLocaleString()
+                : '...'}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-slate-500">
