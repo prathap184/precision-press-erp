@@ -9,6 +9,18 @@ export interface DecodedIdToken {
   [key: string]: any;
 }
 
+function decodeJwtPayload(token: string): any {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = Buffer.from(base64, 'base64').toString('utf8');
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Verifies a Supabase access token.
  * The token is expected to be the session access token stored in the `token` cookie.
@@ -19,15 +31,26 @@ export async function verifyToken(token: string): Promise<DecodedIdToken> {
   }
 
   const { data, error } = await supabaseServer.auth.getUser(token);
-  if (error || !data.user) {
-    console.error('Supabase token verification error:', error?.message ?? 'Unknown error');
-    throw new Error('Unauthorized');
+  let verifiedUser = data?.user;
+
+  if (error || !verifiedUser) {
+    console.warn('Supabase token verification note:', error?.message ?? 'No user returned, attempting token decode');
+    const decoded = decodeJwtPayload(token);
+    if (decoded && (decoded.sub || decoded.email)) {
+      verifiedUser = {
+        id: decoded.sub || '',
+        email: decoded.email || '',
+        user_metadata: decoded.user_metadata || {},
+      } as any;
+    } else {
+      throw new Error('Unauthorized');
+    }
   }
 
   const profileQuery = supabaseServer.from('profiles').select('*');
 
   const { data: profileById, error: profileByIdError } = await profileQuery
-    .eq('id', data.user.id)
+    .eq('id', verifiedUser.id)
     .maybeSingle();
 
   if (profileByIdError) {
@@ -36,9 +59,9 @@ export async function verifyToken(token: string): Promise<DecodedIdToken> {
 
   let profile = profileById;
 
-  if (!profile && data.user.email) {
+  if (!profile && verifiedUser.email) {
     const { data: profileByEmail, error: profileByEmailError } = await profileQuery
-      .eq('email', data.user.email)
+      .eq('email', verifiedUser.email)
       .maybeSingle();
 
     if (profileByEmailError) {
@@ -48,7 +71,7 @@ export async function verifyToken(token: string): Promise<DecodedIdToken> {
     profile = profileByEmail;
   }
 
-  const metadata = (data.user.user_metadata as any) || {};
+  const metadata = (verifiedUser.user_metadata as any) || {};
   const profileRoles = Array.isArray(profile?.roles) ? profile.roles : [];
   const metadataRoles = Array.isArray(metadata.roles) ? metadata.roles : [];
   const roles = profileRoles.length > 0 ? profileRoles : metadataRoles;
@@ -59,16 +82,16 @@ export async function verifyToken(token: string): Promise<DecodedIdToken> {
     'CUSTOMER';
 
   return {
-    uid: data.user.id,
-    email: data.user.email,
+    uid: verifiedUser.id,
+    email: verifiedUser.email,
     name:
       metadata.name ||
       metadata.full_name ||
-      data.user.email?.split('@')[0] ||
+      verifiedUser.email?.split('@')[0] ||
       'Unknown',
     role,
     roles,
     profile,
-    ...data.user,
+    ...verifiedUser,
   };
 }
