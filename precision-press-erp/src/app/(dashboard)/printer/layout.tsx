@@ -7,7 +7,7 @@ export default function PrinterLayout({ children }: { children: React.ReactNode 
   const isDetailPage = pathname?.startsWith('/printer/orders');
 
   return (
-    <RoleGuard allowedRoles={['PRINTER', 'ADMIN']}>
+    <RoleGuard allowedRoles={['PRINTER', 'ADMIN', 'SUPER_ADMIN']} redirectTo="/staff">
       <div className='w-full min-h-full'>
         {!isDetailPage && (
           <header className='mb-8 px-8 pt-8'>

@@ -16,6 +16,8 @@ interface WorkflowPipelineVisualProps {
   filterByRoles?: boolean;
   allowNavigation?: boolean;
   deliveryChoice?: string;
+  /** When set, ONLY steps whose role is in this list are clickable. All others are locked non-clickable divs. Used for role-scoped global orders pages. */
+  lockedToRoles?: StaffRole[];
 }
 
 const ROLE_DASHBOARD_URL: Partial<Record<StaffRole, string>> = {
@@ -55,6 +57,7 @@ export function WorkflowPipelineVisual({
   filterByRoles = false,
   allowNavigation = false,
   deliveryChoice,
+  lockedToRoles,
 }: WorkflowPipelineVisualProps): JSX.Element {
   let roles: StaffRole[] = [];
   let role: string | undefined;
@@ -111,6 +114,10 @@ export function WorkflowPipelineVisual({
   }
 
   const canNavigateToStage = (step: typeof stepsToRender[0]): boolean => {
+    // If lockedToRoles is provided, ONLY allow clicking steps that match the viewer's role(s)
+    if (lockedToRoles && lockedToRoles.length > 0) {
+      return lockedToRoles.includes(step.role as StaffRole);
+    }
     const isAdmin = roles.includes('SUPER_ADMIN' as StaffRole) || roles.includes('ADMIN' as StaffRole);
     if (step.isCurrent) {
       return isAdmin || effectiveRoles.includes(step.role);

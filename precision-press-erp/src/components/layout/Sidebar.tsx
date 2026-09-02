@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
-import { NAVIGATION_ITEMS, NavItem } from '@/config/navigation';
+import { NAVIGATION_ITEMS, NavItem, getRoleGlobalOrdersUrl } from '@/config/navigation';
 import { Printer, Plus, ArrowLeft, LayoutDashboard, Users, TrendingUp, ShoppingCart, BookOpen, Receipt, FolderKanban, UserRound, Package, Wallet, Layers, Building2, FileText, BarChart3, ChevronLeft, Settings, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { useEffectiveUser } from '@/lib/impersonation-context';
@@ -71,20 +71,26 @@ const DUBBL_NAV = [
 function AccountingSidebar({ isExpanded, isHovered }: { isExpanded: boolean; isHovered: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { profile } = useAuth();
+  const workspaceParam = searchParams.get('workspace');
   const visualExpanded = isExpanded || isHovered;
 
-  // G key → Global Orders
+  const globalOrdersHref = getRoleGlobalOrdersUrl(profile?.role, workspaceParam);
+
+  // G key → Global Orders for respective role
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement)?.isContentEditable) return;
       if (e.key === 'g' || e.key === 'G') {
-        router.push('/admin/orders');
+        e.preventDefault();
+        router.push(globalOrdersHref);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [router]);
+  }, [router, globalOrdersHref]);
 
   return (
     <aside
@@ -117,7 +123,7 @@ function AccountingSidebar({ isExpanded, isHovered }: { isExpanded: boolean; isH
       {/* BACK TO ERP BUTTON */}
       <div className={cn('pb-3 flex-shrink-0', visualExpanded ? 'px-3' : 'px-2')}>
         <Link
-          href="/admin/orders"
+          href={globalOrdersHref}
           title={!visualExpanded ? 'Back to Global Orders (G)' : undefined}
           className={cn(
             'flex items-center gap-2.5 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-[0.15em] transition-all overflow-hidden whitespace-nowrap border group relative',
@@ -208,6 +214,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
   const visualExpanded = isExpanded || isHovered;
 
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { profile, roles: liveRoles, isAdmin } = useAuth();
 
@@ -226,22 +233,42 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
   }
 
   const primaryRole = profile?.role && profile.role !== 'CUSTOMER' ? profile.role as StaffRole : null;
-  const isAdminUser = primaryRole === 'ADMIN' || primaryRole === 'SUPER_ADMIN' || profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN';
+  const isRealAdmin = primaryRole === 'ADMIN' || primaryRole === 'SUPER_ADMIN' || profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN' || liveRoles.includes('ADMIN') || liveRoles.includes('SUPER_ADMIN');
+  const isAdminUser = isRealAdmin;
 
-  // For Admin users, keep sidebar fixed to '/admin' unless an explicit workspaceParam is provided
-  const lockedModule = isAdminUser
-    ? (workspaceParam ? `/${workspaceParam}` : '/admin')
-    : (activeModule || (primaryRole ? `/${primaryRole.toLowerCase()}` : null));
+  // If visiting another role module (e.g. /printer, /manager), show that role's actual dashboard items
+  const lockedModule = activeModule || (isAdminUser ? '/admin' : (primaryRole ? `/${primaryRole.toLowerCase()}` : null));
 
-  const sharedWorkspaceLinks = new Set(['/admin/orders', '/settings']);
-  const originalDashboardRoute = profile?.role && profile.role !== 'CUSTOMER'
-    ? MODULE_ROUTES[profile.role as StaffRole]
-    : null;
-  const originalDashboardLabel = profile?.role && profile.role !== 'CUSTOMER'
-    ? ROLE_META[profile.role as StaffRole]?.label ?? profile.role
-    : null;
+  // Global G shortcut: press 'g' or 'G' to go to role's respective global orders page
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || (e.target as HTMLElement)?.isContentEditable) return;
+      if (e.key === 'g' || e.key === 'G') {
+        e.preventDefault();
+        const targetUrl = getRoleGlobalOrdersUrl(lockedModule || primaryRole, workspaceParam);
+        router.push(targetUrl);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [router, lockedModule, primaryRole, workspaceParam]);
+
+  const sharedWorkspaceLinks = new Set(['/settings']);
+  const originalDashboardRoute = isAdminUser
+    ? '/admin/orders'
+    : (primaryRole ? (MODULE_ROUTES[primaryRole] || '/staff') : null);
+
+  const originalDashboardLabel = isAdminUser
+    ? 'Admin'
+    : (primaryRole ? (ROLE_META[primaryRole]?.label ?? primaryRole) : null);
+
   const allowSharedLinks = lockedModule !== '/acdema';
-  const showRoleReset = Boolean(!isAdminUser && activeModule && originalDashboardRoute && originalDashboardRoute !== activeModule);
+  const isViewingHome = isAdminUser
+    ? (pathname.startsWith('/admin') && !workspaceParam)
+    : (originalDashboardRoute && pathname.startsWith(originalDashboardRoute));
+
+  const showRoleReset = Boolean(!isViewingHome && originalDashboardRoute && originalDashboardRoute !== activeModule);
 
   const filteredItems = NAVIGATION_ITEMS.filter(item => {
     // Customer-mode or impersonating-customer: use single effectiveRole
@@ -284,17 +311,18 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
 
     const effectiveItemRoles = [...item.roles];
     return effectiveItemRoles.some(r => liveRoles.includes(r as StaffRole));
-  }).filter((item, index, self) =>
-    index === self.findIndex(t => t.label === item.label && t.href === item.href)
-  );
+  }).filter((item, index, self) => {
+    const isFirstSameHref = index === self.findIndex(t => t.label === item.label && t.href === item.href);
+    if (!isFirstSameHref) return false;
+    // Strict Global Orders deduplication: ensure only ONE Global Orders link appears in the sidebar!
+    if (item.label.includes('Global Orders')) {
+      const firstGlobalIndex = self.findIndex(t => t.label.includes('Global Orders'));
+      return index === firstGlobalIndex;
+    }
+    return true;
+  });
 
-  const mainItemsRaw = filteredItems.filter(i => i.group === 'main');
-  const globalOrdersIndex = mainItemsRaw.findIndex(i => i.label === 'Global Orders');
-  const mainItems = [...mainItemsRaw];
-  if (globalOrdersIndex > -1) {
-    const [globalOrdersItem] = mainItems.splice(globalOrdersIndex, 1);
-    mainItems.unshift(globalOrdersItem);
-  }
+  const mainItems = filteredItems.filter(i => i.group === 'main');
 
   const accountItems = filteredItems.filter(i => i.group === 'account');
   const bottomItems  = filteredItems.filter(i => i.group === 'bottom');

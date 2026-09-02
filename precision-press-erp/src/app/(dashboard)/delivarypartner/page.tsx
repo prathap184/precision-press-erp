@@ -31,7 +31,7 @@ export default function DeliveryPartnerDashboard() {
   };
 
   return (
-    <RoleGuard allowedRoles={['DELIVERY', 'ADMIN', 'MANAGER']} redirectTo="/delivarypartner">
+    <RoleGuard allowedRoles={['DELIVERY', 'ADMIN', 'SUPER_ADMIN']} redirectTo="/staff">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         <StaffRoleSwitcher userRoles={(profile?.roles as StaffRole[]) || []} />
 

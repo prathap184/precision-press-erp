@@ -13,7 +13,7 @@ interface StaffRoleSwitcherProps {
 }
 
 export function StaffRoleSwitcher({ userRoles: propRoles }: StaffRoleSwitcherProps) {
-  const { profile } = useAuth();
+  const { profile, switchActiveRole } = useAuth();
   const pathname = usePathname();
 
   // Combine original profile role with assigned roles
@@ -54,6 +54,11 @@ export function StaffRoleSwitcher({ userRoles: propRoles }: StaffRoleSwitcherPro
               <Link
                 key={role.id}
                 href={role.route}
+                onClick={() => {
+                  if (profile?.role !== 'ADMIN' && profile?.role !== 'SUPER_ADMIN') {
+                    switchActiveRole?.(role.id);
+                  }
+                }}
                 className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                   isActive
                     ? 'bg-slate-900 text-white shadow-lg shadow-slate-200'

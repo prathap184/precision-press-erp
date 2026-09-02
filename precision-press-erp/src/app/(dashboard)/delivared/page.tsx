@@ -7,7 +7,7 @@ import { DeliveryDeliveredOrders } from '@/components/dashboard/DeliveryDelivere
 
 export default function DeliveredPage() {
   return (
-    <RoleGuard allowedRoles={['DELIVERY', 'ADMIN', 'MANAGER']} redirectTo="/delivarypartner">
+    <RoleGuard allowedRoles={['DELIVERY', 'ADMIN', 'SUPER_ADMIN']} redirectTo="/staff">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
           <div>

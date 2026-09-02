@@ -545,7 +545,7 @@ export default function DesignerDashboard() {
   };
 
   return (
-    <RoleGuard allowedRoles={['ADMIN', 'MANAGER', 'DESIGNER', 'ACDEMA']}>
+    <RoleGuard allowedRoles={['DESIGNER', 'ADMIN', 'SUPER_ADMIN']} redirectTo="/staff">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <WorkflowTaskQueue 
           role="DESIGNER" 

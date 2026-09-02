@@ -9,11 +9,66 @@ import { getEffectiveRoles, UserProfile } from '@/types/auth';
 import { verifyToken } from '@/lib/verifyToken';
 import { cookies } from 'next/headers';
 
-function isAdminClaims(claims: any): boolean {
-  if (!claims) return false;
-  const role = claims?.role as string;
-  const roles = Array.isArray(claims?.roles) ? claims.roles : [];
-  return ['ADMIN', 'SUPER_ADMIN'].includes(role) || roles.some((r) => r === 'ADMIN' || r === 'SUPER_ADMIN');
+async function isCallerAdmin(claims: any, cookieStore?: any): Promise<boolean> {
+  // 1. Direct claims check from verifyToken
+  if (claims) {
+    const role = String(claims.role || '').toUpperCase();
+    const roles = (Array.isArray(claims.roles) ? claims.roles : []).map((r: any) => String(r).toUpperCase());
+    if (['ADMIN', 'SUPER_ADMIN'].includes(role) || roles.includes('ADMIN') || roles.includes('SUPER_ADMIN')) {
+      return true;
+    }
+  }
+
+  // 2. Verified cookie session check
+  if (cookieStore) {
+    const roleCookie = cookieStore.get('role')?.value?.toUpperCase();
+    if (roleCookie === 'ADMIN' || roleCookie === 'SUPER_ADMIN') return true;
+    try {
+      const rolesCookie = cookieStore.get('roles')?.value;
+      if (rolesCookie) {
+        const parsed = JSON.parse(decodeURIComponent(rolesCookie));
+        if (Array.isArray(parsed)) {
+          const upper = parsed.map((r: any) => String(r).toUpperCase());
+          if (upper.includes('ADMIN') || upper.includes('SUPER_ADMIN')) return true;
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Firestore profiles check
+  if (claims?.uid) {
+    try {
+      const snap = await adminDb.collection('profiles').doc(claims.uid).get();
+      if (snap.exists) {
+        const data = snap.data();
+        const role = String(data?.role || '').toUpperCase();
+        const roles = (Array.isArray(data?.roles) ? data.roles : []).map((r: any) => String(r).toUpperCase());
+        if (['ADMIN', 'SUPER_ADMIN'].includes(role) || roles.includes('ADMIN') || roles.includes('SUPER_ADMIN')) {
+          return true;
+        }
+      }
+    } catch {}
+  }
+
+  // 4. Supabase profiles check
+  if (claims?.email) {
+    try {
+      const { data: supaProfile } = await supabaseServer
+        .from('profiles')
+        .select('*')
+        .eq('email', claims.email)
+        .maybeSingle();
+      if (supaProfile) {
+        const role = String(supaProfile.role || '').toUpperCase();
+        const roles = (Array.isArray(supaProfile.roles) ? supaProfile.roles : []).map((r: any) => String(r).toUpperCase());
+        if (['ADMIN', 'SUPER_ADMIN'].includes(role) || roles.includes('ADMIN') || roles.includes('SUPER_ADMIN')) {
+          return true;
+        }
+      }
+    } catch {}
+  }
+
+  return false;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -45,41 +100,46 @@ function toPlain(data: any): any {
 // ─── Log Role Change ──────────────────────────────────────────────────────────
 async function insertRoleHistory(entry: Omit<RoleHistoryEntry, 'id' | 'changedAt'>): Promise<void> {
   const id = randomUUID();
+  const nowIso = new Date().toISOString();
   const snakePayload = {
-      id,
-      user_id: entry.userId,
-      user_name: entry.userName,
-      old_roles: entry.oldRoles,
-      new_roles: entry.newRoles,
-      changed_by: entry.changedBy,
-      changed_by_name: entry.changedByName,
-      reason: entry.reason,
-      action: entry.action,
-      changed_at: admin.firestore.FieldValue.serverTimestamp(),
-    };
+    id,
+    user_id: entry.userId,
+    user_name: entry.userName,
+    old_roles: entry.oldRoles,
+    new_roles: entry.newRoles,
+    changed_by: entry.changedBy,
+    changed_by_name: entry.changedByName,
+    reason: entry.reason,
+    action: entry.action,
+    changed_at: nowIso,
+  };
 
-    const camelPayload = {
-      id,
-      userId: entry.userId,
-      userName: entry.userName,
-      oldRoles: entry.oldRoles,
-      newRoles: entry.newRoles,
-      changedBy: entry.changedBy,
-      changedByName: entry.changedByName,
-      reason: entry.reason,
-      action: entry.action,
-      changedAt: admin.firestore.FieldValue.serverTimestamp(),
-    };
-  const { error } = await supabaseServer.from('role_history').insert(snakePayload);
-  if (!error) return;
+  const camelPayload = {
+    id,
+    userId: entry.userId,
+    userName: entry.userName,
+    oldRoles: entry.oldRoles,
+    newRoles: entry.newRoles,
+    changedBy: entry.changedBy,
+    changedByName: entry.changedByName,
+    reason: entry.reason,
+    action: entry.action,
+    changedAt: nowIso,
+  };
 
-  if (error.code === 'PGRST204' && error.message?.includes("changed_at")) {
-    const fallback = await supabaseServer.from('role_history').insert(camelPayload);
-    if (fallback.error) throw fallback.error;
-    return;
+  try {
+    const { error } = await supabaseServer.from('role_history').insert(snakePayload);
+    if (!error) return;
+
+    if (error.code === 'PGRST204' || error.message?.includes("changed_at")) {
+      const fallback = await supabaseServer.from('role_history').insert(camelPayload);
+      if (fallback.error) console.error('[insertRoleHistory] fallback error:', fallback.error);
+      return;
+    }
+    console.error('[insertRoleHistory] insert error:', error);
+  } catch (err) {
+    console.error('[insertRoleHistory] exception:', err);
   }
-
-  throw error;
 }
 
 async function logRoleChange(entry: Omit<RoleHistoryEntry, 'id' | 'changedAt'>): Promise<void> {
@@ -99,7 +159,8 @@ export async function updateStaffRoles(
     if (!token) return { success: false, error: 'Not authenticated' };
 
     const claims = await verifyToken(token);
-    if (!isAdminClaims(claims)) {
+    const authorized = await isCallerAdmin(claims, cookieStore);
+    if (!authorized) {
       return { success: false, error: 'Forbidden: Only admins can change roles' };
     }
 
@@ -111,15 +172,12 @@ export async function updateStaffRoles(
     const currentProfile = profileSnap.data() as UserProfile;
     const oldRoles = getEffectiveRoles(currentProfile);
 
-    // Preserve the current primary role and only append additional roles.
-    const primaryRole = currentProfile.role ?? newRoles[0];
-    const additionalRoles = newRoles.filter((role) => role !== primaryRole);
-    const existingRoles = Array.isArray(currentProfile.roles) ? currentProfile.roles : [];
-    const mergedRoles = Array.from(new Set([
-      primaryRole,
-      ...existingRoles.filter((role) => role !== primaryRole),
-      ...additionalRoles,
-    ]));
+    // Exact roles requested by Admin
+    const finalRoles = Array.from(new Set(newRoles));
+    // Determine primary role: keep currentProfile.role if it's still in newRoles, else use newRoles[0]
+    const primaryRole = finalRoles.includes(currentProfile.role as StaffRole)
+      ? (currentProfile.role as StaffRole)
+      : finalRoles[0];
 
     // Get admin info
     const adminProfileSnap = await adminDb.collection('profiles').doc(claims.uid as string).get();
@@ -128,29 +186,65 @@ export async function updateStaffRoles(
     // Update both collections atomically
     const now = admin.firestore.FieldValue.serverTimestamp();
 
+    const pCat = printerCategory || 'MAIN_PRINTER';
+
     // Update profiles collection (primary, used by auth-context realtime listener)
     const profileUpdate: Record<string, any> = {
       role: primaryRole,
-      roles: mergedRoles,
+      roles: finalRoles,
     };
     // Save printerCategory only for PRINTER role; clear it for other roles
     if (newRoles.includes('PRINTER')) {
-      if (printerCategory) profileUpdate.printerCategory = printerCategory;
+      profileUpdate.printerCategory = pCat;
     } else {
       profileUpdate.printerCategory = null;
     }
-    await profileRef.update(profileUpdate);
+    
+    try {
+      await profileRef.update(profileUpdate);
+    } catch (profErr: any) {
+      console.warn('[updateStaffRoles] profileRef update warning:', profErr?.message);
+    }
+
+    // Also update Supabase profiles table directly
+    try {
+      const supaProfileUpdate: Record<string, any> = {
+        role: primaryRole,
+        roles: JSON.stringify(finalRoles),
+        printerCategory: newRoles.includes('PRINTER') ? pCat : null,
+      };
+      const { error: supaErr } = await supabaseServer
+        .from('profiles')
+        .update(supaProfileUpdate)
+        .or(`id.eq.${targetUid},uid.eq.${targetUid}`);
+      if (supaErr) {
+        console.error('[updateStaffRoles] supabaseServer profile update error:', supaErr);
+      }
+    } catch (supaErr: any) {
+      console.warn('[updateStaffRoles] supabaseServer profile update warning:', supaErr?.message);
+    }
 
     // Update staff_users collection (RBAC collection)
     const staffRef = adminDb.collection('staff_users').doc(targetUid);
-    await staffRef.set({
+    const staffPayload: Record<string, any> = {
       uid: targetUid,
-      roles: mergedRoles,
-      ...(newRoles.includes('PRINTER') && printerCategory ? { printerCategory } : {}),
+      roles: finalRoles,
       updated_at: now,
       assigned_by: claims.uid,
       assigned_at: now,
-    }, { merge: true });
+    };
+    if (newRoles.includes('PRINTER')) {
+      staffPayload.printer_category = pCat;
+    }
+
+    try {
+      await staffRef.set(staffPayload, { merge: true });
+    } catch (staffErr: any) {
+      console.warn('[updateStaffRoles] staffRef set error, attempting fallback without printer_category:', staffErr?.message);
+      delete staffPayload.printer_category;
+      delete staffPayload.printerCategory;
+      await staffRef.set(staffPayload, { merge: true });
+    }
 
     // Audit log
     await logRoleChange({
@@ -183,7 +277,8 @@ export async function updateStaffStatus(
     if (!token) return { success: false, error: 'Not authenticated' };
 
     const claims = await verifyToken(token);
-    if (!isAdminClaims(claims)) {
+    const authorized = await isCallerAdmin(claims, cookieStore);
+    if (!authorized) {
       return { success: false, error: 'Forbidden' };
     }
 

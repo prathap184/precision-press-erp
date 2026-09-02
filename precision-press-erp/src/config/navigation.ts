@@ -45,6 +45,28 @@ export interface NavItem {
   subItems?: { label: string; href: string }[];
 }
 
+/**
+ * Returns the correct, role-scoped Global Orders URL for any role or workspace.
+ */
+export function getRoleGlobalOrdersUrl(roleOrModule?: string | null, workspaceParam?: string | null): string {
+  const mod = (workspaceParam || roleOrModule || '').toLowerCase().replace('/', '');
+  switch (mod) {
+    case 'designer': return '/designer/orders';
+    case 'printer': return '/printer/orders';
+    case 'pasting': return '/pasting/orders';
+    case 'finishing': return '/finishing/orders';
+    case 'dispatch': return '/dispatch/orders';
+    case 'support': return '/support/orders';
+    case 'accountant': return '/accountant/orders';
+    case 'manager': return '/manager/orders';
+    case 'acdema': return '/acdema/orders';
+    case 'admin':
+    case 'super_admin':
+    default:
+      return '/admin/orders';
+  }
+}
+
 // ─── PHASE 8: Module Registry ─────────────────────────────────────────────────
 // Each module maps to one or more roles. Sidebar filters this list live
 // based on the user's current `roles` array from the real-time auth context.
@@ -64,8 +86,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
   { label: 'My Documents',         href: '/customer/documents',     icon: FileText,             roles: ['CUSTOMER'],                                                           group: 'account' },
 
   // ── Staff / Ops Hub ──────────────────────────────────────────────────────
-  { label: 'Command Center',       href: '/staff',                  icon: Command,              roles: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACDEMA', 'DESIGNER', 'PRINTER', 'DISPATCH', 'DELIVERY', 'ACCOUNTANT', 'SUPPORT'], group: 'main' },
-  { label: '(G) Global Orders',    href: '/acdema/orders',         icon: ClipboardList,        roles: ['ACDEMA'],                                                             group: 'main' },
+  { label: 'Command Center',       href: '/staff',                  icon: Command,              roles: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACDEMA', 'DESIGNER', 'PRINTER', 'DISPATCH', 'DELIVERY', 'ACCOUNTANT', 'SUPPORT', 'PASTING', 'FINISHING'], group: 'main' },
   // { label: 'Job Management',       href: '#job-management',         icon: ClipboardList,        roles: ['ACDEMA'],                                                             group: 'main', subItems: [
   //   { label: 'Jobs Passed By Me', href: '/acdema?view=passed' },
   //   { label: 'All Jobs', href: '/acdema?view=all' },
@@ -78,35 +99,40 @@ export const NAVIGATION_ITEMS: NavItem[] = [
     { label: 'HSN Master', href: '/admin/hsn-master' },
     { label: 'GST & Invoice Settings', href: '/admin/settings/gst-invoice' },
   ] },
-  { label: '(G) Global Orders',    href: '/admin/orders',           icon: ClipboardList,        roles: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'DESIGNER', 'PRINTER', 'DISPATCH', 'ACCOUNTANT', 'SUPPORT'], group: 'main'    },
-  // { label: 'Invoices',             href: '/admin/invoices',         icon: FileText,             roles: ['ADMIN', 'SUPER_ADMIN'],                                               group: 'main'    },
-  { label: 'Invoice Generation',   href: '/admin/invoice-generation', icon: FilePlus2,           roles: ['ACCOUNTANT'],                                 group: 'main'    },
+  // Admin: full /admin/orders global hub
+  { label: '(G) Global Orders',    href: '/admin/orders',           icon: ClipboardList,        roles: ['ADMIN', 'SUPER_ADMIN'],                                               group: 'main' },
+  // Manager: goes to /manager/orders
+  { label: '(G) Global Orders',    href: '/manager/orders',         icon: ClipboardList,        roles: ['MANAGER'],                                                            group: 'main' },
+  // Accountant: goes to /accountant/orders (scoped hub)
+  { label: '(G) Global Orders',    href: '/accountant/orders',      icon: ClipboardList,        roles: ['ACCOUNTANT'],                                                         group: 'main' },
+  // Acdema: goes to /acdema/orders (their own hub)
+  { label: '(G) Global Orders',    href: '/acdema/orders',          icon: ClipboardList,        roles: ['ACDEMA'],                                                             group: 'main' },
+  // Shop-floor roles: each gets their own scoped /[role]/orders page
+  { label: '(G) Global Orders',    href: '/designer/orders',        icon: ClipboardList,        roles: ['DESIGNER'],                                                           group: 'main' },
+  { label: '(G) Global Orders',    href: '/printer/orders',         icon: ClipboardList,        roles: ['PRINTER'],                                                            group: 'main' },
+  { label: '(G) Global Orders',    href: '/pasting/orders',         icon: ClipboardList,        roles: ['PASTING'],                                                            group: 'main' },
+  { label: '(G) Global Orders',    href: '/finishing/orders',       icon: ClipboardList,        roles: ['FINISHING'],                                                          group: 'main' },
+  { label: '(G) Global Orders',    href: '/dispatch/orders',        icon: ClipboardList,        roles: ['DISPATCH'],                                                           group: 'main' },
+  // ── Manager dashboards ────────────────────────────────────────────────────
   { label: 'Unassigned Backlog',   href: '/manager/unassigned',      icon: ClipboardList,        roles: ['MANAGER'],                                                            group: 'main'    },
   { label: 'Active Jobs',          href: '/manager/assigned',        icon: Activity,             roles: ['MANAGER'],                                                            group: 'main'    },
   { label: 'Manage Customers',     href: '/manager/customers',      icon: Users,                roles: ['MANAGER', 'SUPPORT', 'DESIGNER'],                                      group: 'main'    },
   { label: 'Production Dashboard', href: '/manager',                icon: LayoutDashboard,      roles: ['MANAGER', 'DESIGNER'],                                                group: 'main'    },
-  
+
   // ── Role-specific dashboards ──────────────────────────────────────────────
   { label: 'Support Dashboard',    href: '/support',                icon: Headphones,           roles: ['SUPPORT'],                                                            group: 'main'    },
   { label: 'Design Studio',        href: '/designer',               icon: Palette,              roles: ['DESIGNER'],                                                           group: 'main'    },
   { label: 'Active Jobs',          href: '/designer/active-jobs',   icon: Activity,             roles: ['DESIGNER'],                                                           group: 'main'    },
   { label: 'All Active Jobs',      href: '/designer/all-active-jobs', icon: ClipboardList,      roles: ['DESIGNER'],                                                           group: 'main'    },
-  // { label: 'Production Queue',     href: '/printer/queue',          icon: Printer,              roles: ['PRINTER'],                                                            group: 'main'    },
-  // { label: 'Assign to Printer',    href: '/printer/assign',         icon: Printer,              roles: ['PRINTER'],                                                            group: 'main'    },
-  // { label: 'All Assigned Orders',  href: '/printer/orders',         icon: Activity,             roles: ['PRINTER'],                                                            group: 'main'    },
   { label: 'Pasting Dashboard',    href: '/pasting',                icon: ClipboardList,        roles: ['PASTING'],                                                            group: 'main'    },
   { label: 'Finishing Dashboard',  href: '/finishing',              icon: CheckCircle,          roles: ['FINISHING'],                                                          group: 'main'    },
-  { label: 'Approved Payments',    href: '/accountant',             icon: Activity,             roles: ['ACCOUNTANT'],                                                         group: 'main'    },
-  { label: 'Payment Approvals',    href: '/accountant/payments',    icon: ReceiptIndianRupee,   roles: ['ACCOUNTANT'],                                                         group: 'main'    },
-  { label: 'Accounts Ledger',      href: '/accountant/ledger',      icon: Activity,             roles: ['ACCOUNTANT'],                                                         group: 'main'    },
+  { label: 'Customer Approved Payments', href: '/accountant',       icon: Activity,             roles: ['ACCOUNTANT'],                                                         group: 'main'    },
+  { label: 'Customer Payment Approvals', href: '/accountant/payments', icon: ReceiptIndianRupee, roles: ['ACCOUNTANT'],                                                       group: 'main'    },
   { label: 'Tally Masters',        href: '/tally-masters',          icon: Users,                roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'ACDEMA'],                       group: 'main'    },
-  { label: 'Sales Register',       href: '/sales-register',         icon: FileText,             roles: ['ACCOUNTANT'],                       group: 'main'    },
-  { label: 'Receipt Register',     href: '/receipt-register',       icon: ClipboardList,        roles: ['ACCOUNTANT'],                       group: 'main'    },
-  { label: 'Receipt Entry (Payment)', href: '/receipt-entry',       icon: Wallet,               roles: ['ACCOUNTANT'],                       group: 'main'    },
-  { label: 'Invoices',             href: '/accountant/invoices',    icon: FileText,             roles: ['ACCOUNTANT'],                                                         group: 'main'    },
   { label: 'Dispatch',             href: '/dispatch',               icon: Truck,                roles: ['DISPATCH'],                                                           group: 'main'    },
   { label: 'Pending Deliveries',   href: '/delivary',               icon: ClipboardList,        roles: ['DELIVERY'],                                                           group: 'main'    },
   { label: 'Delivered Orders',     href: '/delivared',              icon: CheckCircle,          roles: ['DELIVERY'],                                                           group: 'main'    },
+
 
   // ── Accounting Dashboard (Pixel Accounting) ─────────────────────────────
   { label: '(Z) Pixel Accounting', href: '#dubbl-accounting', icon: BookOpen, roles: ['ADMIN', 'SUPER_ADMIN', 'ACCOUNTANT', 'MANAGER', 'ACDEMA'], group: 'main', subItems: [

@@ -289,7 +289,7 @@ export default function AdminDashboard() {
   };
 
   return (
-    <RoleGuard allowedRoles={['ADMIN', 'SUPER_ADMIN', 'SUPPORT']}>
+    <RoleGuard allowedRoles={['ADMIN', 'SUPER_ADMIN']} redirectTo="/staff">
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-1000 pb-12">
       {/* Header */}
       <section className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8 pt-2">

@@ -4,6 +4,7 @@ import { ArrowLeftRight, BookOpen, Landmark, Building2, PiggyBank, HandCoins, Sc
 import { TabLayout } from "@/components/dashboard/tab-layout";
 import { CreateDrawerProvider } from "@/components/dashboard/create-drawer";
 import { OrgLoader } from "@/components/dashboard/org-loader";
+import { RoleGuard } from "@/lib/role-guard";
 
 const TABS = [
   { href: "/accounting", label: "Transactions", icon: ArrowLeftRight, exact: true },
@@ -24,10 +25,12 @@ export default function AccountingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <OrgLoader>
-      <CreateDrawerProvider>
-        <TabLayout tabs={TABS}>{children}</TabLayout>
-      </CreateDrawerProvider>
-    </OrgLoader>
+    <RoleGuard allowedRoles={['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN', 'MANAGER']} redirectTo="/staff">
+      <OrgLoader>
+        <CreateDrawerProvider>
+          <TabLayout tabs={TABS}>{children}</TabLayout>
+        </CreateDrawerProvider>
+      </OrgLoader>
+    </RoleGuard>
   );
 }

@@ -157,9 +157,9 @@ export function profileHasRole(profile: UserProfile | null, requiredRoles: Staff
 export const ROLE_ROUTES: Record<UserRole, string> = {
   SUPER_ADMIN: '/admin/orders',
   ADMIN: '/admin/orders',
-  MANAGER: '/manager/dashboard',
+  MANAGER: '/manager',
   ACDEMA: '/acdema/orders',
-  ACCOUNTANT: '/accountant/payments',
+  ACCOUNTANT: '/accountant',
   DESIGNER: '/designer',
   PRINTER: '/printer/queue',
   PASTING: '/pasting',
@@ -192,9 +192,9 @@ export function getDefaultRoute(profile: UserProfile | null): string {
 export const MODULE_ROUTES: Record<StaffRole, string> = {
   SUPER_ADMIN: '/admin/orders',
   ADMIN: '/admin/orders',
-  MANAGER: '/manager/dashboard',
+  MANAGER: '/manager',
   ACDEMA: '/acdema/orders',
-  ACCOUNTANT: '/accountant/payments',
+  ACCOUNTANT: '/accountant',
   DESIGNER: '/designer',
   PRINTER: '/printer/queue',
   PASTING: '/pasting',

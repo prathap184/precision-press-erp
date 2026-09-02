@@ -123,7 +123,13 @@ export function useGlobalShortcuts() {
           router.push('/proxy-order');
         } else if (key === 'g') {
           e.preventDefault();
-          window.location.href = `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL || 'http://localhost:3000'}/admin/orders`;
+          const roleMatch = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : '';
+          const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+          const ws = urlParams.get('workspace') || roleMatch;
+          const target = ['designer', 'printer', 'pasting', 'finishing', 'dispatch', 'support', 'accountant', 'manager', 'acdema'].includes(ws)
+            ? `/${ws}/orders`
+            : '/admin/orders';
+          router.push(target);
         } else if (key === 'z') {
           e.preventDefault();
           router.push('/dashboard');

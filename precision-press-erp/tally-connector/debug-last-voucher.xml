@@ -13,9 +13,9 @@
       </REQUESTDESC>
       <REQUESTDATA>
         <TALLYMESSAGE xmlns:UDF="TallyUDF">
-          <VOUCHER VCHTYPE="Rec1 B1 Bank" ACTION="Create" OBJVIEW="Accounting Voucher View">
+          <VOUCHER VCHTYPE="Rec10 B8 Cash" ACTION="Create" OBJVIEW="Accounting Voucher View">
             <DATE>20260801</DATE>
-            <VOUCHERTYPENAME>Rec1 B1 Bank</VOUCHERTYPENAME>
+            <VOUCHERTYPENAME>Rec10 B8 Cash</VOUCHERTYPENAME>
             <VOUCHERNUMBER>REC-00036</VOUCHERNUMBER>
             <PARTYLEDGERNAME>Festive Events- Mys- FTM- BO</PARTYLEDGERNAME>
             <NARRATION>Receipt | Receipt REC-00036 against INV-00047</NARRATION>
@@ -24,7 +24,7 @@
 
             <!-- Cash/Bank Dr side -->
             <ALLLEDGERENTRIES.LIST>
-              <LEDGERNAME>Federal 2091</LEDGERNAME>
+              <LEDGERNAME>Cash B2</LEDGERNAME>
               <ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>
               <ISPARTYLEDGER>Yes</ISPARTYLEDGER>
               <AMOUNT>-169.28</AMOUNT>

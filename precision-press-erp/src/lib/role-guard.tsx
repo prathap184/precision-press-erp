@@ -41,22 +41,10 @@ export const RoleGuard = ({
   const isAdminImpersonating =
     isAdmin && impCtx?.viewMode === 'CUSTOMER';
 
-  // Inject ACDEMA if route allows ACCOUNTANT, MANAGER, or DESIGNER
-  const effectiveAllowedRoles = [...allowedRoles];
-  if (
-    effectiveAllowedRoles.includes('ACCOUNTANT') || 
-    effectiveAllowedRoles.includes('MANAGER') || 
-    effectiveAllowedRoles.includes('DESIGNER')
-  ) {
-    if (!effectiveAllowedRoles.includes('ACDEMA')) {
-      effectiveAllowedRoles.push('ACDEMA');
-    }
-  }
+  const isCustomerAndAllowed = role === 'CUSTOMER' && allowedRoles.includes('CUSTOMER');
+  const allowed = isAdmin || isAdminImpersonating || isCustomerAndAllowed || hasAnyRole(roles, allowedRoles as StaffRole[]);
 
-  const isCustomerAndAllowed = role === 'CUSTOMER' && effectiveAllowedRoles.includes('CUSTOMER');
-  const allowed = isAdmin || isAdminImpersonating || isCustomerAndAllowed || hasAnyRole(roles, effectiveAllowedRoles as StaffRole[]);
-
-  // Phase 12 — live redirect when role is revoked while user is on page
+  // Live redirect when role is revoked or unauthorized user accesses protected page
   useEffect(() => {
     if (loading) return; // still loading
     if (!user) return; // not logged in
@@ -65,9 +53,16 @@ export const RoleGuard = ({
     }
   }, [loading, user, allowed, router, redirectTo]);
 
-  // Still loading auth state — render children to avoid flash
+  // Still loading auth state — render secure loading placeholder to prevent unauthenticated data leaks
   if (loading) {
-    return <>{children}</>;
+    return (
+      <div className="flex min-h-[50vh] w-full items-center justify-center p-8">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Verifying Permissions...</p>
+        </div>
+      </div>
+    );
   }
 
   // Admin impersonating customers gets through

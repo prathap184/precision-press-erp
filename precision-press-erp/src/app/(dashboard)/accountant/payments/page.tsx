@@ -904,8 +904,8 @@ export default function AccountantPaymentsPage() {
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 flex-shrink-0">
           <div className="xl:col-span-2 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
             <div>
-              <p className="text-[8px] font-black text-blue-500 uppercase tracking-[0.4em] mb-0.5">Financial Command</p>
-              <h1 className="text-[28px] font-bold font-black font-display tracking-tighter text-slate-900 leading-none">Approvals</h1>
+              <p className="text-[8px] font-black text-blue-500 uppercase tracking-[0.4em] mb-0.5">Customer Payments</p>
+              <h1 className="text-[28px] font-bold font-black font-display tracking-tighter text-slate-900 leading-none">Payment Approvals</h1>
               <p className="text-slate-400 text-[10px] font-medium mt-1">
                 {pendingPayments.length} pending · {fmt(totalPending)}
               </p>

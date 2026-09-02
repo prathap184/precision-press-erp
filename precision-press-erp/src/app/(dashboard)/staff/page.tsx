@@ -7,10 +7,11 @@ import { useAuth } from '@/lib/auth-context';
 import { RoleGuard } from '@/lib/role-guard';
 import { ShieldCheck, Activity } from 'lucide-react';
 import { StaffRole, ALL_STAFF_ROLES } from '@/types/roles';
+import { MODULE_ROUTES } from '@/types/auth';
 import { useRouter } from 'next/navigation';
 
 export default function StaffDashboardPage() {
-  const { roles, profile } = useAuth();
+  const { roles, profile, switchActiveRole } = useAuth();
    const router = useRouter();
    const primaryRole = (profile?.role as StaffRole) || null;
    const switchableRoles = primaryRole ? roles.filter((r) => r !== primaryRole) : roles;
@@ -53,11 +54,18 @@ export default function StaffDashboardPage() {
         </section>
 
         <ControlCenter 
-               allowedRoles={visibleRoles} 
+          allowedRoles={visibleRoles} 
           title="My Dashboards"
           subtitle="Select a module to access your assigned workstation."
+          onRoleClick={(targetRole) => {
+            if (profile?.role !== 'ADMIN' && profile?.role !== 'SUPER_ADMIN') {
+              switchActiveRole?.(targetRole);
+            }
+            const route = MODULE_ROUTES[targetRole] || `/${targetRole.toLowerCase()}`;
+            router.push(route);
+          }}
         />
       </div>
-    </RoleGuard>
+   </RoleGuard>
   );
 }

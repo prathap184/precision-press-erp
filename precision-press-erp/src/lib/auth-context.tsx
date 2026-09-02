@@ -37,6 +37,7 @@ type AuthContextValue = {
   register: (email: string, password: string, role: string, name: string) => Promise<UserProfile>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  switchActiveRole?: (newRole: StaffRole) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -180,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       Cookies.remove('token', { path: '/' });
       Cookies.remove('role', { path: '/' });
+      Cookies.remove('roles', { path: '/' });
       setLoading(false);
       return;
     }
@@ -191,6 +193,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const nextProfile = await fetchProfile(nextSession.user);
       setProfile(nextProfile);
       Cookies.set('role', nextProfile?.role ?? 'CUSTOMER', COOKIE_OPTS);
+      const effectiveRoles = getEffectiveRoles(nextProfile);
+      Cookies.set('roles', JSON.stringify(effectiveRoles), COOKIE_OPTS);
     } catch (error: any) {
       console.error('Failed to fetch user profile:', error);
       const isExpired = error?.message?.includes('JWT expired') || error?.message?.includes('expired');
@@ -204,10 +208,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         Cookies.remove('token', { path: '/' });
         Cookies.remove('role', { path: '/' });
+        Cookies.remove('roles', { path: '/' });
       } else {
         const fallback = normalizeProfile(null, nextSession.user);
         setProfile(fallback);
         Cookies.set('role', fallback?.role ?? 'CUSTOMER', COOKIE_OPTS);
+        Cookies.set('roles', JSON.stringify(getEffectiveRoles(fallback)), COOKIE_OPTS);
       }
     } finally {
       setLoading(false);
@@ -241,6 +247,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!profile) return;
     const nextRole = profile.role;
     Cookies.set('role', nextRole, COOKIE_OPTS);
+    const effectiveRoles = getEffectiveRoles(profile);
+    Cookies.set('roles', JSON.stringify(effectiveRoles), COOKIE_OPTS);
   }, [profile]);
 
   const login = async (email: string, password: string) => {
@@ -250,7 +258,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const nextProfile = await fetchProfile(data.session.user);
       setUser(mapSessionUser(data.session.user));
       setProfile(nextProfile ?? result);
+      const effectiveRoles = getEffectiveRoles(nextProfile ?? result);
       Cookies.set('role', (nextProfile ?? result).role, COOKIE_OPTS);
+      Cookies.set('roles', JSON.stringify(effectiveRoles), COOKIE_OPTS);
       Cookies.set('token', data.session.access_token, COOKIE_OPTS);
     } else {
       setProfile(result);
@@ -275,6 +285,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     Cookies.remove('token', { path: '/' });
     Cookies.remove('role', { path: '/' });
+    Cookies.remove('roles', { path: '/' });
     router.push('/staff-login');
   };
 
@@ -286,10 +297,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(nextProfile);
         if (nextProfile?.role) {
           Cookies.set('role', nextProfile.role, COOKIE_OPTS);
+          Cookies.set('roles', JSON.stringify(getEffectiveRoles(nextProfile)), COOKIE_OPTS);
         }
       }
     } catch (error) {
       console.error('Failed to refresh user profile:', error);
+    }
+  };
+
+  const switchActiveRole = (newRole: StaffRole) => {
+    Cookies.set('role', newRole, COOKIE_OPTS);
+    if (profile) {
+      setProfile({ ...profile, role: newRole as any });
     }
   };
 
@@ -306,6 +325,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       register,
       logout,
       refreshProfile,
+      switchActiveRole,
     };
   }, [user, profile, loading]);
 
