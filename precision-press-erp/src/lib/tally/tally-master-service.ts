@@ -1,6 +1,3 @@
-import fs from 'fs';
-import path from 'path';
-import http from 'http';
 import axios from 'axios';
 import { supabaseServer } from '@/lib/supabase-server';
 
@@ -8,28 +5,6 @@ const DEFAULT_ORG_ID = '00000000-0000-0000-0000-000000000002';
 const TALLY_HOST = process.env.TALLY_HOST || '127.0.0.1';
 const TALLY_PORT = parseInt(process.env.TALLY_PORT || '9000', 10);
 const TARGET_COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
-
-function resolveXmlPath(filename: string): string {
-  const candidates = [
-    path.join(process.cwd(), 'tally_sync/all ledgers', filename),
-    path.join(process.cwd(), 'precision-press-erp/tally_sync/all ledgers', filename),
-    path.resolve(__dirname, '../../../tally_sync/all ledgers', filename),
-    path.resolve(__dirname, '../../../../tally_sync/all ledgers', filename),
-  ];
-  for (const c of candidates) {
-    if (fs.existsSync(c)) return c;
-  }
-  return path.join(process.cwd(), 'tally_sync/all ledgers', filename);
-}
-
-function readXmlFile(filePath: string): string {
-  if (!fs.existsSync(filePath)) return '';
-  const buf = fs.readFileSync(filePath);
-  if (buf.length >= 2 && buf[0] === 0xFF && buf[1] === 0xFE) {
-    return buf.toString('utf16le');
-  }
-  return buf.toString('utf8');
-}
 
 export type MasterType = 'customers' | 'suppliers' | 'items' | 'accounts';
 
@@ -571,7 +546,7 @@ export async function executeMasterSync(type: MasterType) {
           }).select('id').maybeSingle();
           if (newCat?.id) {
             categoryId = newCat.id;
-            catMap.set(groupKey, categoryId);
+            catMap.set(groupKey, newCat.id);
           }
         }
       }
