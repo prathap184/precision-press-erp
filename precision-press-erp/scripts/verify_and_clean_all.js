@@ -16,7 +16,7 @@ async function clean() {
 
   for (const item of queue) {
     const payload = item.payload || {};
-    payload.tallyCompanyName = 'Hindustan Enterprises 25-26';
+    payload.tallyCompanyName = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
     if (!payload.bankLedger || payload.bankLedger.startsWith('Rec')) {
       payload.bankLedger = 'Federal 2091';
     }

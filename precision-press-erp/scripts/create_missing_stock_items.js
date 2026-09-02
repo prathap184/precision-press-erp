@@ -6,7 +6,7 @@ const axios = require('axios');
 const { buildStockItemXML } = require('../tally-connector/xml-builder');
 
 const TALLY_URL = `${process.env.TALLY_HOST || 'http://localhost'}:${process.env.TALLY_PORT || 9000}`;
-const COMPANY = 'Hindustan Enterprises 25-26';
+const COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
 async function createStockItems() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;

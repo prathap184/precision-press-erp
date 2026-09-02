@@ -11,7 +11,9 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
+require('dotenv').config();
 const TALLY_URL = process.env.TALLY_URL || 'http://localhost:9000';
+const TARGET_COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 const ALL_LEDGERS_DIR = path.resolve(__dirname, '../tally_sync/all ledgers');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -100,7 +102,7 @@ async function pushChunkedXml(filePath, label, chunkSize = 25) {
    <REQUESTDESC>
     <REPORTNAME>All Masters</REPORTNAME>
     <STATICVARIABLES>
-     <SVCURRENTCOMPANY>Hindustan Enterprises 25-26</SVCURRENTCOMPANY>
+      <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
     </STATICVARIABLES>
    </REQUESTDESC>
    <REQUESTDATA>
@@ -131,7 +133,7 @@ async function pushChunkedXml(filePath, label, chunkSize = 25) {
 
 async function main() {
   console.log('═══════════════════════════════════════════════════════════════════════════════');
-  console.log('   🚀 PUSHING ALL MASTERS TO: Hindustan Enterprises 25-26');
+  console.log(`   🚀 PUSHING ALL MASTERS TO: ${TARGET_COMPANY}`);
   console.log('═══════════════════════════════════════════════════════════════════════════════');
 
   // 1. Units of Measure
@@ -150,7 +152,7 @@ async function main() {
   await pushChunkedXml(path.join(ALL_LEDGERS_DIR, 'stockitems.xml'), '5. Stock Items', 25);
 
   console.log('\n═══════════════════════════════════════════════════════════════════════════════');
-  console.log('🎉 SUCCESS! All Masters are now in Hindustan Enterprises 25-26 on Tally!');
+  console.log(`🎉 SUCCESS! All Masters are now in ${TARGET_COMPANY} on Tally!`);
   console.log('═══════════════════════════════════════════════════════════════════════════════\n');
 }
 

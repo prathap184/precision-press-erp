@@ -6,7 +6,7 @@ const axios = require('axios');
 require('dotenv').config({ path: 'tally-connector/.env' });
 
 const TALLY_URL = `${process.env.TALLY_HOST || 'http://localhost'}:${process.env.TALLY_PORT || 9000}`;
-const COMPANY   = 'Hindustan Enterprises 25-26';
+const COMPANY   = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
 async function createLedgerInTally(customerName) {
   const xml = `<?xml version="1.0" encoding="UTF-8"?>

@@ -1,8 +1,11 @@
 const axios = require('axios');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+const TARGET_COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
 async function queryTallyLive() {
   console.log('═══════════════════════════════════════════════════════════════════════');
-  console.log('🔍 LIVE VERIFICATION: Querying TallyPrime on Port 9000 for All 7 Places');
+  console.log(`🔍 LIVE VERIFICATION: Querying TallyPrime on Port 9000 for ${TARGET_COMPANY}`);
   console.log('═══════════════════════════════════════════════════════════════════════\n');
 
   // Query 1: Day Book Vouchers
@@ -13,8 +16,8 @@ async function queryTallyLive() {
    <REQUESTDESC>
     <REPORTNAME>Day Book</REPORTNAME>
     <STATICVARIABLES>
-     <SVCURRENTCOMPANY>Hindustan Enterprises 25-26</SVCURRENTCOMPANY>
-     <SVFROMDATE>20260401</SVFROMDATE>
+     <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
+     <SVFROMDATE>20250401</SVFROMDATE>
      <SVTODATE>20270331</SVTODATE>
     </STATICVARIABLES>
    </REQUESTDESC>
@@ -30,7 +33,7 @@ async function queryTallyLive() {
    <REQUESTDESC>
     <REPORTNAME>List of Ledgers</REPORTNAME>
     <STATICVARIABLES>
-     <SVCURRENTCOMPANY>Hindustan Enterprises 25-26</SVCURRENTCOMPANY>
+     <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
     </STATICVARIABLES>
    </REQUESTDESC>
   </EXPORTDATA>
@@ -45,8 +48,8 @@ async function queryTallyLive() {
    <REQUESTDESC>
     <REPORTNAME>Stock Summary</REPORTNAME>
     <STATICVARIABLES>
-     <SVCURRENTCOMPANY>Hindustan Enterprises 25-26</SVCURRENTCOMPANY>
-     <SVFROMDATE>20260401</SVFROMDATE>
+     <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
+     <SVFROMDATE>20250401</SVFROMDATE>
      <SVTODATE>20270331</SVTODATE>
     </STATICVARIABLES>
    </REQUESTDESC>

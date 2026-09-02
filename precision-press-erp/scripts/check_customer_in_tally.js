@@ -16,7 +16,7 @@ async function checkLedger(name) {
       <REQUESTDESC>
         <REPORTNAME>List of Accounts</REPORTNAME>
         <STATICVARIABLES>
-          <SVCURRENTCOMPANY>Hindustan Enterprises 25-26</SVCURRENTCOMPANY>
+          <SVCURRENTCOMPANY>${process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan'}</SVCURRENTCOMPANY>
           <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
         </STATICVARIABLES>
       </REQUESTDESC>

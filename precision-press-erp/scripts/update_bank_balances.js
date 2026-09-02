@@ -1,6 +1,7 @@
 const axios = require('axios');
-
-const COMPANY_NAME = 'Hindustan Enterprises 25-26';
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+const COMPANY_NAME = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
 async function setBankOpeningBalances() {
   console.log('Updating Opening Balances for Federal 2091, Cash, and Cash B2 in Tally...');

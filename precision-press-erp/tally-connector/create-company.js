@@ -1,4 +1,7 @@
 const axios = require('axios');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+const TARGET_COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
 async function createCompany() {
   const xml = `<ENVELOPE>
@@ -10,13 +13,13 @@ async function createCompany() {
    <REQUESTDESC>
     <REPORTNAME>All Masters</REPORTNAME>
     <STATICVARIABLES>
-     <SVCURRENTCOMPANY>Hindustan Enterprises 25-26</SVCURRENTCOMPANY>
+     <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
     </STATICVARIABLES>
    </REQUESTDESC>
    <REQUESTDATA>
     <TALLYMESSAGE xmlns:UDF="TallyUDF">
-     <COMPANY NAME="Hindustan Enterprises 25-26" ACTION="Create">
-      <NAME>Hindustan Enterprises 25-26</NAME>
+     <COMPANY NAME="${TARGET_COMPANY}" ACTION="Create">
+      <NAME>${TARGET_COMPANY}</NAME>
       <MAILINGNAME>Hindustan Enterprises</MAILINGNAME>
       <STATENAME>Karnataka</STATENAME>
       <PINCODE>570001</PINCODE>

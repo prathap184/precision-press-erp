@@ -11,7 +11,7 @@ async function fixRespectiveBanks() {
 
   for (const item of queue || []) {
     const payload = item.payload || {};
-    payload.tallyCompanyName = 'Hindustan Enterprises 25-26';
+    payload.tallyCompanyName = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
     if (item.voucherId === 'REC-00036') {
       payload.bankLedger = 'Cash B2';

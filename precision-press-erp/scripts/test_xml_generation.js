@@ -6,7 +6,7 @@ console.log('1. TESTING ADV-0001 RECEIPT VOUCHER XML GENERATION:');
 console.log('====================================================');
 
 const receiptPayload = {
-  tallyCompanyName: 'Hindustan Enterprises 25-26',
+  tallyCompanyName: process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan',
   voucherType: 'Rec1 B1 Bank',
   voucherNumber: 'ADV-0001',
   receiptEntryNumber: 'ADV-0001',
@@ -32,7 +32,7 @@ console.log('2. TESTING INV-00045 AGST REF SALES INVOICE XML:');
 console.log('====================================================');
 
 const invoicePayload = {
-  targetCompany: 'Hindustan Enterprises 25-26',
+  targetCompany: process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan',
   voucherType: '1.GST HO CS',
   invoiceNumber: 'INV-00045',
   voucherDate: '2026-08-30',

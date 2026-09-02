@@ -2,7 +2,7 @@
 const { buildReceiptVoucherXML } = require('../tally-connector/xml-builder');
 
 const payload = {
-  tallyCompanyName: "Hindustan Enterprises 25-26",
+  tallyCompanyName: process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
   voucherType: "Rec1 B1 Bank",
   receiptEntryNumber: "REC-00036",
   voucherNumber: "REC-00036",

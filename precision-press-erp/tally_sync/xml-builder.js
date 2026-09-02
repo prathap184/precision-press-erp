@@ -45,7 +45,7 @@ function buildSalesInvoiceXML(payload, options = {}) {
   const educationalMode = typeof options === 'boolean' ? options : (options.educationalMode !== undefined ? options.educationalMode : true);
   const targetCompany = (typeof options === 'object' && options.companyName)
     ? options.companyName
-    : ((payload.tallyCompanyName && payload.tallyCompanyName !== 'Auravionx') ? payload.tallyCompanyName : 'Hindustan Enterprises 25-26');
+    : (process.env.TALLY_COMPANY_NAME || ((payload.tallyCompanyName && payload.tallyCompanyName !== 'Auravionx') ? payload.tallyCompanyName : 'Website Testing Hindustan'));
 
   let {
     invoiceNumber,
@@ -223,7 +223,7 @@ ${gstEntries.join('')}
 function buildReceiptVoucherXML(payload, educationalMode = true) {
   // Support both old field names (voucherNumber/amount/bankLedgerName)
   // and new field names (receiptEntryNumber/totalAmount/cashLedger)
-  const tallyCompanyName = payload.tallyCompanyName || 'Hindustan Enterprises 25-26';
+  const tallyCompanyName = process.env.TALLY_COMPANY_NAME || payload.tallyCompanyName || 'Website Testing Hindustan';
   const receiptEntryNumber = payload.receiptEntryNumber || payload.voucherNumber || '';
   const voucherDate        = payload.voucherDate || payload.invoiceDate || null;
   const totalAmount        = Number(payload.totalAmount ?? payload.amount ?? 0);
@@ -370,7 +370,7 @@ function buildPaymentVoucherXML(payload, educationalMode = true) {
     narration = '',
     isSupplierPayment = true,
   } = payload;
-  const tallyCompanyName = (payload.tallyCompanyName && payload.tallyCompanyName !== 'Auravionx') ? payload.tallyCompanyName : 'Hindustan Enterprises 25-26';
+  const tallyCompanyName = process.env.TALLY_COMPANY_NAME || ((payload.tallyCompanyName && payload.tallyCompanyName !== 'Auravionx') ? payload.tallyCompanyName : 'Website Testing Hindustan');
 
   const tallyDate = toTallyDate(voucherDate, educationalMode);
   const amountNum = Number(amount);

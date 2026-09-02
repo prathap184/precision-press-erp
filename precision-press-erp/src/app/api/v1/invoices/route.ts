@@ -643,7 +643,7 @@ export async function POST(request: Request) {
 
       // Prepare payload matching Sales_HS7547.xml / Memory Section 15
       const payload = {
-        tallyCompanyName: settings.companyName || "Hindustan Enterprises 25-26",
+        tallyCompanyName: settings.companyName || process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
         voucherType: "1.GST HO CS",
         voucherClass: "GST Sale",
         invoiceNumber: result.invoiceNumber,
@@ -733,7 +733,7 @@ export async function POST(request: Request) {
               customerName: customerLedgerName,
               amountSnap: applyAmt,
               payload: {
-                tallyCompanyName: settings.companyName || "Hindustan Enterprises 25-26",
+                tallyCompanyName: settings.companyName || process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
                 voucherNumber: `JV-${result.invoiceNumber}`,
                 voucherDate: result.issueDate || new Date().toISOString().slice(0, 10),
                 narration: `Advance settlement: ${advCredit.referenceNumber || "ADV"} applied against ${result.invoiceNumber} for ${customerLedgerName}`,

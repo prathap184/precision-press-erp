@@ -306,7 +306,7 @@ export async function POST(request: Request) {
       const voucherType = (bankLedgerName.toLowerCase().includes("cash") || !parsed.bankAccountId) ? "Rec10 B8 Cash" : "Rec1 B1 Bank";
 
       const receiptPayload = {
-        tallyCompanyName: "Hindustan Enterprises 25-26",
+        tallyCompanyName: process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
         voucherType,
         receiptEntryNumber: receiptRef,
         voucherNumber: receiptRef,

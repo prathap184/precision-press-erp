@@ -2,8 +2,9 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-const TALLY_URL = 'http://localhost:9000';
-const COMPANY_NAME = 'Hindustan Enterprises 25-26';
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+const TALLY_URL = process.env.TALLY_URL || 'http://localhost:9000';
+const COMPANY_NAME = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
 async function sendToTally(envelopeXml) {
   try {

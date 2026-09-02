@@ -3,7 +3,7 @@ require('dotenv').config({ path: 'tally-connector/.env' });
 const axios = require('axios');
 
 const TALLY_URL = `${process.env.TALLY_HOST || 'http://localhost'}:${process.env.TALLY_PORT || 9000}`;
-const COMPANY = 'Hindustan Enterprises 25-26';
+const COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
 const stockItems = [
   '01 Acrylic Premium 1.0mm (2 FT x 8 FT)',

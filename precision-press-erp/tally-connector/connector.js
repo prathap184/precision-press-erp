@@ -312,9 +312,10 @@ async function poll() {
 logger.info('════════════════════════════════════════════════════════');
 logger.info('  Precision Press ERP — TallyPrime Connector Service    ');
 logger.info('════════════════════════════════════════════════════════');
-logger.info(`  ERP:   ${ERP_BASE_URL}`);
-logger.info(`  Tally: ${TALLY_URL}`);
-logger.info(`  Poll:  every ${POLL_MS / 1000}s`);
+logger.info(`  ERP:     ${ERP_BASE_URL}`);
+logger.info(`  Tally:   ${TALLY_URL}`);
+logger.info(`  Company: ${process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan'}`);
+logger.info(`  Poll:    every ${POLL_MS / 1000}s`);
 logger.info('  IMPORTANT: TallyPrime must be open with company loaded');
 logger.info('════════════════════════════════════════════════════════');
 

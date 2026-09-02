@@ -2,8 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
+require('dotenv').config();
 const ALL_LEDGERS_FILE = path.resolve(__dirname, '../tally_sync/all ledgers/listofledgers.xml');
-const TALLY_URL = 'http://localhost:9000';
+const TALLY_URL = process.env.TALLY_URL || 'http://localhost:9000';
+const TARGET_COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -30,7 +32,7 @@ async function sendChunk(messages) {
    <REQUESTDESC>
     <REPORTNAME>All Masters</REPORTNAME>
     <STATICVARIABLES>
-     <SVCURRENTCOMPANY>Hindustan Enterprises 25-26</SVCURRENTCOMPANY>
+      <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
     </STATICVARIABLES>
    </REQUESTDESC>
    <REQUESTDATA>

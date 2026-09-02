@@ -421,7 +421,7 @@ export async function POST(request: Request) {
         });
 
         const receiptPayload = {
-          tallyCompanyName: "Hindustan Enterprises 25-26",
+          tallyCompanyName: process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
           voucherType,
           receiptEntryNumber: paymentNumber,
           voucherNumber: paymentNumber,

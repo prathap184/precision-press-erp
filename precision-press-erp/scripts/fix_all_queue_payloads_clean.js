@@ -21,8 +21,8 @@ async function fixAll() {
   for (const item of queue) {
     const payload = item.payload || {};
 
-    // 1. Force company name to "Hindustan Enterprises 25-26"
-    payload.tallyCompanyName = 'Hindustan Enterprises 25-26';
+    // 1. Set company name
+    payload.tallyCompanyName = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 
     // 2. Fix bank ledger if it is "Rec1 B1 Bank" or missing
     if (payload.bankLedger === 'Rec1 B1 Bank' || !payload.bankLedger || payload.bankLedger.startsWith('Rec')) {

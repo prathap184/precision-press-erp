@@ -2,7 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
-const TALLY_URL = 'http://localhost:9000';
+require('dotenv').config();
+const TALLY_URL = process.env.TALLY_URL || 'http://localhost:9000';
+const TARGET_COMPANY = process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan';
 const LEDGERS_FILE = path.resolve(__dirname, '../tally_sync/all ledgers/listofledgers.xml');
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -35,7 +37,7 @@ async function importLedgersSafe() {
    <REQUESTDESC>
     <REPORTNAME>All Masters</REPORTNAME>
     <STATICVARIABLES>
-     <SVCURRENTCOMPANY>Hindustan Enterprises 25-26</SVCURRENTCOMPANY>
+     <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
     </STATICVARIABLES>
    </REQUESTDESC>
    <REQUESTDATA>
