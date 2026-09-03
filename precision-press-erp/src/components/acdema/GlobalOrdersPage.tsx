@@ -217,12 +217,16 @@ export function GlobalOrdersPage() {
           let desc = i.productName || i.name || 'Custom Print';
           if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
           if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
+          const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || 'A').toUpperCase();
+          const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
           const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
           const totalFinish = parseFloat(finishAmount || '0');
           return {
             description: desc,
             quantity: qty.toString(),
             unitPrice: baseRate.toFixed(2),
+            billingMode: billingMode as 'A' | 'B',
+            pcsNo,
             accountId: defaultSalesAccountId,
             taxRateId: matchedTax?.id ?? default18Tax?.id ?? '',
             inventoryItemId: matchedInventory?.id ?? (i.productId || ''),

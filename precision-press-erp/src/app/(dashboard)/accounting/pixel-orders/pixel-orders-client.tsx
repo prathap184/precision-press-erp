@@ -281,9 +281,23 @@ export function PixelOrdersClient({ initialOrders }: { initialOrders: any[] }) {
           let desc = i.productName || "Custom Print";
           if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
           if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
+          const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || 'A').toUpperCase();
+          const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
           const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
           const totalFinish = parseFloat(finishAmount || "0");
-          return { description: desc, quantity: qty.toString(), unitPrice: baseRate.toFixed(2), accountId: "", taxRateId: matchedTax?.id ?? "", inventoryItemId: matchedInventory?.id ?? "", width: widthFt > 0 ? widthFt.toString() : "", length: heightFt > 0 ? heightFt.toString() : "", finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : "" };
+          return {
+            description: desc,
+            quantity: qty.toString(),
+            unitPrice: baseRate.toFixed(2),
+            billingMode: billingMode as 'A' | 'B',
+            pcsNo,
+            accountId: "",
+            taxRateId: matchedTax?.id ?? "",
+            inventoryItemId: matchedInventory?.id ?? "",
+            width: widthFt > 0 ? widthFt.toString() : "",
+            length: heightFt > 0 ? heightFt.toString() : "",
+            finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : ""
+          };
         });
         if (lines.length === 0) lines.push({ description: "Custom Print Order", quantity: "1", unitPrice: (parseJson(order.amounts)?.grandTotal ?? 0).toString(), accountId: "", taxRateId: "" });
         allLines.push(...lines);
