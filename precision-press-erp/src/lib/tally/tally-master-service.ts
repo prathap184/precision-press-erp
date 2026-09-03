@@ -499,6 +499,13 @@ export async function previewMasterSync(type: MasterType) {
           hasChanges = true;
           changes.address = { old: erpAddr, new: tallyAddr };
         }
+
+        const erpBal = existing.tally_closing_balance != null ? Number(existing.tally_closing_balance) : Number(existing.opening_balance || 0);
+        const tallyBal = Number(item.closingBalance || 0);
+        if (tallyBal !== erpBal) {
+          hasChanges = true;
+          changes.closingBalance = { old: erpBal, new: tallyBal };
+        }
       } else if (type === 'items') {
         const erpHsn = cleanStr(existing.hsn_code || existing.hsnCode);
         const tallyHsn = cleanStr(item.hsnCode);
