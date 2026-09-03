@@ -749,6 +749,8 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
             description: l.description,
             quantity: parseFloat(l.quantity) || 1,
             unitPrice: parseFloat(l.unitPrice) || 0,
+            billingMode: l.billingMode || null,
+            pcsNo: parseFloat(l.pcsNo || "1") || null,
             accountId: l.accountId || null,
             taxRateId: l.taxRateId || null,
             inventoryItemId: l.inventoryItemId || null,
@@ -777,7 +779,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
               : "Invoice created"
       );
       onClose();
-      router.push(`/sales/${inv.id}`);
+      router.push(`/accounting/sales/${inv.id}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create invoice");
     } finally {
