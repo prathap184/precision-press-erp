@@ -213,7 +213,6 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
     const alterM = body.match(/<ALTERID[^>]*>([^<]*)<\/ALTERID>/i);
     const gstinM = body.match(/<PARTYGSTIN[^>]*>([^<]*)<\/PARTYGSTIN>/i) || body.match(/<GSTIN[^>]*>([^<]*)<\/GSTIN>/i);
     const mobileM = body.match(/<LEDGERMOBILE[^>]*>([^<]*)<\/LEDGERMOBILE>/i) || body.match(/<LEDGERPHONE[^>]*>([^<]*)<\/LEDGERPHONE>/i);
-    const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i);
     const pinM = body.match(/<PINCODE[^>]*>([^<]*)<\/PINCODE>/i);
     const stateM = body.match(/<LEDGERSTATENAME[^>]*>([^<]*)<\/LEDGERSTATENAME>/i) || body.match(/<STATE[^>]*>([^<]*)<\/STATE>/i) || body.match(/<OLDLEDSTATENAME[^>]*>([^<]*)<\/OLDLEDSTATENAME>/i);
 
