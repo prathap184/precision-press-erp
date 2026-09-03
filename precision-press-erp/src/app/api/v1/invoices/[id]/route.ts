@@ -224,8 +224,8 @@ export async function PATCH(
           deliveryAmount,
           costCenterId: l.costCenterId || null,
           projectId: l.projectId || null,
-          inventoryItemId: l.inventoryItemId || null,
-          warehouseId: l.warehouseId || null,
+          inventoryItemId: (typeof l.inventoryItemId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(l.inventoryItemId)) ? l.inventoryItemId : null,
+          warehouseId: (typeof l.warehouseId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(l.warehouseId)) ? l.warehouseId : null,
           sortOrder: i,
         };
       });

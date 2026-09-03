@@ -194,10 +194,13 @@ export async function POST(request: Request) {
     // don't carry an explicit unitPrice: prefer the line/document price list,
     // then fall back to the item's default sale price. Lines with an explicit
     // unitPrice are unaffected. Item default prices are preloaded in one query.
+    const isUuid = (val: any): val is string =>
+      typeof val === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
+
     const itemIds = [
       ...new Set(
         parsed.lines
-          .filter((l) => l.inventoryItemId && l.unitPrice === undefined)
+          .filter((l) => isUuid(l.inventoryItemId) && l.unitPrice === undefined)
           .map((l) => l.inventoryItemId as string)
       ),
     ];
@@ -284,8 +287,8 @@ export async function POST(request: Request) {
         deliveryAmount,
         costCenterId: l.costCenterId || null,
         projectId: l.projectId || null,
-        inventoryItemId: l.inventoryItemId || null,
-        warehouseId: l.warehouseId || null,
+        inventoryItemId: isUuid(l.inventoryItemId) ? l.inventoryItemId : null,
+        warehouseId: isUuid(l.warehouseId) ? l.warehouseId : null,
         sortOrder: i,
       };
     });
