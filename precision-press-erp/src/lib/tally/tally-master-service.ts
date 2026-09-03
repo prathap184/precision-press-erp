@@ -466,7 +466,12 @@ export async function previewMasterSync(type: MasterType) {
 
 // ─── Execute Sync Engine ──────────────────────────────────────────────────────
 
-export async function executeMasterSync(type: MasterType) {
+export interface ExecuteSyncOptions {
+  limit?: number;
+  specificName?: string;
+}
+
+export async function executeMasterSync(type: MasterType, options?: ExecuteSyncOptions) {
   let tallyItems: any[] = [];
   if (type === 'customers') tallyItems = await loadTallyCustomersOrSuppliers('customers');
   else if (type === 'suppliers') tallyItems = await loadTallyCustomersOrSuppliers('suppliers');
@@ -485,10 +490,23 @@ export async function executeMasterSync(type: MasterType) {
 
   let addedCount = 0;
   let updatedCount = 0;
+  let syncedDetails: any = null;
 
   if (type === 'customers' || type === 'suppliers') {
     const contactType = type === 'customers' ? 'customer' : 'supplier';
-    for (const item of tallyItems) {
+
+    let targetItems = tallyItems;
+    if (options?.specificName) {
+      targetItems = tallyItems.filter(i => cleanStr(i.tallyName).toLowerCase() === cleanStr(options.specificName).toLowerCase());
+    } else if (options?.limit === 1) {
+      const nonExisting = tallyItems.filter(item => {
+        const lookupName = cleanStr(item.tallyName).toLowerCase();
+        return !(item.tallyGuid && erpMapByGuid.get(item.tallyGuid)) && !erpMapByName.get(lookupName);
+      });
+      targetItems = nonExisting.length > 0 ? [nonExisting[0]] : [tallyItems[0]];
+    }
+
+    for (const item of targetItems) {
       const lookupName = cleanStr(item.tallyName).toLowerCase();
       const existing = (item.tallyGuid && erpMapByGuid.get(item.tallyGuid)) || erpMapByName.get(lookupName);
 
@@ -516,12 +534,16 @@ export async function executeMasterSync(type: MasterType) {
       };
 
       if (!existing) {
-        await supabaseServer.from('contact').insert(payload);
+        const { data: inserted } = await supabaseServer.from('contact').insert(payload).select('*').single();
         addedCount++;
+        syncedDetails = inserted || payload;
       } else {
-        await supabaseServer.from('contact').update(payload).eq('id', existing.id);
+        const { data: updated } = await supabaseServer.from('contact').update(payload).eq('id', existing.id).select('*').single();
         updatedCount++;
+        syncedDetails = updated || payload;
       }
+
+      if (options?.limit && (addedCount + updatedCount) >= options.limit) break;
     }
   } else if (type === 'items') {
     // 1. Load all inventory categories into memory
@@ -531,7 +553,18 @@ export async function executeMasterSync(type: MasterType) {
       if (c.name) catMap.set(cleanStr(c.name).toLowerCase(), c.id);
     }
 
-    for (const item of tallyItems) {
+    let targetItems = tallyItems;
+    if (options?.specificName) {
+      targetItems = tallyItems.filter(i => cleanStr(i.name).toLowerCase() === cleanStr(options.specificName).toLowerCase());
+    } else if (options?.limit === 1) {
+      const nonExisting = tallyItems.filter(item => {
+        const lookupName = cleanStr(item.name).toLowerCase();
+        return !(item.tallyGuid && erpMapByGuid.get(item.tallyGuid)) && !erpMapByName.get(lookupName);
+      });
+      targetItems = nonExisting.length > 0 ? [nonExisting[0]] : [tallyItems[0]];
+    }
+
+    for (const item of targetItems) {
       const lookupName = cleanStr(item.name).toLowerCase();
       const existing = (item.tallyGuid && erpMapByGuid.get(item.tallyGuid)) || erpMapByName.get(lookupName);
 
@@ -573,24 +606,37 @@ export async function executeMasterSync(type: MasterType) {
 
       if (!existing) {
         payload.sku = `SKU-${Date.now().toString().slice(-6)}`;
-        await supabaseServer.from('inventory_item').insert(payload);
+        const { data: inserted } = await supabaseServer.from('inventory_item').insert(payload).select('*').single();
         addedCount++;
+        syncedDetails = inserted || payload;
       } else {
-        await supabaseServer.from('inventory_item').update(payload).eq('id', existing.id);
+        const { data: updated } = await supabaseServer.from('inventory_item').update(payload).eq('id', existing.id).select('*').single();
         updatedCount++;
+        syncedDetails = updated || payload;
       }
+
+      if (options?.limit && (addedCount + updatedCount) >= options.limit) break;
     }
   } else if (type === 'accounts') {
-    // 2. Chart of Accounts code assignment
     const { data: chartList } = await supabaseServer.from('chart_account').select('id, code, name, type');
     const usedCodes = new Set<string>((chartList || []).map(c => String(c.code)));
 
-    for (const acc of tallyItems) {
+    let targetItems = tallyItems;
+    if (options?.specificName) {
+      targetItems = tallyItems.filter(i => cleanStr(i.name).toLowerCase() === cleanStr(options.specificName).toLowerCase());
+    } else if (options?.limit === 1) {
+      const nonExisting = tallyItems.filter(acc => {
+        const lookupName = cleanStr(acc.name).toLowerCase();
+        return !(acc.tallyGuid && erpMapByGuid.get(acc.tallyGuid)) && !erpMapByName.get(lookupName);
+      });
+      targetItems = nonExisting.length > 0 ? [nonExisting[0]] : [tallyItems[0]];
+    }
+
+    for (const acc of targetItems) {
       const lookupName = cleanStr(acc.name).toLowerCase();
       const existing = (acc.tallyGuid && erpMapByGuid.get(acc.tallyGuid)) || erpMapByName.get(lookupName);
 
       if (!existing) {
-        // Determine type and code range
         let accType = 'EXPENSE';
         let baseCode = 5000;
         const g = (acc.group || '').toLowerCase();
@@ -604,7 +650,7 @@ export async function executeMasterSync(type: MasterType) {
         }
         usedCodes.add(String(newCode));
 
-        await supabaseServer.from('chart_account').insert({
+        const payload = {
           organization_id: DEFAULT_ORG_ID,
           name: acc.name,
           tally_ledger_name: acc.name,
@@ -614,25 +660,33 @@ export async function executeMasterSync(type: MasterType) {
           type: accType,
           opening_balance: acc.openingBalance || 0,
           is_active: true,
-        });
+        };
+
+        const { data: inserted } = await supabaseServer.from('chart_account').insert(payload).select('*').single();
         addedCount++;
+        syncedDetails = inserted || payload;
       } else {
-        await supabaseServer.from('chart_account').update({
+        const { data: updated } = await supabaseServer.from('chart_account').update({
           tally_ledger_name: acc.name,
           tally_parent_group: acc.group,
           tally_guid: acc.tallyGuid || existing.tally_guid,
           opening_balance: acc.openingBalance || existing.opening_balance,
-        }).eq('id', existing.id);
+        }).eq('id', existing.id).select('*').single();
         updatedCount++;
+        syncedDetails = updated || existing;
       }
+
+      if (options?.limit && (addedCount + updatedCount) >= options.limit) break;
     }
   }
 
   return {
     success: true,
+    mode: options?.limit === 1 ? 'single' : 'bulk',
     addedCount,
     updatedCount,
-    totalProcessed: tallyItems.length,
+    syncedRecord: syncedDetails,
+    summary: await getMasterSummaryCounts().catch(() => null),
   };
 }
 

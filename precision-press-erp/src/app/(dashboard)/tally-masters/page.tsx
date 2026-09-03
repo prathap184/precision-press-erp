@@ -75,6 +75,13 @@ export default function TallyMastersPage() {
   const [syncExecuting, setSyncExecuting] = useState<boolean>(false);
   const [syncSuccessMsg, setSyncSuccessMsg] = useState<string | null>(null);
 
+  // Single Test Record Sync state
+  const [singleSyncConfirmOpen, setSingleSyncConfirmOpen] = useState<boolean>(false);
+  const [singleSyncLoading, setSingleSyncLoading] = useState<boolean>(false);
+  const [singleSyncResultOpen, setSingleSyncResultOpen] = useState<boolean>(false);
+  const [singleSyncResult, setSingleSyncResult] = useState<any | null>(null);
+  const [targetSpecificName, setTargetSpecificName] = useState<string | null>(null);
+
   // Verify confirmation dialog state
   const [verifyConfirmOpen, setVerifyConfirmOpen] = useState<boolean>(false);
 
@@ -153,6 +160,42 @@ export default function TallyMastersPage() {
       alert(`Sync execution error: ${err.message}`);
     } finally {
       setSyncExecuting(false);
+    }
+  }
+
+  // ─── Execute Single Test Record Sync ─────────────────────────────────────────
+  async function handleExecuteSingleSync(specificName?: string) {
+    setSingleSyncLoading(true);
+    setSingleSyncConfirmOpen(false);
+    try {
+      const res = await fetch('/api/v1/tally-masters/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          masterType: activeTab,
+          action: 'execute',
+          limit: 1,
+          specificName: specificName || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSingleSyncResult(data.result);
+        setSingleSyncResultOpen(true);
+        if (data.result.summary) {
+          setSummary(data.result.summary);
+        }
+        if (auditResult) {
+          await runVerification(activeTab);
+        }
+      } else {
+        alert(`Single sync error: ${data.error}`);
+      }
+    } catch (err: any) {
+      alert(`Network error: ${err.message}`);
+    } finally {
+      setSingleSyncLoading(false);
+      setTargetSpecificName(null);
     }
   }
 
@@ -242,24 +285,44 @@ export default function TallyMastersPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+          {/* 1. Verify Audit */}
           <Button
             variant="outline"
             onClick={() => setVerifyConfirmOpen(true)}
-            disabled={loading}
-            className="flex items-center gap-2 border-slate-300 dark:border-slate-700 shadow-sm text-xs font-medium h-9"
+            disabled={loading || singleSyncLoading}
+            className="flex items-center gap-1.5 border-slate-300 dark:border-slate-700 shadow-sm text-xs font-medium h-9"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             Verify {TABS.find(t => t.id === activeTab)?.label.split(' ')[0]}
           </Button>
 
+          {/* 2. Sync 1 Test Record */}
+          <Button
+            variant="outline"
+            onClick={() => {
+              setTargetSpecificName(null);
+              setSingleSyncConfirmOpen(true);
+            }}
+            disabled={loading || singleSyncLoading || syncPreviewLoading}
+            className="flex items-center gap-1.5 border-emerald-500/50 text-emerald-700 dark:text-emerald-300 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/40 shadow-sm text-xs font-semibold h-9"
+          >
+            {singleSyncLoading ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            )}
+            Sync 1 Test {TABS.find(t => t.id === activeTab)?.label.split(' ')[0]}
+          </Button>
+
+          {/* 3. Sync All Masters */}
           <Button
             onClick={handleOpenSyncPreview}
-            disabled={loading || syncPreviewLoading}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white shadow-sm text-xs font-medium h-9"
+            disabled={loading || syncPreviewLoading || singleSyncLoading}
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white shadow-sm text-xs font-semibold h-9"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            Sync {TABS.find(t => t.id === activeTab)?.label.split(' ')[0]}
+            Sync All {TABS.find(t => t.id === activeTab)?.label.split(' ')[0]}
           </Button>
         </div>
       </div>
@@ -386,19 +449,20 @@ export default function TallyMastersPage() {
                 <th className="px-4 py-3">Key Fields</th>
                 <th className="px-4 py-3">Audit Status</th>
                 <th className="px-4 py-3">Discrepancy Details</th>
+                <th className="px-4 py-3 text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400">
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
                     <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
                     Cross-checking records against TallyPrime...
                   </td>
                 </tr>
               ) : filteredRecords.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-slate-400">
+                  <td colSpan={6} className="py-10 text-center text-slate-400">
                     No records found matching your filters.
                   </td>
                 </tr>
@@ -446,6 +510,22 @@ export default function TallyMastersPage() {
                           </div>
                         )}
                       </td>
+                      <td className="px-4 py-3 text-right">
+                        {!isMatched && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setTargetSpecificName(r.name);
+                              setSingleSyncConfirmOpen(true);
+                            }}
+                            disabled={singleSyncLoading}
+                            className="h-7 px-2.5 text-[11px] border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950 font-semibold"
+                          >
+                            Sync 1
+                          </Button>
+                        )}
+                      </td>
                     </tr>
                   );
                 })
@@ -454,6 +534,162 @@ export default function TallyMastersPage() {
           </table>
         </div>
       </Card>
+
+      {/* ─── Single Test Record Confirmation Dialog ─────────────────────────── */}
+      <Dialog open={singleSyncConfirmOpen} onOpenChange={setSingleSyncConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5 text-emerald-600 mb-1">
+              <ShieldCheck className="w-5 h-5" />
+              <DialogTitle className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {targetSpecificName ? `Sync "${targetSpecificName}"` : `Sync 1 Test ${TABS.find(t => t.id === activeTab)?.label.split(' ')[0]}`}
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-slate-500">
+              {targetSpecificName
+                ? `This will query TallyPrime Port 9000 for "${targetSpecificName}" and safely sync its fields into your ERP database.`
+                : `This will query TallyPrime Port 9000 live, find 1 ${activeTab === 'customers' ? 'customer' : activeTab === 'suppliers' ? 'supplier' : activeTab === 'items' ? 'stock item' : 'account'} not yet in the ERP, and safely insert it.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg text-xs space-y-1.5 border border-slate-200 dark:border-slate-800">
+            <p className="font-medium text-slate-700 dark:text-slate-300">Live Verification Process:</p>
+            <ul className="list-disc pl-4 space-y-1 text-slate-600 dark:text-slate-400">
+              <li>Pulls live from <code>http://127.0.0.1:9000</code>.</li>
+              <li>Inserts exactly <strong>1 record</strong> into PostgreSQL.</li>
+              <li>Shows you the complete created database row for instant verification.</li>
+            </ul>
+          </div>
+
+          <DialogFooter className="flex items-center justify-end gap-2 pt-2">
+            <Button variant="ghost" size="sm" onClick={() => setSingleSyncConfirmOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => handleExecuteSingleSync(targetSpecificName || undefined)}
+              disabled={singleSyncLoading}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs flex items-center gap-1.5"
+            >
+              {singleSyncLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+              Yes, Sync 1 Record Now
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Single Test Record Result Inspection Modal ──────────────────────── */}
+      <Dialog open={singleSyncResultOpen} onOpenChange={setSingleSyncResultOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-2.5 text-emerald-600 mb-1">
+              <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+              <DialogTitle className="text-base font-bold text-slate-900 dark:text-slate-100">
+                1 Record Successfully Synced to ERP Database!
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-slate-500">
+              Review the exact database row created in your PostgreSQL database ({activeTab === 'items' ? 'inventory_item' : activeTab === 'accounts' ? 'chart_account' : 'contact'}).
+            </DialogDescription>
+          </DialogHeader>
+
+          {singleSyncResult?.syncedRecord ? (
+            <div className="space-y-3 py-2">
+              <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/50 rounded-lg flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">Record Name</div>
+                  <div className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    {singleSyncResult.syncedRecord.name || singleSyncResult.syncedRecord.displayName}
+                  </div>
+                </div>
+                <Badge className="bg-emerald-600 text-white text-xs">
+                  {singleSyncResult.syncedRecord.type || singleSyncResult.syncedRecord.printerCategory || 'SYNCED'}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">ERP Database ID (UUID)</span>
+                  <span className="font-mono text-[11px] text-slate-800 dark:text-slate-200 break-all select-all">
+                    {singleSyncResult.syncedRecord.id || 'Generated'}
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Tally GUID</span>
+                  <span className="font-mono text-[11px] text-slate-800 dark:text-slate-200 break-all">
+                    {singleSyncResult.syncedRecord.tally_guid || 'N/A'}
+                  </span>
+                </div>
+
+                {singleSyncResult.syncedRecord.phone && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Phone / Mobile</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.phone}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.tax_number && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">GSTIN</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.tax_number}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.pan_number && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">PAN Number</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.pan_number}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.printerCategory && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Division / Category</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.printerCategory}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.tally_opening_balance != null && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Opening Balance</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      ₹{singleSyncResult.syncedRecord.tally_opening_balance.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.billing_address_line1 && (
+                  <div className="col-span-2 p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Address</span>
+                    <span className="text-slate-700 dark:text-slate-300">
+                      {singleSyncResult.syncedRecord.billing_address_line1}, {singleSyncResult.syncedRecord.city}, {singleSyncResult.syncedRecord.state} - {singleSyncResult.syncedRecord.pincode}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="py-4 text-center text-sm text-slate-500">
+              1 record synced successfully!
+            </div>
+          )}
+
+          <DialogFooter className="pt-2">
+            <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold" onClick={() => setSingleSyncResultOpen(false)}>
+              Close & Continue Verification
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ─── Sync Preview & Confirmation Modal ───────────────────────────────── */}
       <Dialog open={syncPreviewOpen} onOpenChange={setSyncPreviewOpen}>

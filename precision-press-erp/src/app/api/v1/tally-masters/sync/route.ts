@@ -14,7 +14,12 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { masterType, action } = body as { masterType: MasterType; action: 'preview' | 'execute' };
+    const { masterType, action, limit, specificName } = body as {
+      masterType: MasterType;
+      action: 'preview' | 'execute';
+      limit?: number;
+      specificName?: string;
+    };
 
     if (!masterType || !['customers', 'suppliers', 'items', 'accounts'].includes(masterType)) {
       return NextResponse.json({ success: false, error: 'Invalid masterType' }, { status: 400 });
@@ -26,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'execute') {
-      const result = await executeMasterSync(masterType);
+      const result = await executeMasterSync(masterType, { limit, specificName });
       return NextResponse.json({ success: true, result });
     }
 
