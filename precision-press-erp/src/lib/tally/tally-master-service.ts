@@ -86,7 +86,7 @@ async function fetchLiveTally(type: MasterType): Promise<string> {
     collectionName = 'LedgerCollection';
     tdlXml = `<COLLECTION NAME="LedgerCollection" ISMODIFY="No">
       <TYPE>Ledger</TYPE>
-      <FETCH>Name,Parent,Guid,AlterId,PartyGSTIN,LedgerMobile,LedgerPhone,OpeningBalance,Pincode,LedgerStateName,Address</FETCH>
+      <FETCH>Name,Parent,Guid,AlterId,PartyGSTIN,LedgerMobile,LedgerPhone,OpeningBalance,ClosingBalance,Pincode,LedgerStateName,Address</FETCH>
      </COLLECTION>`;
   }
 
