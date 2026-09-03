@@ -76,6 +76,12 @@ async function fetchLiveTally(type: MasterType): Promise<string> {
       <TYPE>StockItem</TYPE>
       <FETCH>Name,Parent,Guid,AlterId,BaseUnits,GstHsnName,HsnCode,OpeningRate,OpeningValue,ClosingRate,ClosingValue,OpeningBalance,ClosingBalance</FETCH>
      </COLLECTION>`;
+  } else if ((type as string) === 'groups') {
+    collectionName = 'GroupCollection';
+    tdlXml = `<COLLECTION NAME="GroupCollection" ISMODIFY="No">
+      <TYPE>Group</TYPE>
+      <FETCH>Name,Parent</FETCH>
+     </COLLECTION>`;
   } else {
     collectionName = 'LedgerCollection';
     tdlXml = `<COLLECTION NAME="LedgerCollection" ISMODIFY="No">
@@ -127,18 +133,57 @@ async function fetchLiveTally(type: MasterType): Promise<string> {
 const CUSTOMER_GROUPS = ['debtor', 'sundry debtor', 'customer', 'client', 'bo debtor', 'so debtor', 'uv debtor', 'psd debtor'];
 const SUPPLIER_GROUPS = ['creditor', 'sundry creditor', 'supplier', 'vendor', 'raw material'];
 
-function isCustomerGroup(group: string) {
-  if (!group) return false;
-  const lower = group.toLowerCase();
-  if (lower.includes('creditor') || lower.includes('supplier')) return false;
-  return CUSTOMER_GROUPS.some(k => lower.includes(k));
+let cachedGroupTree: Map<string, string> | null = null;
+
+export async function getTallyGroupTree(): Promise<Map<string, string>> {
+  if (cachedGroupTree) return cachedGroupTree;
+  try {
+    const xml = await fetchLiveTally('groups' as any);
+    const map = new Map<string, string>();
+    const regex = /<GROUP\s+NAME="([^"]+)"[^>]*>([\s\S]*?)<\/GROUP>/gi;
+    let m;
+    while ((m = regex.exec(xml)) !== null) {
+      const name = cleanStr(m[1]).toLowerCase();
+      const body = m[2];
+      const pM = body.match(/<PARENT[^>]*>([^<]*)<\/PARENT>/i);
+      map.set(name, pM ? cleanStr(pM[1]) : '');
+    }
+    cachedGroupTree = map;
+    return map;
+  } catch {
+    return new Map();
+  }
 }
 
-function isSupplierGroup(group: string) {
-  if (!group) return false;
-  const lower = group.toLowerCase();
-  if (lower.includes('debtor') || lower.includes('customer')) return false;
-  return SUPPLIER_GROUPS.some(k => lower.includes(k));
+export async function resolveRootGroupCategory(groupName: string): Promise<'CUSTOMER' | 'SUPPLIER' | 'ASSET' | 'LIABILITY' | 'REVENUE' | 'EXPENSE'> {
+  const tree = await getTallyGroupTree();
+  let curr = (groupName || '').trim();
+  let depth = 0;
+  while (curr && depth < 10) {
+    const lower = curr.toLowerCase();
+    if (lower.includes('debtor') || lower.includes('cyient') || lower.includes('medical dilip')) return 'CUSTOMER';
+    if (lower.includes('creditor')) return 'SUPPLIER';
+    if (lower.includes('bank') || lower.includes('cash') || lower.includes('deposit') || lower.includes('current asset') || lower.includes('fixed asset') || lower.includes('investment') || lower.includes('stock-in-hand')) return 'ASSET';
+    if (lower.includes('duties') || lower.includes('tax') || lower.includes('liability') || lower.includes('loan') || lower.includes('provision') || lower.includes('capital') || lower.includes('reserves') || lower.includes('tds')) return 'LIABILITY';
+    if (lower.includes('sales') || lower.includes('income') || lower.includes('revenue') || lower.includes('direct income')) return 'REVENUE';
+    if (lower.includes('expense') || lower.includes('charges') || lower.includes('rent') || lower.includes('salary') || lower.includes('maintenance') || lower.includes('purchase')) return 'EXPENSE';
+    
+    const parent = tree.get(lower);
+    if (!parent || parent.toLowerCase() === lower) break;
+    curr = parent;
+    depth++;
+  }
+  return 'EXPENSE';
+}
+
+export async function isCustomerGroup(group: string): Promise<boolean> {
+  const cat = await resolveRootGroupCategory(group);
+  return cat === 'CUSTOMER';
+}
+
+export async function isSupplierGroup(group: string): Promise<boolean> {
+  const cat = await resolveRootGroupCategory(group);
+  return cat === 'SUPPLIER';
 }
 
 export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'suppliers'): Promise<any[]> {
@@ -157,12 +202,12 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
   while ((m = ledgerRegex.exec(xml)) !== null) {
     const name = cleanStr(m[1]);
     const body = m[2];
-
     const parentM = body.match(/<PARENT[^>]*>([^<]*)<\/PARENT>/i);
     const parentGroup = parentM ? cleanStr(parentM[1]) : '';
 
-    if (type === 'customers' && !isCustomerGroup(parentGroup)) continue;
-    if (type === 'suppliers' && !isSupplierGroup(parentGroup)) continue;
+    const rootCat = await resolveRootGroupCategory(parentGroup);
+    if (type === 'customers' && rootCat !== 'CUSTOMER') continue;
+    if (type === 'suppliers' && rootCat !== 'SUPPLIER') continue;
 
     const guidM = body.match(/<GUID[^>]*>([^<]*)<\/GUID>/i);
     const alterM = body.match(/<ALTERID[^>]*>([^<]*)<\/ALTERID>/i);
@@ -313,8 +358,9 @@ export async function loadTallyAccounts(): Promise<any[]> {
     const parentM = body.match(/<PARENT[^>]*>([^<]*)<\/PARENT>/i);
     const parentGroup = parentM ? cleanStr(parentM[1]) : 'Primary';
 
-    // Exclude customer and supplier debtors/creditors
-    if (isCustomerGroup(parentGroup) || isSupplierGroup(parentGroup)) continue;
+    // Exclude customer and supplier debtors/creditors (including sub-groups)
+    const rootCat = await resolveRootGroupCategory(parentGroup);
+    if (rootCat === 'CUSTOMER' || rootCat === 'SUPPLIER') continue;
 
     const guidM = body.match(/<GUID[^>]*>([^<]*)<\/GUID>/i);
     const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i);
@@ -688,10 +734,11 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
       if (!existing) {
         let accType = 'expense';
         let baseCode = 5000;
-        const g = (acc.group || '').toLowerCase();
-        if (g.includes('asset') || g.includes('cash') || g.includes('bank')) { accType = 'asset'; baseCode = 1400; }
-        else if (g.includes('liability') || g.includes('duties') || g.includes('tax') || g.includes('payable')) { accType = 'liability'; baseCode = 2400; }
-        else if (g.includes('income') || g.includes('sales') || g.includes('revenue')) { accType = 'revenue'; baseCode = 4100; }
+        const rootCat = await resolveRootGroupCategory(acc.group);
+        if (rootCat === 'ASSET') { accType = 'asset'; baseCode = 1400; }
+        else if (rootCat === 'LIABILITY') { accType = 'liability'; baseCode = 2400; }
+        else if (rootCat === 'REVENUE') { accType = 'revenue'; baseCode = 4100; }
+        else if (rootCat === 'EXPENSE') { accType = 'expense'; baseCode = 5000; }
 
         let newCode = baseCode;
         while (usedCodes.has(String(newCode))) {
