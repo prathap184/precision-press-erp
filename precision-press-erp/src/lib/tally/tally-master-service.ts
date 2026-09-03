@@ -74,7 +74,7 @@ async function fetchLiveTally(type: MasterType): Promise<string> {
     collectionName = 'StockItemCollection';
     tdlXml = `<COLLECTION NAME="StockItemCollection" ISMODIFY="No">
       <TYPE>StockItem</TYPE>
-      <FETCH>Name,Parent,Guid,AlterId,BaseUnits,GstHsnName,HsnCode,Rate,OpeningBalance</FETCH>
+      <FETCH>Name,Parent,Guid,AlterId,BaseUnits,GstHsnName,HsnCode,OpeningRate,OpeningValue,ClosingRate,ClosingValue,OpeningBalance,ClosingBalance</FETCH>
      </COLLECTION>`;
   } else {
     collectionName = 'LedgerCollection';
@@ -246,8 +246,9 @@ export async function loadTallyStockItems(): Promise<any[]> {
     const parentM = body.match(/<PARENT[^>]*>([^<]*)<\/PARENT>/i);
     const uomM = body.match(/<BASEUNITS[^>]*>([^<]*)<\/BASEUNITS>/i);
     const hsnM = body.match(/<GSTHSNNAME[^>]*>([^<]*)<\/GSTHSNNAME>/i) || body.match(/<HSNCODE[^>]*>([^<]*)<\/HSNCODE>/i);
-    const rateM = body.match(/<RATE[^>]*>([^<]*)<\/RATE>/i);
-    const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i);
+    const rateM = body.match(/<OPENINGRATE[^>]*>([^<]*)<\/OPENINGRATE>/i) || body.match(/<CLOSINGRATE[^>]*>([^<]*)<\/CLOSINGRATE>/i) || body.match(/<RATE[^>]*>([^<]*)<\/RATE>/i);
+    const valM = body.match(/<OPENINGVALUE[^>]*>([^<]*)<\/OPENINGVALUE>/i) || body.match(/<CLOSINGVALUE[^>]*>([^<]*)<\/CLOSINGVALUE>/i);
+    const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i) || body.match(/<CLOSINGBALANCE[^>]*>([^<]*)<\/CLOSINGBALANCE>/i);
     const guidM = body.match(/<GUID[^>]*>([^<]*)<\/GUID>/i);
 
     const group = parentM ? cleanStr(parentM[1]) : 'General';
@@ -257,12 +258,23 @@ export async function loadTallyStockItems(): Promise<any[]> {
 
     let rate = 0;
     if (rateM) {
-      rate = parseFloat(cleanStr(rateM[1]).replace(/[^\d.-]/g, '')) || 0;
+      const rateStr = cleanStr(rateM[1]).split('/')[0];
+      rate = Math.abs(parseFloat(rateStr.replace(/[^\d.-]/g, '')) || 0);
     }
 
     let qty = 0;
     if (balM) {
-      qty = parseFloat(cleanStr(balM[1]).replace(/[^\d.-]/g, '')) || 0;
+      const qtyStr = cleanStr(balM[1]).split(' ')[0];
+      qty = Math.abs(parseFloat(qtyStr.replace(/[^\d.-]/g, '')) || 0);
+    }
+
+    let totalVal = 0;
+    if (valM) {
+      totalVal = Math.abs(parseFloat(cleanStr(valM[1]).replace(/[^\d.-]/g, '')) || 0);
+    }
+
+    if (!rate && qty > 0 && totalVal > 0) {
+      rate = Math.round((totalVal / qty) * 100) / 100;
     }
 
     items.push({
