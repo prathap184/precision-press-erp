@@ -1250,9 +1250,17 @@ async function executeOrderPlacementTx(
 
         category: item.category || childCategory,
         projectName: item.projectName || item.description,
-        specs: item.specs || {},
+        specs: {
+          ...(item.specs || {}),
+          billingMode: item.billingMode || 'A',
+          pcsNo: item.pcsNo || item.quantity || 1,
+        },
         materialMetadata: item.materialMetadata || {},
-        pricingSnapshot: item.pricingSnapshot || {},
+        pricingSnapshot: {
+          ...(item.pricingSnapshot || {}),
+          billingMode: item.billingMode || 'A',
+          pcsNo: item.pcsNo || item.quantity || 1,
+        },
         fileUrl: item.fileUrl || null,
         designUrl: null,
         designStatus: 'WAITING_FOR_DESIGNER',
@@ -1295,9 +1303,17 @@ async function executeOrderPlacementTx(
 
       category: item.category || derivedCategory,
       projectName: item.projectName || item.description,
-      specs: item.specs || {},
+      specs: {
+        ...(item.specs || {}),
+        billingMode: item.billingMode || 'A',
+        pcsNo: item.pcsNo || item.quantity || 1,
+      },
       materialMetadata: item.materialMetadata || {},
-      pricingSnapshot: item.pricingSnapshot || {},
+      pricingSnapshot: {
+        ...(item.pricingSnapshot || {}),
+        billingMode: item.billingMode || 'A',
+        pcsNo: item.pcsNo || item.quantity || 1,
+      },
       fileUrl: item.fileUrl || null,
       designUrl: null,
       designStatus: 'WAITING_FOR_DESIGNER',

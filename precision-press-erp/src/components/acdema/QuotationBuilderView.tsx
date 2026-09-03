@@ -421,14 +421,16 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                       <tr className="border-b-2 border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
                         <th className="py-3 px-2 w-8 text-center">#</th>
                         <th className="py-3 px-2">Name of Item</th>
-                        <th className="py-3 px-2">Project</th>
-                        <th className="py-3 px-2 text-center">GST%</th>
+                        <th className="py-3 px-2 text-center">HSN Code</th>
+                        <th className="py-3 px-2 text-center">GST %</th>
+                        <th className="py-3 px-2 text-center">T</th>
                         <th className="py-3 px-2">Width</th>
                         <th className="py-3 px-2">Length</th>
-                        <th className="py-3 px-2 text-center">Sq.Ft.</th>
-                        <th className="py-3 px-2">Qty</th>
-                        <th className="py-3 px-2">Rate/Sft</th>
-                        <th className="py-3 px-2 text-center">Rate Per</th>
+                        <th className="py-3 px-2 text-center">Sq. Ft.</th>
+                        <th className="py-3 px-2 text-center">Pcs/No</th>
+                        <th className="py-3 px-2 text-center">Quantity</th>
+                        <th className="py-3 px-2 text-center">Rate/SqFt</th>
+                        <th className="py-3 px-2 text-center">Rate per</th>
                         <th className="py-3 px-2">Finish</th>
                         <th className="py-3 px-2">File Path *</th>
                         <th className="py-3 px-2 text-right">Amount</th>
@@ -439,16 +441,19 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                       {rows.map((row: any, index: number) => {
                         const product = products.find((item: any) => item.id === row.productId);
                         const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
+                        const currentMode = isDirect ? 'B' : (row.billingMode || 'A');
                         const w = Number(row.width) || 0;
                         const h = Number(row.height) || 0;
-                        const q = Number(row.quantity) || 0;
+                        const pcs = Math.max(1, Number(row.pcsNo || row.quantity) || 1);
                         const wFt = row.widthUnit === 'IN' ? w / 12 : w;
                         const hFt = row.heightUnit === 'IN' ? h / 12 : h;
                         const sqft = isDirect ? 0 : wFt * hFt;
+                        const totalBilledSqft = sqft * pcs;
+                        const baseRate = Number(product?.baseRate) || 0;
                         const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
                         const amount = calculateRowSubtotal({
-                          width: wFt, height: hFt, quantity: q, rate: product?.baseRate || 0,
-                          eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : q, eyeletRate,
+                          width: wFt, height: hFt, quantity: pcs, rate: baseRate,
+                          eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : pcs, eyeletRate,
                           isDirectSelling: isDirect,
                         });
                         const gstRate = product?.gst_rate || 18;
@@ -584,10 +589,34 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                 );
                               })()}
                             </td>
-                            <td className="py-3 px-2 tabular-nums">
-                              <input value={row.projectName || ''} onChange={(e) => updateRow(row.id, { projectName: e.target.value })} className="h-10 w-full min-w-[80px] rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-bold text-slate-800 outline-none placeholder:text-slate-300" placeholder="Project" />
+                            <td className="py-3 px-2 text-center text-xs font-bold text-slate-500 tabular-nums">
+                              {product?.hsn || product?.hsn_code || row.hsnCode || '—'}
                             </td>
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
+                            <td className="py-3 px-2 text-center tabular-nums">
+                              {isDirect ? (
+                                <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-black">
+                                  B
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextMode = currentMode === 'A' ? 'B' : 'A';
+                                    updateRow(row.id, { billingMode: nextMode });
+                                  }}
+                                  title="Click to toggle Mode A (Pieces) or Mode B (Sq.Ft)"
+                                  className={`h-8 min-w-[58px] px-2 rounded-lg border-2 font-black text-xs transition-all inline-flex items-center justify-center gap-1 shadow-sm cursor-pointer ${
+                                    currentMode === 'A'
+                                      ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-500/20'
+                                      : 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-500/20'
+                                  }`}
+                                >
+                                  <span className="text-sm font-extrabold">{currentMode}</span>
+                                  <span className="text-[9px] font-bold opacity-90">{currentMode === 'A' ? 'Pcs' : 'SqFt'}</span>
+                                </button>
+                              )}
+                            </td>
                             <td className="py-3 px-2 tabular-nums">
                               {isDirect ? (
                                 <div className="h-10 w-[80px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
@@ -615,14 +644,58 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">
                               {sqft > 0 ? sqft.toFixed(2) : '—'}
                             </td>
-                            <td className="py-3 px-2 tabular-nums">
-                              <input id={`error-row-${row.id}-quantity`} value={row.quantity} onChange={(e) => updateRow(row.id, { quantity: e.target.value })} className={`h-10 w-16 rounded-lg border border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-800 outline-none ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : ''}`} placeholder="Qty" />
+                            {/* Pcs/No Column */}
+                            <td className="py-3 px-2 tabular-nums text-center">
+                              {currentMode === 'B' ? (
+                                <input
+                                  id={`error-row-${row.id}-pcs`}
+                                  value={row.pcsNo ?? row.quantity ?? '1'}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    updateRow(row.id, { pcsNo: val, quantity: val });
+                                  }}
+                                  className={`h-10 w-16 rounded-lg border text-center text-xs font-bold ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:bg-white'}`}
+                                  placeholder="Pcs"
+                                />
+                              ) : (
+                                <span className="text-slate-300 font-bold">—</span>
+                              )}
                             </td>
-                            <td className="py-3 px-2 text-xs font-bold text-slate-600 tabular-nums">
-                              {product?.baseRate?.toFixed(2) || '—'}
+                            {/* Quantity Column */}
+                            <td className="py-3 px-2 text-center text-xs font-bold tabular-nums">
+                              {isDirect ? (
+                                <span className="text-slate-700 font-bold">{pcs} N</span>
+                              ) : currentMode === 'B' ? (
+                                <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
+                              ) : (
+                                <div className="inline-flex items-center justify-center">
+                                  <input
+                                    id={`error-row-${row.id}-quantity`}
+                                    value={row.quantity || '1'}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      updateRow(row.id, { quantity: val, pcsNo: val });
+                                    }}
+                                    className={`h-10 w-16 rounded-lg border text-center text-xs font-bold ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:bg-white'}`}
+                                    placeholder="Qty"
+                                  />
+                                  <span className="ml-1 text-[11px] font-black text-slate-500">N</span>
+                                </div>
+                              )}
                             </td>
+                            {/* Rate/SqFt Column */}
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-700 tabular-nums">
-                              {isDirect ? (product?.baseRate ? Number(product.baseRate).toFixed(2) : '—') : (product?.baseRate ? (sqft * product.baseRate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—')}
+                              {currentMode === 'A' ? (baseRate > 0 ? baseRate.toFixed(2) : '—') : '—'}
+                            </td>
+                            {/* Rate per Column */}
+                            <td className="py-3 px-2 text-center text-xs font-bold tabular-nums">
+                              {isDirect ? (
+                                `${baseRate.toFixed(2)} N`
+                              ) : currentMode === 'B' ? (
+                                <span className="text-emerald-700 font-bold">{baseRate.toFixed(2)} sqft</span>
+                              ) : (
+                                <span className="text-blue-700 font-bold">{(sqft * baseRate).toFixed(2)} N</span>
+                              )}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
                               {isDirect ? (

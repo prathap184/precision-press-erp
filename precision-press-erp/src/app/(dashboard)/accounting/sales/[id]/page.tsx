@@ -971,7 +971,12 @@ export default function InvoiceDetailPage() {
                 {inv.lines.filter(l => l.description !== "Logistics / Shipping").map((line, i, arr) => (
                   <tr key={line.id} className={i < arr.length - 1 ? "border-b border-dashed" : ""}>
                     <td className="px-6 py-3">
-                      <p>{line.description}</p>
+                      <p className="font-semibold text-slate-900">{line.description}</p>
+                      {(line.width || line.length || line.sqFt) && (
+                        <p className="text-xs text-slate-500 font-mono mt-0.5">
+                          Size: {line.width || '—'} × {line.length || '—'} ft {line.sqFt ? `(${Number(line.sqFt).toFixed(2)} sqft)` : ''}
+                        </p>
+                      )}
                       {line.account && (
                         <p className="text-xs text-muted-foreground mt-0.5">{line.account.code} · {line.account.name}</p>
                       )}

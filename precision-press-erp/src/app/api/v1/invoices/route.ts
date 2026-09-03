@@ -35,6 +35,8 @@ const lineSchema = z.object({
   projectId: z.string().nullable().optional(),
   costCenterId: z.string().nullable().optional(),
   // New proxy order fields
+  billingMode: z.enum(['A', 'B']).nullable().optional(),
+  pcsNo: z.number().nullable().optional(),
   width: z.number().nullable().optional(),
   length: z.number().nullable().optional(),
   sqFt: z.number().nullable().optional(),

@@ -22,6 +22,8 @@ export interface LineItem {
   taxRateId: string;
   inventoryItemId?: string;
   projectId?: string;
+  billingMode?: 'A' | 'B';
+  pcsNo?: string;
   width?: string;
   length?: string;
   sqFt?: string;
@@ -394,17 +396,20 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
       <div className="overflow-x-auto">
         <div className="min-w-[1050px]">
-          {/* Header Row Matching Proxy Order */}
-          <div className="grid grid-cols-[36px_1.8fr_1.1fr_75px_70px_70px_65px_65px_95px_90px_100px_36px] gap-2 border-b-2 border-slate-100 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          {/* Header Row Matching Tally & Proxy Order */}
+          <div className="grid grid-cols-[32px_1.7fr_1.1fr_75px_58px_70px_70px_60px_60px_80px_75px_85px_80px_95px_32px] gap-2 border-b-2 border-slate-100 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
             <span className="text-center">#</span>
             <span>Name of Item</span>
             <span>Project <span className="text-[9px] font-normal normal-case text-slate-400 italic">(optional)</span></span>
             <span className="text-center">GST%</span>
+            <span className="text-center">T</span>
             <span className="text-center">Width</span>
             <span className="text-center">Length</span>
             <span className="text-center">Sq.Ft.</span>
-            <span className="text-center">Qty</span>
-            <span className="text-right">Rate/Sft</span>
+            <span className="text-center">Pcs/No</span>
+            <span className="text-center">Quantity</span>
+            <span className="text-center">Rate/SqFt</span>
+            <span className="text-center">Rate per</span>
             <span className="text-right">Finish</span>
             <span className="text-right">Amount</span>
             <span />
@@ -422,14 +427,19 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
             const itemMetadata = inventoryItems.find((itm) => itm.id === line.inventoryItemId)?.metadata;
             const isDirectSelling = itemMetadata?.isDirectSelling === true;
+            const currentMode = isDirectSelling ? 'B' : (line.billingMode || 'A');
             const widthNum = parseFloat(line.width || "0");
             const lengthNum = parseFloat(line.length || "0");
-            const calculatedSqFt = (widthNum > 0 && lengthNum > 0) ? (widthNum * lengthNum).toFixed(2) : "--";
+            const pcs = Math.max(1, parseFloat(line.pcsNo || line.quantity || "1") || 1);
+            const sqFtNum = (widthNum > 0 && lengthNum > 0) ? (widthNum * lengthNum) : 0;
+            const calculatedSqFt = sqFtNum > 0 ? sqFtNum.toFixed(2) : "--";
+            const totalBilledSqft = sqFtNum * pcs;
+            const rateNum = parseFloat(line.unitPrice) || 0;
 
             return (
               <div
                 key={i}
-                className="grid grid-cols-[36px_1.8fr_1.1fr_75px_70px_70px_65px_65px_95px_90px_100px_36px] gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors"
+                className="grid grid-cols-[32px_1.7fr_1.1fr_75px_58px_70px_70px_60px_60px_80px_75px_85px_80px_95px_32px] gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors"
               >
                 {/* Index # */}
                 <div className="text-center font-bold text-xs text-slate-400">
@@ -463,6 +473,8 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           inventoryItemId: item.id,
                           description: item.name,
                           unitPrice: effectiveRate.toString(),
+                          billingMode: isItemDirectSelling ? "B" : "A",
+                          pcsNo: "1",
                           accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
                           taxRateId: matchingTax ? matchingTax.id : (taxRates.find(t => t.rate === 1800)?.id || updated[i].taxRateId),
                         };
@@ -516,6 +528,32 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   </Select>
                 </div>
 
+                {/* Mode (T) Toggle Button */}
+                <div className="text-center">
+                  {isDirectSelling ? (
+                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-black">
+                      B
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nextMode = currentMode === 'A' ? 'B' : 'A';
+                        updateLine(i, "billingMode", nextMode);
+                      }}
+                      title="Click to toggle Mode A (Pieces) or Mode B (Sq.Ft)"
+                      className={`h-8 min-w-[50px] px-1.5 rounded-lg border-2 font-black text-xs transition-all inline-flex items-center justify-center gap-1 shadow-sm cursor-pointer ${
+                        currentMode === 'A'
+                          ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-500/20'
+                          : 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-500/20'
+                      }`}
+                    >
+                      <span className="text-xs font-extrabold">{currentMode}</span>
+                      <span className="text-[8px] font-bold opacity-90">{currentMode === 'A' ? 'Pcs' : 'SqFt'}</span>
+                    </button>
+                  )}
+                </div>
+
                 {/* Width */}
                 <div>
                   {isDirectSelling ? (
@@ -557,25 +595,80 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   {calculatedSqFt}
                 </div>
 
-                {/* Qty */}
-                <div>
-                  <Input
-                    className="h-9 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
-                    type="number"
-                    min="1"
-                    value={line.quantity}
-                    onChange={(e) => updateLine(i, "quantity", e.target.value)}
-                  />
+                {/* Pcs/No Column */}
+                <div className="text-center">
+                  {currentMode === 'B' ? (
+                    <Input
+                      className="h-9 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                      type="number"
+                      min="1"
+                      value={line.pcsNo ?? line.quantity ?? '1'}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const updated = [...lines];
+                        updated[i] = { ...updated[i], pcsNo: val, quantity: val };
+                        onChange(updated);
+                      }}
+                      placeholder="Pcs"
+                    />
+                  ) : (
+                    <span className="text-slate-300 font-bold">—</span>
+                  )}
                 </div>
 
-                {/* Rate/Sft */}
-                <div>
-                  <CurrencyInput
-                    size="sm"
-                    className="h-9 text-right text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
-                    value={line.unitPrice}
-                    onChange={(v) => updateLine(i, "unitPrice", v)}
-                  />
+                {/* Quantity Column */}
+                <div className="text-center text-xs font-bold tabular-nums">
+                  {isDirectSelling ? (
+                    <span className="text-slate-700 font-bold">{pcs} N</span>
+                  ) : currentMode === 'B' ? (
+                    <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
+                  ) : (
+                    <div className="inline-flex items-center justify-center">
+                      <Input
+                        className="h-9 w-14 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                        type="number"
+                        min="1"
+                        value={line.quantity || '1'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const updated = [...lines];
+                          updated[i] = { ...updated[i], quantity: val, pcsNo: val };
+                          onChange(updated);
+                        }}
+                      />
+                      <span className="ml-1 text-[10px] font-black text-slate-500">N</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Rate/SqFt Column */}
+                <div className="text-center text-xs font-bold text-slate-700 tabular-nums">
+                  {currentMode === 'A' ? (
+                    <CurrencyInput
+                      size="sm"
+                      className="h-9 text-right text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                      value={line.unitPrice}
+                      onChange={(v) => updateLine(i, "unitPrice", v)}
+                    />
+                  ) : (
+                    '—'
+                  )}
+                </div>
+
+                {/* Rate per Column */}
+                <div className="text-center text-xs font-bold tabular-nums">
+                  {isDirectSelling ? (
+                    `${rateNum.toFixed(2)} N`
+                  ) : currentMode === 'B' ? (
+                    <CurrencyInput
+                      size="sm"
+                      className="h-9 text-right text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                      value={line.unitPrice}
+                      onChange={(v) => updateLine(i, "unitPrice", v)}
+                    />
+                  ) : (
+                    <span className="text-blue-700 font-bold">{(sqFtNum * rateNum).toFixed(2)} N</span>
+                  )}
                 </div>
 
                 {/* Finish */}

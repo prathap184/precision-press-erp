@@ -24,6 +24,7 @@ interface AcdemaRow {
   productName: string;
   projectName: string;
   hsnCode: string;
+  billingMode?: 'A' | 'B';
   pcsNo: string;
   width: string;
   widthUnit: 'FT' | 'IN';
@@ -35,22 +36,26 @@ interface AcdemaRow {
   tiffPath: string;
 }
 
-const makeRow = (product?: Product): AcdemaRow => ({
-  id: Math.random().toString(36).slice(2, 10),
-  productId: product?.id || '',
-  productName: product?.name || '',
-  projectName: '',
-  hsnCode: '',
-  pcsNo: '',
-  width: '',
-  widthUnit: 'FT',
-  height: '',
-  heightUnit: 'FT',
-  quantity: '1',
-  eyeletType: 'NONE',
-  eyeletCount: 0,
-  tiffPath: '',
-});
+const makeRow = (product?: Product): AcdemaRow => {
+  const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
+  return {
+    id: Math.random().toString(36).slice(2, 10),
+    productId: product?.id || '',
+    productName: product?.name || '',
+    projectName: '',
+    hsnCode: '',
+    billingMode: isDirect ? 'B' : 'A',
+    pcsNo: '1',
+    width: '',
+    widthUnit: 'FT',
+    height: '',
+    heightUnit: 'FT',
+    quantity: '1',
+    eyeletType: 'NONE',
+    eyeletCount: 0,
+    tiffPath: '',
+  };
+};
 
 export function QuotationBuilder() {
   const router = useRouter();
@@ -501,7 +506,8 @@ export function QuotationBuilder() {
           productName: product?.name || row.productName || 'Custom Product',
           projectName: row.projectName || '',
           hsnCode: row.hsnCode || '',
-          pcsNo: row.pcsNo || '',
+          billingMode: row.billingMode || 'A',
+          pcsNo: row.pcsNo || '1',
           width: row.width,
           widthUnit: row.widthUnit,
           height: row.height,
