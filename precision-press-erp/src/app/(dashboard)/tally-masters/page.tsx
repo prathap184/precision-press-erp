@@ -724,11 +724,20 @@ export default function TallyMastersPage() {
                   </div>
                 )}
 
+                {(singleSyncResult.syncedRecord.tally_closing_balance != null || singleSyncResult.syncedRecord.closing_balance != null) && (
+                  <div className="p-2.5 bg-emerald-50 dark:bg-emerald-950/40 rounded-md border border-emerald-200 dark:border-emerald-800">
+                    <span className="text-emerald-600 dark:text-emerald-400 block text-[10px] uppercase font-semibold">Tally Closing Balance</span>
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                      ₹{(singleSyncResult.syncedRecord.tally_closing_balance ?? singleSyncResult.syncedRecord.closing_balance ?? 0).toLocaleString()} ({singleSyncResult.syncedRecord.opening_balance_type || 'Dr'})
+                    </span>
+                  </div>
+                )}
+
                 {(singleSyncResult.syncedRecord.opening_balance != null || singleSyncResult.syncedRecord.tally_opening_balance != null) && (
                   <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
-                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Opening Balance</span>
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">ERP Starting / Opening Balance</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      ₹{(singleSyncResult.syncedRecord.opening_balance ?? singleSyncResult.syncedRecord.tally_opening_balance ?? 0).toLocaleString()}
+                      ₹{(singleSyncResult.syncedRecord.opening_balance ?? singleSyncResult.syncedRecord.tally_opening_balance ?? 0).toLocaleString()} ({singleSyncResult.syncedRecord.opening_balance_type || 'Dr'})
                     </span>
                   </div>
                 )}

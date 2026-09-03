@@ -240,14 +240,27 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
       }
     }
 
-    const pan = (gstin && gstin.length === 15) ? gstin.slice(2, 12) : null;
-
+    const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i);
     let balNum = 0;
+    let opBalType = 'Dr';
     if (balM) {
-      const cleanNum = parseFloat(cleanStr(balM[1]).replace(/[^\d.-]/g, '')) || 0;
+      const rawBal = cleanStr(balM[1]);
+      const cleanNum = parseFloat(rawBal.replace(/[^\d.-]/g, '')) || 0;
       balNum = Math.abs(cleanNum);
+      opBalType = rawBal.includes('-') ? 'Dr' : 'Cr';
     }
 
+    const closingM = body.match(/<CLOSINGBALANCE[^>]*>([^<]*)<\/CLOSINGBALANCE>/i);
+    let closingBalNum = 0;
+    let closingBalType = 'Dr';
+    if (closingM) {
+      const rawClosing = cleanStr(closingM[1]);
+      const cleanNum = parseFloat(rawClosing.replace(/[^\d.-]/g, '')) || 0;
+      closingBalNum = Math.abs(cleanNum);
+      closingBalType = rawClosing.includes('-') ? 'Dr' : 'Cr';
+    }
+
+    const pan = (gstin && gstin.length === 15) ? gstin.slice(2, 12) : null;
     const fullAddr = addressLines.join(', ') || null;
     const geo = resolveSmartCity(name, fullAddr || '', state);
     const category = resolvePrinterCategory(parentGroup);
@@ -265,6 +278,9 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
       pincode: pincode || null,
       address: fullAddr,
       openingBalance: balNum,
+      openingBalanceType: opBalType,
+      closingBalance: closingBalNum,
+      closingBalanceType: closingBalType,
       printerCategory: category,
       type: type === 'customers' ? 'customer' : 'supplier',
     });
@@ -577,8 +593,16 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         business_name: item.tallyName,
         tally_ledger_name: item.tallyName,
         tally_opening_balance: item.openingBalance || 0,
-        opening_balance: item.openingBalance || 0,
-        opening_balance_type: 'Dr',
+        tally_closing_balance: item.closingBalance || 0,
+        opening_balance: item.closingBalance != null ? item.closingBalance : (item.openingBalance || 0),
+        opening_balance_type: item.closingBalanceType || item.openingBalanceType || 'Dr',
+        financialStats: {
+          openingBalance: item.closingBalance != null ? item.closingBalance : (item.openingBalance || 0),
+          closingBalance: item.closingBalance != null ? item.closingBalance : (item.openingBalance || 0),
+          balanceType: item.closingBalanceType || 'Dr',
+          tallyOpeningBalance: item.openingBalance || 0,
+          tallyClosingBalance: item.closingBalance || 0,
+        },
         phone: item.phone || existing?.phone || null,
         tax_number: item.gstin || existing?.tax_number || null,
         gstin: item.gstin || existing?.gstin || null,
