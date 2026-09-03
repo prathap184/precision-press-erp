@@ -81,7 +81,8 @@ function buildSalesInvoiceXML(payload, options = {}) {
     const width   = Number(item.width) || null;
     const length  = Number(item.length) || null;
     const sqft    = Number(item.sqft) || (width && length ? width * length : null);
-    const sqftRate = Number(item.sqftRate) || (sqft ? amount / sqft : rate);
+    const sqftRate = Number(item.sqftRate) || (sqft ? (amount / (qty * sqft)) : rate);
+    const ratePerPiece = Number(item.ratePer) || (sqft && sqftRate ? (sqft * sqftRate) : rate);
     const widthUnit = item.widthUnit || 'F';
     const lengthUnit = item.lengthUnit || 'F';
 
@@ -138,16 +139,16 @@ function buildSalesInvoiceXML(payload, options = {}) {
 <STOCKITEMNAME>${xmlEscape(item.productName)}</STOCKITEMNAME>
 ${hsnTag}
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-<RATE>${rate.toFixed(2)}/${unit}</RATE>
+<RATE>${ratePerPiece.toFixed(2)}/${unit}</RATE>
 <AMOUNT>${amount.toFixed(2)}</AMOUNT>
-<ACTUALQTY>${qty} ${unit}</ACTUALQTY>
-<BILLEDQTY>${qty} ${unit}</BILLEDQTY>
+<ACTUALQTY> ${qty.toFixed(2)} ${unit}</ACTUALQTY>
+<BILLEDQTY> ${qty.toFixed(2)} ${unit}</BILLEDQTY>
 <BATCHALLOCATIONS.LIST>
 <GODOWNNAME>${xmlEscape(godown)}</GODOWNNAME>
 <BATCHNAME>Primary Batch</BATCHNAME>
 <AMOUNT>${amount.toFixed(2)}</AMOUNT>
-<ACTUALQTY>${qty} ${unit}</ACTUALQTY>
-<BILLEDQTY>${qty} ${unit}</BILLEDQTY>${batchUdfTags}
+<ACTUALQTY> ${qty.toFixed(2)} ${unit}</ACTUALQTY>
+<BILLEDQTY> ${qty.toFixed(2)} ${unit}</BILLEDQTY>${batchUdfTags}
 </BATCHALLOCATIONS.LIST>
 <ACCOUNTINGALLOCATIONS.LIST>
 <LEDGERNAME>${xmlEscape(salesLedgerName)}</LEDGERNAME>
