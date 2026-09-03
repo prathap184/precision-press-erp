@@ -598,29 +598,45 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         }
       }
 
+      const rateVal = item.rate || 0;
+      const paiseVal = Math.round(rateVal * 100);
+      const skuVal = existing?.sku || `SKU-${Date.now().toString().slice(-6)}`;
+
       const payload: any = {
         organization_id: DEFAULT_ORG_ID,
+        code: existing?.code || skuVal,
+        sku: skuVal,
         name: item.name,
+        description: `Stock Item: ${item.name}${item.group ? ` (${item.group})` : ''}`,
+        category: item.group || 'General',
+        category_id: categoryId,
         tally_item_name: item.name,
         tally_stock_group: item.group,
-        category_id: categoryId,
-        tally_uom: item.uom,
-        unit_of_measure: item.uom,
-        hsn_code: item.hsnCode,
-        default_sale_price: Math.round(item.rate * 100),
-        opening_rate: item.rate,
-        opening_quantity: item.openingQuantity,
-        opening_value: Math.round((item.openingQuantity || 0) * (item.rate || 0)),
+        tally_uom: item.uom || 'N',
+        unit_of_measure: item.uom || 'N',
+        hsn_code: item.hsnCode || existing?.hsn_code || null,
+        purchase_price: paiseVal,
+        sale_price: Math.round(paiseVal * 1.25),
+        average_cost: paiseVal,
+        quantity_on_hand: item.openingQuantity || 0,
+        opening_rate: rateVal,
+        opening_quantity: item.openingQuantity || 0,
+        opening_value: Math.round((item.openingQuantity || 0) * rateVal),
+        total_value: Math.round((item.openingQuantity || 0) * paiseVal),
+        is_active: true,
+        cost_method: 'average',
+        tracking_method: 'none',
         tally_guid: item.tallyGuid || existing?.tally_guid || null,
       };
 
       if (!existing) {
-        payload.sku = `SKU-${Date.now().toString().slice(-6)}`;
-        const { data: inserted } = await supabaseServer.from('inventory_item').insert(payload).select('*').single();
+        const { data: inserted, error: insertErr } = await supabaseServer.from('inventory_item').insert(payload).select('*').single();
+        if (insertErr) throw new Error(`Failed to insert item "${item.name}": ${insertErr.message}`);
         addedCount++;
         syncedDetails = inserted || payload;
       } else {
-        const { data: updated } = await supabaseServer.from('inventory_item').update(payload).eq('id', existing.id).select('*').single();
+        const { data: updated, error: updateErr } = await supabaseServer.from('inventory_item').update(payload).eq('id', existing.id).select('*').single();
+        if (updateErr) throw new Error(`Failed to update item "${item.name}": ${updateErr.message}`);
         updatedCount++;
         syncedDetails = updated || payload;
       }
@@ -647,12 +663,12 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
       const existing = (acc.tallyGuid && erpMapByGuid.get(acc.tallyGuid)) || erpMapByName.get(lookupName);
 
       if (!existing) {
-        let accType = 'EXPENSE';
+        let accType = 'expense';
         let baseCode = 5000;
         const g = (acc.group || '').toLowerCase();
-        if (g.includes('asset') || g.includes('cash') || g.includes('bank')) { accType = 'ASSET'; baseCode = 1400; }
-        else if (g.includes('liability') || g.includes('duties') || g.includes('tax') || g.includes('payable')) { accType = 'LIABILITY'; baseCode = 2400; }
-        else if (g.includes('income') || g.includes('sales') || g.includes('revenue')) { accType = 'REVENUE'; baseCode = 4100; }
+        if (g.includes('asset') || g.includes('cash') || g.includes('bank')) { accType = 'asset'; baseCode = 1400; }
+        else if (g.includes('liability') || g.includes('duties') || g.includes('tax') || g.includes('payable')) { accType = 'liability'; baseCode = 2400; }
+        else if (g.includes('income') || g.includes('sales') || g.includes('revenue')) { accType = 'revenue'; baseCode = 4100; }
 
         let newCode = baseCode;
         while (usedCodes.has(String(newCode))) {
@@ -669,19 +685,23 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
           code: String(newCode),
           type: accType,
           opening_balance: acc.openingBalance || 0,
+          opening_balance_type: 'Dr',
+          currency_code: 'INR',
           is_active: true,
         };
 
-        const { data: inserted } = await supabaseServer.from('chart_account').insert(payload).select('*').single();
+        const { data: inserted, error: insertErr } = await supabaseServer.from('chart_account').insert(payload).select('*').single();
+        if (insertErr) throw new Error(`Failed to insert account "${acc.name}": ${insertErr.message}`);
         addedCount++;
         syncedDetails = inserted || payload;
       } else {
-        const { data: updated } = await supabaseServer.from('chart_account').update({
+        const { data: updated, error: updateErr } = await supabaseServer.from('chart_account').update({
           tally_ledger_name: acc.name,
           tally_parent_group: acc.group,
           tally_guid: acc.tallyGuid || existing.tally_guid,
           opening_balance: acc.openingBalance || existing.opening_balance,
         }).eq('id', existing.id).select('*').single();
+        if (updateErr) throw new Error(`Failed to update account "${acc.name}": ${updateErr.message}`);
         updatedCount++;
         syncedDetails = updated || existing;
       }

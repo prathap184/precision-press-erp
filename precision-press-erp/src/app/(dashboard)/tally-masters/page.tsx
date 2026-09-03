@@ -602,8 +602,8 @@ export default function TallyMastersPage() {
                     {singleSyncResult.syncedRecord.name || singleSyncResult.syncedRecord.displayName}
                   </div>
                 </div>
-                <Badge className="bg-emerald-600 text-white text-xs">
-                  {singleSyncResult.syncedRecord.type || singleSyncResult.syncedRecord.printerCategory || 'SYNCED'}
+                <Badge className="bg-emerald-600 text-white text-xs uppercase">
+                  {singleSyncResult.syncedRecord.type || singleSyncResult.syncedRecord.category || singleSyncResult.syncedRecord.printerCategory || 'SYNCED'}
                 </Badge>
               </div>
 
@@ -622,6 +622,72 @@ export default function TallyMastersPage() {
                   </span>
                 </div>
 
+                {/* Stock Item Specifics */}
+                {singleSyncResult.syncedRecord.sku && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">SKU / Item Code</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.sku}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.hsn_code && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">HSN Code</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.hsn_code}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.category && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Stock Group / Category</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.category}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.unit_of_measure && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">UOM & Stock Qty</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.quantity_on_hand ?? singleSyncResult.syncedRecord.opening_quantity ?? 0} {singleSyncResult.syncedRecord.unit_of_measure}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.opening_rate != null && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Opening Rate</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      ₹{singleSyncResult.syncedRecord.opening_rate.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+
+                {/* Account Specifics */}
+                {singleSyncResult.syncedRecord.code && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Account Code</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.code}
+                    </span>
+                  </div>
+                )}
+
+                {singleSyncResult.syncedRecord.tally_parent_group && (
+                  <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
+                    <span className="text-slate-400 block text-[10px] uppercase font-semibold">Tally Parent Group</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {singleSyncResult.syncedRecord.tally_parent_group}
+                    </span>
+                  </div>
+                )}
+
+                {/* Contact Specifics */}
                 {singleSyncResult.syncedRecord.phone && (
                   <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
                     <span className="text-slate-400 block text-[10px] uppercase font-semibold">Phone / Mobile</span>
