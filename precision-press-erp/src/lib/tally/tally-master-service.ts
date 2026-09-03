@@ -163,7 +163,7 @@ export async function resolveRootGroupCategory(groupName: string): Promise<'CUST
     const lower = curr.toLowerCase();
     if (lower.includes('debtor') || lower.includes('cyient') || lower.includes('medical dilip')) return 'CUSTOMER';
     if (lower.includes('creditor')) return 'SUPPLIER';
-    if (lower.includes('bank') || lower.includes('cash') || lower.includes('deposit') || lower.includes('current asset') || lower.includes('fixed asset') || lower.includes('investment') || lower.includes('stock-in-hand')) return 'ASSET';
+    if (lower.includes('loans & advances') || lower.includes('deposits (asset)') || lower.includes('bank') || lower.includes('cash') || lower.includes('deposit') || lower.includes('current asset') || lower.includes('fixed asset') || lower.includes('investment') || lower.includes('stock-in-hand')) return 'ASSET';
     if (lower.includes('duties') || lower.includes('tax') || lower.includes('liability') || lower.includes('loan') || lower.includes('provision') || lower.includes('capital') || lower.includes('reserves') || lower.includes('tds')) return 'LIABILITY';
     if (lower.includes('sales') || lower.includes('income') || lower.includes('revenue') || lower.includes('direct income')) return 'REVENUE';
     if (lower.includes('expense') || lower.includes('charges') || lower.includes('rent') || lower.includes('salary') || lower.includes('maintenance') || lower.includes('purchase')) return 'EXPENSE';
