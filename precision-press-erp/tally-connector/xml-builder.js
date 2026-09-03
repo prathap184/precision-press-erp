@@ -89,7 +89,8 @@ function buildSalesInvoiceXML(payload, options = {}) {
     let udfTags = '';
     let batchUdfTags = '';
 
-    if (width != null && length != null) {
+    if (width != null && length != null && width > 0 && length > 0) {
+      // MODE A: Custom Print / Raw Material Cutting with Dimensions
       udfTags = `
 <UDF:VCHLENGTHUDF.LIST DESC="\`VchLengthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1501">
  <UDF:VCHLENGTHUDF DESC="\`VchLengthUDF\`"> ${length}</UDF:VCHLENGTHUDF>
@@ -129,6 +130,12 @@ function buildSalesInvoiceXML(payload, options = {}) {
 <UDF:BATCHVCHWIDTHUNITUDF.LIST DESC="\`BatchVchWidthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1510">
  <UDF:BATCHVCHWIDTHUNITUDF DESC="\`BatchVchWidthUnitUDF\`">${widthUnit}</UDF:BATCHVCHWIDTHUNITUDF>
 </UDF:BATCHVCHWIDTHUNITUDF.LIST>`;
+    } else {
+      // MODE B: Direct Selling / Ready Goods / Off-The-Shelf Retail (Cable Ties, Tapes, etc.)
+      udfTags = `
+<UDF:VCHITEMSIZESBILLINGTYPE.LIST DESC="\`VchItemSizesBillingType\`" ISLIST="YES" TYPE="String" INDEX="6556">
+ <UDF:VCHITEMSIZESBILLINGTYPE DESC="\`VchItemSizesBillingType\`">B</UDF:VCHITEMSIZESBILLINGTYPE>
+</UDF:VCHITEMSIZESBILLINGTYPE.LIST>`;
     }
 
     return `
