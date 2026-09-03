@@ -78,6 +78,61 @@ function buildSalesInvoiceXML(payload, options = {}) {
     const godown  = item.godownName || commonGodown || 'B1';
     const hsnTag  = item.hsnCode ? `<GSTHSNNAME>${xmlEscape(item.hsnCode)}</GSTHSNNAME>` : '';
 
+    const width   = Number(item.width) || null;
+    const length  = Number(item.length) || null;
+    const sqft    = Number(item.sqft) || (width && length ? width * length : null);
+    const sqftRate = Number(item.sqftRate) || (sqft ? amount / sqft : rate);
+    const widthUnit = item.widthUnit || 'F';
+    const lengthUnit = item.lengthUnit || 'F';
+
+    let udfTags = '';
+    let batchUdfTags = '';
+
+    if (width != null && length != null) {
+      udfTags = `
+<UDF:VCHLENGTHUDF.LIST DESC="\`VchLengthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1501">
+ <UDF:VCHLENGTHUDF DESC="\`VchLengthUDF\`"> ${length}</UDF:VCHLENGTHUDF>
+</UDF:VCHLENGTHUDF.LIST>
+<UDF:VCHWIDTHUDF.LIST DESC="\`VchWidthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1502">
+ <UDF:VCHWIDTHUDF DESC="\`VchWidthUDF\`"> ${width}</UDF:VCHWIDTHUDF>
+</UDF:VCHWIDTHUDF.LIST>
+<UDF:VCHITEMSQFTRATEUDF.LIST DESC="\`VchItemSqFtRateUDF\`" ISLIST="YES" TYPE="Number" INDEX="1505">
+ <UDF:VCHITEMSQFTRATEUDF DESC="\`VchItemSqFtRateUDF\`"> ${sqftRate.toFixed(2)}</UDF:VCHITEMSQFTRATEUDF>
+</UDF:VCHITEMSQFTRATEUDF.LIST>
+<UDF:VCHITEMAREAUDF.LIST DESC="\`VchItemAreaUDF\`" ISLIST="YES" TYPE="Number" INDEX="1506">
+ <UDF:VCHITEMAREAUDF DESC="\`VchItemAreaUDF\`"> ${sqft}</UDF:VCHITEMAREAUDF>
+</UDF:VCHITEMAREAUDF.LIST>
+<UDF:VCHLENGTHUNITUDF.LIST DESC="\`VchLengthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1503">
+ <UDF:VCHLENGTHUNITUDF DESC="\`VchLengthUnitUDF\`">${lengthUnit}</UDF:VCHLENGTHUNITUDF>
+</UDF:VCHLENGTHUNITUDF.LIST>
+<UDF:VCHWIDTHUNITUDF.LIST DESC="\`VchWidthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1504">
+ <UDF:VCHWIDTHUNITUDF DESC="\`VchWidthUnitUDF\`">${widthUnit}</UDF:VCHWIDTHUNITUDF>
+</UDF:VCHWIDTHUNITUDF.LIST>
+<UDF:VCHITEMSIZESBILLINGTYPE.LIST DESC="\`VchItemSizesBillingType\`" ISLIST="YES" TYPE="String" INDEX="6556">
+ <UDF:VCHITEMSIZESBILLINGTYPE DESC="\`VchItemSizesBillingType\`">A</UDF:VCHITEMSIZESBILLINGTYPE>
+</UDF:VCHITEMSIZESBILLINGTYPE.LIST>`;
+
+      batchUdfTags = `
+<UDF:BATCHVCHLENGTHUDF.LIST DESC="\`BatchVchLengthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1507">
+ <UDF:BATCHVCHLENGTHUDF DESC="\`BatchVchLengthUDF\`"> ${length}</UDF:BATCHVCHLENGTHUDF>
+</UDF:BATCHVCHLENGTHUDF.LIST>
+<UDF:BATCHVCHWIDTHUDF.LIST DESC="\`BatchVchWidthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1508">
+ <UDF:BATCHVCHWIDTHUDF DESC="\`BatchVchWidthUDF\`"> ${width}</UDF:BATCHVCHWIDTHUDF>
+</UDF:BATCHVCHWIDTHUDF.LIST>
+<UDF:BATCHVCHITEMAREAUDF.LIST DESC="\`BatchVchItemAreaUDF\`" ISLIST="YES" TYPE="Number" INDEX="1511">
+ <UDF:BATCHVCHITEMAREAUDF DESC="\`BatchVchItemAreaUDF\`"> ${sqft}</UDF:BATCHVCHITEMAREAUDF>
+</UDF:BATCHVCHITEMAREAUDF.LIST>
+<UDF:BATCHVCHLENGTHUNITUDF.LIST DESC="\`BatchVchLengthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1509">
+ <UDF:BATCHVCHLENGTHUNITUDF DESC="\`BatchVchLengthUnitUDF\`">${lengthUnit}</UDF:BATCHVCHLENGTHUNITUDF>
+</UDF:BATCHVCHLENGTHUNITUDF.LIST>
+<UDF:BATCHVCHWIDTHUNITUDF.LIST DESC="\`BatchVchWidthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1510">
+ <UDF:BATCHVCHWIDTHUNITUDF DESC="\`BatchVchWidthUnitUDF\`">${widthUnit}</UDF:BATCHVCHWIDTHUNITUDF>
+</UDF:BATCHVCHWIDTHUNITUDF.LIST>
+<UDF:BATCHVCHITEMSQFTRATEUDF.LIST DESC="\`BatchVchItemSqFtRateUDF\`" ISLIST="YES" TYPE="Number" INDEX="1512">
+ <UDF:BATCHVCHITEMSQFTRATEUDF DESC="\`BatchVchItemSqFtRateUDF\`"> ${sqftRate.toFixed(2)}</UDF:BATCHVCHITEMSQFTRATEUDF>
+</UDF:BATCHVCHITEMSQFTRATEUDF.LIST>`;
+    }
+
     return `
 <ALLINVENTORYENTRIES.LIST>
 <STOCKITEMNAME>${xmlEscape(item.productName)}</STOCKITEMNAME>
@@ -92,14 +147,14 @@ ${hsnTag}
 <BATCHNAME>Primary Batch</BATCHNAME>
 <AMOUNT>${amount.toFixed(2)}</AMOUNT>
 <ACTUALQTY>${qty} ${unit}</ACTUALQTY>
-<BILLEDQTY>${qty} ${unit}</BILLEDQTY>
+<BILLEDQTY>${qty} ${unit}</BILLEDQTY>${batchUdfTags}
 </BATCHALLOCATIONS.LIST>
 <ACCOUNTINGALLOCATIONS.LIST>
 <LEDGERNAME>${xmlEscape(salesLedgerName)}</LEDGERNAME>
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
 <ISPARTYLEDGER>No</ISPARTYLEDGER>
 <AMOUNT>${amount.toFixed(2)}</AMOUNT>
-</ACCOUNTINGALLOCATIONS.LIST>
+</ACCOUNTINGALLOCATIONS.LIST>${udfTags}
 </ALLINVENTORYENTRIES.LIST>`;
   }).join('');
 
