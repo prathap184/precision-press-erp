@@ -724,11 +724,11 @@ export default function TallyMastersPage() {
                   </div>
                 )}
 
-                {singleSyncResult.syncedRecord.tally_opening_balance != null && (
+                {(singleSyncResult.syncedRecord.opening_balance != null || singleSyncResult.syncedRecord.tally_opening_balance != null) && (
                   <div className="p-2.5 bg-slate-50 dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-800">
                     <span className="text-slate-400 block text-[10px] uppercase font-semibold">Opening Balance</span>
                     <span className="font-semibold text-slate-800 dark:text-slate-200">
-                      ₹{singleSyncResult.syncedRecord.tally_opening_balance.toLocaleString()}
+                      ₹{(singleSyncResult.syncedRecord.opening_balance ?? singleSyncResult.syncedRecord.tally_opening_balance ?? 0).toLocaleString()}
                     </span>
                   </div>
                 )}
