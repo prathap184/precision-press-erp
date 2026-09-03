@@ -614,6 +614,11 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
       const paiseVal = Math.round(rateVal * 100);
       const skuVal = existing?.sku || `SKU-${Date.now().toString().slice(-6)}`;
 
+      const isDirect = (item.uom || '').toUpperCase() === 'N' || 
+                       (item.uom || '').toUpperCase() === 'NOS' || 
+                       (item.uom || '').toUpperCase() === 'PCS' ||
+                       !['SQFT', 'SQ.FT', 'SQM', 'SQ.MTR', 'ROLL', 'SHEET'].includes((item.uom || '').toUpperCase());
+
       const payload: any = {
         organization_id: DEFAULT_ORG_ID,
         code: existing?.code || skuVal,
@@ -638,6 +643,12 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         is_active: true,
         cost_method: 'average',
         tracking_method: 'none',
+        metadata: {
+          hsn: item.hsnCode || null,
+          unit: item.uom || 'N',
+          baseRate: rateVal,
+          isDirectSelling: isDirect,
+        },
         tally_guid: item.tallyGuid || existing?.tally_guid || null,
       };
 
