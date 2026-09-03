@@ -238,7 +238,7 @@ export function GlobalOrdersPage() {
         });
 
         if (mappedLines.length === 0) {
-          mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: defaultSalesAccountId, taxRateId: default18Tax?.id ?? '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+          mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), billingMode: 'A', pcsNo: '1', accountId: defaultSalesAccountId, taxRateId: default18Tax?.id ?? '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
         }
         allMappedLines.push(...mappedLines);
 
@@ -260,7 +260,7 @@ export function GlobalOrdersPage() {
         }
       }
 
-      if (totalDeliveryCharge > 0) allMappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: totalDeliveryCharge.toFixed(2), accountId: defaultSalesAccountId, taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+      if (totalDeliveryCharge > 0) allMappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: totalDeliveryCharge.toFixed(2), billingMode: 'A', pcsNo: '1', accountId: defaultSalesAccountId, taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
 
       // Use specific invoiced order IDs as reference (comma-separated) so only selected items are marked invoiced
       const specificRef = ordersToProcess.map((o: any) => o.id.replace('ORD-', '')).join(',');
