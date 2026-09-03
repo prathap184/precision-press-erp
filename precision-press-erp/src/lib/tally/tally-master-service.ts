@@ -191,7 +191,7 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
       const line = cleanStr(aM[1]);
       if (line) {
         if (!mobile && /^\d{10}$/.test(line)) mobile = line;
-        else addressLines.push(line);
+        else if (!addressLines.includes(line)) addressLines.push(line);
       }
     }
 
@@ -515,22 +515,32 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         name: item.tallyName,
         displayName: item.tallyName,
         company_name: item.tallyName,
+        businessName: item.tallyName,
+        business_name: item.tallyName,
         tally_ledger_name: item.tallyName,
         tally_opening_balance: item.openingBalance || 0,
+        opening_balance: item.openingBalance || 0,
+        opening_balance_type: 'Dr',
         phone: item.phone || existing?.phone || null,
         tax_number: item.gstin || existing?.tax_number || null,
         gstin: item.gstin || existing?.gstin || null,
+        gstNumber: item.gstin || existing?.gstNumber || null,
+        gst_number: item.gstin || existing?.gst_number || null,
+        gst_registered: !!item.gstin,
         pan_number: item.pan || existing?.pan_number || null,
         billing_address_line1: item.address || existing?.billing_address_line1 || null,
         billing_city: item.city || existing?.billing_city || 'Mysore',
         city: item.city || existing?.city || 'Mysore',
         billing_state: item.state || existing?.billing_state || 'Karnataka',
         state: item.state || existing?.state || 'Karnataka',
+        billing_country: 'India',
+        country: 'India',
         billing_pincode: item.pincode || existing?.billing_pincode || null,
         pincode: item.pincode || existing?.pincode || null,
         printerCategory: item.printerCategory || 'HO',
         tally_guid: item.tallyGuid || existing?.tally_guid || null,
         type: contactType,
+        is_synced_to_erp: true,
       };
 
       if (!existing) {
