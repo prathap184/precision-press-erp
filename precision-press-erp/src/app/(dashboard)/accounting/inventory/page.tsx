@@ -156,7 +156,13 @@ export default function InventoryPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectMode, search]);
 
-  const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+  const [orgId, setOrgId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrgId(localStorage.getItem("activeOrgId") || "");
+    }
+  }, []);
 
   const buildUrl = useCallback((page: number) => {
     const params = new URLSearchParams();
@@ -176,11 +182,13 @@ export default function InventoryPage() {
 
   // Fetch movement chart data
   useEffect(() => {
-    if (!orgId) return;
     let cancelled = false;
     setChartLoading(true);
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
+
     fetch(`/api/v1/inventory/movements/chart?period=${chartPeriod}`, {
-      headers: { "x-organization-id": orgId },
+      headers,
     })
       .then((r) => r.json())
       .then((data) => {
@@ -192,13 +200,15 @@ export default function InventoryPage() {
 
   // Initial + filter change fetch
   useEffect(() => {
-    if (!orgId) return;
     let cancelled = false;
     const isRefetch = !loading;
     if (isRefetch) setRefetching(true);
     pageRef.current = 1;
 
-    fetch(buildUrl(1), { headers: { "x-organization-id": orgId } })
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
+
+    fetch(buildUrl(1), { headers })
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
