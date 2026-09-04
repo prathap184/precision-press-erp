@@ -479,30 +479,58 @@ export function PrinterOrderWorkspace({
                           <p className="text-[10px] text-slate-600 mt-1.5 break-all font-mono bg-white px-2 py-1.5 rounded-lg border border-slate-200 shadow-2xs">{itemTiffPath || 'No TIFF path assigned'}</p>
                         </div>
                         {itemReady && (
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              toast.loading('Opening file...', { id: item.id });
-                              const isWebUrl = /^https?:\/\//i.test(itemTiffPath) || itemTiffPath.startsWith('/') || itemTiffPath.startsWith('blob:');
-                              if (isWebUrl) {
-                                window.open(itemTiffPath, '_blank', 'noopener,noreferrer');
-                                toast.success('File opened.', { id: item.id });
-                              } else {
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const cleanedPath = sanitizeTiffPath(itemTiffPath);
                                 try {
-                                  await navigator.clipboard.writeText(itemTiffPath);
+                                  await navigator.clipboard.writeText(cleanedPath);
                                 } catch {}
-                                const opened = await openTiffInSystem(itemTiffPath);
-                                if (opened) {
-                                  toast.success('File opened.', { id: item.id });
+                                const isWebUrl = /^https?:\/\//i.test(cleanedPath) || cleanedPath.startsWith('/') || cleanedPath.startsWith('blob:');
+                                if (isWebUrl) {
+                                  window.open(cleanedPath, '_blank', 'noopener,noreferrer');
+                                  toast.success('File opened in browser.', { id: item.id });
                                 } else {
-                                  toast.success('Path copied! Paste in File Explorer (Win+E) to view.', { id: item.id, duration: 4000 });
+                                  toast.custom(
+                                    (t) => (
+                                      <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-slate-900 shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-white/20 p-4 text-white`}>
+                                        <div className="flex-1">
+                                          <p className="text-xs font-black text-emerald-400 flex items-center gap-1">
+                                            ✓ PATH COPIED TO CLIPBOARD
+                                          </p>
+                                          <p className="mt-1 text-[11px] text-slate-300 font-medium leading-relaxed">
+                                            Press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Win + R</kbd>, then press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Ctrl + V</kbd> and hit <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-white font-mono font-bold">Enter</kbd> to open instantly!
+                                          </p>
+                                          <p className="mt-1.5 text-[9.5px] font-mono text-slate-400 truncate bg-slate-950 px-2 py-1 rounded border border-slate-800">
+                                            {cleanedPath}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ),
+                                    { duration: 6000 }
+                                  );
                                 }
-                              }
-                            }}
-                            className="inline-flex items-center gap-1 rounded-full bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider text-white shadow-2xs transition-all shrink-0"
-                          >
-                            <ExternalLink size={10} /> Open
-                          </button>
+                              }}
+                              className="inline-flex items-center gap-1 rounded-xl bg-slate-900 hover:bg-slate-800 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm transition-all"
+                              title="Copy Path & View Open Instructions"
+                            >
+                              <Copy size={11} className="text-cyan-400" /> Copy Path
+                            </button>
+
+                            {(/^https?:\/\//i.test(itemTiffPath) || itemTiffPath.startsWith('/') || itemTiffPath.startsWith('blob:')) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const cleanedPath = sanitizeTiffPath(itemTiffPath);
+                                  window.open(cleanedPath, '_blank', 'noopener,noreferrer');
+                                }}
+                                className="inline-flex items-center gap-1 rounded-xl bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm transition-all"
+                              >
+                                <ExternalLink size={11} /> Open
+                              </button>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>

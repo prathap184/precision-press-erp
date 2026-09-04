@@ -13,6 +13,11 @@ export interface TiffPathInfo {
   fileUrl: string;
 }
 
+export function sanitizeTiffPath(path?: string | null): string {
+  if (!path) return '';
+  return path.trim().replace(/^["']+|["']+$/g, '').trim();
+}
+
 export function resolvePrintWorkflow(order: any) {
   return order?.workflow?.printWorkflow || order?.printWorkflow || null;
 }
@@ -20,7 +25,8 @@ export function resolvePrintWorkflow(order: any) {
 export function getFileNameFromPath(path: string) {
   if (!path) return 'final-print.tiff';
 
-  const normalized = path.trim().replace(/\\/g, '/');
+  const cleaned = sanitizeTiffPath(path);
+  const normalized = cleaned.replace(/\\/g, '/');
   const parts = normalized.split('/').filter(Boolean);
   return parts[parts.length - 1] || 'final-print.tiff';
 }
@@ -114,13 +120,13 @@ export function inspectTiffPath(path: string): TiffPathInfo {
 
 export async function openTiffInSystem(tiffPath: string): Promise<boolean> {
   if (!tiffPath || typeof tiffPath !== 'string') return false;
-  const trimmed = tiffPath.trim();
-  if (!trimmed) return false;
+  const cleaned = sanitizeTiffPath(tiffPath);
+  if (!cleaned) return false;
 
   // 1. If it's a web/cloud/API/blob URL, open directly in browser tab on any laptop or device
-  if (/^https?:\/\//i.test(trimmed) || trimmed.startsWith('/') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+  if (/^https?:\/\//i.test(cleaned) || cleaned.startsWith('/') || cleaned.startsWith('data:') || cleaned.startsWith('blob:')) {
     if (typeof window !== 'undefined') {
-      window.open(trimmed, '_blank', 'noopener,noreferrer');
+      window.open(cleaned, '_blank', 'noopener,noreferrer');
       return true;
     }
   }

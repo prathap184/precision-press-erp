@@ -418,20 +418,39 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
                             <button
                               type="button"
                               onClick={async () => {
-                                const isWebUrl = /^https?:\/\//i.test(filePath) || filePath.startsWith('/') || filePath.startsWith('blob:');
+                                const cleanedPath = sanitizeTiffPath(filePath);
+                                try {
+                                  await navigator.clipboard.writeText(cleanedPath);
+                                } catch {}
+                                const isWebUrl = /^https?:\/\//i.test(cleanedPath) || cleanedPath.startsWith('/') || cleanedPath.startsWith('blob:');
                                 if (isWebUrl) {
-                                  window.open(filePath, '_blank', 'noopener,noreferrer');
+                                  window.open(cleanedPath, '_blank', 'noopener,noreferrer');
+                                  toast.success('File opened in browser.');
                                 } else {
-                                  try {
-                                    await navigator.clipboard.writeText(filePath);
-                                  } catch {}
-                                  await openTiffInSystem(filePath);
+                                  toast.custom(
+                                    (t) => (
+                                      <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-slate-900 shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-white/20 p-4 text-white`}>
+                                        <div className="flex-1">
+                                          <p className="text-xs font-black text-emerald-400 flex items-center gap-1">
+                                            ✓ PATH COPIED TO CLIPBOARD
+                                          </p>
+                                          <p className="mt-1 text-[11px] text-slate-300 font-medium leading-relaxed">
+                                            Press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Win + R</kbd>, then press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Ctrl + V</kbd> and hit <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-white font-mono font-bold">Enter</kbd> to open instantly!
+                                          </p>
+                                          <p className="mt-1.5 text-[9.5px] font-mono text-slate-400 truncate bg-slate-950 px-2 py-1 rounded border border-slate-800">
+                                            {cleanedPath}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    ),
+                                    { duration: 6000 }
+                                  );
                                 }
                               }}
                               className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors ml-1 p-1 hover:bg-blue-50 rounded"
-                              title={`Open: ${filePath}`}
+                              title={`Copy path & Open: ${filePath}`}
                             >
-                              <ExternalLink size={12} />
+                              <Copy size={12} />
                             </button>
                           )}
                         </div>

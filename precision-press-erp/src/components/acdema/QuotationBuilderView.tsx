@@ -719,7 +719,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     id={`error-row-${row.id}-file`}
                                     value={row.fileName || row.tiffPath || ''}
                                     onChange={(e) => {
-                                      updateRow(row.id, { tiffPath: e.target.value, fileName: '' });
+                                      const cleaned = sanitizeTiffPath(e.target.value);
+                                      updateRow(row.id, { tiffPath: cleaned, fileName: '' });
                                       setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
                                     }}
                                     className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${
@@ -733,26 +734,39 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     <button
                                       type="button"
                                       onClick={async () => {
+                                        const cleanedPath = sanitizeTiffPath(row.tiffPath);
                                         if (row.blobUrl) {
                                           window.open(row.blobUrl, '_blank', 'noopener,noreferrer');
-                                        } else if (/^https?:\/\//i.test(row.tiffPath) || row.tiffPath?.startsWith('/') || row.tiffPath?.startsWith('blob:')) {
-                                          window.open(row.tiffPath, '_blank', 'noopener,noreferrer');
+                                        } else if (/^https?:\/\//i.test(cleanedPath) || cleanedPath?.startsWith('/') || cleanedPath?.startsWith('blob:')) {
+                                          window.open(cleanedPath, '_blank', 'noopener,noreferrer');
                                         } else {
                                           try {
-                                            await navigator.clipboard.writeText(row.tiffPath);
+                                            await navigator.clipboard.writeText(cleanedPath);
                                           } catch {}
-                                          const opened = await openTiffInSystem(row.tiffPath);
-                                          if (opened) {
-                                            toast.success('Opening file in system viewer...');
-                                          } else {
-                                            toast.success('Path copied to clipboard! Paste in File Explorer (Win+E).', { duration: 4000 });
-                                          }
+                                          toast.custom(
+                                            (t) => (
+                                              <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-slate-900 shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-white/20 p-4 text-white`}>
+                                                <div className="flex-1">
+                                                  <p className="text-xs font-black text-emerald-400 flex items-center gap-1">
+                                                    ✓ PATH COPIED TO CLIPBOARD
+                                                  </p>
+                                                  <p className="mt-1 text-[11px] text-slate-300 font-medium leading-relaxed">
+                                                    Press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Win + R</kbd>, then press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Ctrl + V</kbd> and hit <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-white font-mono font-bold">Enter</kbd> to open instantly!
+                                                  </p>
+                                                  <p className="mt-1.5 text-[9.5px] font-mono text-slate-400 truncate bg-slate-950 px-2 py-1 rounded border border-slate-800">
+                                                    {cleanedPath}
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            ),
+                                            { duration: 6000 }
+                                          );
                                         }
                                       }}
                                       className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                                      title="Open / View File"
+                                      title="Copy Path & View Open Instructions"
                                     >
-                                      <ExternalLink size={12} />
+                                      <Copy size={12} />
                                     </button>
                                   )}
                                 </div>
