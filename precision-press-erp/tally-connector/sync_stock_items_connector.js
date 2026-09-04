@@ -247,18 +247,32 @@ async function runStockSync() {
     const uom         = uomM ? clean(uomM[1]) : 'sqft';
     const rawAltUom   = altUomM ? clean(altUomM[1]) : '';
     const altUom      = (rawAltUom && !rawAltUom.includes('Not Applicable')) ? rawAltUom : null;
-    const hsn         = hsnM ? clean(hsnM[1]) : null;
     const description = descM ? clean(descM[1]) : null;
 
     // Determine Billing Mode: 'A' (Pieces/Numbers) or 'B' (SqFt/Dimensions)
     const isPieceItem = uom.toLowerCase() === 'n' || uom.toLowerCase() === 'pcs' || uom.toLowerCase() === 'nos' || uom.toLowerCase() === 'no' || uom.toLowerCase() === 'set' || uom.toLowerCase() === 'box' || uom.toLowerCase() === 'pkt';
     const billingMode = isPieceItem ? 'A' : 'B';
 
-    // GST Rate parsing (Tally GSTRATE 9 = 18% total or exact number)
+    // Extract LATEST active HSN code
+    const hsnMatches = [...body.matchAll(/<HSNCODE>([^<]+)<\/HSNCODE>/gi)];
+    let hsn = null;
+    for (let k = hsnMatches.length - 1; k >= 0; k--) {
+      const c = hsnMatches[k][1].trim();
+      if (c) { hsn = c; break; }
+    }
+
+    // Extract LATEST active GST rate
+    const igstMatches = [...body.matchAll(/<GSTRATEDUTYHEAD>IGST<\/GSTRATEDUTYHEAD>[\s\S]*?<GSTRATE>\s*([\d.]+)\s*<\/GSTRATE>/gi)];
     let gstRate = 18;
-    if (rateM) {
-      const parsedRate = parseFloat(clean(rateM[1])) || 0;
-      gstRate = parsedRate === 9 ? 18 : (parsedRate === 6 ? 12 : (parsedRate === 2.5 ? 5 : (parsedRate === 14 ? 28 : (parsedRate || 18))));
+    if (igstMatches.length > 0) {
+      const lastIgst = igstMatches[igstMatches.length - 1][1];
+      gstRate = parseFloat(lastIgst) || 18;
+    } else {
+      const cgstMatches = [...body.matchAll(/<GSTRATEDUTYHEAD>CGST<\/GSTRATEDUTYHEAD>[\s\S]*?<GSTRATE>\s*([\d.]+)\s*<\/GSTRATE>/gi)];
+      if (cgstMatches.length > 0) {
+        const lastCgst = cgstMatches[cgstMatches.length - 1][1];
+        gstRate = (parseFloat(lastCgst) || 9) * 2;
+      }
     }
 
     // Opening Balance & Rate parsing
