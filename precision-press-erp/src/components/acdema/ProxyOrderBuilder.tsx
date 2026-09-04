@@ -9,7 +9,7 @@ import { Product } from '@/types/models';
 import { UserProfile } from '@/types/auth';
 import { getCustomers } from '@/lib/actions/users';
 import { createCustomer } from '@/lib/actions/users';
-import { getCachedProductsList as getProducts } from '@/lib/cache/products';
+import { getProducts } from '@/lib/actions/products';
 import { calculateRowSubtotal, calculateOrderSummary } from '@/lib/pricing-engine';
 import { createAcdemaProxyOrder } from '@/lib/actions/acdema';
 import { refreshAuthTokenCookie } from '@/lib/refresh-auth-token';

@@ -8,14 +8,7 @@ import { Product } from '@/types/models';
 import { WorkflowStep } from '@/types/workflow';
 
 export async function getCachedProductsList() {
-  return getOrSetCache(
-    CACHE_KEYS.PRODUCTS_LIST,
-    async () => {
-      const products = await fetchProductsFromDb();
-      return products;
-    },
-    CACHE_TTL.LONG
-  );
+  return await fetchProductsFromDb();
 }
 
 import { supabaseServer } from '@/lib/supabase-server';
