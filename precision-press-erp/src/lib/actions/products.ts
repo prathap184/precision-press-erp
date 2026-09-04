@@ -39,7 +39,11 @@ function parseProduct(row: any): Product {
       transport: meta.deliveryPricing?.transport || row.delivery_transport || 0
     },
     workflowSteps: row.workflow_steps || [],
-    status: row.is_active ? 'ACTIVE' : 'INACTIVE'
+    status: row.is_active ? 'ACTIVE' : 'INACTIVE',
+    tally_billing_mode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || (meta.isDirectSelling || row.unit_of_measure === 'N' || row.tally_uom === 'N' || row.category === 'LED- SMPS' ? 'A' : 'B'),
+    tallyBillingMode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || (meta.isDirectSelling || row.unit_of_measure === 'N' || row.tally_uom === 'N' || row.category === 'LED- SMPS' ? 'A' : 'B'),
+    tally_uom: row.tally_uom || row.unit_of_measure,
+    tally_alt_uom: row.tally_alt_uom,
   };
 }
 

@@ -411,8 +411,14 @@ export interface Product {
   status: "ACTIVE" | "INACTIVE";
   
   /** Dynamic Workflow Definition for this product */
-  workflowSteps: WorkflowStep[];
-  
+  workflowSteps?: WorkflowStep[];
+
+  /** Tally Dual Billing Mode and Units */
+  tally_billing_mode?: 'A' | 'B';
+  tallyBillingMode?: 'A' | 'B';
+  tally_uom?: string;
+  tally_alt_uom?: string;
+
   createdAt: any;
   updatedAt: any;
 }

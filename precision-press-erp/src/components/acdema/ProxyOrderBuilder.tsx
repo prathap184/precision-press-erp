@@ -39,14 +39,15 @@ interface AcdemaRow {
 }
 
 const makeRow = (product?: Product): AcdemaRow => {
-  const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
+  const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || (product as any)?.tally_uom === 'N' || product?.category === 'LED- SMPS';
+  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (isDirect ? 'A' : 'B');
   return {
     id: Math.random().toString(36).slice(2, 10),
     productId: product?.id || '',
     productName: product?.name || '',
     projectName: '',
     hsnCode: '',
-    billingMode: isDirect ? 'B' : 'A',
+    billingMode: defaultMode,
     pcsNo: '1',
     width: '',
     widthUnit: 'FT',

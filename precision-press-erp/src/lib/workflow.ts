@@ -1805,7 +1805,8 @@ export async function dispatchOrder(orderId: string, dispatchInfo: any) {
   await advanceWorkflowSnapshotStep(orderId, 'DISPATCH', 'COMPLETED', user, 'Order Dispatched');
   
   const snap = await adminDb.collection('orders').doc(orderId).get();
-  const currentStatus = snap.data()?.status;
+  const orderData = snap.data();
+  const currentStatus = orderData?.status;
   const rawChoice = (dispatchInfo?.method || orderData?.deliveryChoice || orderData?.delivery?.choice || '').toLowerCase();
   const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes(rawChoice);
   

@@ -503,7 +503,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             if (isOpen && matched.length > 0) {
                                               const selectedProduct = matched[highlightProductIndex] || matched[0];
                                               if (selectedProduct) {
-                                                updateRow(row.id, { productId: selectedProduct.id });
+                                                const isDirect = (selectedProduct as any)?.metadata?.isDirectSelling === true || (selectedProduct as any)?.unit_of_measure === 'N' || (selectedProduct as any)?.tally_uom === 'N' || selectedProduct?.category === 'LED- SMPS';
+                                                const prodMode = (selectedProduct as any)?.tally_billing_mode || (selectedProduct as any)?.tallyBillingMode || (isDirect ? 'A' : 'B');
+                                                updateRow(row.id, { productId: selectedProduct.id, billingMode: prodMode });
                                                 setOpenRowId(null);
                                                 setSearchQuery('');
                                                 setHighlightProductIndex(0);
@@ -554,7 +556,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                     }}
                                                     onMouseDown={(e) => {
                                                       e.preventDefault();
-                                                      updateRow(row.id, { productId: p.id });
+                                                      const isDirect = (p as any)?.metadata?.isDirectSelling === true || (p as any)?.unit_of_measure === 'N' || (p as any)?.tally_uom === 'N' || p?.category === 'LED- SMPS';
+                                                      const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isDirect ? 'A' : 'B');
+                                                      updateRow(row.id, { productId: p.id, billingMode: prodMode });
                                                       setOpenRowId(null);
                                                       setSearchQuery('');
                                                       setHighlightProductIndex(0);

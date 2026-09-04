@@ -742,7 +742,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                 e.preventDefault();
                                                 const p = matched[highlightProductIndex] || matched[0];
                                                 if (p) {
-                                                  updateRow(row.id, { productId: p.id });
+                                                  const isDirect = (p as any)?.metadata?.isDirectSelling === true || (p as any)?.unit_of_measure === 'N' || (p as any)?.tally_uom === 'N' || p?.category === 'LED- SMPS';
+                                                  const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isDirect ? 'A' : 'B');
+                                                  updateRow(row.id, { productId: p.id, billingMode: prodMode });
                                                   setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
                                                   setOpenRowId(null);
                                                   setSearchQuery('');
@@ -796,7 +798,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                         }}
                                                         onMouseDown={(e) => {
                                                           e.preventDefault();
-                                                          updateRow(row.id, { productId: p.id });
+                                                          const isDirect = (p as any)?.metadata?.isDirectSelling === true || (p as any)?.unit_of_measure === 'N' || (p as any)?.tally_uom === 'N' || p?.category === 'LED- SMPS';
+                                                          const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isDirect ? 'A' : 'B');
+                                                          updateRow(row.id, { productId: p.id, billingMode: prodMode });
                                                           setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
                                                           setOpenRowId(null);
                                                           setSearchQuery('');
