@@ -302,8 +302,9 @@ export async function POST(request: Request) {
       const selectedBank = parsed.bankAccountId
         ? await db.query.bankAccount.findFirst({ where: eq(bankAccount.id, parsed.bankAccountId) })
         : null;
-      const bankLedgerName = selectedBank?.tally_ledger_name || (parsed.bankAccountId ? "Federal 2091" : "Cash");
-      const voucherType = (bankLedgerName.toLowerCase().includes("cash") || !parsed.bankAccountId) ? "Rec10 B8 Cash" : "Rec1 B1 Bank";
+      const bankLedgerName = selectedBank?.tallyLedgerName || selectedBank?.accountName || (parsed.bankAccountId ? "Federal 2091" : "Cash");
+      const isCash = bankLedgerName.toLowerCase().includes("cash") || !parsed.bankAccountId;
+      const voucherType = "Web Receipt";
 
       const receiptPayload = {
         tallyCompanyName: process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
@@ -315,7 +316,7 @@ export async function POST(request: Request) {
         date: parsed.date,
         totalAmount: parsed.amount / 100,
         amount: parsed.amount / 100,
-        paymentMode: (bankLedgerName.toLowerCase().includes("cash") || !parsed.bankAccountId) ? "CASH" : "BANK",
+        paymentMode: isCash ? "CASH" : "BANK",
         bankLedger: bankLedgerName,
         cashLedger: bankLedgerName,
         debtorLedgerName: customerLedgerName,
@@ -327,7 +328,7 @@ export async function POST(request: Request) {
         allocations: [],
         billAllocations: {
           name: receiptRef,
-          billType: parsed.adjustmentType === "ON_ACCOUNT" ? "On Account" : "Advance",
+          billType: parsed.adjustmentType === "ON_ACCOUNT" ? "On Account" : "New Ref",
           amount: parsed.amount / 100,
         },
       };
