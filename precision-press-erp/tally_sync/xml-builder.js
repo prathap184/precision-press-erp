@@ -71,6 +71,21 @@ function buildSalesInvoiceXML(payload, options = {}) {
 
   // Calculate item entries
   const itemEntries = items.map(item => {
+    const rawItemName = item.productName || item.particulars || item.name || 'Printing Services';
+    let parsedW = Number(item.width) || null;
+    let parsedL = Number(item.length || item.height) || null;
+
+    const dimMatch = rawItemName.match(/\(\s*(\d+(\.\d+)?)\s*(FT|IN|MM|M|SqFt)?\s*x\s*(\d+(\.\d+)?)\s*(FT|IN|MM|M|SqFt)?\s*\)/i);
+    if (dimMatch) {
+      if (!parsedW) parsedW = parseFloat(dimMatch[1]);
+      if (!parsedL) parsedL = parseFloat(dimMatch[4]);
+    }
+
+    const cleanName = rawItemName
+      .replace(/\s*\([^)]*\b(FT|IN|MM|CM|M|sqft|sq\.ft)\b[^)]*\)/gi, '')
+      .replace(/\s*\(\s*\d+(\.\d+)?\s*[a-zA-Z]*\s*x\s*\d+(\.\d+)?\s*[a-zA-Z]*\s*\)/gi, '')
+      .trim();
+
     const qty     = Number(item.quantity) || Number(item.sqft) || 1;
     const rate    = Number(item.rate) || 0;
     const amount  = Number(item.taxableAmount ?? item.amount ?? (rate * qty));
@@ -78,28 +93,141 @@ function buildSalesInvoiceXML(payload, options = {}) {
     const godown  = item.godownName || commonGodown || 'B1';
     const hsnTag  = item.hsnCode ? `<GSTHSNNAME>${xmlEscape(item.hsnCode)}</GSTHSNNAME>` : '';
 
+    const width   = parsedW;
+    const length  = parsedL;
+    const pcs     = Number(item.pcsCount || item.pcsNo || item.quantity) || 1;
+    const sqft    = Number(item.sqft) || (width && length ? width * length : null);
+    const sqftRate = Number(item.sqftRate || item.rate || item.pricingSnapshot?.baseRate) || (sqft ? (amount / (pcs * sqft)) : rate);
+    const ratePerPiece = Number(item.ratePer) || (sqft && sqftRate ? (sqft * sqftRate) : rate);
+    const widthUnit = (item.widthUnit === 'IN' || item.widthUnit === 'I') ? 'I' : 'F';
+    const lengthUnit = (item.lengthUnit === 'IN' || item.heightUnit === 'IN' || item.lengthUnit === 'I' || item.heightUnit === 'I') ? 'I' : 'F';
+    const billingMode = (item.billingMode || (width && length ? 'A' : 'B')).toUpperCase();
+
+    let udfTags = '';
+    let batchUdfTags = '';
+    let billedQtyStr = `${pcs.toFixed(2)} ${unit}`;
+    let rateStr = `${ratePerPiece.toFixed(2)}/${unit}`;
+
+    if (width != null && length != null && width > 0 && length > 0) {
+      if (billingMode === 'B') {
+        const totalSqFt = (sqft * pcs).toFixed(3);
+        billedQtyStr = ` ${totalSqFt} sqft`;
+        rateStr = `${sqftRate.toFixed(2)}/sqft`;
+
+        udfTags = `
+<UDF:VCHLENGTHUDF.LIST DESC="\`VchLengthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1501">
+ <UDF:VCHLENGTHUDF DESC="\`VchLengthUDF\`"> ${length}</UDF:VCHLENGTHUDF>
+</UDF:VCHLENGTHUDF.LIST>
+<UDF:VCHWIDTHUDF.LIST DESC="\`VchWidthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1502">
+ <UDF:VCHWIDTHUDF DESC="\`VchWidthUDF\`"> ${width}</UDF:VCHWIDTHUDF>
+</UDF:VCHWIDTHUDF.LIST>
+<UDF:VCHITEMAREAUDF.LIST DESC="\`VchItemAreaUDF\`" ISLIST="YES" TYPE="Number" INDEX="1506">
+ <UDF:VCHITEMAREAUDF DESC="\`VchItemAreaUDF\`"> ${sqft}</UDF:VCHITEMAREAUDF>
+</UDF:VCHITEMAREAUDF.LIST>
+<UDF:VCHITEMPCSQTYUDF.LIST DESC="\`VchItemPcsQtyUDF\`" ISLIST="YES" TYPE="Number" INDEX="1515">
+ <UDF:VCHITEMPCSQTYUDF DESC="\`VchItemPcsQtyUDF\`"> ${pcs}</UDF:VCHITEMPCSQTYUDF>
+</UDF:VCHITEMPCSQTYUDF.LIST>
+<UDF:VCHLENGTHUNITUDF.LIST DESC="\`VchLengthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1503">
+ <UDF:VCHLENGTHUNITUDF DESC="\`VchLengthUnitUDF\`">${lengthUnit}</UDF:VCHLENGTHUNITUDF>
+</UDF:VCHLENGTHUNITUDF.LIST>
+<UDF:VCHWIDTHUNITUDF.LIST DESC="\`VchWidthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1504">
+ <UDF:VCHWIDTHUNITUDF DESC="\`VchWidthUnitUDF\`">${widthUnit}</UDF:VCHWIDTHUNITUDF>
+</UDF:VCHWIDTHUNITUDF.LIST>
+<UDF:VCHITEMSIZESBILLINGTYPE.LIST DESC="\`VchItemSizesBillingType\`" ISLIST="YES" TYPE="String" INDEX="6556">
+ <UDF:VCHITEMSIZESBILLINGTYPE DESC="\`VchItemSizesBillingType\`">B</UDF:VCHITEMSIZESBILLINGTYPE>
+</UDF:VCHITEMSIZESBILLINGTYPE.LIST>`;
+
+        batchUdfTags = `
+<UDF:BATCHVCHLENGTHUDF.LIST DESC="\`BatchVchLengthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1507">
+ <UDF:BATCHVCHLENGTHUDF DESC="\`BatchVchLengthUDF\`"> ${length}</UDF:BATCHVCHLENGTHUDF>
+</UDF:BATCHVCHLENGTHUDF.LIST>
+<UDF:BATCHVCHWIDTHUDF.LIST DESC="\`BatchVchWidthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1508">
+ <UDF:BATCHVCHWIDTHUDF DESC="\`BatchVchWidthUDF\`"> ${width}</UDF:BATCHVCHWIDTHUDF>
+</UDF:BATCHVCHWIDTHUDF.LIST>
+<UDF:BATCHVCHITEMAREAUDF.LIST DESC="\`BatchVchItemAreaUDF\`" ISLIST="YES" TYPE="Number" INDEX="1511">
+ <UDF:BATCHVCHITEMAREAUDF DESC="\`BatchVchItemAreaUDF\`"> ${sqft}</UDF:BATCHVCHITEMAREAUDF>
+</UDF:BATCHVCHITEMAREAUDF.LIST>
+<UDF:BATCHVCHLENGTHUNITUDF.LIST DESC="\`BatchVchLengthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1509">
+ <UDF:BATCHVCHLENGTHUNITUDF DESC="\`BatchVchLengthUnitUDF\`">${lengthUnit}</UDF:BATCHVCHLENGTHUNITUDF>
+</UDF:BATCHVCHLENGTHUNITUDF.LIST>
+<UDF:BATCHVCHWIDTHUNITUDF.LIST DESC="\`BatchVchWidthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1510">
+ <UDF:BATCHVCHWIDTHUNITUDF DESC="\`BatchVchWidthUnitUDF\`">${widthUnit}</UDF:BATCHVCHWIDTHUNITUDF>
+</UDF:BATCHVCHWIDTHUNITUDF.LIST>`;
+      } else {
+        billedQtyStr = ` ${pcs.toFixed(2)} N`;
+        rateStr = `${ratePerPiece.toFixed(2)}/N`;
+
+        udfTags = `
+<UDF:VCHLENGTHUDF.LIST DESC="\`VchLengthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1501">
+ <UDF:VCHLENGTHUDF DESC="\`VchLengthUDF\`"> ${length}</UDF:VCHLENGTHUDF>
+</UDF:VCHLENGTHUDF.LIST>
+<UDF:VCHWIDTHUDF.LIST DESC="\`VchWidthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1502">
+ <UDF:VCHWIDTHUDF DESC="\`VchWidthUDF\`"> ${width}</UDF:VCHWIDTHUDF>
+</UDF:VCHWIDTHUDF.LIST>
+<UDF:VCHITEMSQFTRATEUDF.LIST DESC="\`VchItemSqFtRateUDF\`" ISLIST="YES" TYPE="Number" INDEX="1505">
+ <UDF:VCHITEMSQFTRATEUDF DESC="\`VchItemSqFtRateUDF\`"> ${sqftRate.toFixed(2)}</UDF:VCHITEMSQFTRATEUDF>
+</UDF:VCHITEMSQFTRATEUDF.LIST>
+<UDF:VCHITEMAREAUDF.LIST DESC="\`VchItemAreaUDF\`" ISLIST="YES" TYPE="Number" INDEX="1506">
+ <UDF:VCHITEMAREAUDF DESC="\`VchItemAreaUDF\`"> ${sqft}</UDF:VCHITEMAREAUDF>
+</UDF:VCHITEMAREAUDF.LIST>
+<UDF:VCHLENGTHUNITUDF.LIST DESC="\`VchLengthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1503">
+ <UDF:VCHLENGTHUNITUDF DESC="\`VchLengthUnitUDF\`">${lengthUnit}</UDF:VCHLENGTHUNITUDF>
+</UDF:VCHLENGTHUNITUDF.LIST>
+<UDF:VCHWIDTHUNITUDF.LIST DESC="\`VchWidthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1504">
+ <UDF:VCHWIDTHUNITUDF DESC="\`VchWidthUnitUDF\`">${widthUnit}</UDF:VCHWIDTHUNITUDF>
+</UDF:VCHWIDTHUNITUDF.LIST>
+<UDF:VCHITEMSIZESBILLINGTYPE.LIST DESC="\`VchItemSizesBillingType\`" ISLIST="YES" TYPE="String" INDEX="6556">
+ <UDF:VCHITEMSIZESBILLINGTYPE DESC="\`VchItemSizesBillingType\`">A</UDF:VCHITEMSIZESBILLINGTYPE>
+</UDF:VCHITEMSIZESBILLINGTYPE.LIST>`;
+
+        batchUdfTags = `
+<UDF:BATCHVCHLENGTHUDF.LIST DESC="\`BatchVchLengthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1507">
+ <UDF:BATCHVCHLENGTHUDF DESC="\`BatchVchLengthUDF\`"> ${length}</UDF:BATCHVCHLENGTHUDF>
+</UDF:BATCHVCHLENGTHUDF.LIST>
+<UDF:BATCHVCHWIDTHUDF.LIST DESC="\`BatchVchWidthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1508">
+ <UDF:BATCHVCHWIDTHUDF DESC="\`BatchVchWidthUDF\`"> ${width}</UDF:BATCHVCHWIDTHUDF>
+</UDF:BATCHVCHWIDTHUDF.LIST>
+<UDF:BATCHVCHITEMAREAUDF.LIST DESC="\`BatchVchItemAreaUDF\`" ISLIST="YES" TYPE="Number" INDEX="1511">
+ <UDF:BATCHVCHITEMAREAUDF DESC="\`BatchVchItemAreaUDF\`"> ${sqft}</UDF:BATCHVCHITEMAREAUDF>
+</UDF:BATCHVCHITEMAREAUDF.LIST>
+<UDF:BATCHVCHLENGTHUNITUDF.LIST DESC="\`BatchVchLengthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1509">
+ <UDF:BATCHVCHLENGTHUNITUDF DESC="\`BatchVchLengthUnitUDF\`">${lengthUnit}</UDF:BATCHVCHLENGTHUNITUDF>
+</UDF:BATCHVCHLENGTHUNITUDF.LIST>
+<UDF:BATCHVCHWIDTHUNITUDF.LIST DESC="\`BatchVchWidthUnitUDF\`" ISLIST="YES" TYPE="String" INDEX="1510">
+ <UDF:BATCHVCHWIDTHUNITUDF DESC="\`BatchVchWidthUnitUDF\`">${widthUnit}</UDF:BATCHVCHWIDTHUNITUDF>
+</UDF:BATCHVCHWIDTHUNITUDF.LIST>`;
+      }
+    } else {
+      billedQtyStr = ` ${qty.toFixed(2)} ${unit}`;
+      rateStr = `${rate.toFixed(2)}/${unit}`;
+      udfTags = `
+<UDF:VCHITEMSIZESBILLINGTYPE.LIST DESC="\`VchItemSizesBillingType\`" ISLIST="YES" TYPE="String" INDEX="6556">
+ <UDF:VCHITEMSIZESBILLINGTYPE DESC="\`VchItemSizesBillingType\`">B</UDF:VCHITEMSIZESBILLINGTYPE>
+</UDF:VCHITEMSIZESBILLINGTYPE.LIST>`;
+    }
+
     return `
 <ALLINVENTORYENTRIES.LIST>
-<STOCKITEMNAME>${xmlEscape(item.productName)}</STOCKITEMNAME>
+<STOCKITEMNAME>${xmlEscape(cleanName)}</STOCKITEMNAME>
 ${hsnTag}
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
-<RATE>${rate.toFixed(2)}/${unit}</RATE>
+<RATE>${rateStr}</RATE>
 <AMOUNT>${amount.toFixed(2)}</AMOUNT>
-<ACTUALQTY>${qty} ${unit}</ACTUALQTY>
-<BILLEDQTY>${qty} ${unit}</BILLEDQTY>
+<ACTUALQTY>${billedQtyStr}</ACTUALQTY>
+<BILLEDQTY>${billedQtyStr}</BILLEDQTY>
 <BATCHALLOCATIONS.LIST>
 <GODOWNNAME>${xmlEscape(godown)}</GODOWNNAME>
 <BATCHNAME>Primary Batch</BATCHNAME>
 <AMOUNT>${amount.toFixed(2)}</AMOUNT>
-<ACTUALQTY>${qty} ${unit}</ACTUALQTY>
-<BILLEDQTY>${qty} ${unit}</BILLEDQTY>
+<ACTUALQTY>${billedQtyStr}</ACTUALQTY>
+<BILLEDQTY>${billedQtyStr}</BILLEDQTY>${batchUdfTags}
 </BATCHALLOCATIONS.LIST>
 <ACCOUNTINGALLOCATIONS.LIST>
 <LEDGERNAME>${xmlEscape(salesLedgerName)}</LEDGERNAME>
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
 <ISPARTYLEDGER>No</ISPARTYLEDGER>
 <AMOUNT>${amount.toFixed(2)}</AMOUNT>
-</ACCOUNTINGALLOCATIONS.LIST>
+</ACCOUNTINGALLOCATIONS.LIST>${udfTags}
 </ALLINVENTORYENTRIES.LIST>`;
   }).join('');
 

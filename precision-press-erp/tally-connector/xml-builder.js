@@ -71,6 +71,21 @@ function buildSalesInvoiceXML(payload, options = {}) {
 
   // Calculate item entries
   const itemEntries = items.map(item => {
+    const rawItemName = item.productName || item.particulars || item.name || 'Printing Services';
+    let parsedW = Number(item.width) || null;
+    let parsedL = Number(item.length || item.height) || null;
+
+    const dimMatch = rawItemName.match(/\(\s*(\d+(\.\d+)?)\s*(FT|IN|MM|M|SqFt)?\s*x\s*(\d+(\.\d+)?)\s*(FT|IN|MM|M|SqFt)?\s*\)/i);
+    if (dimMatch) {
+      if (!parsedW) parsedW = parseFloat(dimMatch[1]);
+      if (!parsedL) parsedL = parseFloat(dimMatch[4]);
+    }
+
+    const cleanName = rawItemName
+      .replace(/\s*\([^)]*\b(FT|IN|MM|CM|M|sqft|sq\.ft)\b[^)]*\)/gi, '')
+      .replace(/\s*\(\s*\d+(\.\d+)?\s*[a-zA-Z]*\s*x\s*\d+(\.\d+)?\s*[a-zA-Z]*\s*\)/gi, '')
+      .trim();
+
     const qty     = Number(item.quantity) || Number(item.sqft) || 1;
     const rate    = Number(item.rate) || 0;
     const amount  = Number(item.taxableAmount ?? item.amount ?? (rate * qty));
@@ -78,8 +93,8 @@ function buildSalesInvoiceXML(payload, options = {}) {
     const godown  = item.godownName || commonGodown || 'B1';
     const hsnTag  = item.hsnCode ? `<GSTHSNNAME>${xmlEscape(item.hsnCode)}</GSTHSNNAME>` : '';
 
-    const width   = Number(item.width) || null;
-    const length  = Number(item.length || item.height) || null;
+    const width   = parsedW;
+    const length  = parsedL;
     const pcs     = Number(item.pcsCount || item.pcsNo || item.quantity) || 1;
     const sqft    = Number(item.sqft) || (width && length ? width * length : null);
     const sqftRate = Number(item.sqftRate || item.rate || item.pricingSnapshot?.baseRate) || (sqft ? (amount / (pcs * sqft)) : rate);
@@ -196,7 +211,7 @@ function buildSalesInvoiceXML(payload, options = {}) {
 
     return `
 <ALLINVENTORYENTRIES.LIST>
-<STOCKITEMNAME>${xmlEscape(item.productName)}</STOCKITEMNAME>
+<STOCKITEMNAME>${xmlEscape(cleanName)}</STOCKITEMNAME>
 ${hsnTag}
 <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
 <RATE>${rateStr}</RATE>
