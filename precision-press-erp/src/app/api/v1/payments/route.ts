@@ -454,7 +454,7 @@ export async function POST(request: Request) {
           payload: receiptPayload,
           createdBy: ctx.userId,
           voucherId: paymentNumber,
-          voucherType: "Receipt",
+          voucherType: "Web Receipt",
           refId: paymentNumber,
           customerName: customerLedgerName,
           amountSnap: parsed.amount / 100,

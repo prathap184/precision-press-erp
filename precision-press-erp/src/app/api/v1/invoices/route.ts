@@ -646,11 +646,10 @@ export async function POST(request: Request) {
         billAllocationName = advRef;
       }
 
-      // Prepare payload matching Sales_HS7547.xml / Memory Section 15
+      // Prepare payload matching Web Sales
       const payload = {
         tallyCompanyName: settings.companyName || process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
-        voucherType: "1.GST HO CS",
-        voucherClass: "GST Sale",
+        voucherType: "Web Sales",
         invoiceNumber: result.invoiceNumber,
         invoiceDate: result.issueDate ? result.issueDate.replace(/-/g, "") : new Date().toISOString().slice(0, 10).replace(/-/g, ""),
         date: result.issueDate || new Date().toISOString().slice(0, 10),
@@ -699,7 +698,7 @@ export async function POST(request: Request) {
         payload,
         createdBy: ctx.userId,
         voucherId: result.invoiceNumber,
-        voucherType: "1.GST HO CS",
+        voucherType: "Web Sales",
         refId: result.invoiceNumber,
         customerName: customerLedgerName,
         amountSnap: result.total / 100,

@@ -504,7 +504,7 @@ export async function triggerPushAllReceipts(createdBy: string = 'admin'): Promi
         customerId,
         createdBy,
         voucherId: receiptEntryNumber,
-        voucherType: 'Receipt',
+        voucherType: 'Web Receipt',
         refId: isAgstRef ? refid : receiptEntryNumber,
         customerName,
         amountSnap: {
@@ -914,7 +914,7 @@ export async function syncGeneratedInvoiceToTally(invoiceId: string, createdBy: 
       createdBy,
       // ── Rich metadata ──
       voucherId: inv.invoice_number || inv.id,
-      voucherType: 'Sale',
+      voucherType: 'Web Sales',
       refId: inv.invoice_number || inv.id,
       customerName,
       amountSnap,
