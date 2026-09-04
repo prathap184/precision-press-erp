@@ -667,8 +667,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     <tbody className="divide-y divide-slate-100">
                       {rows.map((row: any, index: number) => {
                         const product = products.find((item: any) => item.id === row.productId);
-                        const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
-                        const currentMode = isDirect ? 'B' : (row.billingMode || 'A');
+                        const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || (product as any)?.tally_uom === 'N' || product?.category === 'LED- SMPS';
+                        const defaultMode = (product as any)?.tally_billing_mode || (isDirect ? 'A' : 'B');
+                        const currentMode = row.billingMode || defaultMode;
                         const w = Number(row.width) || 0;
                         const h = Number(row.height) || 0;
                         const pcs = Math.max(1, Number(row.pcsNo || row.quantity) || 1);
@@ -847,8 +848,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
                             <td className="py-3 px-2 text-center tabular-nums">
                               {isDirect ? (
-                                <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-black">
-                                  B
+                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-black border border-blue-200">
+                                  {currentMode}
                                 </span>
                               ) : (
                                 <button

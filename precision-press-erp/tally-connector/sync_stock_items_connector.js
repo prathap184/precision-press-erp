@@ -47,7 +47,7 @@ function clean(str) {
 /**
  * Fetch XML from live Tally Port 9000
  */
-function fetchLiveTally(reportName) {
+function fetchLiveTally(reportName, accountType = null) {
   return new Promise((resolve, reject) => {
     const xmlPayload = `
 <ENVELOPE>
@@ -60,6 +60,7 @@ function fetchLiveTally(reportName) {
     <REPORTNAME>${reportName}</REPORTNAME>
     <STATICVARIABLES>
      <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
+     ${accountType ? `<ACCOUNTTYPE>${accountType}</ACCOUNTTYPE>` : ''}
     </STATICVARIABLES>
    </REQUESTDESC>
   </EXPORTDATA>
@@ -111,7 +112,7 @@ async function runStockSync() {
   let groupsXml;
   try {
     console.log(`📡 Connecting to Tally at http://${TALLY_HOST}:${TALLY_PORT} for Stock Groups...`);
-    groupsXml = await fetchLiveTally('List of Stock Groups');
+    groupsXml = await fetchLiveTally('List of Accounts', 'Stock Groups');
     console.log('✅ Live Tally Port 9000 responded for Stock Groups!');
   } catch (err) {
     console.log(`⚠️ Tally live connection failed (${err.message}). Using XML backup file...`);
@@ -205,7 +206,7 @@ async function runStockSync() {
   let itemsXml;
   try {
     console.log(`📡 Connecting to Tally at http://${TALLY_HOST}:${TALLY_PORT} for Stock Items...`);
-    itemsXml = await fetchLiveTally('List of Stock Items');
+    itemsXml = await fetchLiveTally('List of Accounts', 'Stock Items');
     console.log('✅ Live Tally Port 9000 responded for Stock Items!');
   } catch (err) {
     console.log(`⚠️ Tally live connection failed (${err.message}). Using XML backup file...`);
@@ -232,6 +233,7 @@ async function runStockSync() {
     const guidM     = body.match(/<GUID>([^<]*)<\/GUID>/i);
     const alterM    = body.match(/<ALTERID>([^<]*)<\/ALTERID>/i);
     const uomM      = body.match(/<BASEUNITS>([^<]*)<\/BASEUNITS>/i);
+    const altUomM   = body.match(/<ADDITIONALUNITS>([^<]*)<\/ADDITIONALUNITS>/i);
     const hsnM      = body.match(/<HSNCODE>([^<]*)<\/HSNCODE>/i);
     const rateM     = body.match(/<GSTRATE>([^<]*)<\/GSTRATE>/i);
     const openBalM  = body.match(/<OPENINGBALANCE>([^<]*)<\/OPENINGBALANCE>/i);
@@ -243,8 +245,14 @@ async function runStockSync() {
     const guid        = guidM ? clean(guidM[1]) : null;
     const alterId     = alterM ? parseInt(alterM[1].trim(), 10) || null : null;
     const uom         = uomM ? clean(uomM[1]) : 'sqft';
+    const rawAltUom   = altUomM ? clean(altUomM[1]) : '';
+    const altUom      = (rawAltUom && !rawAltUom.includes('Not Applicable')) ? rawAltUom : null;
     const hsn         = hsnM ? clean(hsnM[1]) : null;
     const description = descM ? clean(descM[1]) : null;
+
+    // Determine Billing Mode: 'A' (Pieces/Numbers) or 'B' (SqFt/Dimensions)
+    const isPieceItem = uom.toLowerCase() === 'n' || uom.toLowerCase() === 'pcs' || uom.toLowerCase() === 'nos' || uom.toLowerCase() === 'no' || uom.toLowerCase() === 'set' || uom.toLowerCase() === 'box' || uom.toLowerCase() === 'pkt';
+    const billingMode = isPieceItem ? 'A' : 'B';
 
     // GST Rate parsing (Tally GSTRATE 9 = 18% total or exact number)
     let gstRate = 18;
@@ -291,6 +299,8 @@ async function runStockSync() {
       category: parentGroup,
       category_id: categoryId,
       tally_uom: uom,
+      tally_alt_uom: altUom,
+      tally_billing_mode: billingMode,
       unit_of_measure: uom,
       hsn_code: hsn,
       gst_rate: gstRate,

@@ -440,8 +440,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                     <tbody className="divide-y divide-slate-100">
                       {rows.map((row: any, index: number) => {
                         const product = products.find((item: any) => item.id === row.productId);
-                        const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
-                        const currentMode = isDirect ? 'B' : (row.billingMode || 'A');
+                        const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || (product as any)?.tally_uom === 'N' || product?.category === 'LED- SMPS';
+                        const defaultMode = (product as any)?.tally_billing_mode || (isDirect ? 'A' : 'B');
+                        const currentMode = row.billingMode || defaultMode;
                         const w = Number(row.width) || 0;
                         const h = Number(row.height) || 0;
                         const pcs = Math.max(1, Number(row.pcsNo || row.quantity) || 1);
@@ -498,25 +499,24 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             e.preventDefault();
                                             setHighlightProductIndex((prev) => Math.max(prev - 1, 0));
                                           } else if (e.key === "Enter") {
+                                            e.preventDefault();
                                             if (isOpen && matched.length > 0) {
-                                              e.preventDefault();
-                                              const p = matched[highlightProductIndex] || matched[0];
-                                              if (p) {
-                                                updateRow(row.id, { productId: p.id });
+                                              const selectedProduct = matched[highlightProductIndex] || matched[0];
+                                              if (selectedProduct) {
+                                                updateRow(row.id, { productId: selectedProduct.id });
                                                 setOpenRowId(null);
                                                 setSearchQuery('');
                                                 setHighlightProductIndex(0);
                                                 setTimeout(() => {
-                                                  const projectInput = document.querySelector(`input[value="${row.projectName || ''}"]`) as HTMLElement;
                                                   const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                  if (projectInput) projectInput.focus();
-                                                  else if (widthInput) widthInput.focus();
+                                                  if (widthInput) widthInput.focus();
                                                 }, 60);
                                               }
                                             }
+                                          } else if (e.key === "Escape") {
+                                            setOpenRowId(null);
                                           }
                                         }}
-                                        onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 160)}
                                         className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
                                       />
                                       <ChevronDown size={14} className="text-slate-400 cursor-pointer" onClick={() => setOpenRowId(isOpen ? null : row.id)} />
@@ -595,8 +595,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
                             <td className="py-3 px-2 text-center tabular-nums">
                               {isDirect ? (
-                                <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-black">
-                                  B
+                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-black border border-blue-200">
+                                  {currentMode}
                                 </span>
                               ) : (
                                 <button

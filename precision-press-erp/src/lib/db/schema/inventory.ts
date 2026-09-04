@@ -112,6 +112,8 @@ export const inventoryItem = pgTable(
     alterId: bigint("alter_id", { mode: "number" }),
     tallyStockGroup: text("tally_stock_group"),
     tallyUom: text("tally_uom"),
+    tallyAltUom: text("tally_alt_uom"),
+    tallyBillingMode: text("tally_billing_mode").default("B"), // 'A' (Pieces) or 'B' (SqFt)
     openingQuantity: numeric("opening_quantity").default("0"),
     openingRate: numeric("opening_rate").default("0"),
     openingValue: numeric("opening_value").default("0"),

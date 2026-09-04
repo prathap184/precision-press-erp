@@ -425,9 +425,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
             const hint =
               taxContext === "purchase" && selectedRate ? reclaimHint(selectedRate) : null;
 
-            const itemMetadata = inventoryItems.find((itm) => itm.id === line.inventoryItemId)?.metadata;
-            const isDirectSelling = itemMetadata?.isDirectSelling === true;
-            const currentMode = isDirectSelling ? 'B' : (line.billingMode || 'A');
+            const itemObj = inventoryItems.find((itm) => itm.id === line.inventoryItemId);
+            const isDirectSelling = itemObj?.metadata?.isDirectSelling === true || itemObj?.unitOfMeasure === 'N' || (itemObj as any)?.tallyUom === 'N';
+            const defaultMode = (itemObj as any)?.tallyBillingMode || (isDirectSelling ? 'A' : 'B');
+            const currentMode = line.billingMode || defaultMode;
             const widthNum = parseFloat(line.width || "0");
             const lengthNum = parseFloat(line.length || "0");
             const pcs = Math.max(1, parseFloat(line.pcsNo || line.quantity || "1") || 1);
@@ -463,7 +464,8 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           || taxRates.find(t => t.rate === 1800) 
                           || (taxRates.length > 0 ? taxRates[0] : null);
 
-                        const isItemDirectSelling = item.metadata?.isDirectSelling === true;
+                        const isItemDirectSelling = item.metadata?.isDirectSelling === true || item.unitOfMeasure === 'N' || (item as any).tallyUom === 'N';
+                        const itemDefaultMode = (item as any).tallyBillingMode || (isItemDirectSelling ? "A" : "B");
                         const effectiveRate = isItemDirectSelling
                           ? (Number(item.salePrice || 0) / 100)
                           : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
@@ -473,7 +475,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           inventoryItemId: item.id,
                           description: item.name,
                           unitPrice: effectiveRate.toString(),
-                          billingMode: isItemDirectSelling ? "B" : "A",
+                          billingMode: itemDefaultMode,
                           pcsNo: "1",
                           accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
                           taxRateId: matchingTax ? matchingTax.id : (taxRates.find(t => t.rate === 1800)?.id || updated[i].taxRateId),
@@ -531,8 +533,8 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 {/* Mode (T) Toggle Button */}
                 <div className="text-center">
                   {isDirectSelling ? (
-                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-lg bg-slate-200 text-slate-700 text-xs font-black">
-                      B
+                    <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-black border border-blue-200">
+                      {currentMode}
                     </span>
                   ) : (
                     <button
