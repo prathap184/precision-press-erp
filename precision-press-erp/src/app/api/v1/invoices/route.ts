@@ -402,36 +402,60 @@ export async function POST(request: Request) {
     );
 
     // If created directly as 'sent', automatically post to General Ledger (DR AR 1200, CR Revenue 4000, CR GST)
+    // and relieve physical inventory stock (DR COGS, CR Inventory, -Qty in inventory_item)
     if (created.status === "sent") {
       try {
-        const { createInvoiceJournalEntry } = await import("@/lib/api/journal-automation");
-        const entry = await createInvoiceJournalEntry(
-          { organizationId: ctx.organizationId, userId: ctx.userId },
-          {
-            invoiceNumber: created.invoiceNumber,
-            total: created.total,
-            taxTotal: created.taxTotal,
-            cgstTotal: created.cgstTotal,
-            sgstTotal: created.sgstTotal,
-            igstTotal: created.igstTotal,
-            subtotal: created.subtotal,
-            lines: processedLines.map((l) => ({
-              accountId: l.accountId || null,
-              amount: l.amount,
-              taxAmount: l.taxAmount,
-            })),
-            date: created.issueDate,
-            currencyCode: created.currencyCode,
+        const { createInvoiceJournalEntry, createCogsJournalEntry } = await import("@/lib/api/journal-automation");
+        
+        await db.transaction(async (tx) => {
+          const entry = await createInvoiceJournalEntry(
+            { organizationId: ctx.organizationId, userId: ctx.userId },
+            {
+              invoiceNumber: created.invoiceNumber,
+              total: created.total,
+              taxTotal: created.taxTotal,
+              cgstTotal: created.cgstTotal,
+              sgstTotal: created.sgstTotal,
+              igstTotal: created.igstTotal,
+              subtotal: created.subtotal,
+              lines: processedLines.map((l) => ({
+                accountId: l.accountId || null,
+                amount: l.amount,
+                taxAmount: l.taxAmount,
+              })),
+              date: created.issueDate,
+              currencyCode: created.currencyCode,
+            },
+            tx
+          );
+          if (entry) {
+            await tx
+              .update(invoice)
+              .set({ journalEntryId: entry.id })
+              .where(eq(invoice.id, created.id));
           }
-        );
-        if (entry) {
-          await db
-            .update(invoice)
-            .set({ journalEntryId: entry.id })
-            .where(eq(invoice.id, created.id));
-        }
+
+          // Relieve stock & record stock movement in inventory
+          const stockLines = processedLines.filter((l) => l.inventoryItemId);
+          if (stockLines.length > 0) {
+            await createCogsJournalEntry(
+              { organizationId: ctx.organizationId, userId: ctx.userId },
+              {
+                reference: created.invoiceNumber,
+                date: created.issueDate,
+                currencyCode: created.currencyCode,
+                lines: stockLines.map((l) => ({
+                  inventoryItemId: l.inventoryItemId as string,
+                  quantity: l.quantity,
+                  warehouseId: l.warehouseId || null,
+                })),
+              },
+              tx
+            );
+          }
+        });
       } catch (err) {
-        console.warn("Failed to create initial invoice journal entry", err);
+        console.warn("Failed to create initial invoice journal / stock deduction entry", err);
       }
     }
 
