@@ -282,7 +282,7 @@ ${hsnTag}
   }
 
   // Bill allocations: supports both New Ref and Agst Ref (e.g. against ADV-0001)
-  const vchType = payload.voucherType || "Web Sales";
+  const vchType = (payload.voucherType && payload.voucherType !== '1.GST HO CS' && payload.voucherType !== 'GST BO CREDIT' && payload.voucherType !== 'Sale' && payload.voucherType !== 'Sales') ? payload.voucherType : 'Web Sales';
   const billAllocName = payload.billAllocations?.name || invoiceNumber;
   const billAllocType = payload.billAllocations?.billType || "New Ref";
   const billAllocAmount = payload.billAllocations?.amount != null ? Number(payload.billAllocations.amount) : -grandTotal;
@@ -366,7 +366,7 @@ function buildReceiptVoucherXML(payload, educationalMode = true) {
   const upiApp             = payload.upiApp;
   const customerName       = payload.debtorLedgerName || payload.customerName || 'Sundry Debtors';
   const remarks            = payload.remarks || '';
-  const voucherType        = payload.voucherType || 'Web Receipt';
+  const voucherType        = (payload.voucherType && !payload.voucherType.startsWith('Rec') && payload.voucherType !== 'Receipt') ? payload.voucherType : 'Web Receipt';
   // "Create" for brand-new, "Alter" to update existing (manually-entered) vouchers
   const action             = payload.action || 'Create';
 
