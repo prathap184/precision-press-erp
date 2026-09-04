@@ -746,16 +746,47 @@ function buildWorkflowSnapshot(
   isAcdemaUser: boolean = false,
   deliveryChoice?: string
 ): OrderWorkflowSnapshot {
-  const configuredSteps = Array.isArray(productData?.workflowSteps) ? productData.workflowSteps : [];
+  const isDirect = (productData as any)?.metadata?.isDirectSelling === true || 
+                   (productData as any)?.unit_of_measure === 'N' || 
+                   ['N', 'No', 'pc', 'Set', 'Box', 'Pkt'].includes((productData as any)?.unit_of_measure) ||
+                   (productData as any)?.category === 'LED- SMPS' ||
+                   (productData as any)?.category === 'Spray' ||
+                   (productData as any)?.category === 'Hardware & Accessories' ||
+                   ((productData as any)?.name && /(cutter|knife|blade|spray|tape|smps|power supply|adapter)/i.test((productData as any).name));
+
+  const configuredSteps = Array.isArray(productData?.workflowSteps) && productData.workflowSteps.length > 0 
+    ? productData.workflowSteps 
+    : [];
   
-  const fallbackSteps = [
+  const directSellingFallbackSteps = [
     { id: 'accountant', label: 'Payment Verification', role: 'ACCOUNTANT', description: 'Verify payment', blocking: true },
-    { id: 'printer', label: 'Print Queue', role: 'PRINTER', description: 'Printing stage', blocking: true },
-    { id: 'dispatch', label: 'Dispatch', role: 'DISPATCH', description: 'Dispatch stage', blocking: true },
+    { id: 'dispatch', label: 'Dispatch', role: 'DISPATCH', description: 'Pack and prepare for dispatch', blocking: true },
   ];
 
-  const sourceSteps = [...(configuredSteps.length > 0 ? configuredSteps : fallbackSteps)];
-  
+  const customFabricationFallbackSteps = [
+    { id: 'accountant', label: 'Payment Verification', role: 'ACCOUNTANT', description: 'Verify payment', blocking: true },
+    { id: 'designer',   label: 'Design & Artwork',   role: 'DESIGNER',   description: 'Pre-press design, proofing and artwork preparation', blocking: true },
+    { id: 'manager',    label: 'Manager Sign-off',   role: 'MANAGER',    description: 'Quality check and production authorization', blocking: true },
+    { id: 'printer',    label: 'Printing',           role: 'PRINTER',    description: 'Production printing run', blocking: true },
+    { id: 'pasting',    label: 'Pasting',            role: 'PASTING',    description: 'Application, lamination and mounting', blocking: false },
+    { id: 'dispatch',   label: 'Dispatch',           role: 'DISPATCH',   description: 'Pack, label and hand-over for delivery', blocking: true },
+  ];
+
+  let sourceSteps = configuredSteps.length > 0
+    ? [...configuredSteps]
+    : (isDirect ? [...directSellingFallbackSteps] : [...customFabricationFallbackSteps]);
+
+  // If this is a direct selling item, remove any PRINTER, DESIGNER, PASTING, or MANAGER steps
+  if (isDirect) {
+    sourceSteps = sourceSteps.filter((step: any) => !['PRINTER', 'DESIGNER', 'PASTING', 'MANAGER'].includes(step.role));
+    if (!sourceSteps.some((step: any) => step.role === 'ACCOUNTANT')) {
+      sourceSteps.unshift({ id: 'accountant', label: 'Payment Verification', role: 'ACCOUNTANT', description: 'Verify payment', blocking: true });
+    }
+    if (!sourceSteps.some((step: any) => step.role === 'DISPATCH')) {
+      sourceSteps.push({ id: 'dispatch', label: 'Dispatch', role: 'DISPATCH', description: 'Pack and prepare for dispatch', blocking: true });
+    }
+  }
+
   // If delivery choice requires delivery (DOOR, COURIER, TRANSPORT), ensure Delivery step exists
   const isDeliveryRequired = ['door', 'door_delivery', 'courier', 'transport'].includes((deliveryChoice || '').toLowerCase());
   const hasDeliveryStep = sourceSteps.some((step: any) => step.role === 'DELIVERY');
@@ -771,8 +802,14 @@ function buildWorkflowSnapshot(
 
   let startIdx = 0;
   if (isAcdemaUser) {
-    const printerIdx = sourceSteps.findIndex((step: any) => step.role === 'PRINTER');
-    startIdx = printerIdx >= 0 ? printerIdx : 0;
+    if (isDirect) {
+      // For staff proxy on direct items, jump straight to DISPATCH
+      const dispatchIdx = sourceSteps.findIndex((step: any) => step.role === 'DISPATCH');
+      startIdx = dispatchIdx >= 0 ? dispatchIdx : 0;
+    } else {
+      const printerIdx = sourceSteps.findIndex((step: any) => step.role === 'PRINTER');
+      startIdx = printerIdx >= 0 ? printerIdx : 0;
+    }
   }
 
   const steps: OrderWorkflowStep[] = sourceSteps.map((step: any, idx: number) => ({

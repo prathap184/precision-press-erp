@@ -2,8 +2,23 @@
 .env.local
 .env
 node_modules/
+.next/
+public/uploads/
+
+# Tally Connector & Builds
+dist/
+*.enc
+*.exe
+*.blob
 tally-connector/.env
 tally-connector/node_modules/
 tally-connector/logs/
-.next/
-public/uploads/
+tally-connector/dist/
+tally-connector/*.enc
+tally-connector/debug-last-voucher.xml
+tally-connector/build-exe.js
+tally-connector/decrypt-config.js
+tally-connector/encrypt-config.js
+tally-connector/sea-config.json
+tally-connector/secure-config.js
+tally_sync/
