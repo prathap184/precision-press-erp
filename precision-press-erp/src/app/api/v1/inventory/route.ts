@@ -138,9 +138,9 @@ export async function GET(request: Request) {
     const [summary] = await db
       .select({
         totalItems: sql<number>`count(*)::int`,
-        totalValue: sql<number>`coalesce(sum(${inventoryItem.quantityOnHand} * ${inventoryItem.purchasePrice}), 0)::bigint`,
+        totalValue: sql<number>`coalesce(sum((${inventoryItem.quantityOnHand}::numeric * ${inventoryItem.purchasePrice}::numeric)), 0)::numeric`,
         lowStockCount: sql<number>`count(*) filter (where ${inventoryItem.quantityOnHand} <= ${inventoryItem.reorderPoint} and ${inventoryItem.isActive} = true)::int`,
-        avgMargin: sql<number>`coalesce(avg(case when ${inventoryItem.purchasePrice} > 0 then (${inventoryItem.salePrice} - ${inventoryItem.purchasePrice})::float / ${inventoryItem.purchasePrice} * 100 end), 0)`,
+        avgMargin: sql<number>`coalesce(avg(case when ${inventoryItem.purchasePrice} > 0 then ((${inventoryItem.salePrice}::numeric - ${inventoryItem.purchasePrice}::numeric)::float / ${inventoryItem.purchasePrice}::numeric * 100) end), 0)`,
       })
       .from(inventoryItem)
       .where(and(...orgConditions));
