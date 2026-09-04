@@ -667,15 +667,13 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Quantity Column */}
                             <td className="py-3 px-2 text-center text-xs font-bold tabular-nums">
-                              {isDirect ? (
-                                <span className="text-slate-700 font-bold">{pcs} N</span>
-                              ) : currentMode === 'B' ? (
+                              {currentMode === 'B' ? (
                                 <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
                               ) : (
                                 <div className="inline-flex items-center justify-center">
                                   <input
                                     id={`error-row-${row.id}-quantity`}
-                                    value={row.quantity || '1'}
+                                    value={row.quantity || row.pcsNo || '1'}
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       updateRow(row.id, { quantity: val, pcsNo: val });
@@ -683,22 +681,20 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     className={`h-10 w-16 rounded-lg border text-center text-xs font-bold ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:bg-white'}`}
                                     placeholder="Qty"
                                   />
-                                  <span className="ml-1 text-[11px] font-black text-slate-500">N</span>
+                                  <span className="ml-1 text-[11px] font-black text-slate-500">{(product as any)?.tally_uom || 'N'}</span>
                                 </div>
                               )}
                             </td>
                             {/* Rate/SqFt Column */}
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-700 tabular-nums">
-                              {currentMode === 'A' ? (baseRate > 0 ? baseRate.toFixed(2) : '—') : '—'}
+                              {currentMode === 'B' ? (baseRate > 0 ? baseRate.toFixed(2) : '—') : '—'}
                             </td>
                             {/* Rate per Column */}
                             <td className="py-3 px-2 text-center text-xs font-bold tabular-nums">
-                              {isDirect ? (
-                                `${baseRate.toFixed(2)} N`
-                              ) : currentMode === 'B' ? (
+                              {currentMode === 'B' ? (
                                 <span className="text-emerald-700 font-bold">{baseRate.toFixed(2)} sqft</span>
                               ) : (
-                                <span className="text-blue-700 font-bold">{(sqft * baseRate).toFixed(2)} N</span>
+                                <span className="text-blue-700 font-bold">{baseRate.toFixed(2)} {(product as any)?.tally_uom || 'N'}</span>
                               )}
                             </td>
                             <td className="py-3 px-2 tabular-nums">
