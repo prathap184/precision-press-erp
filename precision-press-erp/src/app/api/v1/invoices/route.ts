@@ -605,8 +605,7 @@ export async function POST(request: Request) {
 
     // Auto-enqueue to tally_sync_queue for seamless TallyPrime synchronization
     try {
-      const { enqueueTallySync, getTallySettings } = await import("@/lib/actions/tally-sync");
-      const settings = await getTallySettings();
+      const { enqueueTallySync } = await import("@/lib/actions/tally-sync");
 
       // Fetch customer details
       const customer = await db.query.contact.findFirst({
@@ -618,7 +617,7 @@ export async function POST(request: Request) {
       // ── Determine bill allocation type ──────────────────────────────────────
       // NEW_REF (default) → standard "New Ref" — customer pays later.
       // AGST_REF → "Agst Ref" against the advance name — invoice is pre-paid.
-      // For Agst Ref we also need the advance reference name (ADV-XXXX).
+      // For Agst Ref we also need the advance reference name (ADV-XXXX or REC-XXXX).
       let billType = "New Ref";
       let billAllocationName = result.invoiceNumber;
 
@@ -630,14 +629,14 @@ export async function POST(request: Request) {
             .from(customerCredit)
             .where(eq(customerCredit.id, parsed.advanceCreditId));
           if (advCredit?.notes) {
-            const match = advCredit.notes.match(/ADV-\d+/i);
+            const match = advCredit.notes.match(/(?:ADV|REC)-[^\s,]+/i);
             if (match) advRef = match[0].toUpperCase();
           }
           if (!advRef && advCredit?.journalEntryId) {
             const je = await db.query.journalEntry.findFirst({
               where: eq(journalEntry.id, advCredit.journalEntryId),
             });
-            if (je?.referenceNumber) advRef = je.referenceNumber;
+            if (je?.reference) advRef = je.reference;
           }
         }
         if (!advRef) advRef = "ADV-0001";
@@ -648,7 +647,7 @@ export async function POST(request: Request) {
 
       // Prepare payload matching Web Sales
       const payload = {
-        tallyCompanyName: settings.companyName || process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
+        tallyCompanyName: process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
         voucherType: "Web Sales",
         invoiceNumber: result.invoiceNumber,
         invoiceDate: result.issueDate ? result.issueDate.replace(/-/g, "") : new Date().toISOString().slice(0, 10).replace(/-/g, ""),
