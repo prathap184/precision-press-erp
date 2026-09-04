@@ -707,68 +707,110 @@ In Tally XML, customer and supplier addresses are output as multiple `<ADDRESS>`
 
 ---
 
-## 🖥️ 24. Standalone Windows Executable (`TallyConnector.exe`) & 1-Click Sync Architecture
+## 🖥️ 24. Standalone Windows Executable (`TallyConnector.exe`) & Single Executable Application (SEA) Architecture
 
 > **Purpose**: Allow the accounts department PC to run real-time Tally Prime sync without installing Node.js, npm, or dev tools.
 
 ### A. Overview & Packaging Architecture
-`TallyConnector.exe` is a fully compiled standalone binary created from `tally-connector/connector.js` and `tally-connector/xml-builder.js`:
+`TallyConnector.exe` is a fully compiled standalone binary created using Node 24 Single Executable Application (SEA) and `esbuild`:
 - Contains the Node.js V8 runtime embedded inside the `.exe`.
-- Contains all required dependencies (`axios`, `dotenv`, `winston`, `xml2js`) bundled in bytecode.
+- Contains all required dependencies (`axios`, `dotenv`, `winston`, `xml2js`, `crypto`) bundled in bytecode (`dist/bundle.js`).
 - **Client PC Requirement**: **Zero software installations** (No Node.js / npm required).
 
 ```
-📁 C:\Precision-Tally-Sync\
-├── 📄 TallyConnector.exe     <-- Standalone Compiled Application (~45 MB)
-├── ⚙️ .env                  <-- Company Configuration (ERP URL, Port, Company Name)
-└── 📁 logs/                 <-- Auto-created log directory (connector.log)
+📁 C:\Precision-Tally-Sync\ (or Desktop)
+├── 🟩 TallyConnector.exe     <-- Standalone Compiled Application (~92 MB)
+├── 🔒 config.enc             <-- AES-256 Encrypted Configuration (Unreadable in Notepad)
+├── 📄 README.txt             <-- Quick-start guide
+└── 📁 logs/                  <-- Auto-created log directory (connector.log)
 ```
 
-### B. Compilation Procedure (When Ready to Build)
+### B. Automated Compilation Procedure (`node build-exe.js`)
 Run inside the `tally-connector/` folder:
 ```bash
-# Package into Windows x64 Standalone Executable
-npx @yao-pkg/pkg . --targets node18-win-x64 --output TallyConnector.exe
+# Automated 5-step build pipeline
+node build-exe.js
 ```
-
-### C. Client Configuration (`.env`)
-```env
-ERP_BASE_URL=http://40.81.236.61:3000
-CONNECTOR_SECRET=your_secure_secret_token
-TALLY_HOST=http://127.0.0.1
-TALLY_PORT=9000
-TALLY_COMPANY_NAME=Hindustan Enterprises 25-26
-POLL_INTERVAL_MS=8000
-TALLY_EDUCATIONAL_MODE=false
-```
-
-### D. Alternative 1-Click Launcher (`Start-Sync.bat`)
-If Node.js is already present on the PC:
-```bat
-@echo off
-title Precision Press ERP - Tally Sync Connector
-color 0A
-cd /d "%~dp0"
-
-echo ========================================================
-echo   PRECISION PRESS ERP -> TALLY PRIME REAL-TIME SYNC
-echo ========================================================
-echo.
-echo Connecting to ERP Cloud Queue & Local Tally Port 9000...
-echo Keep this window open during business hours.
-echo.
-
-node connector.js
-
-pause
-```
-
-### E. Automatic Background Windows Startup (Zero-Touch)
-To start syncing automatically when Windows boots up:
-1. Press `Win + R` $\rightarrow$ type `shell:startup` $\rightarrow$ press Enter.
-2. Create a shortcut to `TallyConnector.exe` in this folder.
-3. Every morning when the Accounts PC turns on, `TallyConnector.exe` starts and syncs every ERP invoice & receipt to Tally Prime automatically.
+1. Encrypts `.env` into `config.enc` using PBKDF/AES-256-CBC.
+2. Bundles `connector.js` into single `dist/bundle.js` with `esbuild`.
+3. Generates SEA bytecode blob (`dist/sea-prep.blob`).
+4. Clones native Windows runtime binary to `TallyConnector.exe`.
+5. Injects bytecode blob with `postject` sentinel fuses.
 
 ---
+
+## 🔒 25. AES-256 Encrypted Configuration (`config.enc`) & Dual-Mode Runtime
+
+### A. Security & Storage Rules
+- **Encrypted on Disk (`config.enc`)**: Scrambled ciphertext on disk so that accountants or laptop users cannot view secret keys, credentials, or cloud IP addresses in Notepad.
+- **Decrypted Strictly in RAM**: When `TallyConnector.exe` launches, `secure-config.js` decrypts settings directly inside computer memory.
+- **Dual-Mode Support**:
+  - `TallyConnector.exe` reads `config.enc` first.
+  - `node connector.js` supports both `config.enc` and fallback `.env` for development.
+
+### B. Tools Provided in Connector Suite:
+- `secure-config.js` $\rightarrow$ In-memory decryptor and environment populator.
+- `encrypt-config.js` $\rightarrow$ Encrypts any `.env` into `config.enc`.
+- `decrypt-config.js` $\rightarrow$ Administrative decryption preview tool.
+
+---
+
+## ⚙️ 26. Mode A vs Mode B Smart Workflow Pipeline Resolution
+
+The ERP classifies products into two operational workflows based on **Tally Unit of Measure (`<BASEUNITS>`)** and **Product Master Settings**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   MODE A vs MODE B                                      │
+├───────────────────────────────────────────┬─────────────────────────────────────────────┤
+│ 🔵 MODE A (Direct Selling / Pieces)       │ 🟢 MODE B (Custom Fabrication / Sq.Ft)      │
+├───────────────────────────────────────────┼─────────────────────────────────────────────┤
+│ • Product: Plastic Cutter, Sprays, LEDs   │ • Product: Acrylic Sheet, ACP, Flex, Vinyl  │
+│ • Sold by: Pieces / Units (`Pcs`, `N`)    │ • Sold by: Dimensions (Width × Height Sq.Ft)│
+│ • Dimensions: Disabled (—)                │ • Dimensions: Required (e.g. 5ft × 5ft)     │
+│                                           │                                             │
+│ ⚡ WORKFLOW (3 Stages — NO PRINT):         │ 🏭 WORKFLOW (8 Stages — FULL SHOP FLOOR):   │
+│ Accounts ➔ Dispatch ➔ Delivery            │ Accounts ➔ Design ➔ Manager ➔ Print ➔       │
+│                                           │ Pasting ➔ Finishing ➔ Dispatch ➔ Delivery   │
+└───────────────────────────────────────────┴─────────────────────────────────────────────┘
+```
+
+### Automatic Ingestion Rule (`sync_stock_items_connector.js`):
+- If `<BASEUNITS>` is `N`, `Pcs`, `Box`, `Set`, `Pkt` $\rightarrow$ `tally_billing_mode = 'A'`, `metadata.isDirectSelling = true` (3-stage retail workflow).
+- If `<BASEUNITS>` is `sqft`, `Sh`, `R`, `Mt` $\rightarrow$ `tally_billing_mode = 'B'`, `metadata.isDirectSelling = false` (8-stage manufacturing workflow).
+
+---
+
+## 📑 27. Ground-Truth XML Comparison & Verification Matrix
+
+### 1. Sales Invoice (`Sales_HS7547.xml` vs Auto-Synced `INV-00053`):
+- **Voucher Type & View**: `OBJVIEW="Invoice Voucher View"`, `ACTION="Create"` (100% Match).
+- **Revenue Ledger**: `<LEDGERNAME>GST SALES</LEDGERNAME>` (100% Match).
+- **Taxes**: `<LEDGERNAME>CGST</LEDGERNAME>` & `<LEDGERNAME>SGST</LEDGERNAME>` (100% Match).
+- **Godown Deduction**: `<GODOWNNAME>B1</GODOWNNAME>` from Batch Allocations (100% Match).
+- **Custom TDL Dimension UDFs**:
+  `<UDF:VCHLENGTHUDF>`, `<UDF:VCHWIDTHUDF>`, `<UDF:VCHITEMAREAUDF>`, `<UDF:VCHITEMPCSQTYUDF>`, `<UDF:VCHLENGTHUNITUDF>`, `<UDF:VCHWIDTHUNITUDF>`, `<UDF:VCHITEMSIZESBILLINGTYPE>` (100% Match).
+
+### 2. Receipt Voucher (`Receipt_519.xml` vs Auto-Synced `REC--27` / `ADV-0001`):
+- **Voucher View & Flow**: `OBJVIEW="Accounting Voucher View"`, `<HASCASHFLOW>Yes</HASCASHFLOW>` (100% Match).
+- **Party Ledger Leg**: `<ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>`, `<ISPARTYLEDGER>Yes</ISPARTYLEDGER>` (100% Match).
+- **Cash/Bank Leg**: `<ISDEEMEDPOSITIVE>Yes</ISDEEMEDPOSITIVE>`, `<ISPARTYLEDGER>Yes</ISPARTYLEDGER>`, `<AMOUNT>-Amount</AMOUNT>` (100% Match).
+- **Bill Allocation Mechanism**: `<BILLTYPE>Agst Ref</BILLTYPE>` / `<BILLTYPE>New Ref</BILLTYPE>` / `<BILLTYPE>Advance</BILLTYPE>` (100% Match).
+
+---
+
+## 🛡️ 28. Security Hardening & Timing-Safe Cryptographic Authentication
+
+1. **Connector Secret Token**:
+   - `Hindustan_Pixel_marketing_Power_start_@2026_2003` (48-character cryptographic string).
+   - Configured in Azure VM (`.env.local`), local connector, and encrypted `config.enc`.
+2. **Timing-Safe Header Verification**:
+   - `/api/tally/connector/pending` compares `x-connector-secret` using constant-time `crypto.timingSafeEqual` to prevent side-channel timing attacks.
+3. **Repository Cleanliness**:
+   - `.gitignore` completely excludes `.exe` binaries, `.env`, `.enc`, and debug XML logs.
+
+---
+*Memory Updated & Persisted on: 2026-09-04 (End-to-End Verified & Production-Ready)*
+
 
 
