@@ -802,8 +802,7 @@ The ERP classifies products into two operational workflows based on **Tally Unit
 ## 🛡️ 28. Security Hardening & Timing-Safe Cryptographic Authentication
 
 1. **Connector Secret Token**:
-   - `Hindustan_Pixel_marketing_Power_start_@2026_2003` (48-character cryptographic string).
-   - Configured in Azure VM (`.env.local`), local connector, and encrypted `config.enc`.
+   - Secure high-entropy cryptographic token configured across Azure VM (`.env.local`), local connector, and encrypted `config.enc`.
 2. **Timing-Safe Header Verification**:
    - `/api/tally/connector/pending` compares `x-connector-secret` using constant-time `crypto.timingSafeEqual` to prevent side-channel timing attacks.
 3. **Repository Cleanliness**:
