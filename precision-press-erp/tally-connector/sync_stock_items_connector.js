@@ -331,6 +331,7 @@ async function runStockSync() {
       cost_account_id: costAccountId,
       cost_method: 'average',
       tracking_method: 'none',
+      metadata: { isDirectSelling: isPieceItem },
       is_active: true,
       description: description || `Stock Item: ${name} (${parentGroup})`
     });

@@ -3,15 +3,26 @@
   "version": "1.0.0",
   "description": "Precision Press ERP → TallyPrime Local Connector Service (Accounting PC only)",
   "main": "connector.js",
+  "bin": "connector.js",
   "scripts": {
     "start": "node connector.js",
-    "dev": "nodemon connector.js"
+    "dev": "nodemon connector.js",
+    "encrypt": "node encrypt-config.js",
+    "decrypt": "node decrypt-config.js",
+    "build:exe": "pkg . --targets node18-win-x64 --output dist/Precision-Tally-Sync/TallyConnector.exe"
+  },
+  "pkg": {
+    "scripts": [
+      "secure-config.js",
+      "xml-builder.js"
+    ],
+    "assets": []
   },
   "dependencies": {
     "axios": "^1.6.0",
     "dotenv": "^16.0.0",
-    "xml2js": "^0.6.2",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "xml2js": "^0.6.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.0"

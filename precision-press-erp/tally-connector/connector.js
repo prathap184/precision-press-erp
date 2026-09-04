@@ -27,7 +27,8 @@
 
 'use strict';
 
-require('dotenv').config();
+const { loadConfig } = require('./secure-config');
+const configStatus = loadConfig();
 const axios    = require('axios');
 const winston  = require('winston');
 const xml2js   = require('xml2js');
@@ -315,6 +316,7 @@ logger.info('══════════════════════�
 logger.info(`  ERP:     ${ERP_BASE_URL}`);
 logger.info(`  Tally:   ${TALLY_URL}`);
 logger.info(`  Company: ${process.env.TALLY_COMPANY_NAME || 'Website Testing Hindustan'}`);
+logger.info(`  Config:  Loaded from ${configStatus.source}`);
 logger.info(`  Poll:    every ${POLL_MS / 1000}s`);
 logger.info('  IMPORTANT: TallyPrime must be open with company loaded');
 logger.info('════════════════════════════════════════════════════════');
