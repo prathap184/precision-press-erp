@@ -407,8 +407,8 @@ export async function POST(request: Request) {
         const selectedBank = selectedBankAccountId
           ? await db.query.bankAccount.findFirst({ where: eq(bankAccount.id, selectedBankAccountId) })
           : null;
-        const bankLedgerName = selectedBank?.tally_ledger_name || (parsed.method === "cash" ? "Cash" : "Federal 2091");
-        const voucherType = (bankLedgerName.toLowerCase().includes("cash") || parsed.method === "cash") ? "Rec10 B8 Cash" : "Rec1 B1 Bank";
+        const bankLedgerName = selectedBank?.tallyLedgerName || selectedBank?.accountName || (parsed.method === "cash" ? "Cash" : "Federal 2091");
+        const voucherType = "Web Receipt";
         
         // Build bill allocations for each invoice allocation
         const billAllocs = (result?.allocations || []).map((a) => {
