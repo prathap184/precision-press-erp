@@ -312,7 +312,9 @@ export async function loadTallyStockItems(): Promise<any[]> {
     const guidM = body.match(/<GUID[^>]*>([^<]*)<\/GUID>/i);
 
     const group = parentM ? cleanStr(parentM[1]) : 'General';
-    const uom = uomM ? cleanStr(uomM[1]).toLowerCase() : 'n';
+    const rawUom = uomM ? cleanStr(uomM[1]) : 'N';
+    const isSqft = rawUom.toLowerCase() === 'sqft' || rawUom.toLowerCase() === 'sq.ft' || rawUom.toLowerCase() === 'sqf';
+    const normalizedUom = isSqft ? 'sqft' : rawUom;
     const hsn = hsnM ? cleanStr(hsnM[1]) : '';
     const guid = guidM ? cleanStr(guidM[1]) : null;
 
@@ -341,7 +343,10 @@ export async function loadTallyStockItems(): Promise<any[]> {
       name,
       tallyItemName: name,
       group,
-      uom: uom === 'sqft' ? 'sqft' : 'N',
+      uom: normalizedUom,
+      rawUom: rawUom,
+      isSqft,
+      billingMode: isSqft ? 'B' : 'A',
       hsnCode: hsn || '32141000',
       rate,
       openingQuantity: qty,
@@ -690,10 +695,9 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
       const paiseVal = Math.round(rateVal * 100);
       const skuVal = existing?.sku || `SKU-${Date.now().toString().slice(-6)}`;
 
-      const isDirect = (item.uom || '').toUpperCase() === 'N' || 
-                       (item.uom || '').toUpperCase() === 'NOS' || 
-                       (item.uom || '').toUpperCase() === 'PCS' ||
-                       !['SQFT', 'SQ.FT', 'SQM', 'SQ.MTR', 'ROLL', 'SHEET'].includes((item.uom || '').toUpperCase());
+      const isSqft = item.isSqft ?? (item.uom?.toLowerCase() === 'sqft' || item.uom?.toLowerCase() === 'sq.ft' || item.uom?.toLowerCase() === 'sqf');
+      const billingMode = item.billingMode || (isSqft ? 'B' : 'A');
+      const normalizedUom = isSqft ? 'sqft' : (item.uom || 'N');
 
       const payload: any = {
         organization_id: DEFAULT_ORG_ID,
@@ -705,8 +709,9 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         category_id: categoryId,
         tally_item_name: item.name,
         tally_stock_group: item.group,
-        tally_uom: item.uom || 'N',
-        unit_of_measure: item.uom || 'N',
+        tally_uom: item.rawUom || item.uom || 'N',
+        unit_of_measure: normalizedUom,
+        tally_billing_mode: billingMode,
         hsn_code: item.hsnCode || existing?.hsn_code || null,
         purchase_price: paiseVal,
         sale_price: Math.round(paiseVal * 1.25),
@@ -721,9 +726,10 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         tracking_method: 'none',
         metadata: {
           hsn: item.hsnCode || null,
-          unit: item.uom || 'N',
+          unit: item.rawUom || item.uom || 'N',
           baseRate: rateVal,
-          isDirectSelling: isDirect,
+          calcType: isSqft ? 'SQFT' : 'QTY',
+          billingMode: billingMode,
         },
         tally_guid: item.tallyGuid || existing?.tally_guid || null,
       };

@@ -76,10 +76,15 @@ interface InventoryItem {
   quantityOnHand: number;
   reorderPoint: number;
   isActive: boolean;
+  unitOfMeasure?: string | null;
+  tallyUom?: string | null;
+  tallyBillingMode?: string | null;
+  tallyStockGroup?: string | null;
+  hsnCode?: string | null;
   metadata?: any;
 }
 
-type FilterTab = "all" | "direct_selling" | "custom_selling" | "low_stock" | "active" | "inactive";
+type FilterTab = "all" | "sqft" | "qty" | "mode_a" | "mode_b" | "low_stock" | "active" | "inactive";
 type SortKey = "name" | "code" | "quantity" | "salePrice" | "purchasePrice" | "createdAt";
 
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -564,9 +569,11 @@ export default function InventoryPage() {
             >
               <Tabs value={tab} onValueChange={(v) => setTab(v as FilterTab)}>
                 <TabsList className="flex flex-wrap h-auto p-1 gap-1">
-                  <TabsTrigger value="all">All</TabsTrigger>
-                  <TabsTrigger value="direct_selling">Direct Selling</TabsTrigger>
-                  <TabsTrigger value="custom_selling">Custom / Raw Material</TabsTrigger>
+                  <TabsTrigger value="all">All Items</TabsTrigger>
+                  <TabsTrigger value="sqft">SQFT Based</TabsTrigger>
+                  <TabsTrigger value="qty">Qty Based (Units)</TabsTrigger>
+                  <TabsTrigger value="mode_a">Mode A (Piece)</TabsTrigger>
+                  <TabsTrigger value="mode_b">Mode B (Sq.Ft)</TabsTrigger>
                   <TabsTrigger value="low_stock">Running low</TabsTrigger>
                   <TabsTrigger value="active">Shown</TabsTrigger>
                   <TabsTrigger value="inactive">Hidden</TabsTrigger>
@@ -715,8 +722,29 @@ export default function InventoryPage() {
                     )} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium truncate">{item.name}</p>
+                      {(() => {
+                        const rawUom = item.unitOfMeasure || item.tallyUom || item.metadata?.unit || 'N';
+                        const isSqft = rawUom.toLowerCase() === 'sqft' || rawUom.toLowerCase() === 'sq.ft' || rawUom.toLowerCase() === 'sqf';
+                        const mode = (item.tallyBillingMode || item.metadata?.billingMode || (isSqft ? 'B' : 'A')).toUpperCase();
+                        return (
+                          <>
+                            <Badge variant="outline" className="text-[10px] font-mono uppercase px-1.5 py-0 bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                              {rawUom}
+                            </Badge>
+                            {mode === 'A' ? (
+                              <Badge variant="secondary" className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 text-[10px] px-1.5 py-0 font-medium">
+                                Mode A · Piece
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="bg-purple-50 text-purple-700 dark:bg-purple-950 dark:text-purple-300 text-[10px] px-1.5 py-0 font-medium">
+                                Mode B · Sq.Ft
+                              </Badge>
+                            )}
+                          </>
+                        );
+                      })()}
                       {isLow && (
                         <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300 text-[10px] px-1.5 py-0" title="At or below your reorder level">Running low</Badge>
                       )}
@@ -728,14 +756,18 @@ export default function InventoryPage() {
                       {item.code}
                       {item.sku ? ` · ${item.sku}` : ""}
                       {item.category ? ` · ${item.category}` : ""}
+                      {item.hsnCode ? ` · HSN: ${item.hsnCode}` : ""}
                     </p>
                   </div>
                 </div>
 
                 {/* Stock bar */}
-                <div className="hidden sm:flex flex-col items-end gap-1 w-24">
+                <div className="hidden sm:flex flex-col items-end gap-1 w-28">
                   <span className={cn("text-xs font-mono tabular-nums font-medium", isLow ? "text-amber-600 dark:text-amber-400" : "")}>
-                    {item.quantityOnHand} {item.metadata?.isDirectSelling === false && <span className="text-[10px] font-sans text-muted-foreground ml-0.5">sq.ft</span>}
+                    {item.quantityOnHand.toLocaleString()}{" "}
+                    <span className="text-[10px] font-sans text-muted-foreground ml-0.5">
+                      {item.unitOfMeasure || item.tallyUom || item.metadata?.unit || "Units"}
+                    </span>
                   </span>
                   <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                     <motion.div
@@ -748,20 +780,31 @@ export default function InventoryPage() {
                 </div>
 
                 {/* Prices */}
-                <div className="hidden md:flex flex-col items-end gap-0.5 w-24">
-                  {item.metadata?.isDirectSelling === false ? (
-                    <>
-                      <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-                        {formatMoney(item.metadata?.baseRate != null ? Math.round(Number(item.metadata.baseRate) * 100) : item.salePrice)}
-                      </span>
-                      <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Base Rate</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">{formatMoney(item.salePrice)}</span>
-                      <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Cost {formatMoney(item.purchasePrice)}</span>
-                    </>
-                  )}
+                <div className="hidden md:flex flex-col items-end gap-0.5 w-28">
+                  {(() => {
+                    const rawUom = item.unitOfMeasure || item.tallyUom || item.metadata?.unit || 'N';
+                    const isSqft = rawUom.toLowerCase() === 'sqft' || rawUom.toLowerCase() === 'sq.ft' || rawUom.toLowerCase() === 'sqf';
+                    if (isSqft) {
+                      return (
+                        <>
+                          <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+                            {formatMoney(item.metadata?.baseRate != null ? Math.round(Number(item.metadata.baseRate) * 100) : item.salePrice)}
+                            <span className="text-[10px] font-sans text-muted-foreground ml-0.5">/ sq.ft</span>
+                          </span>
+                          <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Base Rate</span>
+                        </>
+                      );
+                    }
+                    return (
+                      <>
+                        <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
+                          {formatMoney(item.salePrice)}
+                          <span className="text-[10px] font-sans text-muted-foreground ml-0.5">/ {rawUom}</span>
+                        </span>
+                        <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Cost {formatMoney(item.purchasePrice)}</span>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Value */}

@@ -26,6 +26,8 @@ const updateSchema = z.object({
   hsnCode: z.string().nullable().optional(),
   gstRate: z.number().int().nullable().optional(),
   unitOfMeasure: z.string().nullable().optional(),
+  tallyUom: z.string().nullable().optional(),
+  tallyBillingMode: z.string().nullable().optional(),
   metadata: z.any().optional(),
   workflowSteps: z.any().optional(),
 });

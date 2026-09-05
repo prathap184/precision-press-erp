@@ -46,7 +46,8 @@ export default function InventoryItemDetailsPage() {
   const [invSalePrice, setInvSalePrice] = useState(centsToDecimal(item.salePrice));
   const [hsnCode, setHsnCode] = useState((item as any)?.hsnCode || (item as any)?.metadata?.hsn || "");
   const [gstRate, setGstRate] = useState<number>((item as any)?.gstRate != null ? (item as any).gstRate : ((item as any)?.metadata?.gstRate != null ? (item as any).metadata.gstRate : 18));
-  const [unitOfMeasure, setUnitOfMeasure] = useState((item as any)?.unitOfMeasure || (item as any)?.metadata?.unit || "SQFT");
+  const [unitOfMeasure, setUnitOfMeasure] = useState((item as any)?.unitOfMeasure || (item as any)?.metadata?.unit || "sqft");
+  const [tallyBillingMode, setTallyBillingMode] = useState<string>((item as any)?.tallyBillingMode || ((item as any)?.unitOfMeasure?.toLowerCase() === "sqft" ? "B" : "A"));
   const [isDirectSelling, setIsDirectSelling] = useState<boolean>((item as any)?.metadata?.isDirectSelling === true || (item as any)?.unitOfMeasure === "NOS" || (item as any)?.unitOfMeasure === "PCS" || (item as any)?.unitOfMeasure === "N");
   const [metadata, setMetadata] = useState<any>((item as any).metadata || {});
   const [workflowSteps, setWorkflowSteps] = useState<any[]>((item as any).workflowSteps || []);
@@ -76,6 +77,11 @@ export default function InventoryItemDetailsPage() {
       
       if ((item as any).unitOfMeasure) setUnitOfMeasure((item as any).unitOfMeasure);
       else if ((item as any).metadata?.unit) setUnitOfMeasure((item as any).metadata.unit);
+
+      if ((item as any).tallyBillingMode) setTallyBillingMode((item as any).tallyBillingMode);
+      else if ((item as any).metadata?.billingMode) setTallyBillingMode((item as any).metadata.billingMode);
+      else if ((item as any).unitOfMeasure?.toLowerCase() === "sqft") setTallyBillingMode("B");
+      else setTallyBillingMode("A");
       
       if ((item as any).metadata?.isDirectSelling !== undefined) {
         setIsDirectSelling((item as any).metadata.isDirectSelling);
@@ -132,13 +138,16 @@ export default function InventoryItemDetailsPage() {
           reorderPoint: parseInt(form.get("reorderPoint") as string) || 0,
           hsnCode: hsnCode || null,
           gstRate: Number(gstRate),
-          unitOfMeasure: unitOfMeasure || null,
+          unitOfMeasure: unitOfMeasure.toLowerCase() === "sqft" ? "sqft" : unitOfMeasure,
+          tallyUom: unitOfMeasure,
+          tallyBillingMode,
           metadata: {
             ...(metadata || {}),
             hsn: hsnCode,
             gstRate: Number(gstRate),
             unit: unitOfMeasure,
-            isDirectSelling,
+            calcType: unitOfMeasure.toLowerCase() === "sqft" ? "SQFT" : "QTY",
+            billingMode: tallyBillingMode,
             baseRate: parseFloat(invSalePrice || "0"),
           },
           workflowSteps,
@@ -344,47 +353,58 @@ export default function InventoryItemDetailsPage() {
                   onChange={(e) => {
                     const val = e.target.value;
                     setUnitOfMeasure(val);
-                    if (val === "NOS" || val === "PCS" || val === "N" || val === "BOX" || val === "SET") {
-                      setIsDirectSelling(true);
-                    } else if (val === "SQFT") {
+                    if (val.toLowerCase() === "sqft") {
+                      setTallyBillingMode("B");
                       setIsDirectSelling(false);
+                    } else {
+                      setTallyBillingMode("A");
+                      setIsDirectSelling(true);
                     }
                   }}
                   className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <option value="SQFT">SQFT (Square Feet - Custom Area)</option>
-                  <option value="NOS">NOS (Numbers / Pieces - Direct Selling)</option>
-                  <option value="PCS">PCS (Pieces - Direct Selling)</option>
-                  <option value="KG">KG (Kilograms)</option>
+                  <option value="sqft">sqft (Square Feet - Custom Dimensions L x W)</option>
+                  <option value="N">N (Numbers / Units)</option>
+                  <option value="NOS">NOS (Numbers)</option>
+                  <option value="PCS">PCS (Pieces)</option>
+                  <option value="Box">Box (Boxes)</option>
+                  <option value="Kg">Kg (Kilograms)</option>
                   <option value="MTR">MTR (Meters)</option>
-                  <option value="BOX">BOX (Boxes)</option>
-                  <option value="SET">SET (Sets)</option>
+                  <option value="Set">Set (Sets)</option>
+                  <option value="Pkt">Pkt (Packets)</option>
+                  <option value="Tube">Tube (Tubes)</option>
+                  <option value="R">R (Rolls)</option>
+                  <option value="Sh">Sh (Sheets)</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="tallyBillingMode">Tally Invoicing Mode</Label>
+                <select
+                  id="tallyBillingMode"
+                  value={tallyBillingMode}
+                  onChange={(e) => setTallyBillingMode(e.target.value)}
+                  className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                >
+                  <option value="A">Mode A (Billed by Piece / Qty - e.g. 1 N)</option>
+                  <option value="B">Mode B (Billed by SQFT - e.g. 14.000 sqft)</option>
                 </select>
               </div>
             </div>
 
-            <div className="rounded-lg border bg-muted/20 p-3.5 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-semibold text-foreground">Sales Pricing Mode</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {isDirectSelling
-                    ? "Direct Selling: Sold per piece/unit. Dimensions (Width & Length) are disabled in order & invoice builders."
-                    : "Custom Area: Sold by custom dimensions (Width × Length in feet/inches) per square foot."}
+            <div className="rounded-lg border bg-blue-50/60 dark:bg-blue-950/30 p-3.5 flex items-start gap-3">
+              <Package className="size-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+              <div className="text-xs space-y-0.5 text-slate-700 dark:text-slate-300">
+                <p className="font-semibold text-slate-900 dark:text-slate-100">
+                  {unitOfMeasure.toLowerCase() === "sqft"
+                    ? "Area-Based Physical Tracking (SQFT)"
+                    : `Direct Unit Tracking (${unitOfMeasure})`}
+                </p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                  {unitOfMeasure.toLowerCase() === "sqft"
+                    ? `Physical inventory is relieved as Length × Width × Quantity = Total SQFT consumed. Invoice prints in ${tallyBillingMode === 'A' ? 'Mode A (Piece count on bill)' : 'Mode B (Total SQFT on bill)'}.`
+                    : `Physical inventory is relieved directly as piece count (${unitOfMeasure}). Invoicing is fixed to Mode A.`}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsDirectSelling(!isDirectSelling)}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                  isDirectSelling ? "bg-emerald-600" : "bg-slate-300 dark:bg-slate-700"
-                }`}
-              >
-                <span
-                  className={`pointer-events-none inline-block size-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                    isDirectSelling ? "translate-x-4" : "translate-x-0"
-                  }`}
-                />
-              </button>
             </div>
           </div>
         </Section>

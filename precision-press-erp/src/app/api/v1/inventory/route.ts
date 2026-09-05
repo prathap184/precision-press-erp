@@ -92,13 +92,21 @@ export async function GET(request: Request) {
         sql`${inventoryItem.quantityOnHand} <= ${inventoryItem.reorderPoint}`,
         eq(inventoryItem.isActive, true)
       );
-    } else if (status === "direct_selling") {
+    } else if (status === "sqft" || status === "custom_selling") {
       conditions.push(
-        sql`(${inventoryItem.metadata}->>'isDirectSelling' = 'true' OR UPPER(COALESCE(${inventoryItem.metadata}->>'unit', '')) IN ('NOS', 'PCS', 'N', 'UNT') OR UPPER(COALESCE(${inventoryItem.unitOfMeasure}, '')) IN ('NOS', 'PCS', 'N', 'UNT'))`
+        sql`(LOWER(COALESCE(${inventoryItem.unitOfMeasure}, '')) IN ('sqft', 'sq.ft', 'sqf') OR LOWER(COALESCE(${inventoryItem.tallyUom}, '')) IN ('sqft', 'sq.ft', 'sqf'))`
       );
-    } else if (status === "custom_selling") {
+    } else if (status === "qty" || status === "direct_selling") {
       conditions.push(
-        sql`(${inventoryItem.metadata}->>'isDirectSelling' IS DISTINCT FROM 'true' AND UPPER(COALESCE(${inventoryItem.metadata}->>'unit', '')) NOT IN ('NOS', 'PCS', 'N', 'UNT') AND UPPER(COALESCE(${inventoryItem.unitOfMeasure}, '')) NOT IN ('NOS', 'PCS', 'N', 'UNT'))`
+        sql`(LOWER(COALESCE(${inventoryItem.unitOfMeasure}, '')) NOT IN ('sqft', 'sq.ft', 'sqf') AND LOWER(COALESCE(${inventoryItem.tallyUom}, '')) NOT IN ('sqft', 'sq.ft', 'sqf'))`
+      );
+    } else if (status === "mode_a") {
+      conditions.push(
+        sql`(${inventoryItem.tallyBillingMode} = 'A' OR (${inventoryItem.tallyBillingMode} IS NULL AND LOWER(COALESCE(${inventoryItem.unitOfMeasure}, '')) NOT IN ('sqft', 'sq.ft', 'sqf')))`
+      );
+    } else if (status === "mode_b") {
+      conditions.push(
+        sql`(${inventoryItem.tallyBillingMode} = 'B' OR (${inventoryItem.tallyBillingMode} IS NULL AND LOWER(COALESCE(${inventoryItem.unitOfMeasure}, '')) IN ('sqft', 'sq.ft', 'sqf')))`
       );
     }
 

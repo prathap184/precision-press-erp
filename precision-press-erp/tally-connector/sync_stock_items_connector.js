@@ -249,9 +249,13 @@ async function runStockSync() {
     const altUom      = (rawAltUom && !rawAltUom.includes('Not Applicable')) ? rawAltUom : null;
     const description = descM ? clean(descM[1]) : null;
 
-    // Determine Billing Mode: 'A' (Pieces/Numbers) or 'B' (SqFt/Dimensions)
-    const isPieceItem = uom.toLowerCase() === 'n' || uom.toLowerCase() === 'pcs' || uom.toLowerCase() === 'nos' || uom.toLowerCase() === 'no' || uom.toLowerCase() === 'set' || uom.toLowerCase() === 'box' || uom.toLowerCase() === 'pkt';
-    const billingMode = isPieceItem ? 'A' : 'B';
+    // Determine Calculation Type and Default Billing Mode:
+    // SQFT: Area-based items (Flex, Vinyl, Acrylic, etc.) -> default Mode B (SqFt billing), stock tracked in sq.ft
+    // QTY: Unit-based items (Tape, Ink, Frames, Box, Standee, etc.) -> locked Mode A (Piece billing), stock tracked in Units
+    const isSqft = uom.toLowerCase() === 'sqft' || uom.toLowerCase() === 'sq.ft' || uom.toLowerCase() === 'sqf';
+    const normalizedUom = isSqft ? 'sqft' : uom;
+    const isPieceItem = !isSqft;
+    const billingMode = isSqft ? 'B' : 'A';
 
     // Extract LATEST active HSN code
     const hsnMatches = [...body.matchAll(/<HSNCODE>([^<]+)<\/HSNCODE>/gi)];
@@ -315,7 +319,7 @@ async function runStockSync() {
       tally_uom: uom,
       tally_alt_uom: altUom,
       tally_billing_mode: billingMode,
-      unit_of_measure: uom,
+      unit_of_measure: normalizedUom,
       hsn_code: hsn,
       gst_rate: gstRate,
       purchase_price: Math.round(openRate * 100), // stored in cents/paise
@@ -331,7 +335,13 @@ async function runStockSync() {
       cost_account_id: costAccountId,
       cost_method: 'average',
       tracking_method: 'none',
-      metadata: { isDirectSelling: isPieceItem },
+      metadata: {
+        unit: uom,
+        calcType: isSqft ? 'SQFT' : 'QTY',
+        billingMode: billingMode,
+        baseRate: openRate,
+        hsn: hsn,
+      },
       is_active: true,
       description: description || `Stock Item: ${name} (${parentGroup})`
     });
