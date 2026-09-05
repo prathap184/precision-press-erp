@@ -164,7 +164,7 @@ export function GlobalOrdersPage() {
       try { const tr = await fetch('/api/v1/tax-rates', { headers }); if (tr.ok) { const td = await tr.json(); taxRates = td.taxRates || []; } } catch {}
 
       let inventory: any[] = [];
-      try { const ir = await fetch('/api/v1/inventory?limit=1000', { headers }); if (ir.ok) { const id2 = await ir.json(); inventory = id2.data || []; } } catch {}
+      try { const ir = await fetch('/api/v1/inventory?limit=2500', { headers }); if (ir.ok) { const id2 = await ir.json(); inventory = id2.data || []; } } catch {}
 
       let defaultSalesAccountId = '';
       try {
@@ -178,6 +178,8 @@ export function GlobalOrdersPage() {
         }
       } catch {}
 
+      const cleanStr = (s: any) => String(s || '').trim().toLowerCase();
+      const normalize = (s: any) => cleanStr(s).replace(/[^a-z0-9]/g, '');
 
       const parseJson = (val: any) => { if (typeof val === 'string') { try { return JSON.parse(val); } catch { return null; } } return val; };
 
@@ -213,14 +215,39 @@ export function GlobalOrdersPage() {
           
           const gstBasisPts = Math.round(gstDecimal * 10000);
           const matchedTax = taxRates.find((t: any) => t.rate === gstBasisPts || t.rate === Math.round(gstDecimal * 100)) || default18Tax;
-          const matchedInventory = inventory.find((inv: any) => inv.name.toLowerCase() === (i.productName || i.name || '').toLowerCase() || inv.id === (i.productId || i.inventoryItemId));
-          let desc = i.productName || i.name || 'Custom Print';
+
+          const targetName = cleanStr(i.productName || i.name || i.item_name || i.specs?.productName);
+          const targetId = cleanStr(i.productId || i.inventoryItemId || i.id);
+          const targetCode = cleanStr(i.code || i.productCode || i.product_code);
+          const targetNorm = normalize(targetName);
+
+          const matchedInventory = inventory.find((inv: any) => {
+            if (!inv) return false;
+            const invId = cleanStr(inv.id);
+            const invCode = cleanStr(inv.code || inv.metadata?.code);
+            const invSku = cleanStr(inv.sku || inv.metadata?.sku);
+            const invName = cleanStr(inv.name);
+            const invNorm = normalize(inv.name);
+
+            if (targetId && (invId === targetId || invCode === targetId || invSku === targetId)) return true;
+            if (targetCode && (invCode === targetCode || invSku === targetCode || invId === targetCode)) return true;
+            if (targetName && (invName === targetName || invCode === targetName || invSku === targetName)) return true;
+            if (targetNorm && invNorm && (invNorm === targetNorm || invNorm.startsWith(targetNorm) || targetNorm.startsWith(invNorm))) return true;
+            if (targetName && targetName.length > 3 && (invName.includes(targetName) || targetName.includes(invName))) return true;
+            return false;
+          });
+
+          let desc = matchedInventory?.name || i.productName || i.name || 'Custom Print';
           if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
           if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
-          const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || 'A').toUpperCase();
+          const isDirectSelling = matchedInventory?.metadata?.isDirectSelling === true || matchedInventory?.unitOfMeasure === 'N' || (matchedInventory as any)?.tallyUom === 'N';
+          const defaultMode = (matchedInventory as any)?.tallyBillingMode || (isDirectSelling ? 'A' : 'B');
+          const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
           const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
           const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
           const totalFinish = parseFloat(finishAmount || '0');
+          const resolvedInvId = matchedInventory?.id || (inventory.some(inv => inv.id === targetId) ? targetId : '');
+
           return {
             description: desc,
             quantity: qty.toString(),
@@ -229,7 +256,7 @@ export function GlobalOrdersPage() {
             pcsNo,
             accountId: defaultSalesAccountId,
             taxRateId: matchedTax?.id ?? default18Tax?.id ?? '',
-            inventoryItemId: matchedInventory?.id ?? (i.productId || ''),
+            inventoryItemId: resolvedInvId,
             width: widthFt > 0 ? widthFt.toString() : '',
             length: heightFt > 0 ? heightFt.toString() : '',
             sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '',

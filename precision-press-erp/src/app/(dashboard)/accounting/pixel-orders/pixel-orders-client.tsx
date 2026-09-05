@@ -83,12 +83,15 @@ export function PixelOrdersClient({ initialOrders }: { initialOrders: any[] }) {
       // ── Fetch Dubbl inventory to auto-match product for COGS tracking ──
       let dubblInventory: any[] = [];
       try {
-        const invRes = await fetch("/api/v1/inventory?limit=1000", { headers });
+        const invRes = await fetch("/api/v1/inventory?limit=2500", { headers });
         if (invRes.ok) {
           const invData = await invRes.json();
           dubblInventory = invData.data || [];
         }
       } catch { /* best-effort */ }
+
+      const cleanStr = (s: any) => String(s || '').trim().toLowerCase();
+      const normalize = (s: any) => cleanStr(s).replace(/[^a-z0-9]/g, '');
 
       // ── Parse stringified JSON fields if necessary ──
       const parseJson = (val: any) => {
@@ -104,6 +107,7 @@ export function PixelOrdersClient({ initialOrders }: { initialOrders: any[] }) {
       
       // Order-level GST fallback (e.g. cgst 9 + sgst 9 = 18%)
       const orderGstDecimal = ((Number(order.cgst_percentage || 0) + Number(order.sgst_percentage || 0)) || Number(order.igst_percentage || 0)) / 100;
+      const default18Tax = dubblTaxRates.find((t: any) => t.rate === 1800 || t.name?.includes('18')) || dubblTaxRates[0];
 
       const mappedLines = parsedItems.map((i: any) => {
         // ── 1. Convert W/L to feet (proxy order may store inches) ──
@@ -131,16 +135,33 @@ export function PixelOrdersClient({ initialOrders }: { initialOrders: any[] }) {
         }
         
         const gstBasisPts = Math.round(gstDecimal * 10000); // 0.18 → 1800
-        const matchedTax  = dubblTaxRates.find((t: any) => t.rate === gstBasisPts);
+        const matchedTax  = dubblTaxRates.find((t: any) => t.rate === gstBasisPts) || default18Tax;
+
+        // Auto-match inventory item based on product name / code / sku
+        const targetName = cleanStr(i.productName || i.name || i.item_name || i.specs?.productName);
+        const targetId = cleanStr(i.productId || i.inventoryItemId || i.id);
+        const targetCode = cleanStr(i.code || i.productCode || i.product_code);
+        const targetNorm = normalize(targetName);
+
+        const matchedInventory = dubblInventory.find((inv: any) => {
+          if (!inv) return false;
+          const invId = cleanStr(inv.id);
+          const invCode = cleanStr(inv.code || inv.metadata?.code);
+          const invSku = cleanStr(inv.sku || inv.metadata?.sku);
+          const invName = cleanStr(inv.name);
+          const invNorm = normalize(inv.name);
+
+          if (targetId && (invId === targetId || invCode === targetId || invSku === targetId)) return true;
+          if (targetCode && (invCode === targetCode || invSku === targetCode || invId === targetCode)) return true;
+          if (targetName && (invName === targetName || invCode === targetName || invSku === targetName)) return true;
+          if (targetNorm && invNorm && (invNorm === targetNorm || invNorm.startsWith(targetNorm) || targetNorm.startsWith(invNorm))) return true;
+          if (targetName && targetName.length > 3 && (invName.includes(targetName) || targetName.includes(invName))) return true;
+          return false;
+        });
 
         // ── 4. Build descriptive text for final PDF & calculate final amount ──
-        let desc = i.productName || "Custom Print";
+        let desc = matchedInventory?.name || i.productName || "Custom Print";
         const baseSqFt = widthFt > 0 && heightFt > 0 ? (widthFt * heightFt) : 1;
-        
-        // Auto-match inventory item based on product name (case-insensitive)
-        const matchedInventory = dubblInventory.find(
-          (invItem: any) => invItem.name.toLowerCase() === (i.productName || "").toLowerCase()
-        );
         
         if (widthFt > 0 && heightFt > 0) {
           desc += ` (${widthFt} FT x ${heightFt} FT)`;
@@ -151,6 +172,7 @@ export function PixelOrdersClient({ initialOrders }: { initialOrders: any[] }) {
 
         const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
         const totalFinish = parseFloat(finishAmount || "0");
+        const resolvedInvId = matchedInventory?.id || (dubblInventory.some(inv => inv.id === targetId) ? targetId : '');
 
         return {
           description:  desc,
@@ -158,7 +180,7 @@ export function PixelOrdersClient({ initialOrders }: { initialOrders: any[] }) {
           unitPrice:    baseRate.toFixed(2),
           accountId:    "",
           taxRateId:    matchedTax?.id ?? "",
-          inventoryItemId: matchedInventory?.id ?? "",
+          inventoryItemId: resolvedInvId,
           width:        widthFt > 0 ? widthFt.toString() : "",
           length:       heightFt > 0 ? heightFt.toString() : "",
           sqFt:         widthFt > 0 && heightFt > 0 ? baseSqFt.toFixed(2) : "",
@@ -248,7 +270,9 @@ export function PixelOrdersClient({ initialOrders }: { initialOrders: any[] }) {
       try { const tr = await fetch("/api/v1/tax-rates", { headers }); if (tr.ok) { const td = await tr.json(); dubblTaxRates = td.taxRates || []; } } catch {}
 
       let dubblInventory: any[] = [];
-      try { const ir = await fetch("/api/v1/inventory?limit=1000", { headers }); if (ir.ok) { const id2 = await ir.json(); dubblInventory = id2.data || []; } } catch {}
+      try { const ir = await fetch("/api/v1/inventory?limit=2500", { headers }); if (ir.ok) { const id2 = await ir.json(); dubblInventory = id2.data || []; } } catch {}
+
+      const default18Tax = dubblTaxRates.find((t: any) => t.rate === 1800 || t.name?.includes('18')) || dubblTaxRates[0];
 
       const parseJson = (val: any) => { if (typeof val === 'string') { try { return JSON.parse(val); } catch { return null; } } return val; };
 
@@ -276,15 +300,40 @@ export function PixelOrdersClient({ initialOrders }: { initialOrders: any[] }) {
           if (gstDecimal === 0 && orderGstDecimal > 0) gstDecimal = orderGstDecimal;
           else if (gstDecimal === 0) gstDecimal = 0.18;
           const gstBasisPts = Math.round(gstDecimal * 10000);
-          const matchedTax = dubblTaxRates.find((t: any) => t.rate === gstBasisPts);
-          const matchedInventory = dubblInventory.find((inv: any) => inv.name.toLowerCase() === (i.productName || "").toLowerCase());
-          let desc = i.productName || "Custom Print";
+          const matchedTax = dubblTaxRates.find((t: any) => t.rate === gstBasisPts) || default18Tax;
+
+          const targetName = cleanStr(i.productName || i.name || i.item_name || i.specs?.productName);
+          const targetId = cleanStr(i.productId || i.inventoryItemId || i.id);
+          const targetCode = cleanStr(i.code || i.productCode || i.product_code);
+          const targetNorm = normalize(targetName);
+
+          const matchedInventory = dubblInventory.find((inv: any) => {
+            if (!inv) return false;
+            const invId = cleanStr(inv.id);
+            const invCode = cleanStr(inv.code || inv.metadata?.code);
+            const invSku = cleanStr(inv.sku || inv.metadata?.sku);
+            const invName = cleanStr(inv.name);
+            const invNorm = normalize(inv.name);
+
+            if (targetId && (invId === targetId || invCode === targetId || invSku === targetId)) return true;
+            if (targetCode && (invCode === targetCode || invSku === targetCode || invId === targetCode)) return true;
+            if (targetName && (invName === targetName || invCode === targetName || invSku === targetName)) return true;
+            if (targetNorm && invNorm && (invNorm === targetNorm || invNorm.startsWith(targetNorm) || targetNorm.startsWith(invNorm))) return true;
+            if (targetName && targetName.length > 3 && (invName.includes(targetName) || targetName.includes(invName))) return true;
+            return false;
+          });
+
+          let desc = matchedInventory?.name || i.productName || "Custom Print";
           if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
           if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
-          const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || 'A').toUpperCase();
+          const isDirectSelling = matchedInventory?.metadata?.isDirectSelling === true || matchedInventory?.unitOfMeasure === 'N' || (matchedInventory as any)?.tallyUom === 'N';
+          const defaultMode = (matchedInventory as any)?.tallyBillingMode || (isDirectSelling ? 'A' : 'B');
+          const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
           const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
           const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
           const totalFinish = parseFloat(finishAmount || "0");
+          const resolvedInvId = matchedInventory?.id || (dubblInventory.some(inv => inv.id === targetId) ? targetId : '');
+
           return {
             description: desc,
             quantity: qty.toString(),
@@ -293,7 +342,7 @@ export function PixelOrdersClient({ initialOrders }: { initialOrders: any[] }) {
             pcsNo,
             accountId: "",
             taxRateId: matchedTax?.id ?? "",
-            inventoryItemId: matchedInventory?.id ?? "",
+            inventoryItemId: resolvedInvId,
             width: widthFt > 0 ? widthFt.toString() : "",
             length: heightFt > 0 ? heightFt.toString() : "",
             finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : ""

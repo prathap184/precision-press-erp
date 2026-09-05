@@ -81,11 +81,14 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
       let taxRates: any[] = [];
       try { const tr = await fetch('/api/v1/tax-rates', { headers }); if (tr.ok) { const td = await tr.json(); taxRates = td.taxRates || []; } } catch {}
       let inventory: any[] = [];
-      try { const ir = await fetch('/api/v1/inventory?limit=1000', { headers }); if (ir.ok) { const id2 = await ir.json(); inventory = id2.data || []; } } catch {}
+      try { const ir = await fetch('/api/v1/inventory?limit=2500', { headers }); if (ir.ok) { const id2 = await ir.json(); inventory = id2.data || []; } } catch {}
+      const cleanStr = (s: any) => String(s || '').trim().toLowerCase();
+      const normalize = (s: any) => cleanStr(s).replace(/[^a-z0-9]/g, '');
       const parseJson = (val: any) => { if (typeof val === 'string') { try { return JSON.parse(val); } catch { return null; } } return val; };
       const parsedItems = parseJson(order.items) || (Array.isArray(order.items) ? order.items : []);
       const parsedAmounts = parseJson(order.amounts) || (order.amounts || {});
       const orderGstDecimal = ((Number(order.cgst_percentage || 0) + Number(order.sgst_percentage || 0)) || Number(order.igst_percentage || 0)) / 100;
+      const default18Tax = taxRates.find((t: any) => t.rate === 1800 || t.name?.includes('18')) || taxRates[0];
       const mappedLines = (Array.isArray(parsedItems) ? parsedItems : []).map((i: any) => {
         const rawWidth = Number(i.specs?.width ?? i.width ?? 0); const rawHeight = Number(i.specs?.height ?? i.height ?? 0);
         const widthUnit = i.specs?.widthUnit ?? 'FT'; const heightUnit = i.specs?.heightUnit ?? 'FT';
@@ -98,14 +101,54 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
         let gstDecimal = Number(pricingSnap.tax ?? 0);
         if (gstDecimal === 0 && orderGstDecimal > 0) gstDecimal = orderGstDecimal; else if (gstDecimal === 0) gstDecimal = 0.18;
         const gstBasisPts = Math.round(gstDecimal * 10000);
-        const matchedTax = taxRates.find((t: any) => t.rate === gstBasisPts);
-        const matchedInventory = inventory.find((inv: any) => inv.name.toLowerCase() === (i.productName || '').toLowerCase());
-        let desc = i.productName || 'Custom Print';
+        const matchedTax = taxRates.find((t: any) => t.rate === gstBasisPts) || default18Tax;
+
+        const targetName = cleanStr(i.productName || i.name || i.item_name || i.specs?.productName);
+        const targetId = cleanStr(i.productId || i.inventoryItemId || i.id);
+        const targetCode = cleanStr(i.code || i.productCode || i.product_code);
+        const targetNorm = normalize(targetName);
+
+        const matchedInventory = inventory.find((inv: any) => {
+          if (!inv) return false;
+          const invId = cleanStr(inv.id);
+          const invCode = cleanStr(inv.code || inv.metadata?.code);
+          const invSku = cleanStr(inv.sku || inv.metadata?.sku);
+          const invName = cleanStr(inv.name);
+          const invNorm = normalize(inv.name);
+
+          if (targetId && (invId === targetId || invCode === targetId || invSku === targetId)) return true;
+          if (targetCode && (invCode === targetCode || invSku === targetCode || invId === targetCode)) return true;
+          if (targetName && (invName === targetName || invCode === targetName || invSku === targetName)) return true;
+          if (targetNorm && invNorm && (invNorm === targetNorm || invNorm.startsWith(targetNorm) || targetNorm.startsWith(invNorm))) return true;
+          if (targetName && targetName.length > 3 && (invName.includes(targetName) || targetName.includes(invName))) return true;
+          return false;
+        });
+
+        let desc = matchedInventory?.name || i.productName || i.name || 'Custom Print';
         if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
         if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
+        const isDirectSelling = matchedInventory?.metadata?.isDirectSelling === true || matchedInventory?.unitOfMeasure === 'N' || (matchedInventory as any)?.tallyUom === 'N';
+        const defaultMode = (matchedInventory as any)?.tallyBillingMode || (isDirectSelling ? 'A' : 'B');
+        const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
+        const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
         const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
         const totalFinish = parseFloat(finishAmount || '0');
-        return { description: desc, quantity: qty.toString(), unitPrice: baseRate.toFixed(2), accountId: '', taxRateId: matchedTax?.id ?? '', inventoryItemId: matchedInventory?.id ?? '', width: widthFt > 0 ? widthFt.toString() : '', length: heightFt > 0 ? heightFt.toString() : '', sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '', finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : '' };
+        const resolvedInvId = matchedInventory?.id || (inventory.some(inv => inv.id === targetId) ? targetId : '');
+
+        return {
+          description: desc,
+          quantity: qty.toString(),
+          unitPrice: baseRate.toFixed(2),
+          billingMode: billingMode as 'A' | 'B',
+          pcsNo,
+          accountId: '',
+          taxRateId: matchedTax?.id ?? '',
+          inventoryItemId: resolvedInvId,
+          width: widthFt > 0 ? widthFt.toString() : '',
+          length: heightFt > 0 ? heightFt.toString() : '',
+          sqFt: widthFt > 0 && heightFt > 0 ? (widthFt * heightFt).toFixed(2) : '',
+          finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : ''
+        };
       });
       if (mappedLines.length === 0) mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
       const deliveryCharge = Number(order.allocated_logistics_amount ?? parsedAmounts.transport ?? parsedAmounts.deliveryCharges ?? 0);

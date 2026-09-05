@@ -97,7 +97,9 @@ function SearchableProductSelect({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const itemsList = Array.isArray(inventoryItems) ? inventoryItems : [];
-  const selectedItem = itemsList.find((item) => item?.id === value);
+  const selectedItem = itemsList.find(
+    (item) => item?.id === value || (value && (item?.metadata?.code === value || (item as any)?.code === value || item?.name?.toLowerCase() === value?.toLowerCase()))
+  );
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -292,11 +294,59 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
       .then((data) => { if (data.taxRates) setTaxRates(data.taxRates); })
       .catch(() => {});
       
-    fetch("/api/v1/inventory?limit=1000", { headers })
+    fetch("/api/v1/inventory?limit=2500", { headers })
       .then((r) => r.json())
       .then((data) => { if (data.data) setInventoryItems(data.data); })
       .catch(() => {});
   }, []);
+
+  // Auto-link inventoryItemId for lines prefilled without exact inventoryItemId
+  useEffect(() => {
+    if (inventoryItems.length > 0 && lines.length > 0) {
+      let needsUpdate = false;
+      const cleanStr = (s: any) => String(s || '').trim().toLowerCase();
+      const normalize = (s: any) => cleanStr(s).replace(/[^a-z0-9]/g, '');
+
+      const updated = lines.map((line) => {
+        if (!line.inventoryItemId && line.description && line.description !== "Logistics / Shipping") {
+          const cleanDesc = line.description
+            .replace(/\s*\([^)]*\)/g, "")
+            .replace(/\s*\+.*$/, "")
+            .trim();
+          const cleanLower = cleanStr(cleanDesc);
+          const cleanNorm = normalize(cleanDesc);
+
+          const matched = inventoryItems.find((inv) => {
+            const invName = cleanStr(inv.name);
+            const invCode = cleanStr(inv.metadata?.code || (inv as any).code);
+            const invSku = cleanStr(inv.metadata?.sku || (inv as any).sku);
+            const invNorm = normalize(inv.name);
+
+            if (invName === cleanLower || invCode === cleanLower || invSku === cleanLower) return true;
+            if (cleanNorm && invNorm && (cleanNorm === invNorm || cleanNorm.startsWith(invNorm) || invNorm.startsWith(cleanNorm))) return true;
+            if (cleanLower.length > 3 && (cleanLower.includes(invName) || invName.includes(cleanLower))) return true;
+            return false;
+          });
+
+          if (matched) {
+            needsUpdate = true;
+            const isDirectSelling = matched.metadata?.isDirectSelling === true || matched.unitOfMeasure === 'N' || (matched as any).tallyUom === 'N';
+            const defaultMode = (matched as any).tallyBillingMode || (isDirectSelling ? 'A' : 'B');
+            return {
+              ...line,
+              inventoryItemId: matched.id,
+              billingMode: line.billingMode || defaultMode,
+            };
+          }
+        }
+        return line;
+      });
+
+      if (needsUpdate) {
+        onChange(updated);
+      }
+    }
+  }, [inventoryItems, lines, onChange]);
 
   // Auto-assign default 18% GST tax rate to sales lines if not already set
   useEffect(() => {
@@ -315,7 +365,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
         }
       }
     }
-  }, [taxRates, lines]);
+  }, [taxRates, lines, onChange]);
 
   function updateLine(index: number, field: keyof LineItem, value: string) {
     const updated = lines.map((l, i) =>
