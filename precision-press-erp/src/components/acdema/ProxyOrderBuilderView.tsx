@@ -137,17 +137,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   };
 
   const creditAvailable = selectedCustomer ? (selectedCustomer.creditLimit || 0) - (selectedCustomer.usedCredit || 0) : 0;
+  const hasAvailableCredit = selectedCustomer?.customerType === 'CREDIT' && creditAvailable > 0;
   const creditExceeded = paymentMethodTab === 'CREDIT' && summary.grandTotal > creditAvailable;
 
   useEffect(() => {
-    if (selectedCustomer?.customerType === 'CREDIT') {
+    if (hasAvailableCredit) {
       setPaymentMethodTab('CREDIT');
       setPaymentMode('CREDIT');
     } else {
       setPaymentMethodTab('CASH_UPI');
       setPaymentMode('HAND_CASH');
     }
-  }, [selectedCustomerId, selectedCustomer?.customerType, setPaymentMode]);
+  }, [selectedCustomerId, hasAvailableCredit, setPaymentMode]);
 
   // Auto-focus Customer Selection box when Proxy Order page mounts
   useEffect(() => {
@@ -173,7 +174,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           el.focus();
           setOpenRowId(latestRow.id);
           setSearchQuery('');
-          setHighlightProductIndex(0);
+          setHighlightProductIndex(-1);
         }
       }, 60);
     }
@@ -192,13 +193,29 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       if (vm.mode === 'quotation') {
         const nextEl = document.getElementById('quotation-notes')
           || document.getElementById('confirm-dimensions');
-        if (nextEl) nextEl.focus();
+        if (nextEl) {
+          nextEl.focus();
+          nextEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
       } else {
-        const nextEl = document.getElementById(`pay-mode-btn-${paymentMode}`)
-          || document.getElementById('pay-mode-btn-HAND_CASH')
-          || document.getElementById('logistics-btn-door')
-          || document.getElementById('order-notes');
-        if (nextEl) nextEl.focus();
+        // Go to Logistics first, then Payment Terminal
+        const logisticsBtn = document.getElementById(`logistics-btn-${deliveryType}`)
+          || document.getElementById('logistics-btn-selfPickup')
+          || document.querySelector('[id^="logistics-btn-"]') as HTMLElement;
+        if (logisticsBtn) {
+          (logisticsBtn as HTMLElement).focus();
+          (logisticsBtn as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+          const nextEl = document.getElementById('pay-mode-btn-HAND_CASH')
+            || document.getElementById(`pay-mode-btn-${paymentMode}`)
+            || document.getElementById('pay-mode-tab-cash')
+            || document.getElementById('order-notes')
+            || document.getElementById('confirm-dimensions');
+          if (nextEl) {
+            nextEl.focus();
+            nextEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
       }
     }, 80);
   };
@@ -394,28 +411,28 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             <div className="absolute top-[35%] left-[25%] w-[45vw] h-[45vw] rounded-full bg-sky-100/60 blur-[120px] pointer-events-none"></div>
           </div>
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4 pb-2">
             
-            {/* Top Row: Image, Customer, Logistics */}
-            <div className={`grid gap-6 grid-cols-1 ${vm.mode === 'quotation' ? 'lg:grid-cols-[1.5fr_2.5fr] xl:grid-cols-[1.5fr_3fr]' : 'lg:grid-cols-[1.5fr_2.5fr_2.5fr] xl:grid-cols-[1fr_2fr_2fr]'} items-stretch`}>
+            {/* Top Row: Image, Customer */}
+            <div className={`grid gap-4 grid-cols-1 ${vm.mode === 'quotation' ? 'lg:grid-cols-[1.5fr_2.5fr] xl:grid-cols-[1.5fr_3fr]' : 'lg:grid-cols-[1.5fr_3fr] xl:grid-cols-[1fr_3fr]'} items-stretch`}>
               {/* Image Card */}
-              <div className="relative z-10 rounded-[2rem] bg-white/50 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-center min-h-[200px]">
+              <div className="relative z-10 rounded-[2rem] bg-white/50 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-center min-h-[130px]">
                 <div className="w-full h-full rounded-[1.5rem] overflow-hidden relative bg-white">
                   <img src={currentImage || 'https://images.unsplash.com/photo-1626282874430-c11ae32d2898?auto=format&fit=crop&w=1200'} className="absolute inset-0 w-full h-full object-cover" alt="Product preview" />
                 </div>
               </div>
 
-{/* Customer Card */}
-                <div className="relative z-50 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Customer</h3>
-                    <button onClick={() => setShowCreateCustomer(true)} className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-700">
-                      + New
-                    </button>
-                  </div>
-                  
-                  <div className="relative">
-                    <div id="error-customer" className={`flex h-12 w-full items-center rounded-xl px-4 transition-all duration-150 ${validationErrors['customer'] ? 'border-2 border-red-500 bg-red-50/50' : customerDropdownOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-md' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+              {/* Customer Card */}
+              <div className="relative z-50 rounded-[2rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Customer</h3>
+                  <button onClick={() => setShowCreateCustomer(true)} className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-700">
+                    + New
+                  </button>
+                </div>
+                
+                <div className="relative">
+                  <div id="error-customer" className={`flex h-10 w-full items-center rounded-xl px-3 transition-all duration-150 ${validationErrors['customer'] ? 'border-2 border-red-500 bg-red-50/50' : customerDropdownOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-md' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                       {customerSearching ? (
                         <Loader2 size={16} className="mr-2 animate-spin text-blue-600 shrink-0" />
                       ) : (
@@ -464,15 +481,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 setCustomerSearch('');
                                 setHighlightCustomerIndex(0);
                                 setTimeout(() => {
-                                  if (vm.mode !== 'quotation') {
-                                    const logisticsBtn = document.getElementById(`logistics-btn-${deliveryType}`) || document.getElementById('logistics-btn-door') || document.querySelector('[id^="logistics-btn-"]');
-                                    if (logisticsBtn) {
-                                      (logisticsBtn as HTMLElement).focus();
-                                      return;
-                                    }
-                                  }
                                   const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
-                                  if (firstProductInput) firstProductInput.focus();
+                                  if (firstProductInput) {
+                                    firstProductInput.focus();
+                                    firstProductInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  }
                                 }, 60);
                               }
                             }
@@ -516,15 +529,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   setCustomerSearch('');
                                   setHighlightCustomerIndex(0);
                                   setTimeout(() => {
-                                    if (vm.mode !== 'quotation') {
-                                      const logisticsBtn = document.getElementById(`logistics-btn-${deliveryType}`) || document.getElementById('logistics-btn-door') || document.querySelector('[id^="logistics-btn-"]');
-                                      if (logisticsBtn) {
-                                        (logisticsBtn as HTMLElement).focus();
-                                        return;
-                                      }
-                                    }
                                     const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
-                                    if (firstProductInput) firstProductInput.focus();
+                                    if (firstProductInput) {
+                                      firstProductInput.focus();
+                                      firstProductInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }
                                   }, 60);
                                 }}
                                 className={`cursor-pointer border-b border-slate-100 p-3 transition-colors ${
@@ -550,187 +559,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   </div>
                   
                   {selectedCustomer && (
-                    <div className="mt-4 rounded-xl bg-slate-50 p-3 text-xs font-medium text-slate-600 border border-slate-200">
+                    <div className="mt-2 rounded-xl bg-slate-50 p-2 text-xs font-medium text-slate-600 border border-slate-200">
                       {selectedCustomer.phone || 'No phone'} • {selectedCustomer.businessName || selectedCustomer.billing_city || 'Customer'}
                     </div>
                   )}
                 </div>
 
-                {/* Logistics Card */}
-                {vm.mode !== 'quotation' && (
-                <div className="relative z-40 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 h-full">
-                  <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
-                  <div className="flex gap-2">
-                    {[
-                      { id: 'selfPickup', label: 'PICKUP', key: 'p' },
-                      { id: 'door', label: 'DOOR', key: 'd' },
-                      { id: 'courier', label: 'COURIER', key: 'c' },
-                      { id: 'transport', label: 'TRANSPORT', key: 't' },
-                    ].map((opt, optIdx, arr) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setDeliveryType(opt.id as any)}
-                        onKeyDown={(e) => {
-                          const k = e.key.toLowerCase();
-                          if (e.key === "ArrowRight") {
-                            e.preventDefault();
-                            const next = arr[(optIdx + 1) % arr.length];
-                            setDeliveryType(next.id as any);
-                            const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
-                            if (nextBtn) nextBtn.focus();
-                          } else if (e.key === "ArrowLeft") {
-                            e.preventDefault();
-                            const prev = arr[(optIdx - 1 + arr.length) % arr.length];
-                            setDeliveryType(prev.id as any);
-                            const prevBtn = document.getElementById(`logistics-btn-${prev.id}`);
-                            if (prevBtn) prevBtn.focus();
-                          } else if (k === 'p' || k === 'd' || k === 'c' || k === 't') {
-                            const found = arr.find(item => item.key === k);
-                            if (found) {
-                              e.preventDefault();
-                              setDeliveryType(found.id as any);
-                              const targetBtn = document.getElementById(`logistics-btn-${found.id}`);
-                              if (targetBtn) targetBtn.focus();
-                            }
-                          } else if (e.key === "Enter") {
-                            e.preventDefault();
-                            if (deliveryType !== 'selfPickup') {
-                              const addrSelect = document.querySelector('select[value]') || document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
-                              if (addrSelect) {
-                                (addrSelect as HTMLElement).focus();
-                                return;
-                              }
-                            }
-                            const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
-                            if (firstProductInput) firstProductInput.focus();
-                          }
-                        }}
-                        id={`logistics-btn-${opt.id}`}
-                        className={`flex-1 rounded-xl py-2.5 text-[10px] font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
-                          deliveryType === opt.id ? 'bg-slate-900 text-white shadow-md border-2 border-slate-900' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-2 border-transparent'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-
-                  {deliveryType !== 'selfPickup' && (
-                    <div className="mt-4 space-y-2">
-                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address) ? (
-                        <>
-                          <select
-                            id="error-shippingAddress"
-                            className={`h-12 w-full rounded-lg border-2 px-4 text-sm font-medium transition-all ${
-                              validationErrors['shippingAddress']
-                                ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
-                                : 'border-slate-200 bg-slate-50 text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'
-                            }`}
-                            value={shippingAddress}
-                            onChange={(e) => {
-                              setShippingAddress(e.target.value);
-                              setValidationErrors((prev) => {
-                                const next = { ...prev };
-                                delete next['shippingAddress'];
-                                return next;
-                              });
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                const addAddrBtn = document.getElementById("add-address-btn");
-                                if (addAddrBtn) {
-                                  addAddrBtn.focus();
-                                } else {
-                                  const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
-                                  if (firstProductInput) firstProductInput.focus();
-                                }
-                              }
-                            }}
-                          >
-                            <option value="">Select Delivery Address</option>
-                            
-                            {selectedCustomer?.billing_address_line1 && (
-                              <option value={[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}>
-                                Primary: {[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}
-                              </option>
-                            )}
-                            
-                            {selectedCustomer?.shipping_address_line1 && (
-                              <option value={[selectedCustomer.shipping_address_line1, selectedCustomer.shipping_address_line2, selectedCustomer.shipping_city, selectedCustomer.shipping_state, selectedCustomer.shipping_pincode].filter(Boolean).join(', ')}>
-                                Secondary: {[selectedCustomer.shipping_address_line1, selectedCustomer.shipping_address_line2, selectedCustomer.shipping_city, selectedCustomer.shipping_state, selectedCustomer.shipping_pincode].filter(Boolean).join(', ')}
-                              </option>
-                            )}
-
-                            {Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.map((addr: any, idx: number) => {
-                              const fullAddr = `${selectedCustomer.displayName || selectedCustomer.name} ${selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}\n${addr.houseNumber || ''}, ${addr.roadName || ''}\n${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}`;
-                              return (
-                                <option key={addr.id || idx} value={fullAddr}>
-                                  {addr.houseNumber || ''}, {addr.roadName || ''}, {addr.city || ''}, {addr.state || ''} - {addr.pincode || ''}
-                                </option>
-                              );
-                            })}
-                            {selectedCustomer?.address && <option value={selectedCustomer.address}>Legacy: {selectedCustomer.address}</option>}
-                          </select>
-                          {shippingAddress && shippingAddress !== 'Self Pickup' && (
-                            <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-3 text-xs font-semibold text-slate-600 whitespace-pre-line mt-2 text-left leading-relaxed">
-                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Selected Delivery Address:</p>
-                              {shippingAddress}
-                            </div>
-                          )}
-                          <button
-                            id="add-address-btn"
-                            type="button"
-                            onClick={() => setShowAddressModal(true)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
-                                if (firstProductInput) {
-                                  firstProductInput.focus();
-                                  try { (firstProductInput as HTMLInputElement).select(); } catch {}
-                                }
-                              } else if (e.key === " " || e.key === "Spacebar") {
-                                e.preventDefault();
-                                setShowAddressModal(true);
-                              }
-                            }}
-                            className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none rounded px-1.5 py-0.5 border-2 border-transparent inline-block"
-                          >
-                            + Add Address
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          id="error-shippingAddress"
-                          type="button"
-                          onClick={() => setShowAddressModal(true)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              setShowAddressModal(true);
-                            }
-                          }}
-                          className={`flex h-12 w-full items-center justify-center rounded-xl border-2 border-dashed text-xs font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
-                            validationErrors['shippingAddress'] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                          }`}
-                        >
-                          + Delivery Address
-                        </button>
-                      )}
-                    </div>
-                  )}
-            </div>
-                )}
-                </div>
               </div>
+            </div>
 
             {/* Middle Row: Items Card (Full Width) */}
-            <div className="w-full mt-6 mb-6">
+            <div className="w-full mb-3">
               {/* Items Card */}
-              <div className="relative z-10 w-full rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col">
-                <div className="mb-4 flex items-center justify-between">
+              <div className="relative z-10 w-full rounded-[2rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col">
+                <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</h3>
                   <button
                     type="button"
@@ -746,25 +588,24 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b-2 border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        <th className="py-3 px-2 w-8 text-center">#</th>
-                        <th className="py-3 px-2 min-w-[220px]">
+                        <th className="py-1.5 px-2 w-8 text-center"></th>
+                        <th className="py-1.5 px-2 min-w-[220px]">
                           <div>Name of Item</div>
-                          <div className="text-[8px] font-medium text-slate-400 normal-case tracking-normal">↳ Description (Tally)</div>
                         </th>
-                        <th className="py-3 px-2 text-center">HSN Code</th>
-                        <th className="py-3 px-2 text-center">GST %</th>
-                        <th className="py-3 px-2 text-center">T</th>
-                        <th className="py-3 px-2">Width</th>
-                        <th className="py-3 px-2">Length</th>
-                        <th className="py-3 px-2 text-center">Sq. Ft.</th>
-                        <th className="py-3 px-2 text-center">Pcs/No</th>
-                        <th className="py-3 px-2 text-center">Quantity</th>
-                        <th className="py-3 px-2 text-center">Rate/SqFt</th>
-                        <th className="py-3 px-2 text-center">Rate per</th>
-                        <th className="py-3 px-2">Finish</th>
-                        <th className="py-3 px-2">File Path <span className="normal-case font-normal text-slate-400 tracking-normal italic">(optional)</span></th>
-                        <th className="py-3 px-2 text-right">Amount</th>
-                        <th className="py-3 px-2 text-center">×</th>
+                        <th className="py-1.5 px-2 text-center">HSN Code</th>
+                        <th className="py-1.5 px-2 text-center">GST %</th>
+                        <th className="py-1.5 px-2 text-center">T</th>
+                        <th className="py-1.5 px-2">Width</th>
+                        <th className="py-1.5 px-2">Length</th>
+                        <th className="py-1.5 px-2 text-center">Sq. Ft.</th>
+                        <th className="py-1.5 px-2 text-center">Pcs/No</th>
+                        <th className="py-1.5 px-2 text-center">Quantity</th>
+                        <th className="py-1.5 px-2 text-center">Rate/SqFt</th>
+                        <th className="py-1.5 px-2 text-center">Rate per</th>
+                        <th className="py-1.5 px-2">Finish</th>
+                        <th className="py-1.5 px-2">File Path <span className="normal-case font-normal text-slate-400 tracking-normal italic">(optional)</span></th>
+                        <th className="py-1.5 px-2 text-right">Amount</th>
+                        <th className="py-1.5 px-2 text-center">×</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -793,8 +634,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                         return (
                           <tr key={row.id} className="group transition-colors hover:bg-slate-50/50">
-                            <td className="py-3 px-2 text-center text-xs font-bold text-slate-400 tabular-nums">{index + 1}</td>
-                            <td className="py-3 px-2 tabular-nums">
+                            <td className="py-1 px-2 text-center text-xs font-bold text-slate-400 tabular-nums">{index + 1}</td>
+                            <td className="py-1 px-2 tabular-nums">
                               {(() => {
                                   const selProd = products.find((p: any) => p.id === row.productId);
                                   const isOpen = openRowId === row.id;
@@ -839,10 +680,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                 setHighlightProductIndex(0);
                                                 return;
                                               }
-                                              setHighlightProductIndex((prev) => Math.min(prev + 1, matched.length - 1));
+                                              setHighlightProductIndex((prev) => (prev === -1 ? 0 : Math.min(prev + 1, matched.length - 1)));
                                             } else if (e.key === "ArrowUp") {
                                               e.preventDefault();
-                                              setHighlightProductIndex((prev) => Math.max(prev - 1, -1));
+                                              setHighlightProductIndex((prev) => {
+                                                if (prev <= 0 && !searchQuery.trim()) return -1;
+                                                return Math.max(prev - 1, 0);
+                                              });
                                             } else if (e.key === " " && !searchQuery.trim() && isOpen && matched.length > 0 && highlightProductIndex >= 0) {
                                               // Spacebar selection like Tally
                                               e.preventDefault();
@@ -866,8 +710,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               }
                                             } else if (e.key === "Enter") {
                                               e.preventDefault();
-                                              // Only End of List if explicitly highlighting "End of List" (-1)
-                                              if (highlightProductIndex === -1) {
+                                              // End of List if explicitly highlighting "End of List" (-1) OR on empty new row without search
+                                              if (highlightProductIndex === -1 || (!searchQuery.trim() && !row.productId && highlightProductIndex <= 0)) {
                                                 handleEndOfList(row.id);
                                                 return;
                                               }
@@ -1053,11 +897,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   );
                                 })()}
                             </td>
-                            <td className="py-3 px-2 text-center text-xs font-bold text-slate-500 tabular-nums">
+                            <td className="py-1 px-2 text-center text-xs font-bold text-slate-500 tabular-nums">
                               {product?.hsn || product?.hsn_code || row.hsnCode || '—'}
                             </td>
-                            <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
-                            <td className="py-3 px-2 text-center tabular-nums">
+                            <td className="py-1 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
+                            <td className="py-1 px-2 text-center tabular-nums">
                               {isDirect ? (
                                 <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-black border border-blue-200">
                                   {currentMode}
@@ -1102,7 +946,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </button>
                               )}
                             </td>
-                            <td className="py-3 px-2 tabular-nums">
+                            <td className="py-1 px-2 tabular-nums">
                               {isDirect ? (
                                 <div className="h-10 w-[90px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
                                   —
@@ -1201,7 +1045,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               )}
                             </td>
-                            <td className="py-3 px-2 tabular-nums">
+                            <td className="py-1 px-2 tabular-nums">
                               {isDirect ? (
                                 <div className="h-10 w-[90px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
                                   —
@@ -1304,11 +1148,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               )}
                             </td>
-                            <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">
+                            <td className="py-1 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">
                               {sqft > 0 ? sqft.toFixed(2) : '—'}
                             </td>
                             {/* Pcs/No Column */}
-                            <td className="py-3 px-2 tabular-nums text-center">
+                            <td className="py-1 px-2 tabular-nums text-center">
                               {currentMode === 'B' ? (
                                 <input
                                   id={`error-row-${row.id}-pcs`}
@@ -1341,7 +1185,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               )}
                             </td>
                             {/* Quantity Column */}
-                            <td className="py-3 px-2 text-center text-xs font-bold tabular-nums">
+                            <td className="py-1 px-2 text-center text-xs font-bold tabular-nums">
                               {currentMode === 'B' ? (
                                 <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
                               ) : (
@@ -1377,7 +1221,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               )}
                             </td>
                             {/* Rate/SqFt Column — EDITABLE like Tally */}
-                            <td className="py-3 px-2 text-center tabular-nums">
+                            <td className="py-1 px-2 text-center tabular-nums">
                               {currentMode === 'B' ? (
                                 <input
                                   id={`row-${row.id}-rate-sqft`}
@@ -1420,7 +1264,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               )}
                             </td>
                             {/* Rate per (unit) Column — EDITABLE like Tally */}
-                            <td className="py-3 px-2 text-center tabular-nums">
+                            <td className="py-1 px-2 text-center tabular-nums">
                               {currentMode === 'B' ? (
                                 <span className="text-emerald-700 font-bold text-xs">
                                   {row.manualRate !== undefined ? Number(row.manualRate || 0).toFixed(2) : (baseRate > 0 ? baseRate.toFixed(2) : '—')} sqft
@@ -1467,7 +1311,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               )}
                             </td>
-                            <td className="py-3 px-2 tabular-nums">
+                            <td className="py-1 px-2 tabular-nums">
                               {isDirect ? (
                                 <div className="h-8 w-full min-w-[80px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
                                   —
@@ -1508,7 +1352,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               )}
                             </td>
-                            <td className="py-3 px-2 tabular-nums">
+                            <td className="py-1 px-2 tabular-nums">
                               <div className="flex items-center gap-1.5 min-w-[210px]">
                                 <div className="relative flex-1">
                                   <input
@@ -1601,9 +1445,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
-                                      const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
-                                      if (delBtn) delBtn.focus();
-                                      else handleRowFinalEnter(index);
+                                      if (rows.length > 1) {
+                                        const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
+                                        if (delBtn) delBtn.focus();
+                                        else handleRowFinalEnter(index);
+                                      } else {
+                                        handleRowFinalEnter(index);
+                                      }
                                     } else if (e.key === " " || e.key === "Spacebar") {
                                       e.preventDefault();
                                       const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
@@ -1637,10 +1485,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </button>
                               </div>
                             </td>
-                            <td className="py-3 px-2 text-right text-sm font-black text-slate-900 tabular-nums">
+                            <td className="py-1 px-2 text-right text-sm font-black text-slate-900 tabular-nums">
                               {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
-                            <td className="py-3 px-2 text-center tabular-nums">
+                            <td className="py-1 px-2 text-center tabular-nums">
                               <button
                                 id={`row-${row.id}-delete-btn`}
                                 type="button"
@@ -1692,27 +1540,268 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     </tbody>
                   </table>
                 </div>
+
+                {/* Integrated Totals & Grand Total Section inside Order Items Card */}
+                <div className="mt-8 pt-5 border-t-2 border-slate-200 px-2 pb-3">
+                  <h3 className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-700">Pricing Details</h3>
+                  {summary.items?.map((item: any, idx: number) => {
+                    const itemTotal = item.baseAmount + item.igst + item.cgst + item.sgst + item.finishAmount;
+                    return (
+                      <div key={idx} className="flex flex-wrap items-center gap-x-0 border-b border-slate-100 pb-1 mb-1 last:border-0 last:pb-0 last:mb-0">
+                        <div className="flex items-center gap-2 pr-4 border-r border-slate-200 mr-4 min-w-0">
+                          <span className="text-xs font-bold text-slate-700 truncate max-w-[160px]">{item.name}</span>
+                          <span className="text-xs font-black text-slate-900 tabular-nums">Rs.&nbsp;{item.baseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                        {summary.igst > 0 ? (
+                          <div className="flex items-center gap-1 pr-4 border-r border-slate-200 mr-4">
+                            <span className="text-[10px] font-semibold text-slate-400">IGST ({item.gstRate * 100}%)</span>
+                            <span className="text-[10px] font-bold text-slate-600 tabular-nums">Rs.&nbsp;{item.igst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1 pr-4 border-r border-slate-200 mr-4">
+                              <span className="text-[10px] font-semibold text-slate-400">CGST ({(item.gstRate * 100) / 2}%)</span>
+                              <span className="text-[10px] font-bold text-slate-600 tabular-nums">Rs.&nbsp;{item.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div className="flex items-center gap-1 pr-4 border-r border-slate-200 mr-4">
+                              <span className="text-[10px] font-semibold text-slate-400">SGST ({(item.gstRate * 100) / 2}%)</span>
+                              <span className="text-[10px] font-bold text-slate-600 tabular-nums">Rs.&nbsp;{item.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          </>
+                        )}
+                        {item.finishAmount > 0 && (
+                          <div className="flex items-center gap-1 pr-4 border-r border-slate-200 mr-4">
+                            <span className="text-[10px] font-semibold text-emerald-500">Finish</span>
+                            <span className="text-[10px] font-bold text-emerald-700 tabular-nums">Rs.&nbsp;{item.finishAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1 ml-auto">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Item Total</span>
+                          <span className="text-xs font-black text-slate-700 tabular-nums">Rs.&nbsp;{itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Delivery + Voucher + Grand Total row */}
+                  <div className="flex flex-wrap items-center gap-x-4 pt-1.5 mt-1 border-t border-slate-100">
+                    {summary.deliveryCharges > 0 && (
+                      <div className="flex items-center gap-1 pr-4 border-r border-slate-200">
+                        <span className="text-[10px] font-semibold text-slate-400">Logistics</span>
+                        <span className="text-[10px] font-bold text-slate-600 tabular-nums">Rs.&nbsp;{summary.deliveryCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+                    {summary.voucherApplied && (
+                      <div className="flex items-center gap-1 pr-4 border-r border-slate-200">
+                        <span className="text-[10px] font-semibold text-emerald-500">Voucher</span>
+                        <span className="text-[10px] font-bold text-emerald-700 tabular-nums">- Rs.&nbsp;{summary.voucherGstDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 ml-auto">
+                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Grand Total</span>
+                      <span className="text-lg font-black text-slate-900 tabular-nums">Rs.&nbsp;{summary.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            {/* Bottom Row: Payment Terminal */}
-            <div className="grid gap-6 lg:grid-cols-12">
-              <div className="lg:col-span-5 lg:col-start-8">
+            {/* Bottom Row: Logistics (left) + Payment Terminal (right) */}
+            <div className={`grid gap-4 ${vm.mode === 'quotation' ? 'lg:grid-cols-1' : 'lg:grid-cols-2'}`}>
+
+              {/* LEFT: Logistics Card */}
+              {vm.mode !== 'quotation' && (
+                <div className="rounded-[1.5rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+                  <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
+                  <div className="flex gap-2">
+                    {[
+                      { id: 'selfPickup', label: 'PICKUP', key: 'p' },
+                      { id: 'door', label: 'DOOR', key: 'd' },
+                      { id: 'courier', label: 'COURIER', key: 'c' },
+                      { id: 'transport', label: 'TRANSPORT', key: 't' },
+                    ].map((opt, optIdx, arr) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setDeliveryType(opt.id as any)}
+                        onKeyDown={(e) => {
+                          const k = e.key.toLowerCase();
+                          if (e.key === "ArrowRight") {
+                            e.preventDefault();
+                            const next = arr[(optIdx + 1) % arr.length];
+                            setDeliveryType(next.id as any);
+                            const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
+                            if (nextBtn) nextBtn.focus();
+                          } else if (e.key === "ArrowLeft") {
+                            e.preventDefault();
+                            const prev = arr[(optIdx - 1 + arr.length) % arr.length];
+                            setDeliveryType(prev.id as any);
+                            const prevBtn = document.getElementById(`logistics-btn-${prev.id}`);
+                            if (prevBtn) prevBtn.focus();
+                          } else if (k === 'p' || k === 'd' || k === 'c' || k === 't') {
+                            const found = arr.find(item => item.key === k);
+                            if (found) {
+                              e.preventDefault();
+                              setDeliveryType(found.id as any);
+                              const targetBtn = document.getElementById(`logistics-btn-${found.id}`);
+                              if (targetBtn) targetBtn.focus();
+                            }
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (deliveryType !== 'selfPickup') {
+                              const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
+                              if (addrSelect) {
+                                (addrSelect as HTMLElement).focus();
+                                (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                return;
+                              }
+                            }
+                            // selfPickup or no address field — go to Payment Terminal
+                            const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
+                              || document.getElementById('pay-mode-tab-cash')
+                              || document.getElementById('order-notes');
+                            if (payBtn) {
+                              payBtn.focus();
+                              payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }
+                        }}
+                        id={`logistics-btn-${opt.id}`}
+                        className={`flex-1 rounded-xl py-1.5 text-[10px] font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
+                          deliveryType === opt.id ? 'bg-slate-900 text-white shadow-md border-2 border-slate-900' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-2 border-transparent'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {deliveryType !== 'selfPickup' && (
+                    <div className="mt-2 space-y-2">
+                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address) ? (
+                        <>
+                          <select
+                            id="error-shippingAddress"
+                            className={`h-10 w-full rounded-lg border-2 px-3 text-sm font-medium transition-all ${
+                              validationErrors['shippingAddress']
+                                ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                                : 'border-slate-200 bg-slate-50 text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'
+                            }`}
+                            value={shippingAddress}
+                            onChange={(e) => {
+                              setShippingAddress(e.target.value);
+                              setValidationErrors((prev) => {
+                                const next = { ...prev };
+                                delete next['shippingAddress'];
+                                return next;
+                              });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const addAddrBtn = document.getElementById("add-address-btn");
+                                if (addAddrBtn) {
+                                  addAddrBtn.focus();
+                                } else {
+                                  const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
+                                    || document.getElementById('pay-mode-tab-cash')
+                                    || document.getElementById('order-notes');
+                                  if (payBtn) {
+                                    payBtn.focus();
+                                    payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  }
+                                }
+                              }
+                            }}
+                          >
+                            <option value="">Select Delivery Address</option>
+                            {selectedCustomer?.billing_address_line1 && (
+                              <option value={[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}>
+                                Primary: {[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}
+                              </option>
+                            )}
+                            {selectedCustomer?.shipping_address_line1 && (
+                              <option value={[selectedCustomer.shipping_address_line1, selectedCustomer.shipping_address_line2, selectedCustomer.shipping_city, selectedCustomer.shipping_state, selectedCustomer.shipping_pincode].filter(Boolean).join(', ')}>
+                                Secondary: {[selectedCustomer.shipping_address_line1, selectedCustomer.shipping_address_line2, selectedCustomer.shipping_city, selectedCustomer.shipping_state, selectedCustomer.shipping_pincode].filter(Boolean).join(', ')}
+                              </option>
+                            )}
+                            {Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.map((addr: any, addrIdx: number) => {
+                              const fullAddr = `${selectedCustomer.displayName || selectedCustomer.name} ${selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}\n${addr.houseNumber || ''}, ${addr.roadName || ''}\n${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}`;
+                              return (
+                                <option key={addr.id || addrIdx} value={fullAddr}>
+                                  {addr.houseNumber || ''}, {addr.roadName || ''}, {addr.city || ''}, {addr.state || ''} - {addr.pincode || ''}
+                                </option>
+                              );
+                            })}
+                            {selectedCustomer?.address && <option value={selectedCustomer.address}>Legacy: {selectedCustomer.address}</option>}
+                          </select>
+                          {shippingAddress && shippingAddress !== 'Self Pickup' && (
+                            <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-2.5 text-xs font-semibold text-slate-600 whitespace-pre-line mt-1.5 text-left leading-relaxed">
+                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Selected Delivery Address:</p>
+                              {shippingAddress}
+                            </div>
+                          )}
+                          <button
+                            id="add-address-btn"
+                            type="button"
+                            onClick={() => setShowAddressModal(true)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const payTab = document.getElementById('pay-mode-tab-cash');
+                                if (payTab) payTab.focus();
+                              } else if (e.key === " " || e.key === "Spacebar") {
+                                e.preventDefault();
+                                setShowAddressModal(true);
+                              }
+                            }}
+                            className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none rounded px-1.5 py-0.5 border-2 border-transparent inline-block"
+                          >
+                            + Add Address
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          id="error-shippingAddress"
+                          type="button"
+                          onClick={() => setShowAddressModal(true)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              setShowAddressModal(true);
+                            }
+                          }}
+                          className={`flex h-10 w-full items-center justify-center rounded-xl border-2 border-dashed text-[11px] font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
+                            validationErrors['shippingAddress'] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          + Delivery Address
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* RIGHT: Payment Terminal Card */}
+              <div className={vm.mode === 'quotation' ? 'max-w-lg mx-auto w-full' : ''}>
                 {/* Payment Terminal Card */}
-                <div className="rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
-                  <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Payment Terminal</h3>
+                <div className="rounded-[1.5rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+                  <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">Payment Terminal</h3>
                   
                   {vm.mode !== 'quotation' && (
                     <>
                       {/* Top tabs */}
-                      <div className="flex gap-2 mb-4">
+                      <div className="flex gap-2 mb-2">
                     <button
                       type="button"
+                      id="pay-mode-tab-cash"
                       onClick={() => {
                         setPaymentMethodTab('CASH_UPI');
                         setPaymentMode('HAND_CASH');
                       }}
-                      className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
+                      className={`flex-1 rounded-xl py-2 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
                         paymentMethodTab === 'CASH_UPI'
                           ? 'bg-slate-900 text-white shadow-md border-slate-900'
                           : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-transparent'
@@ -1720,14 +1809,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     >
                       CASH
                     </button>
-                    {selectedCustomer?.customerType === 'CREDIT' && (
+                    {hasAvailableCredit && (
                       <button
                         type="button"
+                        id="pay-mode-tab-credit"
                         onClick={() => {
                           setPaymentMethodTab('CREDIT');
                           setPaymentMode('CREDIT');
                         }}
-                        className={`flex-1 rounded-xl py-3 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
+                        className={`flex-1 rounded-xl py-2 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
                           paymentMethodTab === 'CREDIT'
                             ? 'bg-slate-900 text-white shadow-md border-slate-900'
                             : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-transparent'
@@ -1740,7 +1830,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                   {/* Cash/UPI/COD sub-buttons */}
                   {paymentMethodTab === 'CASH_UPI' && (
-                    <div className="flex gap-1.5 p-1 bg-slate-100/60 rounded-xl mb-4 border border-slate-200/40">
+                    <div className="flex gap-1.5 p-1 bg-slate-100/60 rounded-xl mb-2 border border-slate-200/40">
                       {[
                         { id: 'HAND_CASH', label: 'CASH', key: 'c' },
                         { id: 'UPI', label: 'UPI', key: 'u' },
@@ -1766,6 +1856,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               setPaymentMode(prev.id as any);
                               const prevBtn = document.getElementById(`pay-mode-btn-${prev.id}`);
                               if (prevBtn) prevBtn.focus();
+                            } else if (e.key === "Enter") {
+                              e.preventDefault();
+                              const next = document.getElementById('order-notes')
+                                || document.getElementById('confirm-dimensions');
+                              if (next) {
+                                next.focus();
+                                next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
                             } else if (k === 'c' || k === 'u' || k === 'b' || k === 'o') {
                               const found = arr.find(item => item.key === k);
                               if (found) {
@@ -1820,24 +1918,24 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   )}
 
 
-
                     </>
                   )}
 
                   {/* Additional Notes block */}
-                  <div className="mb-4">
-                    <div className="flex items-center gap-2 mb-2 px-1">
-                      <div className="w-1 h-5 rounded-full bg-blue-500 flex-shrink-0" />
+                  <div className="mb-2">
+                    <div className="flex items-center gap-2 mb-1 px-1">
+                      <div className="w-1 h-4 rounded-full bg-blue-500 flex-shrink-0" />
                       <label className="text-[11px] font-black uppercase tracking-widest text-slate-700 leading-tight">
                         Additional Notes
                         <span className="block text-[9px] font-semibold normal-case tracking-normal text-slate-400 mt-0.5">by consumer for order processing</span>
                       </label>
                     </div>
                     <textarea 
+                      id="order-notes"
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Specific color needs, hardware requirements, special instructions..."
-                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 text-xs h-20 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white font-semibold resize-none transition-all"
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs h-14 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white font-semibold resize-none transition-all"
                     />
                   </div>
 
@@ -1858,77 +1956,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     </div>
                   )}
 
-                  {/* Pricing Breakdown */}
-                  <div className="space-y-3 mb-6">
-                    {summary.items?.map((item: any, idx: number) => (
-                      <div key={idx} className="pb-2 border-b border-slate-100">
-                        <div className="flex justify-between text-sm font-semibold text-slate-700">
-                          <span className="truncate pr-4">{item.name}</span>
-                          <span>Rs. {item.baseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                        {summary.igst > 0 ? (
-                          <div className="flex justify-between text-[11px] font-medium text-slate-400 mt-0.5">
-                            <span>IGST ({item.gstRate * 100}%)</span>
-                            <span>Rs. {item.igst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex justify-between text-[11px] font-medium text-slate-400 mt-0.5">
-                              <span>CGST ({(item.gstRate * 100) / 2}%)</span>
-                              <span>Rs. {item.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="flex justify-between text-[11px] font-medium text-slate-400 mt-0.5">
-                              <span>SGST ({(item.gstRate * 100) / 2}%)</span>
-                              <span>Rs. {item.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                          </>
-                        )}
-                        {item.finishAmount > 0 && (
-                          <div className="flex justify-between text-[11px] font-medium text-emerald-600 mt-0.5">
-                            <span>Finish</span>
-                            <span>Rs. {item.finishAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        )}
-                        {(() => {
-                          const itemTotal = item.baseAmount + item.igst + item.cgst + item.sgst + item.finishAmount;
-                          return (
-                            <div className="flex justify-between text-[11px] font-bold text-slate-700 mt-1.5 pt-1.5 border-t border-slate-100">
-                              <span>Item Total</span>
-                              <span>Rs. {itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    ))}
-
-                    {summary.deliveryCharges > 0 && (
-                      <div className="pb-2 border-b border-slate-100">
-                        <div className="flex justify-between text-sm font-semibold text-slate-700">
-                          <span>Logistics</span>
-                          <span>Rs. {summary.deliveryCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {summary.voucherApplied && (
-                      <div className="pb-2 border-b border-slate-100">
-                        <div className="flex justify-between text-emerald-600 font-extrabold">
-                          <span>Voucher Discount</span>
-                          <span>- Rs. {summary.voucherGstDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="mt-4 pt-2 border-t border-slate-200">
-                      <div className="flex justify-between text-2xl font-black text-slate-900">
-                        <span>Grand Total</span>
-                        <span>Rs. {summary.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Confirmation Checkbox */}
-                  <div className="mb-4">
+                  <div className="mb-2">
                     <label className="flex items-start gap-3 cursor-pointer group hover:bg-white/50 p-2 rounded-xl transition-all">
                       <input 
                         type="checkbox" 
@@ -1945,16 +1974,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                   {/* Warning hint */}
                   {!acceptTerms && (
-                    <p className="text-[9px] text-amber-500 font-black uppercase tracking-widest text-center mb-3">
+                    <p className="text-[9px] text-amber-500 font-black uppercase tracking-widest text-center mb-1.5">
                       ⚠ TICK CONFIRMATION CHECKBOX TO ENABLE
                     </p>
                   )}
 
                   {/* Action Button */}
                   <button
+                    id="submit-order-btn"
                     onClick={validateAndSubmit}
                     disabled={loading || upiUploading || !acceptTerms || creditExceeded}
-                    className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#00bfa5] text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-[#00bfa5]/25 hover:bg-[#00a892] disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none transition-all"
+                    className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#00bfa5] text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-[#00bfa5]/25 hover:bg-[#00a892] disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none transition-all focus:ring-4 focus:ring-emerald-500/30 outline-none"
                   >
                     {loading ? <Loader2 className="animate-spin" size={18} /> : null}
                     {vm.mode === 'quotation' ? 'CREATE QUOTATION' : 'PLACE ORDER'}
@@ -1962,6 +1992,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                 </div>
               </div>
             </div>
+
+
 
           </div>
         </div>

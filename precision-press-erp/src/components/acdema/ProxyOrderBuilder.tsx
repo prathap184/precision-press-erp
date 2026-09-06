@@ -283,6 +283,7 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
             role: 'CUSTOMER',
             customerType: (c.paymentTermsDays && c.paymentTermsDays > 0) ? 'CREDIT' : 'CASH',
             creditLimit: Number(c.creditLimit ?? 0),
+            usedCredit: Number(c.usedCredit ?? (c.owesYou ? c.owesYou / 100 : 0)),
             gstNumber: c.taxNumber || '',
             ...c,
           }));

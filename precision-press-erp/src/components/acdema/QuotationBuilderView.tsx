@@ -68,17 +68,18 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
   };
 
   const creditAvailable = selectedCustomer ? (selectedCustomer.creditLimit || 0) - (selectedCustomer.usedCredit || 0) : 0;
+  const hasAvailableCredit = selectedCustomer?.customerType === 'CREDIT' && creditAvailable > 0;
   const creditExceeded = paymentMethodTab === 'CREDIT' && summary.grandTotal > creditAvailable;
 
   useEffect(() => {
-    if (selectedCustomer?.customerType === 'CREDIT') {
+    if (hasAvailableCredit) {
       setPaymentMethodTab('CREDIT');
       setPaymentMode('CREDIT');
     } else {
       setPaymentMethodTab('CASH_UPI');
       setPaymentMode('HAND_CASH');
     }
-  }, [selectedCustomerId, selectedCustomer?.customerType, setPaymentMode]);
+  }, [selectedCustomerId, hasAvailableCredit, setPaymentMode]);
 
   const [pendingFocusNewRow, setPendingFocusNewRow] = useState(false);
 
@@ -92,7 +93,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           el.focus();
           setOpenRowId(latestRow.id);
           setSearchQuery('');
-          setHighlightProductIndex(0);
+          setHighlightProductIndex(-1);
         }
       }, 60);
     }
@@ -110,7 +111,10 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     setTimeout(() => {
       const nextEl = document.getElementById('quotation-notes')
         || document.getElementById('confirm-dimensions');
-      if (nextEl) nextEl.focus();
+      if (nextEl) {
+        nextEl.focus();
+        nextEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }, 80);
   };
 
@@ -594,10 +598,13 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                               setHighlightProductIndex(0);
                                               return;
                                             }
-                                            setHighlightProductIndex((prev) => Math.min(prev + 1, Math.min(matched.length - 1, 49)));
+                                            setHighlightProductIndex((prev) => (prev === -1 ? 0 : Math.min(prev + 1, Math.min(matched.length - 1, 49))));
                                           } else if (e.key === "ArrowUp") {
                                             e.preventDefault();
-                                            setHighlightProductIndex((prev) => Math.max(prev - 1, -1));
+                                            setHighlightProductIndex((prev) => {
+                                              if (prev <= 0 && !searchQuery.trim()) return -1;
+                                              return Math.max(prev - 1, 0);
+                                            });
                                           } else if (e.key === " " && !searchQuery.trim() && isOpen && matched.length > 0 && highlightProductIndex >= 0) {
                                             e.preventDefault();
                                             const selectedProduct = matched[highlightProductIndex];
@@ -620,7 +627,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             }
                                           } else if (e.key === "Enter") {
                                             e.preventDefault();
-                                            if (highlightProductIndex === -1) {
+                                            if (highlightProductIndex === -1 || (!searchQuery.trim() && !row.productId && highlightProductIndex <= 0)) {
                                               handleEndOfList(row.id);
                                               return;
                                             }
@@ -1251,9 +1258,13 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
-                                      const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
-                                      if (delBtn) delBtn.focus();
-                                      else handleRowFinalEnter(index);
+                                      if (rows.length > 1) {
+                                        const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
+                                        if (delBtn) delBtn.focus();
+                                        else handleRowFinalEnter(index);
+                                      } else {
+                                        handleRowFinalEnter(index);
+                                      }
                                     } else if (e.key === " " || e.key === "Spacebar") {
                                       e.preventDefault();
                                       const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
@@ -1348,6 +1359,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                   <div className="mb-4">
                     <label className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1.5 block">SPECIAL NOTES</label>
                     <textarea 
+                      id="quotation-notes"
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)}
                       placeholder="Specific color needs, hardware requirements..."
