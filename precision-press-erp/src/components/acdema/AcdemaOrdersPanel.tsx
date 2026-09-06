@@ -127,8 +127,8 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
         let desc = matchedInventory?.name || i.productName || i.name || 'Custom Print';
         if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
         if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
-        const isDirectSelling = matchedInventory?.metadata?.isDirectSelling === true || matchedInventory?.unitOfMeasure === 'N' || (matchedInventory as any)?.tallyUom === 'N';
-        const defaultMode = (matchedInventory as any)?.tallyBillingMode || (isDirectSelling ? 'A' : 'B');
+        const isSqft = matchedInventory?.unitOfMeasure?.toLowerCase() === 'sqft' || (matchedInventory as any)?.tallyUom?.toLowerCase() === 'sqft';
+        const defaultMode = (matchedInventory as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
         const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
         const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
         const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
@@ -150,9 +150,9 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
           finishAmount: totalFinish > 0 ? totalFinish.toFixed(2) : ''
         };
       });
-      if (mappedLines.length === 0) mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+      if (mappedLines.length === 0) mappedLines.push({ description: 'Custom Print Order', quantity: '1', unitPrice: (parsedAmounts.grandTotal ?? order.grandTotal ?? 0).toString(), billingMode: 'A', pcsNo: '1', accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
       const deliveryCharge = Number(order.allocated_logistics_amount ?? parsedAmounts.transport ?? parsedAmounts.deliveryCharges ?? 0);
-      if (deliveryCharge > 0) mappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: deliveryCharge.toFixed(2), accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
+      if (deliveryCharge > 0) mappedLines.push({ description: 'Logistics / Shipping', quantity: '1', unitPrice: deliveryCharge.toFixed(2), billingMode: 'A', pcsNo: '1', accountId: '', taxRateId: '', inventoryItemId: '', width: '', length: '', sqFt: '', finishAmount: '' });
       let orderDelivery: any = {};
       if (order.delivery) {
         try {

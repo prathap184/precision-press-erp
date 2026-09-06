@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle, ExternalLink, Copy } from 'lucide-react';
 import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
-import { openTiffInSystem } from '@/lib/tiff-utils';
+import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
 
 export function QuotationBuilderView({ vm }: { vm: any }) {
@@ -80,14 +80,85 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     }
   }, [selectedCustomerId, selectedCustomer?.customerType, setPaymentMode]);
 
+  const [pendingFocusNewRow, setPendingFocusNewRow] = useState(false);
+
+  useEffect(() => {
+    if (pendingFocusNewRow && rows.length > 0) {
+      const latestRow = rows[rows.length - 1];
+      setPendingFocusNewRow(false);
+      setTimeout(() => {
+        const el = document.getElementById(`row-${latestRow.id}-product-input`);
+        if (el) {
+          el.focus();
+          setOpenRowId(latestRow.id);
+          setSearchQuery('');
+          setHighlightProductIndex(-1);
+        }
+      }, 60);
+    }
+  }, [rows.length, pendingFocusNewRow]);
+
+  const handleEndOfList = (rowId: string) => {
+    setOpenRowId(null);
+    setSearchQuery('');
+    // If this row is empty and not the only row, remove it cleanly
+    const r = rows.find((item: any) => item.id === rowId);
+    if (r && !r.productId && rows.length > 1) {
+      removeRow(rowId);
+    }
+    // Jump to next section (special notes or confirm dimensions checkbox)
+    setTimeout(() => {
+      const nextEl = document.getElementById('quotation-notes')
+        || document.getElementById('confirm-dimensions');
+      if (nextEl) nextEl.focus();
+    }, 80);
+  };
+
+  const handleRowFinalEnter = (rowIndex: number) => {
+    const isLastRow = rowIndex === rows.length - 1;
+    if (isLastRow) {
+      const currentRow = rows[rowIndex];
+      if (currentRow && !currentRow.productId) {
+        const el = document.getElementById(`row-${currentRow.id}-product-input`);
+        if (el) {
+          el.focus();
+          setOpenRowId(currentRow.id);
+          setSearchQuery('');
+          setHighlightProductIndex(-1);
+        }
+        return;
+      }
+      setPendingFocusNewRow(true);
+      addRow();
+    } else {
+      const nextRow = rows[rowIndex + 1];
+      if (nextRow) {
+        setTimeout(() => {
+          const nextEl = document.getElementById(`row-${nextRow.id}-product-input`);
+          if (nextEl) {
+            nextEl.focus();
+            setOpenRowId(nextRow.id);
+            setSearchQuery('');
+            setHighlightProductIndex(-1);
+          }
+        }, 50);
+      }
+    }
+  };
+
   const validateAndSubmit = () => {
     const errors: Record<string, string> = {};
     if (!selectedCustomerId) errors['customer'] = 'Customer required';
     if (deliveryType !== 'selfPickup' && (!shippingAddress || shippingAddress === 'Self Pickup')) {
       errors['shippingAddress'] = 'Delivery address required';
     }
-    if (rows.length === 0) errors['rows'] = 'At least one item required';
-    rows.forEach((row: any) => {
+    const validRows = rows.filter((r: any) => r.productId);
+    if (validRows.length === 0) errors['rows'] = 'At least one item required';
+    // Clean up empty trailing rows if valid rows exist
+    if (validRows.length > 0 && validRows.length !== rows.length) {
+      rows.filter((r: any) => !r.productId).forEach((r: any) => removeRow(r.id));
+    }
+    validRows.forEach((row: any) => {
       const product = products.find((p: any) => p.id === row.productId);
       const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
       const isDirect = !isSqft;
@@ -499,6 +570,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   <div id={`error-row-${row.id}-product`} className="relative w-full min-w-[140px]">
                                     <div className={`flex h-10 w-full items-center rounded-lg bg-slate-50 px-3 border ${validationErrors[`row-${row.id}-product`] ? 'border-red-400' : 'border-slate-200'}`}>
                                       <input
+                                        id={`row-${row.id}-product-input`}
                                         value={isOpen ? searchQuery : (selProd?.name ?? '')}
                                         placeholder="Select item..."
                                         data-dropdown-open={isOpen ? "true" : "false"}
@@ -509,8 +581,10 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         }}
                                         onFocus={() => {
                                           setOpenRowId(row.id);
-                                          setSearchQuery('');
-                                          setHighlightProductIndex(0);
+                                          const currentName = selProd?.name || '';
+                                          setSearchQuery(currentName);
+                                          const currIdx = products.findIndex((p: any) => p.id === row.productId);
+                                          setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
                                         }}
                                         onKeyDown={(e) => {
                                           if (e.key === "ArrowDown") {
@@ -523,18 +597,23 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             setHighlightProductIndex((prev) => Math.min(prev + 1, Math.min(matched.length - 1, 49)));
                                           } else if (e.key === "ArrowUp") {
                                             e.preventDefault();
-                                            setHighlightProductIndex((prev) => Math.max(prev - 1, 0));
+                                            setHighlightProductIndex((prev) => Math.max(prev - 1, -1));
                                           } else if (e.key === "Enter") {
                                             e.preventDefault();
+                                            // Tally End of List: If query is empty and no product, or highlighted on End of List (-1)
+                                            if ((!searchQuery.trim() && !row.productId) || highlightProductIndex === -1) {
+                                              handleEndOfList(row.id);
+                                              return;
+                                            }
                                             if (isOpen && matched.length > 0) {
-                                              const selectedProduct = matched[highlightProductIndex] || matched[0];
+                                              const selectedProduct = matched[Math.max(0, highlightProductIndex)];
                                               if (selectedProduct) {
                                                 const isSqft = (selectedProduct as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (selectedProduct as any)?.tally_uom?.toLowerCase() === 'sqft';
                                                 const prodMode = (selectedProduct as any)?.tally_billing_mode || (selectedProduct as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
                                                 updateRow(row.id, { productId: selectedProduct.id, billingMode: prodMode });
                                                 setOpenRowId(null);
                                                 setSearchQuery('');
-                                                setHighlightProductIndex(0);
+                                                setHighlightProductIndex(-1);
                                                 setTimeout(() => {
                                                   const descInput = document.getElementById(`row-${row.id}-description`);
                                                   const widthInput = document.getElementById(`error-row-${row.id}-width`);
@@ -544,6 +623,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                   else if (qtyInput) qtyInput.focus();
                                                 }, 60);
                                               }
+                                            } else if (row.productId) {
+                                              setOpenRowId(null);
+                                              setTimeout(() => {
+                                                const descInput = document.getElementById(`row-${row.id}-description`);
+                                                if (descInput) descInput.focus();
+                                              }, 60);
                                             }
                                           } else if (e.key === "Escape") {
                                             setOpenRowId(null);
@@ -555,6 +640,29 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     </div>
                                     {isOpen && (
                                       <div className="absolute left-0 top-full mt-1 w-[280px] z-[9999] max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-xl">
+                                        {!searchQuery.trim() && (
+                                          <div
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              handleEndOfList(row.id);
+                                            }}
+                                            className={`cursor-pointer px-3.5 py-2.5 transition-all flex items-center justify-between gap-3 border-b-2 border-slate-200/80 ${
+                                              highlightProductIndex === -1
+                                                ? 'bg-amber-500 text-white font-black shadow-inner'
+                                                : 'bg-amber-50 hover:bg-amber-100/80 text-amber-900 font-bold'
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-xs font-black">❖</span>
+                                              <span className="text-xs uppercase tracking-wider font-black">End of List</span>
+                                            </div>
+                                            <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                                              highlightProductIndex === -1 ? 'bg-amber-700 text-white' : 'bg-amber-200/60 text-amber-800'
+                                            }`}>
+                                              Enter ↵ to finish
+                                            </span>
+                                          </div>
+                                        )}
                                         {(() => {
                                           if (matched.length === 0) return <div className="p-3 text-xs text-slate-400 italic">No products found.</div>;
                                           
@@ -686,7 +794,20 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                 </div>
                               ) : (
                                 <div className="flex h-10 w-[80px] items-center rounded-lg border border-slate-200 bg-slate-50 px-1 overflow-hidden">
-                                  <input id={`error-row-${row.id}-width`} value={row.width} onChange={(e) => updateRow(row.id, { width: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="W" />
+                                  <input
+                                    id={`error-row-${row.id}-width`}
+                                    value={row.width}
+                                    onChange={(e) => updateRow(row.id, { width: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                        if (heightInput) heightInput.focus();
+                                      }
+                                    }}
+                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                    placeholder="W"
+                                  />
                                   <select tabIndex={-1} value={row.widthUnit} onChange={(e) => updateRow(row.id, { widthUnit: e.target.value })} className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-400 outline-none focus:ring-0"><option value="FT">ft</option><option value="IN">in</option></select>
                                 </div>
                               )}
@@ -698,7 +819,22 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                 </div>
                               ) : (
                                 <div className="flex h-10 w-[80px] items-center rounded-lg border border-slate-200 bg-slate-50 px-1 overflow-hidden">
-                                  <input id={`error-row-${row.id}-height`} value={row.height} onChange={(e) => updateRow(row.id, { height: e.target.value })} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="L" />
+                                  <input
+                                    id={`error-row-${row.id}-height`}
+                                    value={row.height}
+                                    onChange={(e) => updateRow(row.id, { height: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                        if (pcsInput) pcsInput.focus();
+                                        else if (qtyInput) qtyInput.focus();
+                                      }
+                                    }}
+                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                    placeholder="L"
+                                  />
                                   <select tabIndex={-1} value={row.heightUnit} onChange={(e) => updateRow(row.id, { heightUnit: e.target.value })} className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-400 outline-none focus:ring-0"><option value="FT">ft</option><option value="IN">in</option></select>
                                 </div>
                               )}
@@ -715,6 +851,13 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   onChange={(e) => {
                                     const val = e.target.value;
                                     updateRow(row.id, { pcsNo: val, quantity: val });
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
+                                      if (rateInput) rateInput.focus();
+                                    }
                                   }}
                                   className={`h-10 w-16 rounded-lg border text-center text-xs font-bold ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:bg-white'}`}
                                   placeholder="Pcs"
@@ -736,6 +879,13 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       const val = e.target.value;
                                       updateRow(row.id, { quantity: val, pcsNo: val });
                                     }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
+                                        if (rateInput) rateInput.focus();
+                                      }
+                                    }}
                                     className={`h-10 w-16 rounded-lg border text-center text-xs font-bold ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:bg-white'}`}
                                     placeholder="Qty"
                                   />
@@ -747,6 +897,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             <td className="py-3 px-2 text-center tabular-nums">
                               {currentMode === 'B' ? (
                                 <input
+                                  id={`row-${row.id}-rate-sqft`}
                                   value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
                                   onChange={(e) => {
                                     updateRow(row.id, { manualRate: e.target.value });
@@ -756,6 +907,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       updateRow(row.id, { manualRate: baseRate.toFixed(2) });
                                     }
                                     e.target.select();
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleRowFinalEnter(index);
+                                    }
                                   }}
                                   placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
                                   className="h-9 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
@@ -774,6 +931,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                               ) : (
                                 <div className="inline-flex items-center gap-1">
                                   <input
+                                    id={`row-${row.id}-rate-unit`}
                                     value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
                                     onChange={(e) => {
                                       updateRow(row.id, { manualRate: e.target.value });
@@ -783,6 +941,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         updateRow(row.id, { manualRate: baseRate.toFixed(2) });
                                       }
                                       e.target.select();
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleRowFinalEnter(index);
+                                      }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
                                     className="h-9 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
@@ -817,6 +981,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       const cleaned = sanitizeTiffPath(e.target.value);
                                       updateRow(row.id, { tiffPath: cleaned, fileName: '' });
                                       setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleRowFinalEnter(index);
+                                      }
                                     }}
                                     className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${
                                       validationErrors[`row-${row.id}-file`]

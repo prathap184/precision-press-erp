@@ -156,7 +156,7 @@ export async function createStandaloneQuotation(payload: any) {
     
     if (error) throw new Error(error.message);
     
-    return { success: true, quotationId };
+    return { success: true, quotationId, quotationNumber };
   } catch (error: any) {
     console.error('Quotation Creation Failed:', error);
     return { success: false, error: error.message };

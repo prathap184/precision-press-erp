@@ -479,8 +479,8 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
     }));
   };
 
-  const addRow = () => {
-    setRows((current) => [...current, makeRow(products[0])]);
+  const addRow = (prod?: Product) => {
+    setRows((current) => [...current, makeRow(prod)]);
   };
   const removeRow = (id: string) => {
     setRows((current) => (current.length > 1 ? current.filter((row) => row.id !== id) : current));
@@ -641,7 +641,8 @@ ${parts.join(', ')}`;
       return;
     }
 
-    if (!rows.length) {
+    const validRows = rows.filter((row) => row.productId);
+    if (!validRows.length) {
       toast.error('Add at least one item.');
       return;
     }
@@ -651,7 +652,7 @@ ${parts.join(', ')}`;
       return;
     }
 
-    const resolvedRowPaths = rows.map((row) => row.tiffPath.trim());
+    const resolvedRowPaths = validRows.map((row) => row.tiffPath.trim());
     const invalidRowIndex = -1; // Removed extension validation
     
     if (invalidRowIndex !== -1) {
@@ -663,7 +664,7 @@ ${parts.join(', ')}`;
 
     setLoading(true);
     try {
-      const firstProduct = products.find(p => p.id === rows[0]?.productId);
+      const firstProduct = products.find(p => p.id === validRows[0]?.productId);
       const submissionGstRate = firstProduct?.gst_rate ? firstProduct.gst_rate / 100 : 0.18;
 
       const submissionIsInterstate = (() => {
@@ -671,7 +672,7 @@ ${parts.join(', ')}`;
         if (!shippingAddress) return false;
         const addr = shippingAddress.trim().toLowerCase();
         if (addr.includes('karnataka')) return false;
-        if (/ka/.test(addr)) return false;
+        if (/ ka /.test(addr)) return false;
         return true;
       })();
 
@@ -687,7 +688,7 @@ ${parts.join(', ')}`;
         },
         deliveryChoice: deliveryType === 'selfPickup' ? 'PICKUP' as const : deliveryType === 'door' ? 'DOOR_DELIVERY' as const : deliveryType === 'courier' ? 'COURIER' as const : 'TRANSPORT' as const,
         shippingAddress: deliveryType === 'selfPickup' ? 'Self Pickup' : shippingAddress.trim(),
-        items: rows.map((row) => {
+        items: validRows.map((row) => {
           const product = products.find((item) => item.id === row.productId);
           const width = Number(row.width) || 0;
           const height = Number(row.height) || 0;

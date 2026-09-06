@@ -379,8 +379,8 @@ export function QuotationBuilder() {
     }));
   };
 
-  const addRow = () => {
-    setRows((current) => [...current, makeRow(products[0])]);
+  const addRow = (prod?: Product) => {
+    setRows((current) => [...current, makeRow(prod)]);
   };
 
   const removeRow = (id: string) => {
@@ -489,7 +489,8 @@ export function QuotationBuilder() {
       return;
     }
 
-    if (rows.length === 0) {
+    const validRows = rows.filter((r) => r.productId);
+    if (validRows.length === 0) {
       toast.error('Add at least one product row.');
       return;
     }
@@ -498,7 +499,7 @@ export function QuotationBuilder() {
     try {
       await refreshAuthTokenCookie();
 
-      const items = rows.map((row) => {
+      const items = validRows.map((row) => {
         const product = products.find((item) => item.id === row.productId);
         const width = Number(row.width) || 0;
         const height = Number(row.height) || 0;
@@ -569,16 +570,16 @@ export function QuotationBuilder() {
         deliveryType,
         shippingAddress: deliveryType === 'selfPickup' ? 'Self Pickup' : shippingAddress,
         notes,
-        totalSqFt: summary.totalSqFt,
-        subtotal: summary.subtotal,
-        deliveryCharge: summary.deliveryCharge,
-        taxableAmount: summary.taxableAmount,
+        totalSqFt: summary.totalSqft,
+        subtotal: summary.subTotalBeforeGst,
+        deliveryCharge: summary.deliveryCharges,
+        taxableAmount: summary.subTotalBeforeGst,
         gstAmount: summary.gstAmount,
         cgst: summary.cgst,
         sgst: summary.sgst,
         igst: summary.igst,
         grandTotal: summary.grandTotal,
-        isInterstate: summary.isInterstate,
+        isInterstate: (selectedCustomer as any)?.state && (selectedCustomer as any)?.state !== 'Tamil Nadu',
         voucherApplied: summary.voucherApplied,
         voucherGstDiscount: summary.voucherGstDiscount,
       };
@@ -589,7 +590,7 @@ export function QuotationBuilder() {
         throw new Error(result.error || 'Failed to generate quotation.');
       }
 
-      toast.success(`Quotation generated: ${result.quotationNumber || ''}`);
+      toast.success(`Quotation generated: ${(result as any).quotationNumber || ''}`);
       router.push('/quotations');
     } catch (error: any) {
       console.error(error);
@@ -616,7 +617,7 @@ export function QuotationBuilder() {
     updateRow,
     removeRow,
     products,
-    calculateRowSubtotal: (row: any) => calculateRowSubtotal(row, products.find((p) => p.id === row.productId)),
+    calculateRowSubtotal,
     paymentMode,
     setPaymentMode,
     deliveryType,

@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle, ExternalLink, Copy } from 'lucide-react';
 import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
-import { openTiffInSystem } from '@/lib/tiff-utils';
+import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
 
 export function ProxyOrderBuilderView({ vm }: { vm: any }) {
@@ -161,6 +161,80 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     return () => clearTimeout(t);
   }, []);
 
+  const [pendingFocusNewRow, setPendingFocusNewRow] = useState(false);
+
+  useEffect(() => {
+    if (pendingFocusNewRow && rows.length > 0) {
+      const latestRow = rows[rows.length - 1];
+      setPendingFocusNewRow(false);
+      setTimeout(() => {
+        const el = document.getElementById(`row-${latestRow.id}-product-input`);
+        if (el) {
+          el.focus();
+          setOpenRowId(latestRow.id);
+          setSearchQuery('');
+          setHighlightProductIndex(-1);
+        }
+      }, 60);
+    }
+  }, [rows.length, pendingFocusNewRow]);
+
+  const handleEndOfList = (rowId: string) => {
+    setOpenRowId(null);
+    setSearchQuery('');
+    // If this row is empty and we have at least one other row, remove it cleanly
+    const r = rows.find((item: any) => item.id === rowId);
+    if (r && !r.productId && rows.length > 1) {
+      removeRow(rowId);
+    }
+    // Jump to next section (Payment Terminal in proxy order, or Special Notes/Submit in quotation)
+    setTimeout(() => {
+      if (vm.mode === 'quotation') {
+        const nextEl = document.getElementById('quotation-notes')
+          || document.getElementById('confirm-dimensions');
+        if (nextEl) nextEl.focus();
+      } else {
+        const nextEl = document.getElementById(`pay-mode-btn-${paymentMode}`)
+          || document.getElementById('pay-mode-btn-HAND_CASH')
+          || document.getElementById('logistics-btn-door')
+          || document.getElementById('order-notes');
+        if (nextEl) nextEl.focus();
+      }
+    }, 80);
+  };
+
+  const handleRowFinalEnter = (rowIndex: number) => {
+    const isLastRow = rowIndex === rows.length - 1;
+    if (isLastRow) {
+      const currentRow = rows[rowIndex];
+      if (currentRow && !currentRow.productId) {
+        const el = document.getElementById(`row-${currentRow.id}-product-input`);
+        if (el) {
+          el.focus();
+          setOpenRowId(currentRow.id);
+          setSearchQuery('');
+          setHighlightProductIndex(-1);
+        }
+        return;
+      }
+      setPendingFocusNewRow(true);
+      addRow();
+    } else {
+      const nextRow = rows[rowIndex + 1];
+      if (nextRow) {
+        setTimeout(() => {
+          const nextEl = document.getElementById(`row-${nextRow.id}-product-input`);
+          if (nextEl) {
+            nextEl.focus();
+            setOpenRowId(nextRow.id);
+            setSearchQuery('');
+            setHighlightProductIndex(-1);
+          }
+        }, 50);
+      }
+    }
+  };
+
   const validateAndSubmit = () => {
     const errors: Record<string, string> = {};
     if (!selectedCustomerId) {
@@ -169,10 +243,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     if (vm.mode !== 'quotation' && deliveryType !== 'selfPickup' && (!shippingAddress || shippingAddress === 'Self Pickup' || !shippingAddress.trim())) {
       errors['shippingAddress'] = 'Delivery address is required';
     }
-    if (rows.length === 0) {
+    const validRows = rows.filter((r: any) => r.productId);
+    if (validRows.length === 0) {
       errors['rows'] = 'At least one item is required';
     }
-    rows.forEach((row: any, idx: number) => {
+    // Clean up empty trailing rows if there are valid rows
+    if (validRows.length > 0 && validRows.length !== rows.length) {
+      rows.filter((r: any) => !r.productId).forEach((r: any) => removeRow(r.id));
+    }
+    validRows.forEach((row: any, idx: number) => {
       const product = products.find((p: any) => p.id === row.productId);
       const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
       const isDirect = !isSqft;
@@ -736,6 +815,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       <div id={`error-row-${row.id}-product`} className="relative w-full">
                                       <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                                         <input
+                                          id={`row-${row.id}-product-input`}
                                           value={isOpen ? searchQuery : (selProd?.name ?? '')}
                                           placeholder="Select item..."
                                           data-dropdown-open={isOpen ? "true" : "false"}
@@ -749,25 +829,29 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const currentName = selProd?.name || '';
                                             setSearchQuery(currentName);
                                             const currIdx = products.findIndex((p: any) => p.id === row.productId);
-                                            setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                            setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
                                           }}
                                           onKeyDown={(e) => {
                                             if (e.key === "ArrowDown") {
                                               e.preventDefault();
                                               if (!isOpen) {
                                                 setOpenRowId(row.id);
-                                                const currIdx = products.findIndex((p: any) => p.id === row.productId);
-                                                setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                                setHighlightProductIndex(0);
                                                 return;
                                               }
                                               setHighlightProductIndex((prev) => Math.min(prev + 1, matched.length - 1));
                                             } else if (e.key === "ArrowUp") {
                                               e.preventDefault();
-                                              setHighlightProductIndex((prev) => Math.max(prev - 1, 0));
+                                              setHighlightProductIndex((prev) => Math.max(prev - 1, -1));
                                             } else if (e.key === "Enter") {
+                                              e.preventDefault();
+                                              // Tally End of List: If query is empty and no product, or highlighted on End of List (-1)
+                                              if ((!searchQuery.trim() && !row.productId) || highlightProductIndex === -1) {
+                                                handleEndOfList(row.id);
+                                                return;
+                                              }
                                               if (isOpen && matched.length > 0) {
-                                                e.preventDefault();
-                                                const p = matched[highlightProductIndex] || matched[0];
+                                                const p = matched[Math.max(0, highlightProductIndex)];
                                                 if (p) {
                                                   const isSqft = (p as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (p as any)?.tally_uom?.toLowerCase() === 'sqft';
                                                   const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
@@ -775,7 +859,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                   setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
                                                   setOpenRowId(null);
                                                   setSearchQuery('');
-                                                  setHighlightProductIndex(0);
+                                                  setHighlightProductIndex(-1);
                                                   setTimeout(() => {
                                                     const descInput = document.getElementById(`row-${row.id}-description`);
                                                     const widthInput = document.getElementById(`error-row-${row.id}-width`);
@@ -785,7 +869,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                     else if (qtyInput) qtyInput.focus();
                                                   }, 60);
                                                 }
+                                              } else if (row.productId) {
+                                                setOpenRowId(null);
+                                                setTimeout(() => {
+                                                  const descInput = document.getElementById(`row-${row.id}-description`);
+                                                  if (descInput) descInput.focus();
+                                                }, 60);
                                               }
+                                            } else if (e.key === "Escape") {
+                                              setOpenRowId(null);
                                             }
                                           }}
                                           onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 200)}
@@ -795,6 +887,29 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       </div>
                                       {isOpen && (
                                         <div className="absolute left-0 top-full mt-1.5 w-[440px] z-[9999] max-h-80 overflow-y-auto rounded-2xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100">
+                                          {!searchQuery.trim() && (
+                                            <div
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                handleEndOfList(row.id);
+                                              }}
+                                              className={`cursor-pointer px-3.5 py-2.5 transition-all flex items-center justify-between gap-3 border-b-2 border-slate-200/80 ${
+                                                highlightProductIndex === -1
+                                                  ? 'bg-amber-500 text-white font-black shadow-inner'
+                                                  : 'bg-amber-50 hover:bg-amber-100/80 text-amber-900 font-bold'
+                                              }`}
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-xs font-black">❖</span>
+                                                <span className="text-xs uppercase tracking-wider font-black">End of List</span>
+                                              </div>
+                                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                                                highlightProductIndex === -1 ? 'bg-amber-700 text-white' : 'bg-amber-200/60 text-amber-800'
+                                              }`}>
+                                                Press Enter ↵ to finish items
+                                              </span>
+                                            </div>
+                                          )}
                                           {(() => {
                                             if (matched.length === 0) return <div className="p-4 text-xs text-slate-400 italic">No products found.</div>;
                                             
@@ -938,10 +1053,23 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               ) : (
                                 <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                  <input id={`error-row-${row.id}-width`} value={row.width} onChange={(e) => {
-                                    updateRow(row.id, { width: e.target.value });
-                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
-                                  }} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="W" />
+                                  <input
+                                    id={`error-row-${row.id}-width`}
+                                    value={row.width}
+                                    onChange={(e) => {
+                                      updateRow(row.id, { width: e.target.value });
+                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                        if (heightInput) heightInput.focus();
+                                      }
+                                    }}
+                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                    placeholder="W"
+                                  />
                                   <div className="relative flex-shrink-0">
                                     <button
                                       type="button"
@@ -1009,10 +1137,25 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               ) : (
                                 <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                  <input id={`error-row-${row.id}-height`} value={row.height} onChange={(e) => {
-                                    updateRow(row.id, { height: e.target.value });
-                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
-                                  }} className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`} placeholder="L" />
+                                  <input
+                                    id={`error-row-${row.id}-height`}
+                                    value={row.height}
+                                    onChange={(e) => {
+                                      updateRow(row.id, { height: e.target.value });
+                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                        if (pcsInput) pcsInput.focus();
+                                        else if (qtyInput) qtyInput.focus();
+                                      }
+                                    }}
+                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                    placeholder="L"
+                                  />
                                   <div className="relative flex-shrink-0">
                                     <button
                                       type="button"
@@ -1087,6 +1230,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     updateRow(row.id, { pcsNo: val, quantity: val });
                                     setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
                                   }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
+                                      if (rateInput) rateInput.focus();
+                                    }
+                                  }}
                                   className={`h-10 w-16 rounded-lg border-2 text-center text-xs font-bold transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'}`}
                                   placeholder="Pcs"
                                 />
@@ -1108,6 +1258,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       updateRow(row.id, { quantity: val, pcsNo: val });
                                       setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
                                     }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
+                                        if (rateInput) rateInput.focus();
+                                      }
+                                    }}
                                     className={`h-10 w-16 rounded-lg border-2 text-center text-xs font-bold transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'}`}
                                     placeholder="Qty"
                                   />
@@ -1119,6 +1276,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             <td className="py-3 px-2 text-center tabular-nums">
                               {currentMode === 'B' ? (
                                 <input
+                                  id={`row-${row.id}-rate-sqft`}
                                   value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
                                   onChange={(e) => {
                                     updateRow(row.id, { manualRate: e.target.value });
@@ -1128,6 +1286,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       updateRow(row.id, { manualRate: baseRate.toFixed(2) });
                                     }
                                     e.target.select();
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleRowFinalEnter(index);
+                                    }
                                   }}
                                   placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
                                   className="h-9 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
@@ -1146,6 +1310,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               ) : (
                                 <div className="inline-flex items-center gap-1">
                                   <input
+                                    id={`row-${row.id}-rate-unit`}
                                     value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
                                     onChange={(e) => {
                                       updateRow(row.id, { manualRate: e.target.value });
@@ -1155,6 +1320,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         updateRow(row.id, { manualRate: baseRate.toFixed(2) });
                                       }
                                       e.target.select();
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleRowFinalEnter(index);
+                                      }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
                                     className="h-9 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
@@ -1189,6 +1360,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       const cleaned = sanitizeTiffPath(e.target.value);
                                       updateRow(row.id, { tiffPath: cleaned, fileName: '' });
                                       setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleRowFinalEnter(index);
+                                      }
                                     }}
                                     className={`h-10 w-full rounded-lg border-2 pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all ${
                                       validationErrors[`row-${row.id}-file`]

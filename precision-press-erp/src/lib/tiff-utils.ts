@@ -138,7 +138,7 @@ export async function openTiffInSystem(tiffPath: string): Promise<boolean> {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ tiffPath: trimmed }),
+      body: JSON.stringify({ tiffPath: cleaned }),
     });
 
     if (res.ok) {
@@ -153,7 +153,7 @@ export async function openTiffInSystem(tiffPath: string): Promise<boolean> {
 
   // 3. Fallback: normalized file URL open in browser
   if (typeof window !== 'undefined') {
-    const fileUrl = normalizeNetworkPath(trimmed);
+    const fileUrl = normalizeNetworkPath(cleaned);
     window.open(fileUrl, '_blank', 'noopener,noreferrer');
     return true;
   }

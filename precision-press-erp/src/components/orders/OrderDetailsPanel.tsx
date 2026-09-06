@@ -4,8 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { Order, OrderItem } from '@/types/models';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where } from '@/lib/supabase-firestore-shim';
-import { getFileNameFromPath, normalizeTiffPathToFileUrl, openTiffInSystem, resolvePrintWorkflow } from '@/lib/tiff-utils';
-import { ExternalLink, FileText, Printer, Truck, IndianRupee, ChevronDown } from 'lucide-react';
+import { getFileNameFromPath, normalizeTiffPathToFileUrl, openTiffInSystem, resolvePrintWorkflow, sanitizeTiffPath } from '@/lib/tiff-utils';
+import { ExternalLink, FileText, Printer, Truck, IndianRupee, ChevronDown, Copy } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 interface OrderDetailsPanelProps {
   order: Order;
@@ -482,11 +483,11 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
         <div className="w-full max-w-2xl rounded-[2rem] bg-white/60 p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80">
           <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-200/60">
             <h3 className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">Payment Terminal</h3>
-            {order.paymentMode && (
+            {(order as any).paymentMode || order.paymentMethod ? (
               <span className="inline-flex items-center rounded-full bg-slate-900 px-3 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white shadow-2xs">
-                {order.paymentMode}
+                {(order as any).paymentMode || order.paymentMethod}
               </span>
-            )}
+            ) : null}
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -530,7 +531,7 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
             <div className="w-full sm:w-auto shrink-0 flex flex-col justify-center items-center sm:items-end text-right pl-6 sm:border-l border-slate-200/60">
               <span className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">Grand Total</span>
               <span className="text-lg font-semibold text-slate-900 tracking-tight mt-0.5">
-                Rs. {Number(order.amounts?.grandTotal || order.amounts?.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                Rs. {Number(order.amounts?.grandTotal || (order.amounts as any)?.total || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
               <span className="text-[9px] font-semibold text-emerald-600 uppercase tracking-widest mt-0.5">
                 {order.paymentStatus === 'PAID' ? 'Fully Paid' : 'Tax Included'}

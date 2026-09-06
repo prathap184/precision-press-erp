@@ -14,7 +14,7 @@ import { OrderThumbnail } from '@/components/orders/OrderThumbnail';
 import { getWorkspaceMode, WorkspaceMode } from '@/lib/workspaceAccess';
 import { WorkflowAttachments } from '@/components/production/WorkflowAttachments';
 import { completeTiffPrint, markTiffOpened, pauseJob, resumeJob, startTiffPrint } from '@/lib/workflow';
-import { openTiffInSystem, resolvePrintWorkflow, getFileNameFromPath, inspectTiffPath, isValidTiffPath, normalizeTiffPathToFileUrl } from '@/lib/tiff-utils';
+import { openTiffInSystem, resolvePrintWorkflow, getFileNameFromPath, inspectTiffPath, isValidTiffPath, normalizeTiffPathToFileUrl, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { OrderDetailsPanel } from '@/components/orders/OrderDetailsPanel';
 import { WorkflowTimeline } from '@/components/orders/WorkflowTimeline';
 
