@@ -1003,11 +1003,13 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
                                     }}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        handleRowFinalEnter(index);
-                                      }
-                                    }}
+                                       if (e.key === "Enter") {
+                                         e.preventDefault();
+                                         const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                         if (browseBtn) browseBtn.focus();
+                                         else handleRowFinalEnter(index);
+                                       }
+                                     }}
                                     className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${
                                       validationErrors[`row-${row.id}-file`]
                                         ? 'border-red-400 bg-red-50 text-red-600 placeholder-red-300'
@@ -1018,6 +1020,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   {row.tiffPath && (
                                     <button
                                       type="button"
+                                      tabIndex={-1}
                                       onClick={async () => {
                                         const cleanedPath = sanitizeTiffPath(row.tiffPath);
                                         if (row.blobUrl) {
@@ -1056,18 +1059,42 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   )}
                                 </div>
 
-                                <label
-                                  className={`flex items-center justify-center gap-1 h-10 px-2.5 rounded-lg border text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-2xs ${
+                                <button
+                                  type="button"
+                                  id={`row-${row.id}-browse-btn`}
+                                  onClick={() => {
+                                    const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
+                                    if (inputEl) inputEl.click();
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
+                                      if (delBtn) delBtn.focus();
+                                      else handleRowFinalEnter(index);
+                                    } else if (e.key === " " || e.key === "Spacebar") {
+                                      e.preventDefault();
+                                      const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
+                                      if (inputEl) inputEl.click();
+                                    } else if (e.key === "ArrowLeft") {
+                                      e.preventDefault();
+                                      const fileInput = document.getElementById(`error-row-${row.id}-file`);
+                                      if (fileInput) fileInput.focus();
+                                    }
+                                  }}
+                                  className={`flex items-center justify-center gap-1 h-10 px-2.5 rounded-lg border text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-2xs outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 ${
                                     row.tiffPath
                                       ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
                                       : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-blue-600'
                                   }`}
-                                  title="Browse file from computer"
+                                  title="Browse file from computer (Space to open file dialog, Enter to next)"
                                 >
                                   <Upload size={12} />
                                   <span>{row.tiffPath ? 'Change' : 'Browse'}</span>
                                   <input
+                                    id={`row-${row.id}-file-input`}
                                     type="file"
+                                    tabIndex={-1}
                                     className="hidden"
                                     onChange={(e) => {
                                       const f = e.target.files?.[0];
@@ -1075,14 +1102,50 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       e.target.value = '';
                                     }}
                                   />
-                                </label>
+                                </button>
                               </div>
                             </td>
                             <td className="py-3 px-2 text-right text-sm font-black text-slate-900 tabular-nums">
                               {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                             <td className="py-3 px-2 text-center tabular-nums">
-                              <button onClick={() => removeRow(row.id)} className="rounded-lg bg-rose-50 p-2 text-rose-500 hover:bg-rose-100 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"><Trash2 size={16} /></button>
+                              <button
+                                id={`row-${row.id}-delete-btn`}
+                                type="button"
+                                disabled={rows.length <= 1}
+                                onClick={() => {
+                                  if (rows.length > 1) {
+                                    removeRow(row.id);
+                                  } else {
+                                    toast('Cannot delete the only remaining row.', { icon: 'ℹ️' });
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === " " || e.key === "Spacebar") {
+                                    e.preventDefault();
+                                    if (rows.length > 1) {
+                                      removeRow(row.id);
+                                    } else {
+                                      toast('Cannot delete the only row', { icon: 'ℹ️' });
+                                    }
+                                  } else if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleRowFinalEnter(index);
+                                  } else if (e.key === "ArrowLeft") {
+                                    e.preventDefault();
+                                    const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                    if (browseBtn) browseBtn.focus();
+                                  }
+                                }}
+                                className={`rounded-lg p-2 transition-all outline-none focus:ring-2 focus:ring-rose-500/30 ${
+                                  rows.length <= 1
+                                    ? 'opacity-20 cursor-not-allowed text-slate-400 bg-slate-100'
+                                    : 'bg-rose-50 text-rose-500 hover:bg-rose-100 focus:opacity-100 opacity-70 hover:opacity-100 cursor-pointer'
+                                }`}
+                                title={rows.length <= 1 ? "Cannot delete the only remaining item" : "Delete row (Space to delete, Enter to next row)"}
+                              >
+                                <Trash2 size={16} />
+                              </button>
                             </td>
                           </tr>
                         );
