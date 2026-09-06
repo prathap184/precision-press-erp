@@ -760,6 +760,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         onChange={(e) => {
                                           const val = e.target.value;
                                           updateRow(row.id, { description: val, projectName: val });
+                                        }}
                                         placeholder="Description / notes (e.g. specs, details)..."
                                         onKeyDown={(e) => {
                                           if (e.key === "Enter") {
