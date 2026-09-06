@@ -173,7 +173,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           el.focus();
           setOpenRowId(latestRow.id);
           setSearchQuery('');
-          setHighlightProductIndex(-1);
+          setHighlightProductIndex(0);
         }
       }, 60);
     }
@@ -843,15 +843,36 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             } else if (e.key === "ArrowUp") {
                                               e.preventDefault();
                                               setHighlightProductIndex((prev) => Math.max(prev - 1, -1));
+                                            } else if (e.key === " " && !searchQuery.trim() && isOpen && matched.length > 0 && highlightProductIndex >= 0) {
+                                              // Spacebar selection like Tally
+                                              e.preventDefault();
+                                              const p = matched[highlightProductIndex];
+                                              if (p) {
+                                                const isSqft = (p as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (p as any)?.tally_uom?.toLowerCase() === 'sqft';
+                                                const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
+                                                updateRow(row.id, { productId: p.id, billingMode: prodMode });
+                                                setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                setOpenRowId(null);
+                                                setSearchQuery('');
+                                                setHighlightProductIndex(0);
+                                                setTimeout(() => {
+                                                  const descInput = document.getElementById(`row-${row.id}-description`);
+                                                  const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                                  const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                                  if (descInput) descInput.focus();
+                                                  else if (widthInput && prodMode !== 'A') widthInput.focus();
+                                                  else if (qtyInput) qtyInput.focus();
+                                                }, 60);
+                                              }
                                             } else if (e.key === "Enter") {
                                               e.preventDefault();
-                                              // Tally End of List: If query is empty and no product, or highlighted on End of List (-1)
-                                              if ((!searchQuery.trim() && !row.productId) || highlightProductIndex === -1) {
+                                              // Only End of List if explicitly highlighting "End of List" (-1)
+                                              if (highlightProductIndex === -1) {
                                                 handleEndOfList(row.id);
                                                 return;
                                               }
-                                              if (isOpen && matched.length > 0) {
-                                                const p = matched[Math.max(0, highlightProductIndex)];
+                                              if (isOpen && matched.length > 0 && highlightProductIndex >= 0) {
+                                                const p = matched[highlightProductIndex];
                                                 if (p) {
                                                   const isSqft = (p as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (p as any)?.tally_uom?.toLowerCase() === 'sqft';
                                                   const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
@@ -859,7 +880,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                   setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
                                                   setOpenRowId(null);
                                                   setSearchQuery('');
-                                                  setHighlightProductIndex(-1);
+                                                  setHighlightProductIndex(0);
                                                   setTimeout(() => {
                                                     const descInput = document.getElementById(`row-${row.id}-description`);
                                                     const widthInput = document.getElementById(`error-row-${row.id}-width`);
@@ -868,7 +889,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                     else if (widthInput && prodMode !== 'A') widthInput.focus();
                                                     else if (qtyInput) qtyInput.focus();
                                                   }, 60);
+                                                  return;
                                                 }
+                                              } else if (!searchQuery.trim() && !row.productId) {
+                                                handleEndOfList(row.id);
+                                                return;
                                               } else if (row.productId) {
                                                 setOpenRowId(null);
                                                 setTimeout(() => {
