@@ -1538,9 +1538,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         );
                       })}
                       {/* TALLY PRIME ACCOUNTING LEDGER ROWS (MATCHING TALLY SCREENSHOT) */}
+                      {/* Section Header: PRICING DETAILS */}
+                      <tr className="border-t-2 border-slate-200/80 bg-slate-100/50">
+                        <td className="py-1.5 px-2"></td>
+                        <td colSpan={14} className="py-1.5 px-2 text-[11px] font-black uppercase tracking-widest text-slate-700">
+                          PRICING DETAILS
+                        </td>
+                        <td className="py-1.5 px-2"></td>
+                      </tr>
+
                       {/* 1. Forwarding / Logistics Charge */}
                       {summary.deliveryCharges > 0 && (
-                        <tr className="border-t border-slate-200/80 bg-slate-50/40 text-xs font-bold text-slate-800">
+                        <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
                           <td className="py-1 px-2"></td>
                           <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
                             zForwarding Charge- Sale
