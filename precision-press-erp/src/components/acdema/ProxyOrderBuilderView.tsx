@@ -1835,14 +1835,24 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           type="button"
                           onClick={() => setShowAddressModal(true)}
                           onKeyDown={(e) => {
-                            if (e.key === "Enter") {
+                            if (e.key === " " || e.key === "Spacebar") {
                               e.preventDefault();
                               setShowAddressModal(true);
+                            } else if (e.key === "Enter") {
+                              e.preventDefault();
+                              const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
+                                || document.getElementById('pay-mode-tab-cash')
+                                || document.getElementById('order-notes');
+                              if (payBtn) {
+                                payBtn.focus();
+                                payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
                             }
                           }}
-                          className={`flex h-10 w-full items-center justify-center rounded-xl border-2 border-dashed text-[11px] font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
+                          className={`flex h-10 w-full items-center justify-center rounded-xl border-2 border-dashed text-[11px] font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer ${
                             validationErrors['shippingAddress'] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
                           }`}
+                          title="Press Space to add address, or Enter to go to Payment"
                         >
                           + Delivery Address
                         </button>
