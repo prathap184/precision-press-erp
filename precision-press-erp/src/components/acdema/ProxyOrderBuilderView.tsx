@@ -95,11 +95,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       setOpenRowId(null);
       setCustomerDropdownOpen(false);
       const timer = setTimeout(() => {
-        const firstModalInput = document.getElementById("modal-house-no");
+        const firstModalInput = document.getElementById("modal-house-no") as HTMLInputElement;
         if (firstModalInput) {
           firstModalInput.focus();
+          try { firstModalInput.select(); } catch {}
         }
-      }, 60);
+      }, 50);
       return () => clearTimeout(timer);
     }
   }, [showAddressModal]);
@@ -1695,16 +1696,35 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         onClick={() => setDeliveryType(opt.id as any)}
                         onKeyDown={(e) => {
                           const k = e.key.toLowerCase();
-                          if (e.key === "ArrowRight") {
+                          if (e.key === " " || e.key === "Spacebar") {
+                            // Space selects this delivery option and moves to next field
+                            e.preventDefault();
+                            setDeliveryType(opt.id as any);
+                            setTimeout(() => {
+                              if (opt.id !== 'selfPickup') {
+                                const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
+                                if (addrSelect) {
+                                  (addrSelect as HTMLElement).focus();
+                                  (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  return;
+                                }
+                              }
+                              const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
+                                || document.getElementById('pay-mode-tab-cash')
+                                || document.getElementById('order-notes');
+                              if (payBtn) {
+                                payBtn.focus();
+                                payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                            }, 50);
+                          } else if (e.key === "ArrowRight") {
                             e.preventDefault();
                             const next = arr[(optIdx + 1) % arr.length];
-                            setDeliveryType(next.id as any);
                             const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
                             if (nextBtn) nextBtn.focus();
                           } else if (e.key === "ArrowLeft") {
                             e.preventDefault();
                             const prev = arr[(optIdx - 1 + arr.length) % arr.length];
-                            setDeliveryType(prev.id as any);
                             const prevBtn = document.getElementById(`logistics-btn-${prev.id}`);
                             if (prevBtn) prevBtn.focus();
                           } else if (k === 'p' || k === 'd' || k === 'c' || k === 't') {
@@ -1717,21 +1737,28 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             }
                           } else if (e.key === "Enter") {
                             e.preventDefault();
-                            if (deliveryType !== 'selfPickup') {
-                              const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
-                              if (addrSelect) {
-                                (addrSelect as HTMLElement).focus();
-                                (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                return;
+                            if (optIdx < arr.length - 1) {
+                              // Enter advances to next option: PICKUP -> DOOR -> COURIER -> TRANSPORT
+                              const next = arr[optIdx + 1];
+                              const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
+                              if (nextBtn) nextBtn.focus();
+                            } else {
+                              // From last option (TRANSPORT), proceed to next field (Address or Payment)
+                              if (deliveryType !== 'selfPickup') {
+                                const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
+                                if (addrSelect) {
+                                  (addrSelect as HTMLElement).focus();
+                                  (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  return;
+                                }
                               }
-                            }
-                            // selfPickup or no address field — go to Payment Terminal
-                            const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
-                              || document.getElementById('pay-mode-tab-cash')
-                              || document.getElementById('order-notes');
-                            if (payBtn) {
-                              payBtn.focus();
-                              payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
+                                || document.getElementById('pay-mode-tab-cash')
+                                || document.getElementById('order-notes');
+                              if (payBtn) {
+                                payBtn.focus();
+                                payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
                             }
                           }
                         }}
@@ -1879,6 +1906,21 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         setPaymentMethodTab('CASH_UPI');
                         setPaymentMode('HAND_CASH');
                       }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setPaymentMethodTab('CASH_UPI');
+                          const subCash = document.getElementById('pay-mode-btn-HAND_CASH')
+                            || document.getElementById(`pay-mode-btn-${paymentMode}`);
+                          if (subCash) subCash.focus();
+                        } else if (e.key === "ArrowRight") {
+                          const credTab = document.getElementById('pay-mode-tab-credit');
+                          if (credTab) {
+                            e.preventDefault();
+                            credTab.focus();
+                          }
+                        }
+                      }}
                       className={`flex-1 rounded-xl py-2 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
                         paymentMethodTab === 'CASH_UPI'
                           ? 'bg-slate-900 text-white shadow-md border-slate-900'
@@ -1894,6 +1936,25 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         onClick={() => {
                           setPaymentMethodTab('CREDIT');
                           setPaymentMode('CREDIT');
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            setPaymentMethodTab('CREDIT');
+                            setPaymentMode('CREDIT');
+                            const next = document.getElementById('order-notes')
+                              || document.getElementById('confirm-dimensions');
+                            if (next) {
+                              next.focus();
+                              next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          } else if (e.key === "ArrowLeft") {
+                            const cashTab = document.getElementById('pay-mode-tab-cash');
+                            if (cashTab) {
+                              e.preventDefault();
+                              cashTab.focus();
+                            }
+                          }
                         }}
                         className={`flex-1 rounded-xl py-2 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
                           paymentMethodTab === 'CREDIT'
@@ -1922,7 +1983,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           onClick={() => setPaymentMode(opt.id as any)}
                           onKeyDown={(e) => {
                             const k = e.key.toLowerCase();
-                            if (e.key === "ArrowRight") {
+                            if (e.key === " " || e.key === "Spacebar") {
+                              // Space selects this payment mode and moves to next field
+                              e.preventDefault();
+                              setPaymentMode(opt.id as any);
+                              setTimeout(() => {
+                                const next = document.getElementById('order-notes')
+                                  || document.getElementById('confirm-dimensions');
+                                if (next) {
+                                  next.focus();
+                                  next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
+                              }, 50);
+                            } else if (e.key === "ArrowRight") {
                               e.preventDefault();
                               const next = arr[(optIdx + 1) % arr.length];
                               setPaymentMode(next.id as any);
@@ -1936,11 +2009,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               if (prevBtn) prevBtn.focus();
                             } else if (e.key === "Enter") {
                               e.preventDefault();
-                              const next = document.getElementById('order-notes')
-                                || document.getElementById('confirm-dimensions');
-                              if (next) {
-                                next.focus();
-                                next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              if (optIdx < arr.length - 1) {
+                                // Advance to next payment option (CASH -> UPI -> BANK -> COD)
+                                const next = arr[optIdx + 1];
+                                const nextBtn = document.getElementById(`pay-mode-btn-${next.id}`);
+                                if (nextBtn) nextBtn.focus();
+                              } else {
+                                // From last payment option (or when navigating forward), proceed to Additional Notes
+                                const next = document.getElementById('order-notes')
+                                  || document.getElementById('confirm-dimensions');
+                                if (next) {
+                                  next.focus();
+                                  next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
                               }
                             } else if (k === 'c' || k === 'u' || k === 'b' || k === 'o') {
                               const found = arr.find(item => item.key === k);
@@ -2012,6 +2093,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       id="order-notes"
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          const chk = document.getElementById("confirm-dimensions");
+                          if (chk) {
+                            chk.focus();
+                            chk.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }
+                      }}
                       placeholder="Specific color needs, hardware requirements, special instructions..."
                       className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs h-14 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white font-semibold resize-none transition-all"
                     />
@@ -2042,7 +2133,22 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         id="confirm-dimensions"
                         checked={acceptTerms} 
                         onChange={(e) => setAcceptTerms(e.target.checked)} 
-                        className="mt-0.5 rounded-[4px] border-slate-300 text-emerald-500 w-4 h-4 shadow-sm" 
+                        onKeyDown={(e) => {
+                          if (e.key === " " || e.key === "Spacebar") {
+                            // Space toggles checkbox naturally; advance to submit if checked
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (!acceptTerms) {
+                              setAcceptTerms(true);
+                            }
+                            const submitBtn = document.getElementById("submit-order-btn");
+                            if (submitBtn) {
+                              submitBtn.focus();
+                              submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }
+                        }}
+                        className="mt-0.5 rounded-[4px] border-slate-300 text-emerald-500 w-4 h-4 shadow-sm focus:ring-2 focus:ring-blue-500" 
                       />
                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-snug group-hover:text-slate-800 transition-all">
                         CONFIRM DIMENSIONS MATCH INDUSTRIAL SPECS & ARTWORK IS FINAL.
@@ -2216,8 +2322,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             <div
               role="dialog"
               aria-modal="true"
+              tabIndex={-1}
               onKeyDown={(e) => {
-                if (e.key === "Escape") {
+                if (e.key === "Escape" || (e.key === "Backspace" && !addressForm.houseNo && !addressForm.roadName)) {
                   e.preventDefault();
                   setShowAddressModal(false);
                   setTimeout(() => {
@@ -2257,7 +2364,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         e.preventDefault();
                         const next = document.getElementById("modal-road-name");
                         if (next) next.focus();
-                      } else if (e.key === "Backspace" && !addressForm.houseNo) {
+                      } else if (e.key === "Backspace" && (!addressForm.houseNo || addressForm.houseNo.trim() === '')) {
                         e.preventDefault();
                         setShowAddressModal(false);
                         setTimeout(() => {
