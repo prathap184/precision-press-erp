@@ -411,23 +411,37 @@ export default function InventoryItemDetailsPage() {
 
         <div className="h-px bg-border" />
 
-        <Section title="Pricing" description="What this item costs you and what you sell it for.">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs" htmlFor="purchasePrice">What it costs you</Label>
-              <CurrencyInput
-                id="purchasePrice"
-                value={invPurchasePrice}
-                onChange={setInvPurchasePrice}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs" htmlFor="salePrice">What you sell it for</Label>
-              <CurrencyInput
-                id="salePrice"
-                value={invSalePrice}
-                onChange={setInvSalePrice}
-              />
+        <Section title="Default Rate (Tally Style)" description="Pre-filled on invoices — operator can override per order.">
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="salePrice">
+                  Default Rate (₹ per {unitOfMeasure || "Unit"})
+                </Label>
+                <CurrencyInput
+                  id="salePrice"
+                  value={invSalePrice}
+                  onChange={setInvSalePrice}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {tallyBillingMode === "B"
+                    ? "Rate per sq.ft — auto-fills on Mode B invoices. Operator can change it."
+                    : "Rate per unit — auto-fills on Mode A invoices. Operator can change it."}
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs" htmlFor="purchasePrice">
+                  Purchase / Stock Cost (₹)
+                </Label>
+                <CurrencyInput
+                  id="purchasePrice"
+                  value={invPurchasePrice}
+                  onChange={setInvPurchasePrice}
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Used for stock valuation and COGS accounting only.
+                </p>
+              </div>
             </div>
           </div>
         </Section>

@@ -36,11 +36,12 @@ interface AcdemaRow {
   eyeletType: 'METAL' | 'PLASTIC' | 'NONE';
   eyeletCount: number;
   tiffPath: string;
+  manualRate?: string; // operator-overridden rate (like Tally — editable per row)
 }
 
 const makeRow = (product?: Product): AcdemaRow => {
-  const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || (product as any)?.tally_uom === 'N' || product?.category === 'LED- SMPS';
-  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (isDirect ? 'A' : 'B');
+  const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
   return {
     id: Math.random().toString(36).slice(2, 10),
     productId: product?.id || '',
@@ -395,8 +396,9 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
       const width = Number(row.width) || 0;
       const height = Number(row.height) || 0;
       const quantity = Number(row.quantity) || 0;
-      const rate = product?.baseRate || 0;
-      const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
+      const rate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : (product?.baseRate || 0);
+      const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+      const isDirect = !isSqft;
       const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL'
         ? product?.eyeletPricing?.metal || 0
         : row.eyeletType === 'PLASTIC'
@@ -697,6 +699,9 @@ ${parts.join(', ')}`;
               : 0;
 
           const effectiveTiffPath = row.tiffPath.trim();
+          const effectiveRate = (row.manualRate !== undefined && row.manualRate !== '') 
+            ? Number(row.manualRate) || 0 
+            : (product?.baseRate || 0);
           return {
             id: row.id,
             productId: row.productId,
@@ -711,7 +716,7 @@ ${parts.join(', ')}`;
             quantity,
             eyeletType: row.eyeletType,
             eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
-            rate: product?.baseRate || 0,
+            rate: effectiveRate,
             eyeletRate,
             fileUrl: effectiveTiffPath,
             tiffPath: effectiveTiffPath,
@@ -719,6 +724,7 @@ ${parts.join(', ')}`;
               productId: row.productId,
               productName: row.productName || product?.name || 'Item',
               baseRate: product?.baseRate || 0,
+              manualRate: row.manualRate !== undefined ? effectiveRate : undefined,
               eyeletPricing: product?.eyeletPricing,
               deliveryPricing: product?.deliveryPricing,
               selectedEyeletType: row.eyeletType,
@@ -727,7 +733,7 @@ ${parts.join(', ')}`;
                 width: widthInFt,
                 height: heightInFt,
                 quantity,
-                rate: product?.baseRate || 0,
+                rate: effectiveRate,
                 eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
                 eyeletRate,
               }),
@@ -737,7 +743,7 @@ ${parts.join(', ')}`;
               width: widthInFt,
               height: heightInFt,
               quantity,
-              rate: product?.baseRate || 0,
+              rate: effectiveRate,
               eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
               eyeletRate,
             }),

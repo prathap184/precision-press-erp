@@ -149,6 +149,8 @@ export async function GET(request: Request) {
         totalValue: sql<number>`coalesce(sum((${inventoryItem.quantityOnHand}::numeric * ${inventoryItem.purchasePrice}::numeric)), 0)::numeric`,
         lowStockCount: sql<number>`count(*) filter (where ${inventoryItem.quantityOnHand} <= ${inventoryItem.reorderPoint} and ${inventoryItem.isActive} = true)::int`,
         avgMargin: sql<number>`coalesce(avg(case when ${inventoryItem.purchasePrice} > 0 then ((${inventoryItem.salePrice}::numeric - ${inventoryItem.purchasePrice}::numeric)::float / ${inventoryItem.purchasePrice}::numeric * 100) end), 0)`,
+        totalSqftStock: sql<number>`coalesce(sum(case when LOWER(COALESCE(${inventoryItem.unitOfMeasure}, '')) IN ('sqft', 'sq.ft', 'sqf') then ${inventoryItem.quantityOnHand} else 0 end), 0)::numeric`,
+        totalUnitStock: sql<number>`coalesce(sum(case when LOWER(COALESCE(${inventoryItem.unitOfMeasure}, '')) NOT IN ('sqft', 'sq.ft', 'sqf') then ${inventoryItem.quantityOnHand} else 0 end), 0)::numeric`,
       })
       .from(inventoryItem)
       .where(and(...orgConditions));
@@ -161,6 +163,8 @@ export async function GET(request: Request) {
         totalValue: Number(summary?.totalValue || 0),
         lowStockCount: Number(summary?.lowStockCount || 0),
         avgMargin: Number(summary?.avgMargin || 0),
+        totalSqftStock: Number(summary?.totalSqftStock || 0),
+        totalUnitStock: Number(summary?.totalUnitStock || 0),
       },
     });
   } catch (err) {

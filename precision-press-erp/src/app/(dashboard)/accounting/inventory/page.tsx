@@ -8,8 +8,6 @@ import {
   AlertTriangle,
   Search,
   ChevronRight,
-  DollarSign,
-  TrendingUp,
   X,
   Archive,
   ArrowUpDown,
@@ -53,7 +51,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet";
-import { formatMoney } from "@/lib/money";
+
 
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { CategoryPicker } from "@/components/dashboard/category-picker";
@@ -109,7 +107,7 @@ export default function InventoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
-  const [summary, setSummary] = useState({ totalItems: 0, totalValue: 0, lowStockCount: 0, avgMargin: 0 });
+  const [summary, setSummary] = useState({ totalItems: 0, totalValue: 0, lowStockCount: 0, avgMargin: 0, totalSqftStock: 0, totalUnitStock: 0 });
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<FilterTab>("all");
   const [sortBy, setSortBy] = useState<SortKey>("createdAt");
@@ -416,29 +414,55 @@ export default function InventoryPage() {
 
   return (
     <ContentReveal className="space-y-6">
-      {/* Stats */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Stats - Physical Stock Only, No Prices */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <div className="rounded-xl border bg-card p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Package className="size-3.5" />
             <span className="text-[11px] font-medium uppercase tracking-wide">Total Items</span>
           </div>
-          <p className="mt-2 text-2xl font-bold font-mono tabular-nums truncate">{summary.totalItems}</p>
+          <p className="mt-2 text-2xl font-bold font-mono tabular-nums truncate">{summary.totalItems.toLocaleString()}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Catalogue entries</p>
         </div>
         <div className="rounded-xl border bg-card p-4">
           <div className="flex items-center gap-2 text-muted-foreground">
-            <DollarSign className="size-3.5" />
-            <span className="text-[11px] font-medium uppercase tracking-wide">Value of stock</span>
+            <ArrowUpDown className="size-3.5 text-purple-500" />
+            <span className="text-[11px] font-medium uppercase tracking-wide">SQFT in Stock</span>
           </div>
-          <p className="mt-2 text-2xl font-bold font-mono tabular-nums truncate">{formatMoney(summary.totalValue)}</p>
+          <p className="mt-2 text-2xl font-bold font-mono tabular-nums truncate text-purple-600 dark:text-purple-400">
+            {summary.totalSqftStock > 0
+              ? summary.totalSqftStock >= 1_000_000
+                ? `${(summary.totalSqftStock / 1_000_000).toFixed(2)}M`
+                : summary.totalSqftStock >= 1_000
+                ? `${(summary.totalSqftStock / 1_000).toFixed(1)}K`
+                : summary.totalSqftStock.toLocaleString()
+              : "—"}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Mode B · Flex / Vinyl / Acrylic</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Tag className="size-3.5 text-blue-500" />
+            <span className="text-[11px] font-medium uppercase tracking-wide">Units in Stock</span>
+          </div>
+          <p className="mt-2 text-2xl font-bold font-mono tabular-nums truncate text-blue-600 dark:text-blue-400">
+            {summary.totalUnitStock > 0
+              ? summary.totalUnitStock >= 1_000_000
+                ? `${(summary.totalUnitStock / 1_000_000).toFixed(2)}M`
+                : summary.totalUnitStock >= 1_000
+                ? `${(summary.totalUnitStock / 1_000).toFixed(1)}K`
+                : summary.totalUnitStock.toLocaleString()
+              : "—"}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Mode A · Cards / Inks / Hardware</p>
         </div>
         <div
           className="rounded-xl border bg-card p-4 cursor-pointer hover:bg-muted/40 transition-colors"
-          onClick={() => router.push("/inventory/alerts")}
+          onClick={() => setTab("low_stock")}
         >
           <div className="flex items-center gap-2 text-muted-foreground">
             <AlertTriangle className={cn("size-3.5", summary.lowStockCount > 0 && "text-amber-500")} />
-            <span className="text-[11px] font-medium uppercase tracking-wide">Running low</span>
+            <span className="text-[11px] font-medium uppercase tracking-wide">Running Low</span>
           </div>
           <p className={cn(
             "mt-2 text-2xl font-bold font-mono tabular-nums truncate",
@@ -446,15 +470,7 @@ export default function InventoryPage() {
           )}>
             {summary.lowStockCount}
           </p>
-        </div>
-        <div className="rounded-xl border bg-card p-4">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <TrendingUp className="size-3.5" />
-            <span className="text-[11px] font-medium uppercase tracking-wide">Avg. profit margin</span>
-          </div>
-          <p className="mt-2 text-2xl font-bold font-mono tabular-nums truncate">
-            {summary.avgMargin > 0 ? `${summary.avgMargin.toFixed(1)}%` : "-"}
-          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">At or below reorder point</p>
         </div>
       </div>
 
@@ -762,55 +778,43 @@ export default function InventoryPage() {
                 </div>
 
                 {/* Stock bar */}
-                <div className="hidden sm:flex flex-col items-end gap-1 w-28">
-                  <span className={cn("text-xs font-mono tabular-nums font-medium", isLow ? "text-amber-600 dark:text-amber-400" : "")}>
-                    {item.quantityOnHand.toLocaleString()}{" "}
-                    <span className="text-[10px] font-sans text-muted-foreground ml-0.5">
-                      {item.unitOfMeasure || item.tallyUom || item.metadata?.unit || "Units"}
-                    </span>
-                  </span>
-                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                    <motion.div
-                      className={cn("h-full rounded-full", isLow ? "bg-amber-500" : "bg-emerald-500")}
-                      initial={{ width: 0 }}
-                      animate={{ width: `${stockPercent}%` }}
-                      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
-                    />
-                  </div>
-                </div>
-
-                {/* Prices */}
-                <div className="hidden md:flex flex-col items-end gap-0.5 w-28">
+                <div className="hidden sm:flex flex-col items-end gap-1 w-40">
                   {(() => {
                     const rawUom = item.unitOfMeasure || item.tallyUom || item.metadata?.unit || 'N';
                     const isSqft = rawUom.toLowerCase() === 'sqft' || rawUom.toLowerCase() === 'sq.ft' || rawUom.toLowerCase() === 'sqf';
-                    if (isSqft) {
-                      return (
-                        <>
-                          <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-                            {formatMoney(item.metadata?.baseRate != null ? Math.round(Number(item.metadata.baseRate) * 100) : item.salePrice)}
-                            <span className="text-[10px] font-sans text-muted-foreground ml-0.5">/ sq.ft</span>
-                          </span>
-                          <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Base Rate</span>
-                        </>
-                      );
-                    }
+                    const qty = item.quantityOnHand;
+                    const isOut = qty <= 0;
                     return (
                       <>
-                        <span className="text-xs font-mono tabular-nums text-emerald-600 dark:text-emerald-400">
-                          {formatMoney(item.salePrice)}
-                          <span className="text-[10px] font-sans text-muted-foreground ml-0.5">/ {rawUom}</span>
+                        <span className={cn(
+                          "text-sm font-bold font-mono tabular-nums",
+                          isOut ? "text-red-500 dark:text-red-400"
+                            : isLow ? "text-amber-600 dark:text-amber-400"
+                            : "text-foreground"
+                        )}>
+                          {isOut ? "OUT" : qty.toLocaleString()}{" "}
+                          <span className="text-[11px] font-sans font-normal text-muted-foreground ml-0.5">
+                            {isSqft ? "sq.ft" : rawUom}
+                          </span>
                         </span>
-                        <span className="text-[11px] font-mono tabular-nums text-muted-foreground">Cost {formatMoney(item.purchasePrice)}</span>
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <motion.div
+                            className={cn("h-full rounded-full",
+                              isOut ? "bg-red-400"
+                                : isLow ? "bg-amber-500"
+                                : "bg-emerald-500"
+                            )}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${stockPercent}%` }}
+                            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
+                          />
+                        </div>
+                        <span className="text-[10px] text-muted-foreground">
+                          {isOut ? "Out of stock" : isLow ? "Running low" : "In stock"}
+                        </span>
                       </>
                     );
                   })()}
-                </div>
-
-                {/* Value */}
-                <div className="hidden lg:block text-right w-24">
-                  <p className="text-xs font-mono tabular-nums font-medium">{formatMoney(item.quantityOnHand * item.purchasePrice)}</p>
-                  <p className="text-[11px] text-muted-foreground">value</p>
                 </div>
 
                 <div className={cn(
