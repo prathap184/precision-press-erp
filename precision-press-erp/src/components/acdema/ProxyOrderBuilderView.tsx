@@ -237,6 +237,24 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     }
   }, [showAddressModal]);
 
+  useEffect(() => {
+    if (!bootstrapLoading) {
+      const focusCustomer = () => {
+        const custInput = document.getElementById('proxy-customer-search-input') as HTMLInputElement;
+        if (custInput) {
+          custInput.focus();
+        }
+      };
+      focusCustomer();
+      const t1 = setTimeout(focusCustomer, 60);
+      const t2 = setTimeout(focusCustomer, 200);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [bootstrapLoading]);
+
   const productImages = useMemo(() => {
     return rows
       .flatMap(r => {
@@ -325,6 +343,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         <Search size={16} className={`mr-2 transition-colors shrink-0 ${customerDropdownOpen ? 'text-blue-600' : 'text-slate-400'}`} />
                       )}
                       <input
+                        id="proxy-customer-search-input"
+                        autoFocus
                         value={customerSearch !== '' ? customerSearch : (selectedCustomer?.displayName || selectedCustomer?.name || '')}
                         placeholder="Search customer by name, phone, GSTIN..."
                         data-dropdown-open={customerDropdownOpen ? "true" : "false"}

@@ -143,6 +143,24 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     return () => clearInterval(interval);
   }, [productImages.length]);
 
+  useEffect(() => {
+    if (!bootstrapLoading) {
+      const focusCustomer = () => {
+        const custInput = document.getElementById('quotation-customer-search-input') as HTMLInputElement;
+        if (custInput) {
+          custInput.focus();
+        }
+      };
+      focusCustomer();
+      const t1 = setTimeout(focusCustomer, 60);
+      const t2 = setTimeout(focusCustomer, 200);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [bootstrapLoading]);
+
   if (bootstrapLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
@@ -205,6 +223,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         <Search size={16} className="text-slate-400 mr-2 shrink-0" />
                       )}
                       <input
+                        id="quotation-customer-search-input"
+                        autoFocus
                         value={customerSearch !== '' ? customerSearch : (selectedCustomer?.displayName || selectedCustomer?.name || '')}
                         placeholder="Search customer by name, phone, GSTIN..."
                         data-dropdown-open={customerDropdownOpen ? "true" : "false"}
