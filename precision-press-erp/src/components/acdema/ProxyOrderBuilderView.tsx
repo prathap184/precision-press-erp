@@ -1537,71 +1537,125 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           </tr>
                         );
                       })}
+                      {/* TALLY PRIME ACCOUNTING LEDGER ROWS (MATCHING TALLY SCREENSHOT) */}
+                      {/* 1. Forwarding / Logistics Charge */}
+                      {summary.deliveryCharges > 0 && (
+                        <tr className="border-t border-slate-200/80 bg-slate-50/40 text-xs font-bold text-slate-800">
+                          <td className="py-1 px-2"></td>
+                          <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                            zForwarding Charge- Sale
+                          </td>
+                          <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900">
+                            {summary.deliveryCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-1 px-2"></td>
+                        </tr>
+                      )}
+
+                      {/* 2. SGST / CGST or IGST Ledger rows */}
+                      {summary.igst > 0 ? (
+                        <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
+                          <td className="py-1 px-2"></td>
+                          <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span>IGST</span>
+                              {summary.items?.length > 1 && (
+                                <span className="text-[10px] font-semibold text-slate-500 font-mono">
+                                  ({summary.items.map((it: any) => it.igst.toFixed(2)).join(' + ')})
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900">
+                            {summary.igst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-1 px-2"></td>
+                        </tr>
+                      ) : (
+                        <>
+                          <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
+                            <td className="py-1 px-2"></td>
+                            <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span>SGST</span>
+                                {summary.items?.length > 1 && (
+                                  <span className="text-[10px] font-semibold text-slate-500 font-mono">
+                                    ({summary.items.map((it: any) => it.sgst.toFixed(2)).join(' + ')})
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900">
+                              {summary.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-1 px-2"></td>
+                          </tr>
+                          <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
+                            <td className="py-1 px-2"></td>
+                            <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span>CGST</span>
+                                {summary.items?.length > 1 && (
+                                  <span className="text-[10px] font-semibold text-slate-500 font-mono">
+                                    ({summary.items.map((it: any) => it.cgst.toFixed(2)).join(' + ')})
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900">
+                              {summary.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-1 px-2"></td>
+                          </tr>
+                        </>
+                      )}
+
+                      {/* 3. Voucher / Discount Ledger row (if applied) */}
+                      {summary.voucherApplied && (
+                        <tr className="border-t border-slate-100 bg-emerald-50/40 text-xs font-bold text-emerald-800">
+                          <td className="py-1 px-2"></td>
+                          <td colSpan={13} className="py-1 px-2 font-bold text-emerald-800">
+                            Voucher Discount
+                          </td>
+                          <td className="py-1 px-2 text-right font-black tabular-nums text-emerald-700">
+                            - {summary.voucherGstDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-1 px-2"></td>
+                        </tr>
+                      )}
+
+                      {/* 4. Round Off Ledger row */}
+                      {(() => {
+                        const rawTotal = (summary.subtotal || 0) + (summary.gstAmount || 0) + (summary.deliveryCharges || 0) - (summary.voucherGstDiscount || 0);
+                        const roundOff = Number((Math.round(summary.grandTotal) - summary.grandTotal).toFixed(2));
+                        return (
+                          <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
+                            <td className="py-1 px-2"></td>
+                            <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                              Round Off
+                            </td>
+                            <td className="py-1 px-2 text-right font-bold tabular-nums text-slate-600">
+                              {roundOff !== 0 ? (roundOff > 0 ? `+${roundOff.toFixed(2)}` : roundOff.toFixed(2)) : '0.00'}
+                            </td>
+                            <td className="py-1 px-2"></td>
+                          </tr>
+                        );
+                      })()}
                     </tbody>
+                    {/* Tally Total Row (Clean soft borders matching table theme, removing harsh black line) */}
+                    <tfoot>
+                      <tr className="border-t-2 border-b border-slate-200 bg-slate-50/80 text-xs font-black text-slate-900">
+                        <td className="py-2.5 px-2 text-center"></td>
+                        <td colSpan={13} className="py-2.5 px-2 font-black uppercase tracking-wider text-slate-800">
+                          TOTAL
+                        </td>
+                        <td className="py-2.5 px-2 text-right font-black tabular-nums text-sm text-slate-950">
+                          Rs. {summary.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-2.5 px-2"></td>
+                      </tr>
+                    </tfoot>
                   </table>
-                </div>
-
-                {/* Integrated Totals & Grand Total Section inside Order Items Card */}
-                <div className="mt-8 pt-5 border-t-2 border-slate-200 px-2 pb-3">
-                  <h3 className="mb-2.5 text-xs font-black uppercase tracking-widest text-slate-700">Pricing Details</h3>
-                  {summary.items?.map((item: any, idx: number) => {
-                    const itemTotal = item.baseAmount + item.igst + item.cgst + item.sgst + item.finishAmount;
-                    return (
-                      <div key={idx} className="flex flex-wrap items-center gap-x-0 border-b border-slate-100 pb-1 mb-1 last:border-0 last:pb-0 last:mb-0">
-                        <div className="flex items-center gap-2 pr-4 border-r border-slate-200 mr-4 min-w-0">
-                          <span className="text-xs font-bold text-slate-700 truncate max-w-[160px]">{item.name}</span>
-                          <span className="text-xs font-black text-slate-900 tabular-nums">Rs.&nbsp;{item.baseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                        {summary.igst > 0 ? (
-                          <div className="flex items-center gap-1 pr-4 border-r border-slate-200 mr-4">
-                            <span className="text-[10px] font-semibold text-slate-400">IGST ({item.gstRate * 100}%)</span>
-                            <span className="text-[10px] font-bold text-slate-600 tabular-nums">Rs.&nbsp;{item.igst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-1 pr-4 border-r border-slate-200 mr-4">
-                              <span className="text-[10px] font-semibold text-slate-400">CGST ({(item.gstRate * 100) / 2}%)</span>
-                              <span className="text-[10px] font-bold text-slate-600 tabular-nums">Rs.&nbsp;{item.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                            <div className="flex items-center gap-1 pr-4 border-r border-slate-200 mr-4">
-                              <span className="text-[10px] font-semibold text-slate-400">SGST ({(item.gstRate * 100) / 2}%)</span>
-                              <span className="text-[10px] font-bold text-slate-600 tabular-nums">Rs.&nbsp;{item.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            </div>
-                          </>
-                        )}
-                        {item.finishAmount > 0 && (
-                          <div className="flex items-center gap-1 pr-4 border-r border-slate-200 mr-4">
-                            <span className="text-[10px] font-semibold text-emerald-500">Finish</span>
-                            <span className="text-[10px] font-bold text-emerald-700 tabular-nums">Rs.&nbsp;{item.finishAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-1 ml-auto">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Item Total</span>
-                          <span className="text-xs font-black text-slate-700 tabular-nums">Rs.&nbsp;{itemTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  {/* Delivery + Voucher + Grand Total row */}
-                  <div className="flex flex-wrap items-center gap-x-4 pt-1.5 mt-1 border-t border-slate-100">
-                    {summary.deliveryCharges > 0 && (
-                      <div className="flex items-center gap-1 pr-4 border-r border-slate-200">
-                        <span className="text-[10px] font-semibold text-slate-400">Logistics</span>
-                        <span className="text-[10px] font-bold text-slate-600 tabular-nums">Rs.&nbsp;{summary.deliveryCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                    )}
-                    {summary.voucherApplied && (
-                      <div className="flex items-center gap-1 pr-4 border-r border-slate-200">
-                        <span className="text-[10px] font-semibold text-emerald-500">Voucher</span>
-                        <span className="text-[10px] font-bold text-emerald-700 tabular-nums">- Rs.&nbsp;{summary.voucherGstDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2 ml-auto">
-                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">Grand Total</span>
-                      <span className="text-lg font-black text-slate-900 tabular-nums">Rs.&nbsp;{summary.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                  </div>
                 </div>
 
               </div>
