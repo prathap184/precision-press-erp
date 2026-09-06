@@ -1538,13 +1538,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         );
                       })}
                       {/* TALLY PRIME ACCOUNTING LEDGER ROWS (MATCHING TALLY SCREENSHOT) */}
+                      {/* Spacer above PRICING DETAILS */}
+                      <tr className="h-6">
+                        <td colSpan={16} className="py-2"></td>
+                      </tr>
+
                       {/* Section Header: PRICING DETAILS */}
-                      <tr className="border-t-2 border-slate-200/80 bg-slate-100/50">
-                        <td className="py-1.5 px-2"></td>
-                        <td colSpan={14} className="py-1.5 px-2 text-[11px] font-black uppercase tracking-widest text-slate-700">
+                      <tr className="border-t-2 border-slate-200 bg-slate-100/60">
+                        <td className="py-2 px-2"></td>
+                        <td colSpan={14} className="py-2 px-2 text-[11px] font-black uppercase tracking-widest text-slate-700">
                           PRICING DETAILS
                         </td>
-                        <td className="py-1.5 px-2"></td>
+                        <td className="py-2 px-2"></td>
                       </tr>
 
                       {/* 1. Forwarding / Logistics Charge */}
