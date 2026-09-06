@@ -732,7 +732,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   let runningIdx = 0;
 
                                   return (
-                                    <div id={`error-row-${row.id}-product`} className="relative w-full min-w-[150px]">
+                                    <div className="space-y-1.5 min-w-[200px]">
+                                      <div id={`error-row-${row.id}-product`} className="relative w-full">
                                       <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                                         <input
                                           value={isOpen ? searchQuery : (selProd?.name ?? '')}
