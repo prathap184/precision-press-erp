@@ -89,7 +89,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     if (rows.length === 0) errors['rows'] = 'At least one item required';
     rows.forEach((row: any) => {
       const product = products.find((p: any) => p.id === row.productId);
-      const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
+      const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+      const isDirect = !isSqft;
       if (!row.productId) errors[`row-${row.id}-product`] = 'Product required';
       if (!isDirect) {
         if (!row.width || Number(row.width) <= 0) errors[`row-${row.id}-width`] = 'Width required';
@@ -440,8 +441,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                     <tbody className="divide-y divide-slate-100">
                       {rows.map((row: any, index: number) => {
                         const product = products.find((item: any) => item.id === row.productId);
-                        const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || (product as any)?.tally_uom === 'N' || product?.category === 'LED- SMPS';
-                        const defaultMode = (product as any)?.tally_billing_mode || (isDirect ? 'A' : 'B');
+                        const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+                        const isDirect = !isSqft;
+                        const defaultMode = (product as any)?.tally_billing_mode || (isSqft ? 'B' : 'A');
                         const currentMode = row.billingMode || defaultMode;
                         const w = Number(row.width) || 0;
                         const h = Number(row.height) || 0;
@@ -450,7 +452,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         const hFt = row.heightUnit === 'IN' ? h / 12 : h;
                         const sqft = isDirect ? 0 : wFt * hFt;
                         const totalBilledSqft = sqft * pcs;
-                        const baseRate = Number(product?.baseRate) || 0;
+                        const productBaseRate = Number(product?.baseRate) || 0;
+                        const baseRate = row.manualRate !== undefined && row.manualRate !== '' ? Number(row.manualRate) || 0 : productBaseRate;
                         const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
                         const amount = calculateRowSubtotal({
                           width: wFt, height: hFt, quantity: pcs, rate: baseRate,
@@ -503,8 +506,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             if (isOpen && matched.length > 0) {
                                               const selectedProduct = matched[highlightProductIndex] || matched[0];
                                               if (selectedProduct) {
-                                                const isDirect = (selectedProduct as any)?.metadata?.isDirectSelling === true || (selectedProduct as any)?.unit_of_measure === 'N' || (selectedProduct as any)?.tally_uom === 'N' || selectedProduct?.category === 'LED- SMPS';
-                                                const prodMode = (selectedProduct as any)?.tally_billing_mode || (selectedProduct as any)?.tallyBillingMode || (isDirect ? 'A' : 'B');
+                                                const isSqft = (selectedProduct as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (selectedProduct as any)?.tally_uom?.toLowerCase() === 'sqft';
+                                                const prodMode = (selectedProduct as any)?.tally_billing_mode || (selectedProduct as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
                                                 updateRow(row.id, { productId: selectedProduct.id, billingMode: prodMode });
                                                 setOpenRowId(null);
                                                 setSearchQuery('');
@@ -556,8 +559,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                     }}
                                                     onMouseDown={(e) => {
                                                       e.preventDefault();
-                                                      const isDirect = (p as any)?.metadata?.isDirectSelling === true || (p as any)?.unit_of_measure === 'N' || (p as any)?.tally_uom === 'N' || p?.category === 'LED- SMPS';
-                                                      const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isDirect ? 'A' : 'B');
+                                                      const isSqft = (p as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (p as any)?.tally_uom?.toLowerCase() === 'sqft';
+                                                      const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
                                                       updateRow(row.id, { productId: p.id, billingMode: prodMode });
                                                       setOpenRowId(null);
                                                       setSearchQuery('');
@@ -685,16 +688,53 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                 </div>
                               )}
                             </td>
-                            {/* Rate/SqFt Column */}
-                            <td className="py-3 px-2 text-center text-xs font-bold text-slate-700 tabular-nums">
-                              {currentMode === 'B' ? (baseRate > 0 ? baseRate.toFixed(2) : '—') : '—'}
-                            </td>
-                            {/* Rate per Column */}
-                            <td className="py-3 px-2 text-center text-xs font-bold tabular-nums">
+                            {/* Rate/SqFt Column — EDITABLE like Tally */}
+                            <td className="py-3 px-2 text-center tabular-nums">
                               {currentMode === 'B' ? (
-                                <span className="text-emerald-700 font-bold">{baseRate.toFixed(2)} sqft</span>
+                                <input
+                                  value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
+                                  onChange={(e) => {
+                                    updateRow(row.id, { manualRate: e.target.value });
+                                  }}
+                                  onFocus={(e) => {
+                                    if (!row.manualRate && baseRate > 0) {
+                                      updateRow(row.id, { manualRate: baseRate.toFixed(2) });
+                                    }
+                                    e.target.select();
+                                  }}
+                                  placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
+                                  className="h-9 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
+                                  title="Rate per sq.ft — editable (like Tally)"
+                                />
                               ) : (
-                                <span className="text-blue-700 font-bold">{baseRate.toFixed(2)} {(product as any)?.tally_uom || 'N'}</span>
+                                <span className="text-slate-300 font-bold">—</span>
+                              )}
+                            </td>
+                            {/* Rate per (unit) Column — EDITABLE like Tally */}
+                            <td className="py-3 px-2 text-center tabular-nums">
+                              {currentMode === 'B' ? (
+                                <span className="text-emerald-700 font-bold text-xs">
+                                  {row.manualRate !== undefined ? Number(row.manualRate || 0).toFixed(2) : (baseRate > 0 ? baseRate.toFixed(2) : '—')} sqft
+                                </span>
+                              ) : (
+                                <div className="inline-flex items-center gap-1">
+                                  <input
+                                    value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
+                                    onChange={(e) => {
+                                      updateRow(row.id, { manualRate: e.target.value });
+                                    }}
+                                    onFocus={(e) => {
+                                      if (!row.manualRate && baseRate > 0) {
+                                        updateRow(row.id, { manualRate: baseRate.toFixed(2) });
+                                      }
+                                      e.target.select();
+                                    }}
+                                    placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
+                                    className="h-9 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
+                                    title="Rate per unit — editable (like Tally)"
+                                  />
+                                  <span className="text-[10px] text-slate-500 font-bold">{(product as any)?.tally_uom || 'N'}</span>
+                                </div>
                               )}
                             </td>
                             <td className="py-3 px-2 tabular-nums">

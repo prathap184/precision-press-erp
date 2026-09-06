@@ -330,8 +330,9 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
           if (matched) {
             needsUpdate = true;
-            const isDirectSelling = matched.metadata?.isDirectSelling === true || matched.unitOfMeasure === 'N' || (matched as any).tallyUom === 'N';
-            const defaultMode = (matched as any).tallyBillingMode || (isDirectSelling ? 'A' : 'B');
+            const uom = String(matched.unitOfMeasure || (matched as any).tallyUom || matched.metadata?.unit || '').trim().toLowerCase();
+            const isSqft = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft';
+            const defaultMode = (matched as any).tallyBillingMode || matched.metadata?.tallyBillingMode || (isSqft ? 'B' : 'A');
             return {
               ...line,
               inventoryItemId: matched.id,
@@ -407,7 +408,8 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
     const finish = parseFloat(line.finishAmount || "0");
     const delivery = parseFloat(line.deliveryAmount || "0");
     
-    const sqFt = (width > 0 && length > 0) ? width * length : 1;
+    const isModeA = line.billingMode === 'A';
+    const sqFt = isModeA ? 1 : ((width > 0 && length > 0) ? width * length : 1);
     return (sqFt * qty * rate) + finish + delivery;
   }
 
@@ -476,8 +478,9 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
               taxContext === "purchase" && selectedRate ? reclaimHint(selectedRate) : null;
 
             const itemObj = inventoryItems.find((itm) => itm.id === line.inventoryItemId);
-            const isDirectSelling = itemObj?.metadata?.isDirectSelling === true || itemObj?.unitOfMeasure === 'N' || (itemObj as any)?.tallyUom === 'N';
-            const defaultMode = (itemObj as any)?.tallyBillingMode || (isDirectSelling ? 'A' : 'B');
+            const uom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || itemObj?.metadata?.unit || '').trim().toLowerCase();
+            const isSqftItem = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft' || Boolean(parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0);
+            const defaultMode = (itemObj as any)?.tallyBillingMode || itemObj?.metadata?.tallyBillingMode || (isSqftItem ? 'B' : 'A');
             const currentMode = line.billingMode || defaultMode;
             const widthNum = parseFloat(line.width || "0");
             const lengthNum = parseFloat(line.length || "0");
@@ -514,9 +517,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           || taxRates.find(t => t.rate === 1800) 
                           || (taxRates.length > 0 ? taxRates[0] : null);
 
-                        const isItemDirectSelling = item.metadata?.isDirectSelling === true || item.unitOfMeasure === 'N' || (item as any).tallyUom === 'N';
-                        const itemDefaultMode = (item as any).tallyBillingMode || (isItemDirectSelling ? "A" : "B");
-                        const effectiveRate = isItemDirectSelling
+                        const itemUom = String(item.unitOfMeasure || (item as any).tallyUom || item.metadata?.unit || '').trim().toLowerCase();
+                        const isItemSqft = itemUom === 'sqft' || itemUom === 'sqf' || itemUom === 'sq.ft' || itemUom === 'sq ft';
+                        const itemDefaultMode = (item as any).tallyBillingMode || item.metadata?.tallyBillingMode || (isItemSqft ? "B" : "A");
+                        const effectiveRate = !isItemSqft
                           ? (Number(item.salePrice || 0) / 100)
                           : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
                         const updated = [...lines];
@@ -582,9 +586,9 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Mode (T) Toggle Button */}
                 <div className="text-center">
-                  {isDirectSelling ? (
+                  {!isSqftItem ? (
                     <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-black border border-blue-200">
-                      {currentMode}
+                      {currentMode || 'A'}
                     </span>
                   ) : (
                     <button
@@ -608,7 +612,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Width */}
                 <div>
-                  {isDirectSelling ? (
+                  {!isSqftItem ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
                     <div className="relative">
@@ -626,7 +630,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Length */}
                 <div>
-                  {isDirectSelling ? (
+                  {!isSqftItem ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
                     <div className="relative">
@@ -649,7 +653,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Pcs/No Column */}
                 <div className="text-center">
-                  {currentMode === 'B' ? (
+                  {isSqftItem && currentMode === 'B' ? (
                     <Input
                       className="h-9 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                       type="number"
@@ -670,8 +674,22 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Quantity Column */}
                 <div className="text-center text-xs font-bold tabular-nums">
-                  {isDirectSelling ? (
-                    <span className="text-slate-700 font-bold">{pcs} N</span>
+                  {!isSqftItem ? (
+                    <div className="inline-flex items-center justify-center">
+                      <Input
+                        className="h-9 w-14 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                        type="number"
+                        min="1"
+                        value={line.quantity || '1'}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const updated = [...lines];
+                          updated[i] = { ...updated[i], quantity: val, pcsNo: val };
+                          onChange(updated);
+                        }}
+                      />
+                      <span className="ml-1 text-[10px] font-black text-slate-500">{uom ? uom.toUpperCase() : 'N'}</span>
+                    </div>
                   ) : currentMode === 'B' ? (
                     <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
                   ) : (
@@ -693,39 +711,46 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   )}
                 </div>
 
-                {/* Rate/SqFt Column */}
+                {/* Rate/SqFt Column — EDITABLE in Mode B */}
                 <div className="text-center text-xs font-bold text-slate-700 tabular-nums">
-                  {currentMode === 'A' ? (
+                  {isSqftItem && currentMode === 'B' ? (
                     <CurrencyInput
                       size="sm"
-                      className="h-9 text-right text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
+                      className="h-9 text-right text-xs font-bold font-mono bg-emerald-50 border-emerald-300 text-emerald-800 rounded-xl focus:border-emerald-600 focus:bg-white"
                       value={line.unitPrice}
                       onChange={(v) => updateLine(i, "unitPrice", v)}
+                      placeholder="0.00"
                     />
                   ) : (
-                    '—'
+                    <span className="text-slate-300 font-bold">—</span>
                   )}
                 </div>
 
-                {/* Rate per Column */}
+                {/* Rate per Column — EDITABLE in Mode A and Non-SqFt */}
                 <div className="text-center text-xs font-bold tabular-nums">
-                  {isDirectSelling ? (
-                    `${rateNum.toFixed(2)} N`
-                  ) : currentMode === 'B' ? (
-                    <CurrencyInput
-                      size="sm"
-                      className="h-9 text-right text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
-                      value={line.unitPrice}
-                      onChange={(v) => updateLine(i, "unitPrice", v)}
-                    />
+                  {isSqftItem && currentMode === 'B' ? (
+                    <span className="text-emerald-700 font-bold text-xs">
+                      {rateNum > 0 ? rateNum.toFixed(2) : '0.00'} sqft
+                    </span>
                   ) : (
-                    <span className="text-blue-700 font-bold">{(sqFtNum * rateNum).toFixed(2)} N</span>
+                    <div className="inline-flex items-center gap-1">
+                      <CurrencyInput
+                        size="sm"
+                        className="h-9 text-right text-xs font-bold font-mono bg-blue-50 border-blue-300 text-blue-800 rounded-xl focus:border-blue-600 focus:bg-white"
+                        value={line.unitPrice}
+                        onChange={(v) => updateLine(i, "unitPrice", v)}
+                        placeholder="0.00"
+                      />
+                      <span className="text-[10px] font-black text-slate-500">
+                        {uom ? uom.toUpperCase() : 'N'}
+                      </span>
+                    </div>
                   )}
                 </div>
 
                 {/* Finish */}
                 <div>
-                  {isDirectSelling ? (
+                  {!isSqftItem ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
                     <CurrencyInput

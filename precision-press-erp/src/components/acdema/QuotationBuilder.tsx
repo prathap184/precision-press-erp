@@ -34,11 +34,12 @@ interface AcdemaRow {
   eyeletType: 'METAL' | 'PLASTIC' | 'NONE';
   eyeletCount: number;
   tiffPath: string;
+  manualRate?: string; // operator-overridden rate (like Tally — editable per row)
 }
 
 const makeRow = (product?: Product): AcdemaRow => {
-  const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || (product as any)?.tally_uom === 'N' || product?.category === 'LED- SMPS';
-  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (isDirect ? 'A' : 'B');
+  const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
   return {
     id: Math.random().toString(36).slice(2, 10),
     productId: product?.id || '',
@@ -303,8 +304,9 @@ export function QuotationBuilder() {
       const width = Number(row.width) || 0;
       const height = Number(row.height) || 0;
       const quantity = Number(row.quantity) || 0;
-      const rate = product?.baseRate || 0;
-      const isDirect = (product as any)?.metadata?.isDirectSelling === true || (product as any)?.unit_of_measure === 'N' || product?.category === 'LED- SMPS';
+      const rate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : (product?.baseRate || 0);
+      const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+      const isDirect = !isSqft;
       const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL'
         ? product?.eyeletPricing?.metal || 0
         : row.eyeletType === 'PLASTIC'
@@ -499,8 +501,27 @@ export function QuotationBuilder() {
         const width = Number(row.width) || 0;
         const height = Number(row.height) || 0;
         const quantity = Number(row.quantity) || 0;
-        const rate = product?.baseRate || 0;
-        const rowSubtotal = calculateRowSubtotal(row, product);
+        const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
+        const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
+        const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+        const isDirect = !isSqft;
+        const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL'
+          ? product?.eyeletPricing?.metal || 0
+          : row.eyeletType === 'PLASTIC'
+            ? product?.eyeletPricing?.plastic || 0
+            : 0);
+        const effectiveRate = (row.manualRate !== undefined && row.manualRate !== '') 
+          ? Number(row.manualRate) || 0 
+          : (product?.baseRate || 0);
+        const rowSubtotal = calculateRowSubtotal({
+          width: widthInFt,
+          height: heightInFt,
+          quantity,
+          rate: effectiveRate,
+          eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : quantity,
+          eyeletRate,
+          isDirectSelling: isDirect,
+        });
 
         return {
           productId: row.productId,
@@ -514,7 +535,7 @@ export function QuotationBuilder() {
           height: row.height,
           heightUnit: row.heightUnit,
           quantity,
-          rate,
+          rate: effectiveRate,
           eyeletType: row.eyeletType,
           eyeletCount: row.eyeletCount,
           subtotal: rowSubtotal,

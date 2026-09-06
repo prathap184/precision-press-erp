@@ -245,9 +245,8 @@ export async function POST(request: Request) {
     const processedLines = parsed.lines.map((l, i) => {
       const unitPriceCents = unitPricesCents[i];
       
-      const width = l.width || 0;
-      const length = l.length || 0;
-      const sqFt = l.sqFt || ((width > 0 && length > 0) ? width * length : 1);
+      const isModeA = l.billingMode === 'A';
+      const sqFt = isModeA ? 1 : (l.sqFt || ((width > 0 && length > 0) ? width * length : 1));
       
       const finishAmount = Math.round((l.finishAmount || 0) * 100);
       const deliveryAmount = Math.round((l.deliveryAmount || 0) * 100);
@@ -448,6 +447,10 @@ export async function POST(request: Request) {
                   inventoryItemId: l.inventoryItemId as string,
                   quantity: l.quantity,
                   warehouseId: l.warehouseId || null,
+                  width: l.width || null,
+                  length: l.length || null,
+                  sqFt: l.sqFt || null,
+                  pcsNo: l.pcsNo || null,
                 })),
               },
               tx
