@@ -441,7 +441,10 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                     <thead>
                       <tr className="border-b-2 border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
                         <th className="py-3 px-2 w-8 text-center">#</th>
-                        <th className="py-3 px-2">Name of Item</th>
+                        <th className="py-3 px-2 min-w-[220px]">
+                          <div>Name of Item</div>
+                          <div className="text-[8px] font-medium text-slate-400 normal-case tracking-normal">↳ Description (Tally)</div>
+                        </th>
                         <th className="py-3 px-2 text-center">HSN Code</th>
                         <th className="py-3 px-2 text-center">GST %</th>
                         <th className="py-3 px-2 text-center">T</th>
@@ -533,8 +536,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                 setSearchQuery('');
                                                 setHighlightProductIndex(0);
                                                 setTimeout(() => {
+                                                  const descInput = document.getElementById(`row-${row.id}-description`);
                                                   const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                  if (widthInput) widthInput.focus();
+                                                  const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                                  if (descInput) descInput.focus();
+                                                  else if (widthInput && prodMode !== 'A') widthInput.focus();
+                                                  else if (qtyInput) qtyInput.focus();
                                                 }, 60);
                                               }
                                             }
@@ -586,8 +593,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                       setSearchQuery('');
                                                       setHighlightProductIndex(0);
                                                       setTimeout(() => {
+                                                        const descInput = document.getElementById(`row-${row.id}-description`);
                                                         const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                        if (widthInput) widthInput.focus();
+                                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                                        if (descInput) descInput.focus();
+                                                        else if (widthInput && prodMode !== 'A') widthInput.focus();
+                                                        else if (qtyInput) qtyInput.focus();
                                                       }, 60);
                                                     }} 
                                                     className={`cursor-pointer border-b border-slate-100 p-2.5 pl-4 flex justify-between items-center transition-colors ${
@@ -612,6 +623,30 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         })()}
                                       </div>
                                     )}
+                                    {/* Additional Description for Stock Item (Tally Prime) */}
+                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                      <span className="text-[10px] font-bold text-slate-400 select-none pl-1" title="Tally Additional Description">↳</span>
+                                      <input
+                                        id={`row-${row.id}-description`}
+                                        value={row.description !== undefined ? row.description : (row.projectName || '')}
+                                        onChange={(e) => {
+                                          const val = e.target.value;
+                                          updateRow(row.id, { description: val, projectName: val });
+                                        }}
+                                        placeholder="Description / notes (e.g. specs, details)..."
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                            if (widthInput && currentMode !== 'A') widthInput.focus();
+                                            else if (qtyInput) qtyInput.focus();
+                                          }
+                                        }}
+                                        className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+                                        title="Additional Description for stock item (like Tally Prime) — saved to order_items"
+                                      />
+                                    </div>
                                   </div>
                                 );
                               })()}

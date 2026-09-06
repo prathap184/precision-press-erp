@@ -1286,7 +1286,9 @@ async function executeOrderPlacementTx(
         taxable_value: item.taxable_value || item.subTotal || 0,
 
         category: item.category || childCategory,
-        projectName: item.projectName || item.description,
+        description: item.description || item.projectName || '',
+        projectName: item.projectName || item.description || '',
+        notes: item.description || item.notes || '',
         specs: {
           ...(item.specs || {}),
           billingMode: item.billingMode || 'A',
@@ -1339,7 +1341,9 @@ async function executeOrderPlacementTx(
       taxable_value: item.taxable_value || item.subTotal || 0,
 
       category: item.category || derivedCategory,
-      projectName: item.projectName || item.description,
+      description: item.description || item.projectName || '',
+      projectName: item.projectName || item.description || '',
+      notes: item.description || item.notes || '',
       specs: {
         ...(item.specs || {}),
         billingMode: item.billingMode || 'A',

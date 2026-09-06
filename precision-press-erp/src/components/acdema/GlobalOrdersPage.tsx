@@ -238,10 +238,12 @@ export function GlobalOrdersPage() {
           });
 
           let desc = matchedInventory?.name || i.productName || i.name || 'Custom Print';
+          if (i.description || i.notes) desc += ` - ${i.description || i.notes}`;
           if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
           if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
-          const isDirectSelling = matchedInventory?.metadata?.isDirectSelling === true || matchedInventory?.unitOfMeasure === 'N' || (matchedInventory as any)?.tallyUom === 'N';
-          const defaultMode = (matchedInventory as any)?.tallyBillingMode || (isDirectSelling ? 'A' : 'B');
+          const uom = String(matchedInventory?.unitOfMeasure || (matchedInventory as any)?.tallyUom || matchedInventory?.metadata?.unit || '').trim().toLowerCase();
+          const isSqft = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft';
+          const defaultMode = (matchedInventory as any)?.tallyBillingMode || matchedInventory?.metadata?.tallyBillingMode || (isSqft ? 'B' : 'A');
           const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
           const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
           const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;

@@ -23,6 +23,7 @@ interface AcdemaRow {
   productId: string;
   productName: string;
   projectName: string;
+  description?: string; // Additional description for stock item (like Tally)
   hsnCode: string;
   billingMode?: 'A' | 'B';
   pcsNo: string;
@@ -45,6 +46,7 @@ const makeRow = (product?: Product): AcdemaRow => {
     productId: product?.id || '',
     productName: product?.name || '',
     projectName: '',
+    description: '',
     hsnCode: '',
     billingMode: defaultMode,
     pcsNo: '1',
@@ -527,6 +529,8 @@ export function QuotationBuilder() {
           productId: row.productId,
           productName: product?.name || row.productName || 'Custom Product',
           projectName: row.projectName || '',
+          description: row.description || row.projectName || '',
+          notes: row.description || '',
           hsnCode: row.hsnCode || '',
           billingMode: row.billingMode || 'A',
           pcsNo: row.pcsNo || '1',

@@ -23,6 +23,8 @@ export interface ProxyOrderItemInput {
   productId: string;
   productName: string;
   projectName?: string;
+  description?: string;
+  notes?: string;
   width: number;
   widthUnit: 'FT' | 'IN';
   height: number;
