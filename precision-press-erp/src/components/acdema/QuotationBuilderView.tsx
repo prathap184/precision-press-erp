@@ -760,15 +760,24 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         onChange={(e) => {
                                           const val = e.target.value;
                                           updateRow(row.id, { description: val, projectName: val });
-                                        }}
                                         placeholder="Description / notes (e.g. specs, details)..."
                                         onKeyDown={(e) => {
                                           if (e.key === "Enter") {
                                             e.preventDefault();
-                                            const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                            if (widthInput && currentMode !== 'A') widthInput.focus();
-                                            else if (qtyInput) qtyInput.focus();
+                                            const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
+                                            if (modeBtn) {
+                                              modeBtn.focus();
+                                            } else if (currentMode === 'B') {
+                                              const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                              if (widthInput) widthInput.focus();
+                                            } else {
+                                              const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                              if (qtyInput) qtyInput.focus();
+                                            }
+                                          } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                            e.preventDefault();
+                                            const prodInput = document.getElementById(`row-${row.id}-product-input`);
+                                            if (prodInput) prodInput.focus();
                                           }
                                         }}
                                         className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
@@ -783,20 +792,41 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                               {product?.hsn || product?.hsn_code || row.hsnCode || '—'}
                             </td>
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
-                            <td className="py-3 px-2 text-center tabular-nums">
+                            <td className="py-3 px-2 tabular-nums">
                               {isDirect ? (
                                 <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-black border border-blue-200">
                                   {currentMode}
                                 </span>
                               ) : (
                                 <button
+                                  id={`row-${row.id}-mode-btn`}
                                   type="button"
                                   onClick={() => {
                                     const nextMode = currentMode === 'A' ? 'B' : 'A';
                                     updateRow(row.id, { billingMode: nextMode });
                                   }}
-                                  title="Click to toggle Mode A (Pieces) or Mode B (Sq.Ft)"
-                                  className={`h-8 min-w-[58px] px-2 rounded-lg border-2 font-black text-xs transition-all inline-flex items-center justify-center gap-1 shadow-sm cursor-pointer ${
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      if (currentMode === 'B') {
+                                        const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                        if (widthInput) widthInput.focus();
+                                      } else {
+                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                        if (qtyInput) qtyInput.focus();
+                                      }
+                                    } else if (e.key === " " || e.key === "Spacebar") {
+                                      e.preventDefault();
+                                      const nextMode = currentMode === 'A' ? 'B' : 'A';
+                                      updateRow(row.id, { billingMode: nextMode });
+                                    } else if (e.key === "ArrowLeft") {
+                                      e.preventDefault();
+                                      const descInput = document.getElementById(`row-${row.id}-description`);
+                                      if (descInput) descInput.focus();
+                                    }
+                                  }}
+                                  title="Click to toggle Mode A (Pieces) or Mode B (Sq.Ft) — Space to toggle, Enter to next"
+                                  className={`h-8 min-w-[58px] px-2 rounded-lg border-2 font-black text-xs transition-all inline-flex items-center justify-center gap-1 shadow-sm cursor-pointer outline-none focus:ring-4 focus:ring-blue-500/30 ${
                                     currentMode === 'A'
                                       ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-500/20'
                                       : 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-500/20'
@@ -821,14 +851,45 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                        if (heightInput) heightInput.focus();
+                                        const widthUnitSelect = document.getElementById(`row-${row.id}-width-unit`);
+                                        if (widthUnitSelect) widthUnitSelect.focus();
+                                        else {
+                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                          if (heightInput) heightInput.focus();
+                                        }
+                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
+                                        if (modeBtn) modeBtn.focus();
+                                        else {
+                                          const descInput = document.getElementById(`row-${row.id}-description`);
+                                          if (descInput) descInput.focus();
+                                        }
                                       }
                                     }}
                                     className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
                                     placeholder="W"
                                   />
-                                  <select tabIndex={-1} value={row.widthUnit} onChange={(e) => updateRow(row.id, { widthUnit: e.target.value })} className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-400 outline-none focus:ring-0"><option value="FT">ft</option><option value="IN">in</option></select>
+                                  <select
+                                    id={`row-${row.id}-width-unit`}
+                                    value={row.widthUnit}
+                                    onChange={(e) => updateRow(row.id, { widthUnit: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                        if (heightInput) heightInput.focus();
+                                      } else if (e.key === "ArrowLeft") {
+                                        e.preventDefault();
+                                        const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                        if (widthInput) widthInput.focus();
+                                      }
+                                    }}
+                                    className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-500 outline-none focus:ring-2 focus:ring-blue-400 rounded px-1"
+                                  >
+                                    <option value="FT">ft</option>
+                                    <option value="IN">in</option>
+                                  </select>
                                 </div>
                               )}
                             </td>
@@ -846,16 +907,49 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                        if (pcsInput) pcsInput.focus();
-                                        else if (qtyInput) qtyInput.focus();
+                                        const heightUnitSelect = document.getElementById(`row-${row.id}-height-unit`);
+                                        if (heightUnitSelect) heightUnitSelect.focus();
+                                        else {
+                                          const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                          const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                          if (pcsInput) pcsInput.focus();
+                                          else if (qtyInput) qtyInput.focus();
+                                        }
+                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        const widthUnitSelect = document.getElementById(`row-${row.id}-width-unit`);
+                                        if (widthUnitSelect) widthUnitSelect.focus();
+                                        else {
+                                          const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                          if (widthInput) widthInput.focus();
+                                        }
                                       }
                                     }}
                                     className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`}
                                     placeholder="L"
                                   />
-                                  <select tabIndex={-1} value={row.heightUnit} onChange={(e) => updateRow(row.id, { heightUnit: e.target.value })} className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-400 outline-none focus:ring-0"><option value="FT">ft</option><option value="IN">in</option></select>
+                                  <select
+                                    id={`row-${row.id}-height-unit`}
+                                    value={row.heightUnit}
+                                    onChange={(e) => updateRow(row.id, { heightUnit: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                        if (pcsInput) pcsInput.focus();
+                                        else if (qtyInput) qtyInput.focus();
+                                      } else if (e.key === "ArrowLeft") {
+                                        e.preventDefault();
+                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                        if (heightInput) heightInput.focus();
+                                      }
+                                    }}
+                                    className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-500 outline-none focus:ring-2 focus:ring-blue-400 rounded px-1"
+                                  >
+                                    <option value="FT">ft</option>
+                                    <option value="IN">in</option>
+                                  </select>
                                 </div>
                               )}
                             </td>
@@ -871,12 +965,21 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   onChange={(e) => {
                                     const val = e.target.value;
                                     updateRow(row.id, { pcsNo: val, quantity: val });
+                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
                                   }}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
                                       const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
                                       if (rateInput) rateInput.focus();
+                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      e.preventDefault();
+                                      const heightUnitSelect = document.getElementById(`row-${row.id}-height-unit`);
+                                      if (heightUnitSelect) heightUnitSelect.focus();
+                                      else {
+                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                        if (heightInput) heightInput.focus();
+                                      }
                                     }
                                   }}
                                   className={`h-10 w-16 rounded-lg border text-center text-xs font-bold ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:bg-white'}`}
@@ -898,12 +1001,21 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       updateRow(row.id, { quantity: val, pcsNo: val });
+                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
                                         const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
                                         if (rateInput) rateInput.focus();
+                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
+                                        if (modeBtn) modeBtn.focus();
+                                        else {
+                                          const descInput = document.getElementById(`row-${row.id}-description`);
+                                          if (descInput) descInput.focus();
+                                        }
                                       }
                                     }}
                                     className={`h-10 w-16 rounded-lg border text-center text-xs font-bold ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:bg-white'}`}
@@ -931,7 +1043,21 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
-                                      handleRowFinalEnter(index);
+                                      const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                      if (finishSelect) finishSelect.focus();
+                                      else {
+                                        const fileInput = document.getElementById(`error-row-${row.id}-file`);
+                                        if (fileInput) fileInput.focus();
+                                        else {
+                                          const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                          if (browseBtn) browseBtn.focus();
+                                          else handleRowFinalEnter(index);
+                                        }
+                                      }
+                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      e.preventDefault();
+                                      const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                      if (pcsInput) pcsInput.focus();
                                     }
                                   }}
                                   placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
@@ -965,7 +1091,21 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        handleRowFinalEnter(index);
+                                        const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                        if (finishSelect) finishSelect.focus();
+                                        else {
+                                          const fileInput = document.getElementById(`error-row-${row.id}-file`);
+                                          if (fileInput) fileInput.focus();
+                                          else {
+                                            const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                            if (browseBtn) browseBtn.focus();
+                                            else handleRowFinalEnter(index);
+                                          }
+                                        }
+                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                        if (qtyInput) qtyInput.focus();
                                       }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
@@ -983,7 +1123,33 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                 </div>
                               ) : (
                                 <div className="flex flex-col gap-1">
-                                  <select value={row.eyeletType} onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })} className="h-8 w-full min-w-[80px] rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none">
+                                  <select
+                                    id={`row-${row.id}-finish-select`}
+                                    value={row.eyeletType}
+                                    onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const fileInput = document.getElementById(`error-row-${row.id}-file`);
+                                        if (fileInput) fileInput.focus();
+                                        else {
+                                          const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                          if (browseBtn) browseBtn.focus();
+                                          else handleRowFinalEnter(index);
+                                        }
+                                      } else if (e.key === "ArrowLeft") {
+                                        e.preventDefault();
+                                        if (currentMode === 'B') {
+                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                          if (rateSqft) rateSqft.focus();
+                                        } else {
+                                          const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                          if (rateUnit) rateUnit.focus();
+                                        }
+                                      }
+                                    }}
+                                    className="h-8 w-full min-w-[80px] rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                  >
                                     <option value="NONE">None</option>
                                     <option value="METAL">Metal</option>
                                     <option value="PLASTIC">Plastic</option>
@@ -1003,13 +1169,28 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
                                     }}
                                     onKeyDown={(e) => {
-                                       if (e.key === "Enter") {
-                                         e.preventDefault();
-                                         const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
-                                         if (browseBtn) browseBtn.focus();
-                                         else handleRowFinalEnter(index);
-                                       }
-                                     }}
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                        if (browseBtn) browseBtn.focus();
+                                        else {
+                                          const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
+                                          if (delBtn) delBtn.focus();
+                                          else handleRowFinalEnter(index);
+                                        }
+                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                        if (finishSelect) finishSelect.focus();
+                                        else if (currentMode === 'B') {
+                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                          if (rateSqft) rateSqft.focus();
+                                        } else {
+                                          const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                          if (rateUnit) rateUnit.focus();
+                                        }
+                                      }
+                                    }}
                                     className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 transition-all ${
                                       validationErrors[`row-${row.id}-file`]
                                         ? 'border-red-400 bg-red-50 text-red-600 placeholder-red-300'
