@@ -442,7 +442,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
 
                   {deliveryType !== 'selfPickup' && (
                     <div className="mt-4 space-y-2">
-                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address || (selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state) ? (
+                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address || (selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply) ? (
                         <>
                           <select
                             className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none focus:border-slate-400"

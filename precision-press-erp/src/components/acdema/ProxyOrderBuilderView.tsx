@@ -1786,7 +1786,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                   {deliveryType !== 'selfPickup' && (
                     <div className="mt-2 space-y-2">
-                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address || (selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state) ? (
+                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address || (selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply) ? (
                         <>
                           <select
                             id="error-shippingAddress"

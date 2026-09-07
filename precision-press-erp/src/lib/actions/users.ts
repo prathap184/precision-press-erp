@@ -171,24 +171,48 @@ export async function createCustomer(data: {
 
 export async function getCustomers() {
   try {
-    const snap = await adminDb.collection('contact').get();
-    
-    return snap.docs
-      .map((doc: any) => {
-        const data = serializeFirestoreData(doc.data());
+    const allRows: any[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabaseServer
+        .from('contact')
+        .select('*')
+        .order('name', { ascending: true })
+        .range(from, from + pageSize - 1);
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        allRows.push(...data);
+        if (data.length < pageSize) {
+          hasMore = false;
+        } else {
+          from += pageSize;
+        }
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allRows
+      .map((row: any) => {
+        const data = serializeFirestoreData(row);
         const customerData = {
-          id: doc.id,
+          id: data.id,
           name: data.name || 'Unknown',
-          displayName: data.name || 'Unknown',
-          businessName: data.business_name || data.name || 'Unknown',
+          displayName: data.displayName || data.name || 'Unknown',
+          businessName: data.business_name || data.businessName || data.name || 'Unknown',
           email: data.email || '',
           phone: data.phone || '',
           role: 'CUSTOMER',
           ...data,
-          customerType: data.customer_type || (data.payment_terms_days && data.payment_terms_days > 0 ? 'CREDIT' : 'CASH'),
-          creditLimit: Number(data.credit_limit ?? 0),
+          customerType: data.customer_type || data.customerType || (data.payment_terms_days && data.payment_terms_days > 0 ? 'CREDIT' : 'CASH'),
+          creditLimit: Number(data.credit_limit ?? data.creditLimit ?? 0),
+          usedCredit: Number(data.used_credit ?? data.usedCredit ?? 0),
         };
-        customerData.uid = data.uid || doc.id;
+        customerData.uid = data.uid || data.id;
         return customerData as UserProfile;
       })
       .filter((c: any) => c.type === 'customer' || c.type === 'both' || !c.type);

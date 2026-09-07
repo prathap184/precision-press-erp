@@ -201,6 +201,23 @@ export function QuotationBuilder() {
             creditLimit: Number(c.creditLimit ?? 0),
             usedCredit: Number(c.usedCredit ?? (c.owesYou ? c.owesYou / 100 : 0)),
             gstNumber: c.taxNumber || '',
+            billing_address_line1: c.billingAddressLine1 || c.billing_address_line1,
+            billing_address_line2: c.billingAddressLine2 || c.billing_address_line2,
+            billing_area: c.billingArea || c.billing_area,
+            billing_city: c.billingCity || c.billing_city,
+            billing_district: c.billingDistrict || c.billing_district,
+            billing_state: c.billingState || c.billing_state,
+            billing_pincode: c.billingPincode || c.billing_pincode,
+            billing_country: c.billingCountry || c.billing_country,
+            shipping_address_line1: c.shippingAddressLine1 || c.shipping_address_line1,
+            shipping_address_line2: c.shippingAddressLine2 || c.shipping_address_line2,
+            shipping_area: c.shippingArea || c.shipping_area,
+            shipping_city: c.shippingCity || c.shipping_city,
+            shipping_district: c.shippingDistrict || c.shipping_district,
+            shipping_state: c.shippingState || c.shipping_state,
+            shipping_pincode: c.shippingPincode || c.shipping_pincode,
+            shipping_country: c.shippingCountry || c.shipping_country,
+            place_of_supply: c.placeOfSupply || c.place_of_supply,
             ...c,
           }));
 
@@ -281,15 +298,17 @@ export function QuotationBuilder() {
         a.state,
         a.pincode
       ].filter(Boolean);
-      setShippingAddress(parts.join(', '));
-    } else if (selectedCustomer.address) {
-      setShippingAddress(selectedCustomer.address);
-    } else if ((selectedCustomer as any).billing_city || (selectedCustomer as any).city || (selectedCustomer as any).billing_state || selectedCustomer.state) {
+      if (parts.length > 0) {
+        setShippingAddress(parts.join(', '));
+      }
+    } else if (selectedCustomer.address && selectedCustomer.address.trim()) {
+      setShippingAddress(selectedCustomer.address.trim());
+    } else {
       const cust = selectedCustomer as any;
       const parts = [
-        cust.billing_city || cust.city,
-        cust.billing_state || cust.state || cust.place_of_supply,
-        cust.billing_pincode || cust.pincode
+        cust.billing_city || cust.city || '',
+        cust.billing_state || cust.state || cust.place_of_supply || '',
+        cust.billing_pincode || cust.pincode || ''
       ].filter(Boolean);
       if (parts.length > 0) {
         setShippingAddress(parts.join(', '));
