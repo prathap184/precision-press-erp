@@ -928,4 +928,104 @@ The ERP classifies products into two operational workflows based on **Tally Unit
 - **Source Code Backup**: `tally-connector/TrayApp.cs` maintained in Git repository.
 
 ---
+
+## 📐 35. Complete 14 Units of Measure (UOM) Architecture & Tally Parity Matrix
+
+> **Core Rule**: In Tally Prime, stock items are strictly registered under specific `<BASEUNITS>`. If an item is defined with base unit `R` (Rolls), Tally will reject vouchers sending `N` with error *"Unit does not match"*. The ERP must preserve and sync the exact UOM registered on each inventory product across all documents and vouchers.
+
+### A. All 14 Production UOMs in Master Catalog
+
+| # | Tally Symbol (`<NAME>`) | Full Name (`<ORIGINALNAME>`) | Official GST UQC Code (`<GSTREPUOM>`) | Mode | Decimal Places | Business Application & Examples in Precision Shop |
+|---|-------------------------|------------------------------|---------------------------------------|------|----------------|---------------------------------------------------|
+| 1 | `sqft` | Square Feet (Sqt) | `SQF-SQUARE FEET` | Mode B (Dim) | 3 | Flex, Vinyl, Star Flex, Backlit, Acrylic sheets cut to area |
+| 2 | `ft` | Feet | `SQF-SQUARE FEET` | Mode B (Dim) | 3 | Framing Rods, Extrusions, Roll lengths |
+| 3 | `Pkt` | Packets | `PAC-PACKS` | Mode A (Unit) | 0 | Eyelet Plastic 28mm, Eyelet Brass, Screws, Fasteners |
+| 4 | `N` | Number | `NOS-NUMBERS` | Mode A (Unit) | 2 | Standees, LED Modules, SMPS Power Adapters, Hardware |
+| 5 | `No` | Numbers | `NOS-NUMBERS` | Mode A (Unit) | 0 | Cutters, Blades, Squeegees, Hand Tools |
+| 6 | `pc` | Pieces | `PCS-PIECES` | Mode A (Unit) | 0 | Finished Acrylic Letters, Signage Panels, Custom pieces |
+| 7 | `Box` | Box (B) | `BOX-BOX` | Mode A (Unit) | 0 | LED strip boxes, Power supply bulk cartons, Tape boxes |
+| 8 | `Set` | Sets | `SET-SETS` | Mode A (Unit) | 0 | Canopy Sets, Promotion Table Sets, Display Kit assemblies |
+| 9 | `Sh` | Sheets | `NOS-NUMBERS` | Mode A (Unit) | 0 | Full Acrylic Sheets, Foam Board Sheets, Sunpack sheets |
+| 10 | `R` | Rolls | `ROL-ROLLS` | Mode A (Unit) | 0 | Double-sided Tape Rolls, Masking Tapes, Self-Adhesive Rolls |
+| 11 | `Tube` | Tubes (T) | `TUB-TUBES` | Mode A (Unit) | 0 | Silicone Sealant, Solvent Adhesives, Superglue Tubes |
+| 12 | `Kg` | Kilograms | `KGS-KILOGRAMS` | Mode A (Unit) | 2 | Metal profiles, Raw Aluminum framing, Raw granules |
+| 13 | `lt` / `ltr` | Litres (Ltrs) | `MLT-MILILITRE` | Mode A (Unit) | 0 | Eco-Solvent Inks, UV Inks, Solvent Cleaning Liquids |
+| 14 | `Mt` | Metres | `MTR-METRES` | Mode A (Unit) | 2 | Linear fabrics, Specialty cords, Edge binding trims |
+
+### B. Mode A vs Mode B UOM Computation
+- **Mode B (Area/Length Products - `sqft`, `ft`)**:
+  - Quantity is dynamically calculated from dimensions: $\text{Quantity} = \frac{W \times H \times \text{Pcs}}{144}$ (for sqft) or $\frac{L \times \text{Pcs}}{12}$ (for ft).
+  - Rate is per `sqft` or `ft`.
+  - Tally XML: `<ACTUALQTY> [TotalSqft] sqft</ACTUALQTY>`, `<RATE>[Rate]/sqft</RATE>`.
+- **Mode A (Discrete / Fixed Products - `Pkt`, `R`, `N`, `Box`, `Set`, `Sh`, `Kg`, `Tube`, etc.)**:
+  - Quantity is the direct piece/pack count entered by the operator.
+  - Dimensions are locked at $0 \times 0$, and calculation is simply $\text{Total} = \text{Quantity} \times \text{Rate}$.
+  - Rate is strictly per item UOM: `₹6.00/R`, `₹250.00/Pkt`, `₹120.00/Kg`, etc.
+  - Tally XML: `<ACTUALQTY> 48.00 R</ACTUALQTY>`, `<RATE>6.00/R</RATE>`.
+
+---
+
+## ⚡ 36. Supabase 1,000-Row Pagination Ceiling Fix & Exact Dynamic UOM Tally Sync
+
+### A. Root Cause: PostgREST Silent 1,000 Row Truncation
+- **Problem**: In Proxy Order Builder (`/proxy-order`), searching for items like `_Bending Machine Acrylic` returned "No products found", despite existing in the inventory database with UUID `ea79b8b1-b536-4026-8738-a101ba0004bd`.
+- **Cause**: Supabase PostgREST enforces a server-side hard limit of **1,000 rows maximum per query**. Calling `.select('*').limit(2000)` was silently truncated to exactly 1,000 rows. Since the inventory table had 1,801 items, 801 items sorted after the 1,000th entry were dropped completely.
+- **Solution (`src/lib/actions/products.ts`)**: Replaced single `.limit()` with looped range pagination:
+  ```typescript
+  let allProducts: Product[] = [];
+  let from = 0;
+  const pageSize = 1000;
+  let hasMore = true;
+
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('inventory_items')
+      .select('...')
+      .order('name', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error || !data || data.length === 0) break;
+    allProducts = allProducts.concat(data);
+    if (data.length < pageSize) {
+      hasMore = false;
+    } else {
+      from += pageSize;
+    }
+  }
+  ```
+  - Result: All 1,801+ inventory items are reliably loaded into client cache with zero missing products.
+
+### B. End-to-End Exact UOM Preservation Pipeline
+To guarantee that discrete UOMs (`R`, `Pkt`, `Box`, `Set`, `Kg`, `Sh`, `No`, etc.) are never hardcoded or degraded to `N`:
+1. **Frontend Product Selection (`ProxyOrderBuilder.tsx`)**:
+   - Captures `product.unit_of_measure || product.tally_uom || 'N'`.
+   - Stores `unit` in both `specs.unit` and `pricingSnapshot.unit`.
+2. **Order Storage (`workflow-supabase.ts`)**:
+   - Persists `unit` inside `order_items.specs` JSONB column.
+3. **Invoice Payload Builder (`src/lib/actions/tally-sync.ts`)**:
+   - `buildSalesInvoicePayload` resolves `unit: item.specs?.unit || item.pricingSnapshot?.unit || 'N'`.
+4. **Consolidated Documents (`src/lib/actions/documents.ts`)**:
+   - Ensures `unit` is included in all aggregated invoice item payloads.
+5. **Tally XML Builders (`tally-connector/xml-builder.js` & `tally_sync/xml-builder.js`)**:
+   - Mode A XML generator updated to dynamically interpolate `${pcs.toFixed(2)} ${unit}` and `${ratePerPiece.toFixed(2)}/${unit}` instead of hardcoded `N`.
+   - Example XML output for 48 Rolls of Double Sided Tape @ ₹6:
+     ```xml
+     <ALLINVENTORYENTRIES.LIST>
+       <STOCKITEMNAME>Double Sided Tape 1/2 Red</STOCKITEMNAME>
+       <ISDEEMEDPOSITIVE>No</ISDEEMEDPOSITIVE>
+       <RATE>6.00/R</RATE>
+       <AMOUNT>-288.00</AMOUNT>
+       <ACTUALQTY> 48.00 R</ACTUALQTY>
+       <BILLEDQTY> 48.00 R</BILLEDQTY>
+       <BATCHALLOCATIONS.LIST>
+         <GODOWNNAME>Main Location</GODOWNNAME>
+         <BATCHNAME>Primary Batch</BATCHNAME>
+         <AMOUNT>-288.00</AMOUNT>
+         <ACTUALQTY> 48.00 R</ACTUALQTY>
+         <BILLEDQTY> 48.00 R</BILLEDQTY>
+       </BATCHALLOCATIONS.LIST>
+     </ALLINVENTORYENTRIES.LIST>
+     ```
+
+---
 *Memory Updated & Persisted on: 2026-09-07 (End-to-End Verified & Production-Ready)*
