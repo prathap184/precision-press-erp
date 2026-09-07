@@ -60,14 +60,33 @@ function parseProduct(row: any): Product {
 }
 
 export async function getProducts() {
-  const { data, error } = await supabase
-    .from('inventory_item')
-    .select('*')
-    .eq('is_active', true)
-    .limit(2000);
+  const allRows: any[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  let hasMore = true;
 
-  if (error) throw error;
-  return data.map(parseProduct);
+  while (hasMore) {
+    const { data, error } = await supabase
+      .from('inventory_item')
+      .select('*')
+      .eq('is_active', true)
+      .order('name', { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+    if (data && data.length > 0) {
+      allRows.push(...data);
+      if (data.length < pageSize) {
+        hasMore = false;
+      } else {
+        from += pageSize;
+      }
+    } else {
+      hasMore = false;
+    }
+  }
+
+  return allRows.map(parseProduct);
 }
 
 export async function getProductsByCategory(category: string) {
