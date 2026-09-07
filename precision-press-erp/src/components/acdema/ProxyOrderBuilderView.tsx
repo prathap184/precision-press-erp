@@ -650,6 +650,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       })
                                     : products;
 
+                                  const grouped = matched.reduce((acc: any, p: any) => {
+                                    const cat = p.category || 'General Items';
+                                    if (!acc[cat]) acc[cat] = [];
+                                    acc[cat].push(p);
+                                    return acc;
+                                  }, {});
+                                  const displayedItems: any[] = [];
+                                  Object.values(grouped).forEach((prods: any) => displayedItems.push(...prods));
+
                                   let runningIdx = 0;
 
                                   return (
@@ -670,7 +679,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             setOpenRowId(row.id);
                                             const currentName = selProd?.name || '';
                                             setSearchQuery(currentName);
-                                            const currIdx = products.findIndex((p: any) => p.id === row.productId);
+                                            
+                                            // Find index in displayed grouped list
+                                            const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
                                             setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
                                           }}
                                           onKeyDown={(e) => {
@@ -678,20 +689,21 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               e.preventDefault();
                                               if (!isOpen) {
                                                 setOpenRowId(row.id);
-                                                setHighlightProductIndex(0);
+                                                const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
+                                                setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
                                                 return;
                                               }
-                                              setHighlightProductIndex((prev) => (prev === -1 ? 0 : Math.min(prev + 1, matched.length - 1)));
+                                              setHighlightProductIndex((prev) => (prev === -1 ? 0 : Math.min(prev + 1, displayedItems.length - 1)));
                                             } else if (e.key === "ArrowUp") {
                                               e.preventDefault();
                                               setHighlightProductIndex((prev) => {
                                                 if (prev <= 0 && !searchQuery.trim()) return -1;
                                                 return Math.max(prev - 1, 0);
                                               });
-                                            } else if (e.key === " " && !searchQuery.trim() && isOpen && matched.length > 0 && highlightProductIndex >= 0) {
+                                            } else if (e.key === " " && !searchQuery.trim() && isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
                                               // Spacebar selection like Tally
                                               e.preventDefault();
-                                              const p = matched[highlightProductIndex];
+                                              const p = displayedItems[highlightProductIndex];
                                               if (p) {
                                                 const isSqft = (p as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (p as any)?.tally_uom?.toLowerCase() === 'sqft';
                                                 const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
@@ -716,8 +728,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                 handleEndOfList(row.id);
                                                 return;
                                               }
-                                              if (isOpen && matched.length > 0 && highlightProductIndex >= 0) {
-                                                const p = matched[highlightProductIndex];
+                                              if (isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
+                                                const p = displayedItems[highlightProductIndex];
                                                 if (p) {
                                                   const isSqft = (p as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (p as any)?.tally_uom?.toLowerCase() === 'sqft';
                                                   const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
@@ -753,8 +765,22 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 200)}
                                           className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
                                         />
-                                        <ChevronDown size={14} className={`cursor-pointer transition-colors ${isOpen ? 'text-blue-600' : 'text-slate-400'}`} onClick={() => setOpenRowId(isOpen ? null : row.id)} />
-                                      </div>
+                                         <ChevronDown
+                                           size={14}
+                                           className={`cursor-pointer transition-colors ${isOpen ? 'text-blue-600' : 'text-slate-400'}`}
+                                           onClick={() => {
+                                             if (isOpen) {
+                                               setOpenRowId(null);
+                                             } else {
+                                               setOpenRowId(row.id);
+                                               const currentName = selProd?.name || '';
+                                               setSearchQuery(currentName);
+                                               const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
+                                               setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
+                                             }
+                                           }}
+                                         />
+                                       </div>
                                       {isOpen && (
                                         <div className="absolute left-0 top-full mt-1.5 w-[440px] z-[9999] max-h-80 overflow-y-auto rounded-2xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100">
                                           {!searchQuery.trim() && (
@@ -781,14 +807,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             </div>
                                           )}
                                           {(() => {
-                                            if (matched.length === 0) return <div className="p-4 text-xs text-slate-400 italic">No products found.</div>;
-                                            
-                                            const grouped = matched.reduce((acc: any, p: any) => {
-                                              const cat = p.category || 'General Items';
-                                              if (!acc[cat]) acc[cat] = [];
-                                              acc[cat].push(p);
-                                              return acc;
-                                            }, {});
+                                            if (displayedItems.length === 0) return <div className="p-4 text-xs text-slate-400 italic">No products found.</div>;
 
                                             return Object.entries(grouped).map(([cat, prods]: [string, any]) => (
                                               <div key={cat} className="last:border-b-0">
