@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { invoice, invoiceLine, contact, organization, customerCredit, inventoryItem, member, payment, paymentAllocation } from "@/lib/db/schema";
+import { invoice, invoiceLine, contact, organization, customerCredit, inventoryItem, member, payment, paymentAllocation, chartAccount, journalEntry } from "@/lib/db/schema";
 import { eq, and, desc, asc, gte, lte, ne, inArray, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { requireRole } from "@/lib/api/require-role";
@@ -79,6 +79,7 @@ const createSchema = z.object({
   referenceType: z.enum(["NEW_REF", "AGST_REF"]).optional().default("NEW_REF"),
   // The customer_credit UUID to settle against (required when referenceType === 'AGST_REF').
   advanceCreditId: z.string().nullable().optional(),
+  advanceReference: z.string().nullable().optional(),
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -245,6 +246,8 @@ export async function POST(request: Request) {
     const processedLines = parsed.lines.map((l, i) => {
       const unitPriceCents = unitPricesCents[i];
       
+      const width = l.width || 0;
+      const length = l.length || 0;
       const isModeA = l.billingMode === 'A';
       const sqFt = isModeA ? 1 : (l.sqFt || ((width > 0 && length > 0) ? width * length : 1));
       
@@ -689,7 +692,7 @@ export async function POST(request: Request) {
           billType,
           amount: -(result.total / 100),
         },
-        items: processedLines.map((l) => ({
+        items: processedLines.map((l: any) => ({
           productName: l.description || "Printing Services",
           hsnCode: l.hsnCode || "32141000",
           quantity: l.quantity,
@@ -727,13 +730,13 @@ export async function POST(request: Request) {
         voucherType: "Web Sales",
         refId: result.invoiceNumber,
         customerName: customerLedgerName,
-        amountSnap: result.total / 100,
+        amountSnap: { grandTotal: result.total / 100 },
       });
 
       // ── AGST REF: also enqueue a Journal Voucher for the advance settlement ──
       // In Tally:  DR Customer Deposits (Advance) / CR Customer Ledger (AR)
       // This mirrors the GL adjustment we already posted in ERP.
-      // Memory Section 15, Row 2: "Full Advance Prepayment" → JOURNAL_VOUCHER.
+      // Memory Section 15, Row 2: "Full Advance Prepayment" → JOURNAL_ENTRY.
       if (parsed.referenceType === "AGST_REF" && parsed.advanceCreditId) {
         try {
           const [advCredit] = await db
@@ -751,22 +754,34 @@ export async function POST(request: Request) {
               ),
             });
             const depositLedger = depositAccount?.name || "Customer Deposits";
+            let advRef = parsed.advanceReference || "";
+            if (!advRef && advCredit.notes) {
+              const match = advCredit.notes.match(/(?:ADV|REC)-[^\s,]+/i);
+              if (match) advRef = match[0].toUpperCase();
+            }
+            if (!advRef && advCredit.journalEntryId) {
+              const je = await db.query.journalEntry.findFirst({
+                where: eq(journalEntry.id, advCredit.journalEntryId),
+              });
+              if (je?.reference) advRef = je.reference;
+            }
+            if (!advRef) advRef = "ADV-0001";
 
             await enqueueTallySync({
-              syncType: "JOURNAL_VOUCHER",
+              syncType: "JOURNAL_ENTRY",
               orderId: result.id,
               customerId: result.contactId,
               createdBy: ctx.userId,
               voucherId: `JV-${result.invoiceNumber}`,
               voucherType: "Journal",
-              refId: advCredit.referenceNumber || parsed.advanceCreditId,
+              refId: advRef,
               customerName: customerLedgerName,
-              amountSnap: applyAmt,
+              amountSnap: { applyAmount: applyAmt },
               payload: {
-                tallyCompanyName: settings.companyName || process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
+                tallyCompanyName: process.env.TALLY_COMPANY_NAME || "Website Testing Hindustan",
                 voucherNumber: `JV-${result.invoiceNumber}`,
                 voucherDate: result.issueDate || new Date().toISOString().slice(0, 10),
-                narration: `Advance settlement: ${advCredit.referenceNumber || "ADV"} applied against ${result.invoiceNumber} for ${customerLedgerName}`,
+                narration: `Advance settlement: ${advRef} applied against ${result.invoiceNumber} for ${customerLedgerName}`,
                 // DR: Customer Deposits (debit = reduces the advance liability)
                 // CR: Customer Ledger / AR (credit = clears invoice)
                 entries: [
@@ -782,7 +797,7 @@ export async function POST(request: Request) {
                     // Bill allocation: Agst Ref closes the advance (ADV-XXXX)
                     billAllocations: [
                       {
-                        name: advCredit.referenceNumber || "ADV",
+                        name: advRef,
                         billType: "Agst Ref",
                         amount: applyAmt,
                       },
