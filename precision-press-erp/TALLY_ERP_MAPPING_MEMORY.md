@@ -1028,4 +1028,23 @@ To guarantee that discrete UOMs (`R`, `Pkt`, `Box`, `Set`, `Kg`, `Sh`, `No`, etc
      ```
 
 ---
+
+## 📍 37. Contact Address Audit & Robust Fallback Architecture
+
+> **Context**: Out of 1,397 contacts in the database, 1,107 have a full street-level address (`billing_address_line1`). 290 contacts (mostly local over-the-counter accounts or non-detailed Tally ledger entries) only have their City, State, and/or Pincode.
+
+### A. Fallback Chain in Proxy Order & Quotation Builders
+When an operator selects a customer for a proxy order or quotation, the address auto-populates using the following priority hierarchy:
+1. **Secondary / Shipping Address (`shipping_address_line1`)**: If explicitly maintained for distinct delivery points.
+2. **Primary Street Address (`billing_address_line1`)**: Standard registered door/building address.
+3. **Structured Address Book (`addresses` JSON array)**: House number + Road name from saved customer profiles.
+4. **Legacy Single Address (`address`)**: Direct plain-text address strings.
+5. **Registered Location Fallback (`[billing_city, billing_state, billing_pincode]`)**:
+   - For parties without street addresses (e.g., `A & N Design- Mys- BO`), auto-combines available location tokens:
+     $$\text{Address} = [\text{City}, \text{State}, \text{Pincode}].\text{filter}(\text{Boolean}).\text{join}(",\text{ "})$$
+   - Example Output: `"Mysore, Karnataka"` or `"Kushalnagar, Karnataka, 571234"`.
+   - Renders in the delivery address dropdown as `Registered Location: Mysore, Karnataka`.
+   - Prevents blank address errors on order submission and invoice generation.
+
+---
 *Memory Updated & Persisted on: 2026-09-07 (End-to-End Verified & Production-Ready)*
