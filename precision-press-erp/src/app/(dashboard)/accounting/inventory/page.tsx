@@ -778,21 +778,23 @@ export default function InventoryPage() {
                 </div>
 
                 {/* Stock bar */}
-                <div className="hidden sm:flex flex-col items-end gap-1 w-40">
+                <div className="hidden sm:flex flex-col items-end gap-1 w-44">
                   {(() => {
                     const rawUom = item.unitOfMeasure || item.tallyUom || item.metadata?.unit || 'N';
                     const isSqft = rawUom.toLowerCase() === 'sqft' || rawUom.toLowerCase() === 'sq.ft' || rawUom.toLowerCase() === 'sqf';
                     const qty = item.quantityOnHand;
-                    const isOut = qty <= 0;
+                    const isNegative = qty < 0;
+                    const isZero = qty === 0;
                     return (
                       <>
                         <span className={cn(
                           "text-sm font-bold font-mono tabular-nums",
-                          isOut ? "text-red-500 dark:text-red-400"
+                          isNegative ? "text-red-600 dark:text-red-400"
+                            : isZero ? "text-red-500 dark:text-red-400"
                             : isLow ? "text-amber-600 dark:text-amber-400"
                             : "text-foreground"
                         )}>
-                          {isOut ? "OUT" : qty.toLocaleString()}{" "}
+                          {qty.toLocaleString()}{" "}
                           <span className="text-[11px] font-sans font-normal text-muted-foreground ml-0.5">
                             {isSqft ? "sq.ft" : rawUom}
                           </span>
@@ -800,17 +802,24 @@ export default function InventoryPage() {
                         <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                           <motion.div
                             className={cn("h-full rounded-full",
-                              isOut ? "bg-red-400"
+                              isNegative ? "bg-red-600"
+                                : isZero ? "bg-red-400"
                                 : isLow ? "bg-amber-500"
                                 : "bg-emerald-500"
                             )}
                             initial={{ width: 0 }}
-                            animate={{ width: `${stockPercent}%` }}
+                            animate={{ width: `${isNegative ? 100 : stockPercent}%` }}
                             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
                           />
                         </div>
-                        <span className="text-[10px] text-muted-foreground">
-                          {isOut ? "Out of stock" : isLow ? "Running low" : "In stock"}
+                        <span className={cn(
+                          "text-[10px] font-medium",
+                          isNegative ? "text-red-600 dark:text-red-400 font-bold"
+                            : isZero ? "text-red-500"
+                            : isLow ? "text-amber-600 dark:text-amber-400"
+                            : "text-muted-foreground"
+                        )}>
+                          {isNegative ? "⚠️ Negative Stock" : isZero ? "Out of Stock" : isLow ? "⚡ Running Low" : "In Stock"}
                         </span>
                       </>
                     );

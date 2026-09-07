@@ -489,9 +489,19 @@ export default function InventoryItemDetailsPage() {
                 </div>
                 <div className="pt-2 border-t flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Units in this Godown:</span>
-                  <span className="text-base font-mono font-bold text-foreground">
-                    {warehouseStocks.length > 0 ? warehouseStocks.reduce((acc, ws) => acc + ws.quantity, 0) : item.quantityOnHand} {item.unitOfMeasure || "Units"}
-                  </span>
+                  <div className="text-right">
+                    <span className={cn(
+                      "text-base font-mono font-bold",
+                      item.quantityOnHand < 0 ? "text-red-600 dark:text-red-400"
+                        : item.quantityOnHand === 0 ? "text-red-500"
+                        : "text-foreground"
+                    )}>
+                      {warehouseStocks.length > 0 ? warehouseStocks.reduce((acc, ws) => acc + ws.quantity, 0) : item.quantityOnHand} {item.unitOfMeasure || "Units"}
+                    </span>
+                    {item.quantityOnHand < 0 && (
+                      <p className="text-[10px] font-bold text-red-600 dark:text-red-400">⚠️ Negative Stock (Pending Purchase Entry)</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
