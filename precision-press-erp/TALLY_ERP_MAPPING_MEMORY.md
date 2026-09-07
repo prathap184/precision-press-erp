@@ -920,13 +920,12 @@ The ERP classifies products into two operational workflows based on **Tally Unit
 - **System Tray Icon**: Sits in the Windows Notification Area / Taskbar Tray overflow menu (`^` arrow next to clock).
 - **Auto-Supervision**: Background timer monitors `TallyConnector.exe`. If the process exits unexpectedly, it automatically restarts it to ensure zero dropped syncs.
 
-### B. Context Menu Controls (Right-Click Tray Menu)
-1. **● Status: Running (PID: XXXXX)**: Live sync status indicator.
-2. **📄 Open Logs**: Opens `logs\connector.log` in Notepad for instant verification.
-3. **📁 Open Folder**: Opens the `Precision-Tally-Sync` directory in File Explorer.
-4. **🔄 Restart Sync**: Gracefully terminates and restarts the connector engine.
-5. **🚀 Start with Windows (Auto-Start)**: Checkmark toggle registering the app in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
-6. **❌ Exit Sync**: Terminates the entire sync process tree and unloads the tray icon cleanly.
+### C. Live Production Deployment & Verification
+- **Compiled Executable**: `C:\Users\jprat\OneDrive\Desktop\Precision-Tally-Sync\PrecisionTallyTray.exe`
+- **1-Click Desktop Launcher**: `C:\Users\jprat\OneDrive\Desktop\Start-Precision-Tally-Sync.exe`
+- **Active Registry Auto-Start**: `HKCU\Software\Microsoft\Windows\CurrentVersion\Run\PrecisionTallyTray` points to `PrecisionTallyTray.exe`.
+- **Desktop System Tray Verification**: Verified live in Windows Notification Area (`^` tray overflow menu) displaying status `● Status: Running (PID: 25620)` with zero console popups.
+- **Source Code Backup**: `tally-connector/TrayApp.cs` maintained in Git repository.
 
 ---
 *Memory Updated & Persisted on: 2026-09-07 (End-to-End Verified & Production-Ready)*
