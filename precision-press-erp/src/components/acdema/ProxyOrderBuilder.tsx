@@ -720,6 +720,7 @@ ${parts.join(', ')}`;
             height,
             heightUnit: row.heightUnit,
             quantity,
+            unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
             eyeletType: row.eyeletType,
             eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
             rate: effectiveRate,
@@ -729,6 +730,7 @@ ${parts.join(', ')}`;
             pricingSnapshot: {
               productId: row.productId,
               productName: row.productName || product?.name || 'Item',
+              unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
               baseRate: product?.baseRate || 0,
               manualRate: row.manualRate !== undefined ? effectiveRate : undefined,
               eyeletPricing: product?.eyeletPricing,

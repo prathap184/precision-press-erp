@@ -370,14 +370,15 @@ export async function generateInvoiceFromChildOrders(
              const fbItem = (typeof order.items === 'string' ? JSON.parse(order.items) : order.items)?.[0] || {};
              const specs = fbItem.specs || {};
              const pricing = fbItem.pricingSnapshot || {};
-             return {
-                productName: order.productName || 'Printing Services',
-                quantity: specs.quantity || 1,
-                sqft: specs.sqft || 0,
-                rate: pricing.baseRate || 0,
-                amount: order.amounts?.subtotal || order.amounts?.productTotal || 0,
-                gstPercent: (Number(order.cgst_percentage) || 0) + (Number(order.sgst_percentage) || 0) + (Number(order.igst_percentage) || 0)
-             };
+              return {
+                 productName: order.productName || 'Printing Services',
+                 quantity: specs.quantity || 1,
+                 unit: specs.unit || pricing.unit || 'N',
+                 sqft: specs.sqft || 0,
+                 rate: pricing.baseRate || 0,
+                 amount: order.amounts?.subtotal || order.amounts?.productTotal || 0,
+                 gstPercent: (Number(order.cgst_percentage) || 0) + (Number(order.sgst_percentage) || 0) + (Number(order.igst_percentage) || 0)
+              };
           }),
           subTotal: totalTaxable,
           cgst: totalCgst,

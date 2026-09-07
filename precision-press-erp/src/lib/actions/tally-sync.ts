@@ -1004,6 +1004,7 @@ export async function buildSalesInvoicePayload(
     items: items.map(item => ({
       productName: item.productName || 'Printing Services',
       quantity: item.specs?.quantity || 1,
+      unit: item.specs?.unit || item.pricingSnapshot?.unit || 'N',
       sqft: item.specs?.sqft || 0,
       rate: item.pricingSnapshot?.baseRate || 0,
       amount: item.pricingSnapshot?.subTotal || 0,

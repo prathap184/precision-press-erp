@@ -154,8 +154,8 @@ function buildSalesInvoiceXML(payload, options = {}) {
  <UDF:BATCHVCHWIDTHUNITUDF DESC="\`BatchVchWidthUnitUDF\`">${widthUnit}</UDF:BATCHVCHWIDTHUNITUDF>
 </UDF:BATCHVCHWIDTHUNITUDF.LIST>`;
       } else {
-        billedQtyStr = ` ${pcs.toFixed(2)} N`;
-        rateStr = `${ratePerPiece.toFixed(2)}/N`;
+        billedQtyStr = ` ${pcs.toFixed(2)} ${unit}`;
+        rateStr = `${ratePerPiece.toFixed(2)}/${unit}`;
 
         udfTags = `
 <UDF:VCHLENGTHUDF.LIST DESC="\`VchLengthUDF\`" ISLIST="YES" TYPE="Number" INDEX="1501">

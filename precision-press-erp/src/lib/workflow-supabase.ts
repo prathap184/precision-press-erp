@@ -736,6 +736,7 @@ export async function createOrder(
             width: item.width || 0,
             height: item.height || 0,
             quantity: item.quantity || 1,
+            unit: item.unit || item.pricingSnapshot?.unit || 'N',
             sqft: (item.width || 0) * (item.height || 0),
             widthUnit: item.widthUnit || 'FT',
             heightUnit: item.heightUnit || 'FT'
