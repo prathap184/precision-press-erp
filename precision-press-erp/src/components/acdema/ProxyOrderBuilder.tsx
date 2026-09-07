@@ -762,7 +762,7 @@ ${parts.join(', ')}`;
               productId: row.productId,
               productName: row.productName || product?.name || 'Item',
               unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
-              baseRate: product?.baseRate || 0,
+              baseRate: (effectiveRate > 0 ? effectiveRate : (product?.baseRate || 0)),
               manualRate: row.manualRate !== undefined ? effectiveRate : undefined,
               eyeletPricing: product?.eyeletPricing,
               deliveryPricing: product?.deliveryPricing,

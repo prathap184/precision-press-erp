@@ -131,7 +131,20 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
         const defaultMode = (matchedInventory as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
         const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
         const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
-        const baseRate = parseFloat((pricingSnap.baseRate ?? i.unitPrice ?? i.price ?? i.rate ?? 0).toString()) || 0;
+        const baseRate = parseFloat(
+          (
+            (pricingSnap.manualRate !== undefined && pricingSnap.manualRate !== '' && Number(pricingSnap.manualRate) > 0 ? pricingSnap.manualRate : null) ??
+            (i.rate !== undefined && i.rate !== '' && Number(i.rate) > 0 ? i.rate : null) ??
+            (pricingSnap.baseRate !== undefined && pricingSnap.baseRate !== '' && Number(pricingSnap.baseRate) > 0 ? pricingSnap.baseRate : null) ??
+            (i.unitPrice !== undefined && i.unitPrice !== '' && Number(i.unitPrice) > 0 ? i.unitPrice : null) ??
+            (i.price !== undefined && i.price !== '' && Number(i.price) > 0 ? i.price : null) ??
+            pricingSnap.baseRate ??
+            i.rate ??
+            i.unitPrice ??
+            i.price ??
+            0
+          ).toString()
+        ) || 0;
         const totalFinish = parseFloat(finishAmount || '0');
         const resolvedInvId = matchedInventory?.id || (inventory.some(inv => inv.id === targetId) ? targetId : '');
 
