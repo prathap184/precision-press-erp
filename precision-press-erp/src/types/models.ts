@@ -366,8 +366,12 @@ export interface OrderItem {
 
 export interface Product {
   id: string; // The ID input by user (e.g. 6000)
+  internal_db_id?: string;
+  code?: string;
+  sku?: string;
   name: string;
   category: string;
+  unit_of_measure?: string;
   baseRate: number;
   current_stock?: number;
   

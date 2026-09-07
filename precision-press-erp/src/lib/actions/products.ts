@@ -7,12 +7,23 @@ import { invalidateProduct, invalidateProductsList } from "@/lib/cache/products"
 
 function parseProduct(row: any): Product {
   const meta = row.metadata || {};
+  const uom = (row.unit_of_measure || row.tally_uom || 'N').trim();
+  const isSqftOrFt = uom.toLowerCase() === 'sqft' || uom.toLowerCase() === 'ft';
+  // Mode A: Any discrete unit (Pkt, N, No, pc, Box, Set, Sh, R, Tube, Kg, lt, ltr, Mt, ml, etc.)
+  // Mode B: Dimension-based sqft / ft
+  const isDirectSelling = meta.isDirectSelling || !isSqftOrFt || row.category === 'LED- SMPS';
+  const defaultMode: 'A' | 'B' = isDirectSelling ? 'A' : 'B';
+
   return {
     ...row,
     id: row.sku || row.code || row.id, // Fallback to id if sku/code empty
+    internal_db_id: row.id,
+    code: row.code,
+    sku: row.sku,
     name: row.name,
     category: row.category,
     baseRate: meta.baseRate != null ? Number(meta.baseRate) : ((row.sale_price != null) ? (Number(row.sale_price) / 100) : (row.base_rate || 0)),
+    current_stock: row.quantity_on_hand != null ? Number(row.quantity_on_hand) : undefined,
     printerCategory: meta.printerCategory || row.printer_category,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -40,9 +51,10 @@ function parseProduct(row: any): Product {
     },
     workflowSteps: row.workflow_steps || [],
     status: row.is_active ? 'ACTIVE' : 'INACTIVE',
-    tally_billing_mode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || (meta.isDirectSelling || row.unit_of_measure === 'N' || row.tally_uom === 'N' || row.category === 'LED- SMPS' ? 'A' : 'B'),
-    tallyBillingMode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || (meta.isDirectSelling || row.unit_of_measure === 'N' || row.tally_uom === 'N' || row.category === 'LED- SMPS' ? 'A' : 'B'),
-    tally_uom: row.tally_uom || row.unit_of_measure,
+    unit_of_measure: uom,
+    tally_billing_mode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
+    tallyBillingMode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
+    tally_uom: uom,
     tally_alt_uom: row.tally_alt_uom,
   };
 }

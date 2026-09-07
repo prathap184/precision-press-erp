@@ -642,12 +642,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   const isOpen = openRowId === row.id;
                                   const qTerm = searchQuery.trim().toLowerCase();
                                   const isExactCurrent = qTerm === (selProd?.name || '').toLowerCase();
-                                  const matched = (qTerm && !isExactCurrent)
-                                    ? products.filter((p: any) => 
-                                        p.name.toLowerCase().includes(qTerm) || 
-                                        p.id.toString().toLowerCase().includes(qTerm) ||
-                                        (p.category && p.category.toLowerCase().includes(qTerm))
-                                      )
+                                  const qTokens = qTerm.split(/\s+/).filter(Boolean);
+                                  const matched = (qTokens.length > 0 && !isExactCurrent)
+                                    ? products.filter((p: any) => {
+                                        const target = `${p.name || ''} ${p.id || ''} ${p.code || ''} ${p.sku || ''} ${p.category || ''}`.toLowerCase();
+                                        return qTokens.every(tok => target.includes(tok));
+                                      })
                                     : products;
 
                                   let runningIdx = 0;
@@ -838,8 +838,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                       >
                                                         <div className="min-w-0 flex-1">
                                                           <div className="text-xs font-bold truncate leading-tight">{p.name}</div>
-                                                          <div className={`text-[10px] mt-0.5 font-medium ${isHighlighted ? 'text-blue-100' : 'text-slate-400'}`}>
-                                                            ₹{p.baseRate?.toFixed(2)} / sq.ft • GST {p.gst_rate || 18}%
+                                                          <div className={`text-[10px] mt-0.5 font-medium flex items-center gap-1.5 flex-wrap ${isHighlighted ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                            <span>
+                                                              ₹{p.baseRate?.toFixed(2)} / {((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'sqft').toLowerCase() === 'sqft' ? 'sq.ft' : ((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'N')}
+                                                            </span>
+                                                            <span>•</span>
+                                                            <span>GST {p.gst_rate || 18}%</span>
+                                                            {p.current_stock !== undefined && (
+                                                              <>
+                                                                <span>•</span>
+                                                                <span className={p.current_stock < 0 ? (isHighlighted ? 'text-amber-200 font-bold' : 'text-red-500 font-bold') : ''}>
+                                                                  {p.current_stock.toLocaleString()} {(p as any)?.unit_of_measure || (p as any)?.tally_uom || 'N'} in stock
+                                                                </span>
+                                                              </>
+                                                            )}
                                                           </div>
                                                         </div>
                                                         <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider flex-shrink-0 ${
@@ -849,7 +861,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                               ? 'bg-blue-200/80 text-blue-800'
                                                               : 'bg-slate-100 text-slate-500'
                                                         }`}>
-                                                          {p.id}
+                                                          {p.code || p.id}
                                                         </div>
                                                       </div>
                                                     );

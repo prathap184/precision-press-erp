@@ -568,7 +568,14 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                 const selProd = products.find((p: any) => p.id === row.productId);
                                 const isOpen = openRowId === row.id;
                                 const qTerm = searchQuery.trim().toLowerCase();
-                                const matched = qTerm ? products.filter((p: any) => p.name.toLowerCase().includes(qTerm) || p.id.toString().toLowerCase().includes(qTerm)) : products;
+                                const isExactCurrent = qTerm === (selProd?.name || '').toLowerCase();
+                                const qTokens = qTerm.split(/\s+/).filter(Boolean);
+                                const matched = (qTokens.length > 0 && !isExactCurrent)
+                                  ? products.filter((p: any) => {
+                                      const target = `${p.name || ''} ${p.id || ''} ${p.code || ''} ${p.sku || ''} ${p.category || ''}`.toLowerCase();
+                                      return qTokens.every(tok => target.includes(tok));
+                                    })
+                                  : products;
 
                                 return (
                                   <div id={`error-row-${row.id}-product`} className="relative w-full min-w-[140px]">
@@ -744,11 +751,28 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                           : 'hover:bg-slate-50 text-slate-700 font-bold'
                                                     }`}
                                                   >
-                                                    <span className="truncate pr-2 text-xs">{p.name}</span>
+                                                    <div className="min-w-0 flex-1">
+                                                      <div className="text-xs font-bold truncate leading-tight">{p.name}</div>
+                                                      <div className={`text-[10px] mt-0.5 font-medium flex items-center gap-1.5 flex-wrap ${isHighlighted ? 'text-blue-100' : 'text-slate-400'}`}>
+                                                        <span>
+                                                          ₹{p.baseRate?.toFixed(2)} / {((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'sqft').toLowerCase() === 'sqft' ? 'sq.ft' : ((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'N')}
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span>GST {p.gst_rate || 18}%</span>
+                                                        {p.current_stock !== undefined && (
+                                                          <>
+                                                            <span>•</span>
+                                                            <span className={p.current_stock < 0 ? (isHighlighted ? 'text-amber-200 font-bold' : 'text-red-500 font-bold') : ''}>
+                                                              {p.current_stock.toLocaleString()} {(p as any)?.unit_of_measure || (p as any)?.tally_uom || 'N'} in stock
+                                                            </span>
+                                                          </>
+                                                        )}
+                                                      </div>
+                                                    </div>
                                                     <span className={`text-[9px] font-black tracking-wider px-1.5 py-0.5 rounded-md flex-shrink-0 ${
                                                       isHighlighted ? 'bg-blue-700 text-white' : 'text-slate-400 bg-slate-100'
                                                     }`}>
-                                                      {p.id}
+                                                      {p.code || p.id}
                                                     </span>
                                                   </div>
                                                 );
