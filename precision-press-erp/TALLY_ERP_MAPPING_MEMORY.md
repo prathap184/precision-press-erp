@@ -809,7 +809,124 @@ The ERP classifies products into two operational workflows based on **Tally Unit
    - `.gitignore` completely excludes `.exe` binaries, `.env`, `.enc`, and debug XML logs.
 
 ---
+---
 *Memory Updated & Persisted on: 2026-09-04 (End-to-End Verified & Production-Ready)*
 
+---
 
+## 📦 29. Inventory Stock-Only Simplification & Mode A/B Physical Quantity Focus
 
+> **Purpose**: Eliminate confusing cost prices and master margins from warehouse and inventory views, focusing strictly on real physical stock remaining in units/sq.ft.
+
+### A. Architectural Changes (`/accounting/inventory` & `/accounting/inventory/[id]`)
+- **Price Clutter Removed**:
+  - Removed internal selling prices (`₹16,833.13 / N`), cost prices (`Cost ₹15,256.25`), and master base rates from the inventory tables and item detail views.
+  - Removed top valuation cards: `VALUE OF STOCK` and `AVG. PROFIT MARGIN`.
+- **Physical Stock Quantity Focus**:
+  - Displays strictly real physical quantity on hand: `sqft`, `N` (Pieces), `Boxes`, `Sets`, `Litres`.
+  - Visual stock badges: `Available In Stock`, `Running Low` (below reorder point), and `Out of Stock`.
+  - Top Physical Inventory Metric Cards:
+    1. **Total Stock Items**: 1,801 Items
+    2. **Total SQ.FT in Stock (Mode B)**: 4,724,051 sq.ft
+    3. **Total Units in Stock (Mode A)**: 8,458,349 Units
+    4. **Low / Out of Stock Items**: Real-time threshold monitoring
+
+### B. Mode A vs Mode B Stock Synchronization
+- **Mode A (Piece / Retail)**: Backfilled and aligned with units `N`, `Pcs`, `Box`, `Set`. Auto-tagged with `isDirectSelling = true` to bypass print/fabrication steps.
+- **Mode B (Dimension / Sq.Ft)**: Linked to square footage calculations ($W \times H$) for sheet, flex, acrylic, and ACP cutting.
+
+---
+
+## 📝 30. Order & Quotation Dynamic Editable Rates & Tally Item Descriptions
+
+> **Purpose**: Bring Proxy Order Builder (`/proxy-order`), Quotation Builder (`/quotation-builder`), and the Sales Invoice Drawer to 100% operational parity with Tally Prime's voucher entry.
+
+### A. Dynamic Rate Overrides per Row
+- **Zero Locked Prices**: In Tally Prime, master catalog rates are default suggestions, not hard locks.
+- **Per-Row Rate Editing**: The billing operator can freely click or keyboard-focus into the `Rate` input on any row to type or override the unit price. All totals, item taxes, and ledger balances recompute reactively in real time.
+
+### B. Additional Item Description (Tally Notes)
+- Added an item description input directly under each selected line item.
+- Operates identically to Tally's item narration prompt.
+- Saves directly to `order_items.description` in the database and propagates to the final sales voucher.
+
+---
+
+## ⌨️ 31. High-Speed 100% Keyboard Traversal & "End of List" Auto-Advance Engine
+
+> **Purpose**: Allow billing operators to complete high-volume orders without ever touching the mouse.
+
+### A. Line-Item Sequential Flow
+- **Dropdown Item Selection**:
+  - Typing in the item search automatically highlights the first search match.
+  - Pressing **`Space`** or **`Enter`** selects the highlighted item immediately and advances focus to the next field.
+- **Continuous Bidirectional Traversal**:
+  $$\text{Item Search} \longleftrightarrow \text{Description} \longleftrightarrow \text{Dimensions (W}\times\text{H)} \longleftrightarrow \text{Quantity} \longleftrightarrow \text{Rate} \longleftrightarrow \text{Tax} \longleftrightarrow \text{File/Browse} \longleftrightarrow \text{Delete Button}$$
+  - **`Enter`**: Advances forward across inputs.
+  - **`ArrowLeft` / `Backspace`**: Steps backward to previous inputs without trapping focus.
+- **File, Browse & Delete Button Keyboard Handling**:
+  - `Enter` steps into File Upload $\rightarrow$ Browse $\rightarrow$ Delete.
+  - `Space` on Browse opens the native Windows file picker.
+  - `Space` on Delete removes the row (guarded: if only 1 item row exists, deletion is prevented).
+
+### B. Auto-Row Creation & "End of List" Detection
+- Pressing `Enter` on the last field of an item row creates a new item row immediately and focuses the new item search box.
+- Pressing `Enter` on an empty item search box acts as **"End of List"** (mirroring Tally Prime), concluding item entry and cleanly transitioning focus down to the Payment Terminal.
+
+---
+
+## 📊 32. Accounting Ledger Breakdown with Itemized GST & `PRICING DETAILS` Banner
+
+### A. Tally-Style 2-Column Accounting Breakdown
+- Restructured order totals from simple summary cards into a clean 2-column Tally accounting voucher ledger view.
+- Left column: Detailed accounting breakdown and customer notes.
+- Right column: Cleanly formatted debit/credit ledger lines with aligned amounts.
+
+### B. Detailed GST Breakdown & Header
+- **`PRICING DETAILS` Header**: Bold header banner with clean top spacing (`mt-4 pt-2`) separating item rows from accounting ledgers.
+- **Itemized GST**: Displays individual Central Tax (CGST) and State Tax (SGST) amounts broken down per item line (e.g. showing item tax contributions) rather than a single opaque lump sum.
+- Removed arbitrary vertical divider lines for a clean, professional accounting presentation.
+
+---
+
+## 🚪 33. Customer Address Modal, Zero-Credit Rule & Harmonized Payment/Logistics Selectors
+
+### A. Address Modal Keyboard Shortcuts
+- Pressing **`Space`** while on the customer address field opens the address selection modal.
+- Pressing **`Backspace`** while the modal is open immediately dismisses and closes the modal without corrupting the form.
+- Pressing **`Enter`** advances past the address field to the next input.
+
+### B. Customer Credit / Advance Availability Rule
+- If the selected customer has an available credit/advance balance of **₹0**, the **Credit** button in the Payment Terminal is automatically hidden.
+- The Credit button is only visible when the customer has a positive ledger credit/advance balance.
+
+### C. Harmonized Payment Terminal & Logistics Navigation
+- **Payment Terminal**:
+  - First focused element upon entering the terminal is the **Cash** payment box.
+  - **`Enter`**: Cycles sequentially through payment options (`Cash` $\rightarrow$ `UPI` $\rightarrow$ `Bank Transfer` $\rightarrow$ `Cheque` $\rightarrow$ `Credit`).
+  - **`Space`**: Selects the active payment method and auto-advances focus to the payment amount / transaction reference field.
+- **Logistics & Delivery Provider**:
+  - Harmonized to behave **identically to payment selection**: `Enter` cycles through delivery methods/carriers, and **`Space`** selects the carrier and auto-advances focus to tracking and shipping fee inputs.
+
+---
+
+## 🖥️ 34. Native Windows System Tray Companion (`PrecisionTallyTray.exe`) & Auto-Start Configuration
+
+> **Purpose**: Allow the accounts PC to run the Tally Connector 24/7 silently in the background with zero visible terminal windows, automatic Windows startup, and 1-click tray controls.
+
+### A. System Tray Companion Architecture
+- **Host Binary**: `PrecisionTallyTray.exe` (~25 KB compiled via native Windows .NET `csc.exe`).
+- **Zero Visible Windows**: Spawns `TallyConnector.exe` as a child process with `WindowStyle = ProcessWindowStyle.Hidden` and `CreateNoWindow = true`.
+- **System Tray Icon**: Sits in the Windows Notification Area / Taskbar Tray overflow menu (`^` arrow next to clock).
+- **Auto-Supervision**: Background timer monitors `TallyConnector.exe`. If the process exits unexpectedly, it automatically restarts it to ensure zero dropped syncs.
+
+### B. Context Menu Controls (Right-Click Tray Menu)
+1. **● Status: Running (PID: XXXXX)**: Live sync status indicator.
+2. **📄 Open Logs**: Opens `logs\connector.log` in Notepad for instant verification.
+3. **📁 Open Folder**: Opens the `Precision-Tally-Sync` directory in File Explorer.
+4. **🔄 Restart Sync**: Gracefully terminates and restarts the connector engine.
+5. **🚀 Start with Windows (Auto-Start)**: Checkmark toggle registering the app in `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
+6. **❌ Exit Sync**: Terminates the entire sync process tree and unloads the tray icon cleanly.
+
+---
+*Memory Updated & Persisted on: 2026-09-07 (End-to-End Verified & Production-Ready)*
