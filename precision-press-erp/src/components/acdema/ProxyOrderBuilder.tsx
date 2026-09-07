@@ -376,6 +376,18 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
     else if (selectedCustomer.address) {
       setShippingAddress(selectedCustomer.address);
     }
+    // Fall back to City / State / Pincode when street address is missing
+    else if ((selectedCustomer as any).billing_city || (selectedCustomer as any).city || (selectedCustomer as any).billing_state || selectedCustomer.state) {
+      const cust = selectedCustomer as any;
+      const parts = [
+        cust.billing_city || cust.city,
+        cust.billing_state || cust.state || cust.place_of_supply,
+        cust.billing_pincode || cust.pincode
+      ].filter(Boolean);
+      if (parts.length > 0) {
+        setShippingAddress(parts.join(', '));
+      }
+    }
     
     // Reset voucher when customer changes
     setApplyVoucher(false);

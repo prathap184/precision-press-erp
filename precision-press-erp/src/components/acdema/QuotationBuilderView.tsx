@@ -442,7 +442,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
 
                   {deliveryType !== 'selfPickup' && (
                     <div className="mt-4 space-y-2">
-                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address) ? (
+                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address || (selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state) ? (
                         <>
                           <select
                             className="h-12 w-full rounded-lg border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-700 outline-none focus:border-slate-400"
@@ -454,6 +454,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             {selectedCustomer?.billing_address_line1 && (
                               <option value={[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}>
                                 Primary: {[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}
+                              </option>
+                            )}
+
+                            {!selectedCustomer?.billing_address_line1 && ((selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state) && (
+                              <option value={[(selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city, (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply, (selectedCustomer as any)?.billing_pincode || (selectedCustomer as any)?.pincode].filter(Boolean).join(', ')}>
+                                Registered Location: {[(selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city, (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply, (selectedCustomer as any)?.billing_pincode || (selectedCustomer as any)?.pincode].filter(Boolean).join(', ')}
                               </option>
                             )}
                             

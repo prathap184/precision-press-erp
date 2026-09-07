@@ -284,6 +284,16 @@ export function QuotationBuilder() {
       setShippingAddress(parts.join(', '));
     } else if (selectedCustomer.address) {
       setShippingAddress(selectedCustomer.address);
+    } else if ((selectedCustomer as any).billing_city || (selectedCustomer as any).city || (selectedCustomer as any).billing_state || selectedCustomer.state) {
+      const cust = selectedCustomer as any;
+      const parts = [
+        cust.billing_city || cust.city,
+        cust.billing_state || cust.state || cust.place_of_supply,
+        cust.billing_pincode || cust.pincode
+      ].filter(Boolean);
+      if (parts.length > 0) {
+        setShippingAddress(parts.join(', '));
+      }
     }
     
     setApplyVoucher(false);
