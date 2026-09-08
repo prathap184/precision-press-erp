@@ -274,14 +274,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
       const cleanUom = rawUom.replace(/[\s\._-]/g, '');
       const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
-      const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
-      const currentMode = row.billingMode || defaultMode;
+      const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
       const isSqftModeB = isSqft && currentMode === 'B';
+      const isSqftModeA = isSqft && currentMode === 'A';
 
       if (!row.productId) {
         errors[`row-${row.id}-product`] = `Item #${idx + 1}: Please select a product`;
       }
-      if (isSqftModeB) {
+      if (isSqft) {
         if (!row.width || Number(row.width) <= 0) {
           errors[`row-${row.id}-width`] = `Item #${idx + 1}: Width is required`;
         }
@@ -289,8 +289,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           errors[`row-${row.id}-height`] = `Item #${idx + 1}: Length is required`;
         }
       }
-      if (!row.quantity || Number(row.quantity) <= 0) {
-        errors[`row-${row.id}-quantity`] = `Item #${idx + 1}: Quantity must be at least 1`;
+      if (!isSqftModeA) {
+        if (!row.quantity || Number(row.quantity) <= 0) {
+          errors[`row-${row.id}-quantity`] = `Item #${idx + 1}: Quantity must be at least 1`;
+        }
       }
     });
 
@@ -621,25 +623,29 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const cleanUom = rawUom.replace(/[\s\._-]/g, '');
                         const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
                         const isDirect = !isSqft;
-                        const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
-                        const currentMode = row.billingMode || defaultMode;
+                        const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
                         const isSqftModeB = isSqft && currentMode === 'B';
+                        const isSqftModeA = isSqft && currentMode === 'A';
                         const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'No';
                         const w = Number(row.width) || 0;
                         const h = Number(row.height) || 0;
-                        const pcs = Math.max(1, Number(row.pcsNo || row.quantity) || 1);
+                        const pcs = isSqftModeA ? 1 : Math.max(1, Number(row.pcsNo || row.quantity) || 1);
                         const wFt = row.widthUnit === 'IN' ? w / 12 : w;
                         const hFt = row.heightUnit === 'IN' ? h / 12 : h;
                         const sqft = isDirect ? 0 : wFt * hFt;
-                        const totalBilledSqft = sqft * pcs;
+                        const totalBilledSqft = isSqftModeA ? sqft : sqft * pcs;
                         const productBaseRate = Number(product?.baseRate) || 0;
                         const baseRate = row.manualRate !== undefined && row.manualRate !== '' ? Number(row.manualRate) || 0 : productBaseRate;
                         const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
-                        const amount = calculateRowSubtotal({
-                          width: wFt, height: hFt, quantity: isDirect ? (Number(row.quantity) || 1) : pcs, rate: baseRate,
-                          eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : pcs, eyeletRate,
-                          isDirectSelling: isDirect,
-                        });
+                        const amount = isDirect
+                          ? Number(((Number(row.quantity) || 1) * baseRate).toFixed(2))
+                          : isSqftModeA
+                            ? Number((sqft * baseRate + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
+                            : calculateRowSubtotal({
+                                width: wFt, height: hFt, quantity: pcs, rate: baseRate,
+                                eyeletCount: row.eyeletType === 'NONE' ? 0 : pcs, eyeletRate,
+                                isDirectSelling: false,
+                              });
                         const gstRate = product?.gst_rate || 18;
 
                         return (
@@ -1098,7 +1104,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         e.preventDefault();
                                         const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
                                         if (heightUnitBtn) heightUnitBtn.focus();
-                                        else {
+                                        else if (isSqftModeA) {
+                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                          if (rateSqft) rateSqft.focus();
+                                        } else {
                                           const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
                                           const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                           if (pcsInput) pcsInput.focus();
@@ -1126,10 +1135,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         if (e.key === "Enter") {
                                           e.preventDefault();
                                           setOpenUnitPickerId(null);
-                                          const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                          if (pcsInput) pcsInput.focus();
-                                          else if (qtyInput) qtyInput.focus();
+                                          if (isSqftModeA) {
+                                            const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                            if (rateSqft) rateSqft.focus();
+                                          } else {
+                                            const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                            if (pcsInput) pcsInput.focus();
+                                            else if (qtyInput) qtyInput.focus();
+                                          }
                                         } else if (e.key === " " || e.key === "Spacebar") {
                                           e.preventDefault();
                                           const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
@@ -1199,7 +1213,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
-                                      const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
+                                      const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
                                       if (rateInput) rateInput.focus();
                                     } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
@@ -1222,6 +1236,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             <td className="py-1 px-2 text-center text-xs font-bold tabular-nums">
                               {isSqftModeB ? (
                                 <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
+                              ) : isSqftModeA ? (
+                                <span className="text-slate-300 font-bold">—</span>
                               ) : (
                                 <div className="inline-flex items-center justify-center">
                                   <input
@@ -1254,9 +1270,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               )}
                             </td>
-                            {/* Rate/SqFt Column — EDITABLE like Tally */}
+                            {/* Rate/SqFt Column — EDITABLE in Mode A like Tally */}
                             <td className="py-1 px-2 text-center tabular-nums">
-                              {isSqftModeB ? (
+                              {isSqftModeA ? (
                                 <input
                                   id={`row-${row.id}-rate-sqft`}
                                   value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
@@ -1285,24 +1301,26 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       }
                                     } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
-                                      const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                      if (pcsInput) pcsInput.focus();
+                                      const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                      if (heightUnitBtn) heightUnitBtn.focus();
+                                      else {
+                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                        if (heightInput) heightInput.focus();
+                                      }
                                     }
                                   }}
                                   placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
-                                  className="h-9 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
-                                  title="Rate per sq.ft — editable (like Tally)"
+                                  className="h-9 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
+                                  title="Rate per sq.ft in Mode A — editable (like Tally)"
                                 />
                               ) : (
                                 <span className="text-slate-300 font-bold">—</span>
                               )}
                             </td>
-                            {/* Rate per (unit) Column — EDITABLE like Tally */}
+                            {/* Rate per (unit) Column — EDITABLE in Mode B & Discrete like Tally */}
                             <td className="py-1 px-2 text-center tabular-nums">
-                              {isSqftModeB ? (
-                                <span className="text-emerald-700 font-bold text-xs">
-                                  {row.manualRate !== undefined ? Number(row.manualRate || 0).toFixed(2) : (baseRate > 0 ? baseRate.toFixed(2) : '—')} sqft
-                                </span>
+                              {isSqftModeA ? (
+                                <span className="text-slate-300 font-bold">—</span>
                               ) : (
                                 <div className="inline-flex items-center gap-1">
                                   <input
@@ -1333,15 +1351,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                        if (qtyInput) qtyInput.focus();
+                                        if (isSqftModeB) {
+                                          const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                          if (pcsInput) pcsInput.focus();
+                                        } else {
+                                          const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                          if (qtyInput) qtyInput.focus();
+                                        }
                                       }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
-                                    className="h-9 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
+                                    className="h-9 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
                                     title="Rate per unit — editable (like Tally)"
                                   />
-                                  <span className="text-[10px] text-slate-500 font-bold">{displayUnit}</span>
+                                  <span className="text-[10px] text-slate-500 font-bold">{isSqftModeB ? 'sqft' : displayUnit}</span>
                                 </div>
                               )}
                             </td>
