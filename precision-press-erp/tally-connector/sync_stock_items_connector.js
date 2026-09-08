@@ -249,15 +249,17 @@ async function runStockSync() {
     const altUom      = (rawAltUom && !rawAltUom.includes('Not Applicable')) ? rawAltUom : null;
     const description = descM ? clean(descM[1]) : null;
 
-    // Determine Calculation Type and Default Billing Mode:
-    // SQFT: Area-based items (Flex, Vinyl, Acrylic, etc.) -> default Mode B (SqFt billing), stock tracked in sq.ft
-    // QTY: Unit-based items (Tape, Ink, Frames, Box, Standee, etc.) -> locked Mode A (Piece billing), stock tracked in Units
+    // Extract exact billing mode from Tally UDF tag if present
+    const mUdf = body.match(/<UDF:STKITEMSIZESBILLINGTYPE[^>]*>([^<]+)<\/UDF:STKITEMSIZESBILLINGTYPE>/i);
+    const mDirect = body.match(/<STKITEMSIZESBILLINGTYPE>([^<]+)<\/STKITEMSIZESBILLINGTYPE>/i);
+    const tagVal = (mUdf ? mUdf[1] : (mDirect ? mDirect[1] : '')).trim().toUpperCase();
+
     const hasSqftInUnit = /sqft|sq\.ft|sqf/i.test(uom) || /sqft|sq\.ft|sqf/i.test(rawAltUom);
     const hasSqftInBal = (openBalM && /sqft|sq\.ft|sqf/i.test(openBalM[1])) || (openRateM && /sqft|sq\.ft|sqf/i.test(openRateM[1]));
     const isSqft = hasSqftInUnit || hasSqftInBal;
-    const normalizedUom = isSqft ? 'sqft' : (uom && !uom.includes('Not Applicable') ? uom : 'N');
+    const normalizedUom = isSqft ? 'sqft' : (uom && !uom.includes('Not Applicable') ? uom : 'No');
     const isPieceItem = !isSqft;
-    const billingMode = isSqft ? 'B' : 'A';
+    const billingMode = tagVal === 'A' ? 'A' : 'B';
 
     // Extract LATEST active HSN code
     const hsnMatches = [...body.matchAll(/<HSNCODE>([^<]+)<\/HSNCODE>/gi)];
