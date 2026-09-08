@@ -200,12 +200,14 @@ function buildSalesInvoiceXML(payload, options = {}) {
 </UDF:BATCHVCHWIDTHUNITUDF.LIST>`;
       }
     } else {
-      // MODE B: Direct Selling / Ready Goods / Off-The-Shelf Retail (Cable Ties, Tapes, etc.)
+      // No dimensions — use the explicit billingMode if provided, else default to B.
+      // Mode A = billed by pieces/qty, Mode B = direct/retail selling.
+      const nodimsMode = billingMode; // already set from item.billingMode or fallback above
       billedQtyStr = ` ${qty.toFixed(2)} ${unit}`;
       rateStr = `${rate.toFixed(2)}/${unit}`;
       udfTags = `
 <UDF:VCHITEMSIZESBILLINGTYPE.LIST DESC="\`VchItemSizesBillingType\`" ISLIST="YES" TYPE="String" INDEX="6556">
- <UDF:VCHITEMSIZESBILLINGTYPE DESC="\`VchItemSizesBillingType\`">B</UDF:VCHITEMSIZESBILLINGTYPE>
+ <UDF:VCHITEMSIZESBILLINGTYPE DESC="\`VchItemSizesBillingType\`">${nodimsMode}</UDF:VCHITEMSIZESBILLINGTYPE>
 </UDF:VCHITEMSIZESBILLINGTYPE.LIST>`;
     }
 

@@ -292,6 +292,10 @@ export async function POST(request: Request) {
         inventoryItemId: isUuid(l.inventoryItemId) ? l.inventoryItemId : null,
         warehouseId: isUuid(l.warehouseId) ? l.warehouseId : null,
         sortOrder: i,
+        // Tally billing mode fields — must be preserved so the xml-builder can
+        // set Mode A (pieces) vs Mode B (sqft) correctly in the Tally voucher.
+        billingMode: l.billingMode || null,
+        pcsNo: l.pcsNo ?? null,
       };
     });
 
@@ -704,6 +708,12 @@ export async function POST(request: Request) {
           sgstRate: l.sgstRate || 9,
           cgstAmount: (l.cgstAmount || 0) / 100,
           sgstAmount: (l.sgstAmount || 0) / 100,
+          // Billing mode — critical for correct Mode A (pieces) vs Mode B (sqft) in Tally
+          billingMode: l.billingMode || null,
+          pcsNo: l.pcsNo ?? null,
+          width: (l.width || 0),
+          length: (l.length || 0),
+          sqft: l.sqFt || null,
         })),
         ledgers: {
           salesLedger: "GST SALES",
