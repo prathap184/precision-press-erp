@@ -271,12 +271,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     }
     validRows.forEach((row: any, idx: number) => {
       const product = products.find((p: any) => p.id === row.productId);
-      const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
-      const isDirect = !isSqft;
+      const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
+      const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+      const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
+      const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
+      const currentMode = row.billingMode || defaultMode;
+      const isSqftModeB = isSqft && currentMode === 'B';
+
       if (!row.productId) {
         errors[`row-${row.id}-product`] = `Item #${idx + 1}: Please select a product`;
       }
-      if (!isDirect) {
+      if (isSqftModeB) {
         if (!row.width || Number(row.width) <= 0) {
           errors[`row-${row.id}-width`] = `Item #${idx + 1}: Width is required`;
         }
@@ -612,10 +617,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     <tbody className="divide-y divide-slate-100">
                       {rows.map((row: any, index: number) => {
                         const product = products.find((item: any) => item.id === row.productId);
-                        const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+                        const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
+                        const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+                        const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
                         const isDirect = !isSqft;
                         const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
                         const currentMode = row.billingMode || defaultMode;
+                        const isSqftModeB = isSqft && currentMode === 'B';
+                        const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'No';
                         const w = Number(row.width) || 0;
                         const h = Number(row.height) || 0;
                         const pcs = Math.max(1, Number(row.pcsNo || row.quantity) || 1);
@@ -627,7 +636,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const baseRate = row.manualRate !== undefined && row.manualRate !== '' ? Number(row.manualRate) || 0 : productBaseRate;
                         const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
                         const amount = calculateRowSubtotal({
-                          width: wFt, height: hFt, quantity: pcs, rate: baseRate,
+                          width: wFt, height: hFt, quantity: isDirect ? (Number(row.quantity) || 1) : pcs, rate: baseRate,
                           eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : pcs, eyeletRate,
                           isDirectSelling: isDirect,
                         });
@@ -905,7 +914,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
                                             if (modeBtn) {
                                               modeBtn.focus();
-                                            } else if (currentMode === 'B') {
+                                            } else if (isSqftModeB) {
                                               const widthInput = document.getElementById(`error-row-${row.id}-width`);
                                               if (widthInput) widthInput.focus();
                                             } else {
@@ -946,7 +955,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
-                                      if (currentMode === 'B') {
+                                      if (isSqftModeB) {
                                         const widthInput = document.getElementById(`error-row-${row.id}-width`);
                                         if (widthInput) widthInput.focus();
                                       } else {
@@ -967,7 +976,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   }`}
                                 >
                                   <span className="text-sm font-extrabold">{currentMode}</span>
-                                  <span className="text-[9px] font-bold opacity-90">{currentMode === 'A' ? 'Pcs' : 'SqFt'}</span>
+                                  <span className="text-[9px] font-bold opacity-90">{currentMode === 'A' ? 'Pcs' : (isSqft ? 'SqFt' : displayUnit)}</span>
                                 </span>
                               )}
                             </td>
@@ -1178,7 +1187,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Pcs/No Column */}
                             <td className="py-1 px-2 tabular-nums text-center">
-                              {currentMode === 'B' ? (
+                              {isSqftModeB ? (
                                 <input
                                   id={`error-row-${row.id}-pcs`}
                                   value={row.pcsNo ?? row.quantity ?? '1'}
@@ -1211,7 +1220,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Quantity Column */}
                             <td className="py-1 px-2 text-center text-xs font-bold tabular-nums">
-                              {currentMode === 'B' ? (
+                              {isSqftModeB ? (
                                 <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
                               ) : (
                                 <div className="inline-flex items-center justify-center">
@@ -1241,13 +1250,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     className={`h-10 w-16 rounded-lg border-2 text-center text-xs font-bold transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'}`}
                                     placeholder="Qty"
                                   />
-                                  <span className="ml-1 text-[11px] font-black text-slate-500">{(product as any)?.tally_uom || 'N'}</span>
+                                  <span className="ml-1 text-[11px] font-black text-slate-500">{displayUnit}</span>
                                 </div>
                               )}
                             </td>
                             {/* Rate/SqFt Column — EDITABLE like Tally */}
                             <td className="py-1 px-2 text-center tabular-nums">
-                              {currentMode === 'B' ? (
+                              {isSqftModeB ? (
                                 <input
                                   id={`row-${row.id}-rate-sqft`}
                                   value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
@@ -1290,7 +1299,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Rate per (unit) Column — EDITABLE like Tally */}
                             <td className="py-1 px-2 text-center tabular-nums">
-                              {currentMode === 'B' ? (
+                              {isSqftModeB ? (
                                 <span className="text-emerald-700 font-bold text-xs">
                                   {row.manualRate !== undefined ? Number(row.manualRate || 0).toFixed(2) : (baseRate > 0 ? baseRate.toFixed(2) : '—')} sqft
                                 </span>
@@ -1332,7 +1341,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     className="h-9 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
                                     title="Rate per unit — editable (like Tally)"
                                   />
-                                  <span className="text-[10px] text-slate-500 font-bold">{(product as any)?.tally_uom || 'N'}</span>
+                                  <span className="text-[10px] text-slate-500 font-bold">{displayUnit}</span>
                                 </div>
                               )}
                             </td>
@@ -1342,10 +1351,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   —
                                 </div>
                               ) : (
-                                <div className="flex flex-col gap-1">
+                                <div className="relative">
                                   <select
                                     id={`row-${row.id}-finish-select`}
-                                    value={row.eyeletType}
+                                    value={row.eyeletType || "NONE"}
                                     onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
@@ -1359,7 +1368,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       } else if (e.key === "ArrowLeft") {
                                         e.preventDefault();
-                                        if (currentMode === 'B') {
+                                        if (isSqftModeB) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
                                           if (rateSqft) rateSqft.focus();
                                         } else {
@@ -1402,7 +1411,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         e.preventDefault();
                                         const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
                                         if (finishSelect) finishSelect.focus();
-                                        else if (currentMode === 'B') {
+                                        else if (isSqftModeB) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
                                           if (rateSqft) rateSqft.focus();
                                         } else {

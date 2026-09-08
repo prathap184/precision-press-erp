@@ -130,7 +130,7 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
         const isSqft = matchedInventory?.unitOfMeasure?.toLowerCase() === 'sqft' || (matchedInventory as any)?.tallyUom?.toLowerCase() === 'sqft';
         const defaultMode = (matchedInventory as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
         const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
-        const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
+        const pcsNo = isSqft ? (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString() : '';
         const baseRate = parseFloat(
           (
             (pricingSnap.manualRate !== undefined && pricingSnap.manualRate !== '' && Number(pricingSnap.manualRate) > 0 ? pricingSnap.manualRate : null) ??

@@ -164,10 +164,14 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     }
     validRows.forEach((row: any) => {
       const product = products.find((p: any) => p.id === row.productId);
-      const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
-      const isDirect = !isSqft;
+      const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
+      const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+      const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
+      const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
+      const currentMode = row.billingMode || defaultMode;
+      const isSqftModeB = isSqft && currentMode === 'B';
       if (!row.productId) errors[`row-${row.id}-product`] = 'Product required';
-      if (!isDirect) {
+      if (isSqftModeB) {
         if (!row.width || Number(row.width) <= 0) errors[`row-${row.id}-width`] = 'Width required';
         if (!row.height || Number(row.height) <= 0) errors[`row-${row.id}-height`] = 'Height required';
       }
@@ -545,10 +549,14 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                     <tbody className="divide-y divide-slate-100">
                       {rows.map((row: any, index: number) => {
                         const product = products.find((item: any) => item.id === row.productId);
-                        const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+                        const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
+                        const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+                        const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
                         const isDirect = !isSqft;
                         const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
                         const currentMode = row.billingMode || defaultMode;
+                        const isSqftModeB = isSqft && currentMode === 'B';
+                        const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'No';
                         const w = Number(row.width) || 0;
                         const h = Number(row.height) || 0;
                         const pcs = Math.max(1, Number(row.pcsNo || row.quantity) || 1);
@@ -560,7 +568,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         const baseRate = row.manualRate !== undefined && row.manualRate !== '' ? Number(row.manualRate) || 0 : productBaseRate;
                         const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
                         const amount = calculateRowSubtotal({
-                          width: wFt, height: hFt, quantity: pcs, rate: baseRate,
+                          width: wFt, height: hFt, quantity: isDirect ? (Number(row.quantity) || 1) : pcs, rate: baseRate,
                           eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : pcs, eyeletRate,
                           isDirectSelling: isDirect,
                         });
@@ -810,24 +818,24 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         }}
                                         placeholder="Description / notes (e.g. specs, details)..."
                                         onKeyDown={(e) => {
-                                          if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
-                                            if (modeBtn) {
-                                              modeBtn.focus();
-                                            } else if (currentMode === 'B') {
-                                              const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                              if (widthInput) widthInput.focus();
-                                            } else {
-                                              const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                              if (qtyInput) qtyInput.focus();
-                                            }
-                                          } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                            e.preventDefault();
-                                            const prodInput = document.getElementById(`row-${row.id}-product-input`);
-                                            if (prodInput) prodInput.focus();
-                                          }
-                                        }}
+                                           if (e.key === "Enter") {
+                                             e.preventDefault();
+                                             const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
+                                             if (modeBtn) {
+                                               modeBtn.focus();
+                                             } else if (isSqftModeB) {
+                                               const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                               if (widthInput) widthInput.focus();
+                                             } else {
+                                               const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                               if (qtyInput) qtyInput.focus();
+                                             }
+                                           } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                             e.preventDefault();
+                                             const prodInput = document.getElementById(`row-${row.id}-product-input`);
+                                             if (prodInput) prodInput.focus();
+                                           }
+                                         }}
                                         className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
                                         title="Additional Description for stock item (like Tally Prime) — saved to order_items"
                                       />
@@ -854,21 +862,21 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   id={`row-${row.id}-mode-btn`}
                                   tabIndex={0}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      if (currentMode === 'B') {
-                                        const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                        if (widthInput) widthInput.focus();
-                                      } else {
-                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                        if (qtyInput) qtyInput.focus();
-                                      }
-                                    } else if (e.key === "ArrowLeft") {
-                                      e.preventDefault();
-                                      const descInput = document.getElementById(`row-${row.id}-description`);
-                                      if (descInput) descInput.focus();
-                                    }
-                                  }}
+                                     if (e.key === "Enter") {
+                                       e.preventDefault();
+                                       if (isSqftModeB) {
+                                         const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                         if (widthInput) widthInput.focus();
+                                       } else {
+                                         const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                         if (qtyInput) qtyInput.focus();
+                                       }
+                                     } else if (e.key === "ArrowLeft") {
+                                       e.preventDefault();
+                                       const descInput = document.getElementById(`row-${row.id}-description`);
+                                       if (descInput) descInput.focus();
+                                     }
+                                   }}
                                   title={`Mode ${currentMode} — Locked to Tally master`}
                                   className={`h-8 min-w-[58px] px-2 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-default outline-none ${
                                     currentMode === 'A'
@@ -877,7 +885,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   }`}
                                 >
                                   <span className="text-sm font-extrabold">{currentMode}</span>
-                                  <span className="text-[9px] font-bold opacity-90">{currentMode === 'A' ? 'Pcs' : 'SqFt'}</span>
+                                  <span className="text-[9px] font-bold opacity-90">{currentMode === 'A' ? 'Pcs' : (isSqft ? 'SqFt' : displayUnit)}</span>
                                 </span>
                               )}
                             </td>
@@ -1002,7 +1010,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Pcs/No Column */}
                             <td className="py-3 px-2 tabular-nums text-center">
-                              {currentMode === 'B' ? (
+                              {isSqftModeB ? (
                                 <input
                                   id={`error-row-${row.id}-pcs`}
                                   value={row.pcsNo ?? row.quantity ?? '1'}
@@ -1035,7 +1043,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Quantity Column */}
                             <td className="py-3 px-2 text-center text-xs font-bold tabular-nums">
-                              {currentMode === 'B' ? (
+                              {isSqftModeB ? (
                                 <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
                               ) : (
                                 <div className="inline-flex items-center justify-center">
@@ -1065,13 +1073,13 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     className={`h-10 w-16 rounded-lg border text-center text-xs font-bold ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-400' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:bg-white'}`}
                                     placeholder="Qty"
                                   />
-                                  <span className="ml-1 text-[11px] font-black text-slate-500">{(product as any)?.tally_uom || 'N'}</span>
+                                  <span className="ml-1 text-[11px] font-black text-slate-500">{displayUnit}</span>
                                 </div>
                               )}
                             </td>
                             {/* Rate/SqFt Column — EDITABLE like Tally */}
                             <td className="py-3 px-2 text-center tabular-nums">
-                              {currentMode === 'B' ? (
+                              {isSqftModeB ? (
                                 <input
                                   id={`row-${row.id}-rate-sqft`}
                                   value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
@@ -1114,7 +1122,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Rate per (unit) Column — EDITABLE like Tally */}
                             <td className="py-3 px-2 text-center tabular-nums">
-                              {currentMode === 'B' ? (
+                              {isSqftModeB ? (
                                 <span className="text-emerald-700 font-bold text-xs">
                                   {row.manualRate !== undefined ? Number(row.manualRate || 0).toFixed(2) : (baseRate > 0 ? baseRate.toFixed(2) : '—')} sqft
                                 </span>
@@ -1156,7 +1164,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     className="h-9 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
                                     title="Rate per unit — editable (like Tally)"
                                   />
-                                  <span className="text-[10px] text-slate-500 font-bold">{(product as any)?.tally_uom || 'N'}</span>
+                                  <span className="text-[10px] text-slate-500 font-bold">{displayUnit}</span>
                                 </div>
                               )}
                             </td>
@@ -1183,7 +1191,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         }
                                       } else if (e.key === "ArrowLeft") {
                                         e.preventDefault();
-                                        if (currentMode === 'B') {
+                                        if (isSqftModeB) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
                                           if (rateSqft) rateSqft.focus();
                                         } else {
@@ -1226,7 +1234,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         e.preventDefault();
                                         const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
                                         if (finishSelect) finishSelect.focus();
-                                        else if (currentMode === 'B') {
+                                        else if (isSqftModeB) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
                                           if (rateSqft) rateSqft.focus();
                                         } else {

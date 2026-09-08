@@ -245,7 +245,7 @@ export function GlobalOrdersPage() {
           const isSqft = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft';
           const defaultMode = (matchedInventory as any)?.tallyBillingMode || matchedInventory?.metadata?.tallyBillingMode || 'B';
           const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
-          const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
+          const pcsNo = isSqft ? (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString() : '';
           const baseRate = parseFloat(
             (
               (pricingSnap.manualRate !== undefined && pricingSnap.manualRate !== '' && Number(pricingSnap.manualRate) > 0 ? pricingSnap.manualRate : null) ??

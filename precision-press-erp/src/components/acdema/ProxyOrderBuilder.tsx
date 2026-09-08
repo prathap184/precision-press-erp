@@ -722,16 +722,20 @@ ${parts.join(', ')}`;
         shippingAddress: deliveryType === 'selfPickup' ? 'Self Pickup' : shippingAddress.trim(),
         items: validRows.map((row) => {
           const product = products.find((item) => item.id === row.productId);
-          const width = Number(row.width) || 0;
-          const height = Number(row.height) || 0;
+          const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || (row as any).unit || '').trim().toLowerCase();
+          const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+          const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
+          const isDirect = !isSqft;
+          const width = isDirect ? 0 : (Number(row.width) || 0);
+          const height = isDirect ? 0 : (Number(row.height) || 0);
           const quantity = Number(row.quantity) || 1;
-          const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
-          const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
-          const eyeletRate = row.eyeletType === 'METAL'
+          const widthInFt = isDirect ? 0 : (row.widthUnit === 'IN' ? width / 12 : width);
+          const heightInFt = isDirect ? 0 : (row.heightUnit === 'IN' ? height / 12 : height);
+          const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL'
             ? product?.eyeletPricing?.metal || 0
             : row.eyeletType === 'PLASTIC'
               ? product?.eyeletPricing?.plastic || 0
-              : 0;
+              : 0);
 
           const effectiveTiffPath = row.tiffPath.trim();
           const effectiveRate = (row.manualRate !== undefined && row.manualRate !== '') 
@@ -745,15 +749,15 @@ ${parts.join(', ')}`;
             description: row.description || row.projectName || '',
             notes: row.description || '',
             billingMode: row.billingMode || 'B',
-            pcsNo: row.pcsNo || '1',
+            pcsNo: isDirect ? '' : (row.pcsNo || '1'),
             width,
             widthUnit: row.widthUnit,
             height,
             heightUnit: row.heightUnit,
             quantity,
             unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
-            eyeletType: row.eyeletType,
-            eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
+            eyeletType: isDirect ? 'NONE' : row.eyeletType,
+            eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : quantity,
             rate: effectiveRate,
             eyeletRate,
             fileUrl: effectiveTiffPath,
@@ -766,15 +770,16 @@ ${parts.join(', ')}`;
               manualRate: row.manualRate !== undefined ? effectiveRate : undefined,
               eyeletPricing: product?.eyeletPricing,
               deliveryPricing: product?.deliveryPricing,
-              selectedEyeletType: row.eyeletType,
+              selectedEyeletType: isDirect ? 'NONE' : row.eyeletType,
               eyeletRate,
               subTotal: calculateRowSubtotal({
                 width: widthInFt,
                 height: heightInFt,
                 quantity,
                 rate: effectiveRate,
-                eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
+                eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : quantity,
                 eyeletRate,
+                isDirectSelling: isDirect,
               }),
               tax: (product?.gst_rate ?? 18) / 100
             },
@@ -783,8 +788,9 @@ ${parts.join(', ')}`;
               height: heightInFt,
               quantity,
               rate: effectiveRate,
-              eyeletCount: row.eyeletType === 'NONE' ? 0 : quantity,
+              eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : quantity,
               eyeletRate,
+              isDirectSelling: isDirect,
             }),
           };
         }),
