@@ -243,7 +243,7 @@ export function GlobalOrdersPage() {
           if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
           const uom = String(matchedInventory?.unitOfMeasure || (matchedInventory as any)?.tallyUom || matchedInventory?.metadata?.unit || '').trim().toLowerCase();
           const isSqft = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft';
-          const defaultMode = (matchedInventory as any)?.tallyBillingMode || matchedInventory?.metadata?.tallyBillingMode || (isSqft ? 'B' : 'A');
+          const defaultMode = (matchedInventory as any)?.tallyBillingMode || matchedInventory?.metadata?.tallyBillingMode || 'B';
           const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
           const pcsNo = (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString();
           const baseRate = parseFloat(

@@ -42,7 +42,7 @@ interface AcdemaRow {
 
 const makeRow = (product?: Product): AcdemaRow => {
   const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
-  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
+  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
   return {
     id: Math.random().toString(36).slice(2, 10),
     productId: product?.id || '',
@@ -744,7 +744,7 @@ ${parts.join(', ')}`;
             projectName: row.projectName,
             description: row.description || row.projectName || '',
             notes: row.description || '',
-            billingMode: row.billingMode || 'A',
+            billingMode: row.billingMode || 'B',
             pcsNo: row.pcsNo || '1',
             width,
             widthUnit: row.widthUnit,

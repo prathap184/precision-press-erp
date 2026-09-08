@@ -547,7 +547,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         const product = products.find((item: any) => item.id === row.productId);
                         const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
                         const isDirect = !isSqft;
-                        const defaultMode = (product as any)?.tally_billing_mode || (isSqft ? 'B' : 'A');
+                        const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
                         const currentMode = row.billingMode || defaultMode;
                         const w = Number(row.width) || 0;
                         const h = Number(row.height) || 0;
@@ -634,8 +634,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             e.preventDefault();
                                             const selectedProduct = displayedItems[highlightProductIndex];
                                             if (selectedProduct) {
-                                              const isSqft = (selectedProduct as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (selectedProduct as any)?.tally_uom?.toLowerCase() === 'sqft';
-                                              const prodMode = (selectedProduct as any)?.tally_billing_mode || (selectedProduct as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
+                                              const prodMode = (selectedProduct as any)?.tally_billing_mode || (selectedProduct as any)?.tallyBillingMode || 'B';
                                               updateRow(row.id, { productId: selectedProduct.id, billingMode: prodMode });
                                               setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
                                               setOpenRowId(null);
@@ -659,8 +658,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             if (isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
                                               const selectedProduct = displayedItems[highlightProductIndex];
                                               if (selectedProduct) {
-                                                const isSqft = (selectedProduct as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (selectedProduct as any)?.tally_uom?.toLowerCase() === 'sqft';
-                                                const prodMode = (selectedProduct as any)?.tally_billing_mode || (selectedProduct as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
+                                                const prodMode = (selectedProduct as any)?.tally_billing_mode || (selectedProduct as any)?.tallyBillingMode || 'B';
                                                 updateRow(row.id, { productId: selectedProduct.id, billingMode: prodMode });
                                                 setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
                                                 setOpenRowId(null);
@@ -747,8 +745,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                     }}
                                                     onMouseDown={(e) => {
                                                       e.preventDefault();
-                                                      const isSqft = (p as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (p as any)?.tally_uom?.toLowerCase() === 'sqft';
-                                                      const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || (isSqft ? 'B' : 'A');
+                                                      const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
                                                       updateRow(row.id, { productId: p.id, billingMode: prodMode });
                                                       setOpenRowId(null);
                                                       setSearchQuery('');
@@ -845,8 +842,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             <td className="py-3 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
                             <td className="py-3 px-2 tabular-nums">
                               {isDirect ? (
-                                <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-black border border-blue-200">
-                                  {currentMode}
+                                <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black border ${
+                                  currentMode === 'A'
+                                    ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                }`}>
+                                  {currentMode || 'B'}
                                 </span>
                               ) : (
                                 <span

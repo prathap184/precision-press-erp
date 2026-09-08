@@ -480,7 +480,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
             const itemObj = inventoryItems.find((itm) => itm.id === line.inventoryItemId);
             const uom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || itemObj?.metadata?.unit || '').trim().toLowerCase();
             const isSqftItem = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft' || Boolean(parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0);
-            const defaultMode = (itemObj as any)?.tallyBillingMode || itemObj?.metadata?.tallyBillingMode || (isSqftItem ? 'B' : 'A');
+            const defaultMode = (itemObj as any)?.tallyBillingMode || itemObj?.metadata?.tallyBillingMode || 'B';
             const currentMode = line.billingMode || defaultMode;
             const widthNum = parseFloat(line.width || "0");
             const lengthNum = parseFloat(line.length || "0");
@@ -519,7 +519,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                         const itemUom = String(item.unitOfMeasure || (item as any).tallyUom || item.metadata?.unit || '').trim().toLowerCase();
                         const isItemSqft = itemUom === 'sqft' || itemUom === 'sqf' || itemUom === 'sq.ft' || itemUom === 'sq ft';
-                        const itemDefaultMode = (item as any).tallyBillingMode || item.metadata?.tallyBillingMode || (isItemSqft ? "B" : "A");
+                        const itemDefaultMode = (item as any).tallyBillingMode || item.metadata?.tallyBillingMode || "B";
                         const effectiveRate = !isItemSqft
                           ? (Number(item.salePrice || 0) / 100)
                           : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
@@ -587,8 +587,12 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 {/* Mode (T) Locked Badge */}
                 <div className="text-center">
                   {!isSqftItem ? (
-                    <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-black border border-blue-200">
-                      {currentMode || 'A'}
+                    <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black border ${
+                      currentMode === 'A'
+                        ? 'bg-blue-100 text-blue-800 border-blue-200'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    }`}>
+                      {currentMode || 'B'}
                     </span>
                   ) : (
                     <span
