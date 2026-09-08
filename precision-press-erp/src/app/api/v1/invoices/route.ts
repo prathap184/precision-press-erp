@@ -699,7 +699,7 @@ export async function POST(request: Request) {
         items: processedLines.map((l: any) => ({
           productName: l.description || "Printing Services",
           hsnCode: l.hsnCode || "32141000",
-          quantity: l.quantity,
+          quantity: (l.quantity || 100) / 100,
           unit: "N",
           rate: (l.unitPrice || 0) / 100,
           taxableAmount: l.amount / 100,
