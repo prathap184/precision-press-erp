@@ -584,29 +584,24 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   </Select>
                 </div>
 
-                {/* Mode (T) Toggle Button */}
+                {/* Mode (T) Locked Badge */}
                 <div className="text-center">
                   {!isSqftItem ? (
                     <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 text-xs font-black border border-blue-200">
                       {currentMode || 'A'}
                     </span>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const nextMode = currentMode === 'A' ? 'B' : 'A';
-                        updateLine(i, "billingMode", nextMode);
-                      }}
-                      title="Click to toggle Mode A (Pieces) or Mode B (Sq.Ft)"
-                      className={`h-8 min-w-[50px] px-1.5 rounded-lg border-2 font-black text-xs transition-all inline-flex items-center justify-center gap-1 shadow-sm cursor-pointer ${
+                    <span
+                      title={`Mode ${currentMode} — Locked to Tally master`}
+                      className={`h-8 min-w-[50px] px-1.5 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-default ${
                         currentMode === 'A'
-                          ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-500/20'
-                          : 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-500/20'
+                          ? 'border-blue-600 bg-blue-600 text-white'
+                          : 'border-emerald-600 bg-emerald-600 text-white'
                       }`}
                     >
                       <span className="text-xs font-extrabold">{currentMode}</span>
                       <span className="text-[8px] font-bold opacity-90">{currentMode === 'A' ? 'Pcs' : 'SqFt'}</span>
-                    </button>
+                    </span>
                   )}
                 </div>
 

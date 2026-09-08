@@ -849,13 +849,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                   {currentMode}
                                 </span>
                               ) : (
-                                <button
+                                <span
                                   id={`row-${row.id}-mode-btn`}
-                                  type="button"
-                                  onClick={() => {
-                                    const nextMode = currentMode === 'A' ? 'B' : 'A';
-                                    updateRow(row.id, { billingMode: nextMode });
-                                  }}
+                                  tabIndex={0}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
@@ -866,26 +862,22 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                         if (qtyInput) qtyInput.focus();
                                       }
-                                    } else if (e.key === " " || e.key === "Spacebar") {
-                                      e.preventDefault();
-                                      const nextMode = currentMode === 'A' ? 'B' : 'A';
-                                      updateRow(row.id, { billingMode: nextMode });
                                     } else if (e.key === "ArrowLeft") {
                                       e.preventDefault();
                                       const descInput = document.getElementById(`row-${row.id}-description`);
                                       if (descInput) descInput.focus();
                                     }
                                   }}
-                                  title="Click to toggle Mode A (Pieces) or Mode B (Sq.Ft) — Space to toggle, Enter to next"
-                                  className={`h-8 min-w-[58px] px-2 rounded-lg border-2 font-black text-xs transition-all inline-flex items-center justify-center gap-1 shadow-sm cursor-pointer outline-none focus:ring-4 focus:ring-blue-500/30 ${
+                                  title={`Mode ${currentMode} — Locked to Tally master`}
+                                  className={`h-8 min-w-[58px] px-2 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-default outline-none ${
                                     currentMode === 'A'
-                                      ? 'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-500/20'
-                                      : 'border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 ring-2 ring-emerald-500/20'
+                                      ? 'border-blue-600 bg-blue-600 text-white'
+                                      : 'border-emerald-600 bg-emerald-600 text-white'
                                   }`}
                                 >
                                   <span className="text-sm font-extrabold">{currentMode}</span>
                                   <span className="text-[9px] font-bold opacity-90">{currentMode === 'A' ? 'Pcs' : 'SqFt'}</span>
-                                </button>
+                                </span>
                               )}
                             </td>
                             <td className="py-3 px-2 tabular-nums">

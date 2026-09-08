@@ -76,7 +76,7 @@ function fetchLiveTally(reportName, accountType = null) {
         'Content-Type': 'application/xml; charset=utf-8',
         'Content-Length': Buffer.byteLength(xmlPayload)
       },
-      timeout: 4000
+      timeout: 30000
     }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
@@ -252,8 +252,10 @@ async function runStockSync() {
     // Determine Calculation Type and Default Billing Mode:
     // SQFT: Area-based items (Flex, Vinyl, Acrylic, etc.) -> default Mode B (SqFt billing), stock tracked in sq.ft
     // QTY: Unit-based items (Tape, Ink, Frames, Box, Standee, etc.) -> locked Mode A (Piece billing), stock tracked in Units
-    const isSqft = uom.toLowerCase() === 'sqft' || uom.toLowerCase() === 'sq.ft' || uom.toLowerCase() === 'sqf';
-    const normalizedUom = isSqft ? 'sqft' : uom;
+    const hasSqftInUnit = /sqft|sq\.ft|sqf/i.test(uom) || /sqft|sq\.ft|sqf/i.test(rawAltUom);
+    const hasSqftInBal = (openBalM && /sqft|sq\.ft|sqf/i.test(openBalM[1])) || (openRateM && /sqft|sq\.ft|sqf/i.test(openRateM[1]));
+    const isSqft = hasSqftInUnit || hasSqftInBal;
+    const normalizedUom = isSqft ? 'sqft' : (uom && !uom.includes('Not Applicable') ? uom : 'N');
     const isPieceItem = !isSqft;
     const billingMode = isSqft ? 'B' : 'A';
 
