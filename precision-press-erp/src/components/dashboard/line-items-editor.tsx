@@ -733,22 +733,19 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                       {rateNum > 0 ? rateNum.toFixed(2) : '0.00'} sqft
                     </span>
                   ) : (
-                    <div className="inline-flex flex-col items-center gap-0.5">
-                      <span className="text-blue-700 font-black text-xs">
-                        {rateNum > 0 ? rateNum.toFixed(2) : '—'}/{uom ? uom.toUpperCase() : 'N'}
+                    <div className="inline-flex items-center gap-1">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="h-9 w-16 text-right text-xs font-bold font-mono bg-blue-50 border border-blue-300 text-blue-800 rounded-xl px-2 focus:outline-none focus:border-blue-600 focus:bg-white"
+                        value={rateNum > 0 ? rateNum : ''}
+                        onChange={(e) => updateLine(i, "unitPrice", e.target.value)}
+                        placeholder="0.00"
+                      />
+                      <span className="text-[10px] font-black text-slate-500">
+                        {uom ? uom.toUpperCase() : 'N'}
                       </span>
-                      <div className="inline-flex items-center gap-1">
-                        <CurrencyInput
-                          size="sm"
-                          className="h-7 text-right text-xs font-bold font-mono bg-blue-50 border-blue-300 text-blue-800 rounded-xl focus:border-blue-600 focus:bg-white"
-                          value={line.unitPrice}
-                          onChange={(v) => updateLine(i, "unitPrice", v)}
-                          placeholder="0.00"
-                        />
-                        <span className="text-[10px] font-black text-slate-500">
-                          {uom ? uom.toUpperCase() : 'N'}
-                        </span>
-                      </div>
                     </div>
                   )}
                 </div>
