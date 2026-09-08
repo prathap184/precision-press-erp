@@ -563,6 +563,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
                         const cleanUom = rawUom.replace(/[\s\._-]/g, '');
                         const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
+                        const isDirect = !isSqft;
                         const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
                         const isModeA = currentMode === 'A';
                         const isModeB = currentMode === 'B';
