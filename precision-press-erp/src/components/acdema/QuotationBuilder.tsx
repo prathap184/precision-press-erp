@@ -333,13 +333,23 @@ export function QuotationBuilder() {
 
     const pricingRows = rows.map((row) => {
       const product = products.find((item) => item.id === row.productId);
-      const width = Number(row.width) || 0;
-      const height = Number(row.height) || 0;
-      const quantity = Number(row.quantity) || 0;
-      const rate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : (product?.baseRate || 0);
-      const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
+      const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || (row as any).unit || '').trim().toLowerCase();
+      const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+      const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
       const isDirect = !isSqft;
-      const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL'
+      const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
+      const isModeA = currentMode === 'A';
+      const isModeB = currentMode === 'B';
+      const width = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? 0 : 1)) || 0;
+      const height = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? 0 : 1)) || 0;
+      const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
+      const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
+      const sqft = (widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : (isSqft ? 0 : 1);
+      const pcs = Math.max(1, Number(row.pcsNo || '1'));
+      const totalBilledSqft = sqft * pcs;
+      const baseRate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : (product?.baseRate || 0);
+      const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isModeB ? totalBilledSqft : 1)) || 1;
+      const eyeletRate = (row.eyeletType === 'METAL'
         ? product?.eyeletPricing?.metal || 0
         : row.eyeletType === 'PLASTIC'
           ? product?.eyeletPricing?.plastic || 0
@@ -347,12 +357,12 @@ export function QuotationBuilder() {
           
       return {
         name: product?.name || 'Unknown Item',
-        width: row.widthUnit === 'IN' ? width / 12 : width,
-        height: row.heightUnit === 'IN' ? height / 12 : height,
-        quantity,
-        rate,
-        isDirectSelling: isDirect,
-        eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : quantity,
+        width: widthInFt,
+        height: heightInFt,
+        quantity: isModeA ? qtyNum : pcs,
+        rate: baseRate,
+        isDirectSelling: false,
+        eyeletCount: row.eyeletType === 'NONE' ? 0 : (isModeA ? qtyNum : pcs),
         eyeletRate,
         gstRate: (product?.gst_rate || 18) / 100,
       };
@@ -531,30 +541,34 @@ export function QuotationBuilder() {
 
       const items = validRows.map((row) => {
         const product = products.find((item) => item.id === row.productId);
-        const width = Number(row.width) || 0;
-        const height = Number(row.height) || 0;
-        const quantity = Number(row.quantity) || 0;
+        const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || (row as any).unit || '').trim().toLowerCase();
+        const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+        const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
+        const isDirect = !isSqft;
+        const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
+        const isModeA = currentMode === 'A';
+        const isModeB = currentMode === 'B';
+        const width = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? 0 : 1)) || 0;
+        const height = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? 0 : 1)) || 0;
         const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
         const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
-        const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
-        const isDirect = !isSqft;
-        const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL'
+        const sqft = (widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : (isSqft ? 0 : 1);
+        const pcs = Math.max(1, Number(row.pcsNo || '1'));
+        const totalBilledSqft = sqft * pcs;
+        const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isModeB ? totalBilledSqft : 1)) || 1;
+        const effectiveRate = (row.manualRate !== undefined && row.manualRate !== '') 
+          ? Number(row.manualRate) || 0 
+          : (product?.baseRate || 0);
+        const eyeletRate = (row.eyeletType === 'METAL'
           ? product?.eyeletPricing?.metal || 0
           : row.eyeletType === 'PLASTIC'
             ? product?.eyeletPricing?.plastic || 0
             : 0);
-        const effectiveRate = (row.manualRate !== undefined && row.manualRate !== '') 
-          ? Number(row.manualRate) || 0 
-          : (product?.baseRate || 0);
-        const rowSubtotal = calculateRowSubtotal({
-          width: widthInFt,
-          height: heightInFt,
-          quantity,
-          rate: effectiveRate,
-          eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : quantity,
-          eyeletRate,
-          isDirectSelling: isDirect,
-        });
+
+        const calculatedRatePerUnit = isModeA ? (sqft * effectiveRate) : effectiveRate;
+        const rowSubtotal = isModeA
+          ? Number((qtyNum * calculatedRatePerUnit + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
+          : Number((totalBilledSqft * effectiveRate + (row.eyeletType !== 'NONE' ? eyeletRate * pcs : 0)).toFixed(2));
 
         return {
           productId: row.productId,
@@ -563,16 +577,17 @@ export function QuotationBuilder() {
           description: row.description || row.projectName || '',
           notes: row.description || '',
           hsnCode: row.hsnCode || '',
-          billingMode: row.billingMode || 'A',
-          pcsNo: row.pcsNo || '1',
-          width: row.width,
+          billingMode: currentMode,
+          pcsNo: isModeA ? '' : (row.pcsNo || '1'),
+          width,
           widthUnit: row.widthUnit,
-          height: row.height,
+          height,
           heightUnit: row.heightUnit,
-          quantity,
+          quantity: isModeA ? qtyNum : (isSqft ? totalBilledSqft : pcs),
+          unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
           rate: effectiveRate,
           eyeletType: row.eyeletType,
-          eyeletCount: row.eyeletCount,
+          eyeletCount: row.eyeletType === 'NONE' ? 0 : (isModeA ? qtyNum : pcs),
           subtotal: rowSubtotal,
           tiffPath: row.tiffPath,
         };

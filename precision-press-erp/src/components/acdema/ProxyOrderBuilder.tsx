@@ -432,12 +432,18 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
       const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
       const isDirect = !isSqft;
       const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
-      const isSqftModeA = isSqft && currentMode === 'A';
-      const effectiveQty = isSqftModeA ? 1 : (isDirect ? (Number(row.quantity) || 1) : Math.max(1, Number(row.pcsNo || row.quantity) || 1));
-      const width = isDirect ? 0 : (Number(row.width) || 0);
-      const height = isDirect ? 0 : (Number(row.height) || 0);
-      const rate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : (product?.baseRate || 0);
-      const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL'
+      const isModeA = currentMode === 'A';
+      const isModeB = currentMode === 'B';
+      const width = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? 0 : 1)) || 0;
+      const height = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? 0 : 1)) || 0;
+      const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
+      const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
+      const sqft = (widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : (isSqft ? 0 : 1);
+      const pcs = Math.max(1, Number(row.pcsNo || '1'));
+      const totalBilledSqft = sqft * pcs;
+      const baseRate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : (product?.baseRate || 0);
+      const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isModeB ? totalBilledSqft : 1)) || 1;
+      const eyeletRate = (row.eyeletType === 'METAL'
         ? product?.eyeletPricing?.metal || 0
         : row.eyeletType === 'PLASTIC'
           ? product?.eyeletPricing?.plastic || 0
@@ -445,12 +451,12 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
           
       return {
         name: product?.name || 'Unknown Item',
-        width: row.widthUnit === 'IN' ? width / 12 : width,
-        height: row.heightUnit === 'IN' ? height / 12 : height,
-        quantity: effectiveQty,
-        rate,
-        isDirectSelling: isDirect,
-        eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : effectiveQty,
+        width: widthInFt,
+        height: heightInFt,
+        quantity: isModeA ? qtyNum : pcs,
+        rate: baseRate,
+        isDirectSelling: false,
+        eyeletCount: row.eyeletType === 'NONE' ? 0 : (isModeA ? qtyNum : pcs),
         eyeletRate,
         gstRate: (product?.gst_rate || 18) / 100,
       };
@@ -731,22 +737,31 @@ ${parts.join(', ')}`;
           const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
           const isDirect = !isSqft;
           const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
-          const isSqftModeA = isSqft && currentMode === 'A';
-          const width = isDirect ? 0 : (Number(row.width) || 0);
-          const height = isDirect ? 0 : (Number(row.height) || 0);
-          const quantity = Number(row.quantity) || 1;
-          const widthInFt = isDirect ? 0 : (row.widthUnit === 'IN' ? width / 12 : width);
-          const heightInFt = isDirect ? 0 : (row.heightUnit === 'IN' ? height / 12 : height);
-          const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL'
+          const isModeA = currentMode === 'A';
+          const isModeB = currentMode === 'B';
+          const width = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? 0 : 1)) || 0;
+          const height = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? 0 : 1)) || 0;
+          const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
+          const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
+          const sqft = (widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : (isSqft ? 0 : 1);
+          const pcs = Math.max(1, Number(row.pcsNo || '1'));
+          const totalBilledSqft = sqft * pcs;
+          const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isModeB ? totalBilledSqft : 1)) || 1;
+          const effectiveTiffPath = row.tiffPath.trim();
+          const effectiveRate = (row.manualRate !== undefined && row.manualRate !== '') 
+            ? Number(row.manualRate) || 0 
+            : (product?.baseRate || 0);
+          const eyeletRate = (row.eyeletType === 'METAL'
             ? product?.eyeletPricing?.metal || 0
             : row.eyeletType === 'PLASTIC'
               ? product?.eyeletPricing?.plastic || 0
               : 0);
 
-          const effectiveTiffPath = row.tiffPath.trim();
-          const effectiveRate = (row.manualRate !== undefined && row.manualRate !== '') 
-            ? Number(row.manualRate) || 0 
-            : (product?.baseRate || 0);
+          const calculatedRatePerUnit = isModeA ? (sqft * effectiveRate) : effectiveRate;
+          const rowSubtotal = isModeA
+            ? Number((qtyNum * calculatedRatePerUnit + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
+            : Number((totalBilledSqft * effectiveRate + (row.eyeletType !== 'NONE' ? eyeletRate * pcs : 0)).toFixed(2));
+
           return {
             id: row.id,
             productId: row.productId,
@@ -755,15 +770,15 @@ ${parts.join(', ')}`;
             description: row.description || row.projectName || '',
             notes: row.description || '',
             billingMode: currentMode,
-            pcsNo: isDirect || isSqftModeA ? '' : (row.pcsNo || '1'),
+            pcsNo: isModeA ? '' : (row.pcsNo || '1'),
             width,
             widthUnit: row.widthUnit,
             height,
             heightUnit: row.heightUnit,
-            quantity: isSqftModeA ? 1 : (isDirect ? quantity : (Number(row.pcsNo || row.quantity) || 1)),
+            quantity: isModeA ? qtyNum : (isSqft ? totalBilledSqft : pcs),
             unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
-            eyeletType: isDirect ? 'NONE' : row.eyeletType,
-            eyeletCount: isDirect || row.eyeletType === 'NONE' ? 0 : (isSqftModeA ? 1 : quantity),
+            eyeletType: row.eyeletType,
+            eyeletCount: row.eyeletType === 'NONE' ? 0 : (isModeA ? qtyNum : pcs),
             rate: effectiveRate,
             eyeletRate,
             fileUrl: effectiveTiffPath,
@@ -776,36 +791,12 @@ ${parts.join(', ')}`;
               manualRate: row.manualRate !== undefined ? effectiveRate : undefined,
               eyeletPricing: product?.eyeletPricing,
               deliveryPricing: product?.deliveryPricing,
-              selectedEyeletType: isDirect ? 'NONE' : row.eyeletType,
+              selectedEyeletType: row.eyeletType,
               eyeletRate,
-              subTotal: isDirect
-                ? Number((quantity * effectiveRate).toFixed(2))
-                : isSqftModeA
-                  ? Number((widthInFt * heightInFt * effectiveRate + eyeletRate).toFixed(2))
-                  : calculateRowSubtotal({
-                      width: widthInFt,
-                      height: heightInFt,
-                      quantity: Number(row.pcsNo || row.quantity) || 1,
-                      rate: effectiveRate,
-                      eyeletCount: row.eyeletType === 'NONE' ? 0 : (Number(row.pcsNo || row.quantity) || 1),
-                      eyeletRate,
-                      isDirectSelling: false,
-                    }),
+              subTotal: rowSubtotal,
               tax: (product?.gst_rate ?? 18) / 100
             },
-            subTotal: isDirect
-              ? Number((quantity * effectiveRate).toFixed(2))
-              : isSqftModeA
-                ? Number((widthInFt * heightInFt * effectiveRate + eyeletRate).toFixed(2))
-                : calculateRowSubtotal({
-                    width: widthInFt,
-                    height: heightInFt,
-                    quantity: Number(row.pcsNo || row.quantity) || 1,
-                    rate: effectiveRate,
-                    eyeletCount: row.eyeletType === 'NONE' ? 0 : (Number(row.pcsNo || row.quantity) || 1),
-                    eyeletRate,
-                    isDirectSelling: false,
-                  }),
+            subTotal: rowSubtotal,
           };
         }),
         grandTotal: summary.grandTotal,

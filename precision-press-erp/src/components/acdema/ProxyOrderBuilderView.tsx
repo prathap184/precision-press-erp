@@ -275,13 +275,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       const cleanUom = rawUom.replace(/[\s\._-]/g, '');
       const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
       const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
-      const isSqftModeB = isSqft && currentMode === 'B';
-      const isSqftModeA = isSqft && currentMode === 'A';
+      const isModeA = currentMode === 'A';
+      const isModeB = currentMode === 'B';
 
       if (!row.productId) {
         errors[`row-${row.id}-product`] = `Item #${idx + 1}: Please select a product`;
       }
-      if (isSqft) {
+      if (isModeB) {
         if (!row.width || Number(row.width) <= 0) {
           errors[`row-${row.id}-width`] = `Item #${idx + 1}: Width is required`;
         }
@@ -289,7 +289,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           errors[`row-${row.id}-height`] = `Item #${idx + 1}: Length is required`;
         }
       }
-      if (!isSqftModeA) {
+      if (isModeA) {
         if (!row.quantity || Number(row.quantity) <= 0) {
           errors[`row-${row.id}-quantity`] = `Item #${idx + 1}: Quantity must be at least 1`;
         }
@@ -622,30 +622,28 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
                         const cleanUom = rawUom.replace(/[\s\._-]/g, '');
                         const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
-                        const isDirect = !isSqft;
                         const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
-                        const isSqftModeB = isSqft && currentMode === 'B';
-                        const isSqftModeA = isSqft && currentMode === 'A';
+                        const isModeA = currentMode === 'A';
+                        const isModeB = currentMode === 'B';
                         const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'No';
-                        const w = Number(row.width) || 0;
-                        const h = Number(row.height) || 0;
-                        const pcs = isSqftModeA ? 1 : Math.max(1, Number(row.pcsNo || row.quantity) || 1);
+                        const w = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? 0 : 1)) || 0;
+                        const h = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? 0 : 1)) || 0;
                         const wFt = row.widthUnit === 'IN' ? w / 12 : w;
                         const hFt = row.heightUnit === 'IN' ? h / 12 : h;
-                        const sqft = isDirect ? 0 : wFt * hFt;
-                        const totalBilledSqft = isSqftModeA ? sqft : sqft * pcs;
+                        const sqft = (wFt > 0 && hFt > 0) ? (wFt * hFt) : (isSqft ? 0 : 1);
+                        const pcs = Math.max(1, Number(row.pcsNo || '1'));
+                        const totalBilledSqft = sqft * pcs;
                         const productBaseRate = Number(product?.baseRate) || 0;
                         const baseRate = row.manualRate !== undefined && row.manualRate !== '' ? Number(row.manualRate) || 0 : productBaseRate;
-                        const eyeletRate = isDirect ? 0 : (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
-                        const amount = isDirect
-                          ? Number(((Number(row.quantity) || 1) * baseRate).toFixed(2))
-                          : isSqftModeA
-                            ? Number((sqft * baseRate + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
-                            : calculateRowSubtotal({
-                                width: wFt, height: hFt, quantity: pcs, rate: baseRate,
-                                eyeletCount: row.eyeletType === 'NONE' ? 0 : pcs, eyeletRate,
-                                isDirectSelling: false,
-                              });
+                        const eyeletRate = (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
+                        
+                        // In Mode A: Rate per Unit = Sq.Ft * Rate/SqFt. Amount = Quantity * Rate per Unit
+                        // In Mode B: Quantity = Sq.Ft * Pcs. Amount = Quantity * Rate per SqFt
+                        const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isModeB ? totalBilledSqft : 1)) || 1;
+                        const calculatedRatePerUnit = isModeA ? (sqft * baseRate) : baseRate;
+                        const amount = isModeA
+                          ? Number((qtyNum * calculatedRatePerUnit + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
+                          : Number((totalBilledSqft * baseRate + (row.eyeletType !== 'NONE' ? eyeletRate * pcs : 0)).toFixed(2));
                         const gstRate = product?.gst_rate || 18;
 
                         return (
@@ -946,269 +944,245 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </td>
                             <td className="py-1 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
                             <td className="py-1 px-2 text-center tabular-nums">
-                              {isDirect ? (
-                                <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black border ${
+                              <span
+                                id={`row-${row.id}-mode-btn`}
+                                tabIndex={0}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                    if (widthInput) widthInput.focus();
+                                    else {
+                                      const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                      if (qtyInput) qtyInput.focus();
+                                    }
+                                  } else if (e.key === "ArrowLeft") {
+                                    e.preventDefault();
+                                    const descInput = document.getElementById(`row-${row.id}-description`);
+                                    if (descInput) descInput.focus();
+                                  }
+                                }}
+                                title={`Mode ${currentMode} — Locked to Tally master`}
+                                className={`h-8 min-w-[42px] px-2 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-default outline-none ${
                                   currentMode === 'A'
-                                    ? 'bg-blue-100 text-blue-800 border-blue-200'
-                                    : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                }`}>
-                                  {currentMode || 'B'}
-                                </span>
-                              ) : (
-                                <span
-                                  id={`row-${row.id}-mode-btn`}
-                                  tabIndex={0}
+                                    ? 'border-blue-600 bg-blue-600 text-white'
+                                    : 'border-emerald-600 bg-emerald-600 text-white'
+                                }`}
+                              >
+                                <span className="text-sm font-extrabold">{currentMode}</span>
+                              </span>
+                            </td>
+                            <td className="py-1 px-2 tabular-nums">
+                              <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                <input
+                                  id={`error-row-${row.id}-width`}
+                                  value={row.width !== undefined ? row.width : (isSqft ? '' : '1')}
+                                  onChange={(e) => {
+                                    updateRow(row.id, { width: e.target.value });
+                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
+                                  }}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
-                                      if (isSqftModeB) {
+                                      const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                      if (widthUnitBtn) widthUnitBtn.focus();
+                                      else {
+                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                        if (heightInput) heightInput.focus();
+                                      }
+                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      e.preventDefault();
+                                      const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
+                                      if (modeBtn) modeBtn.focus();
+                                      else {
+                                        const descInput = document.getElementById(`row-${row.id}-description`);
+                                        if (descInput) descInput.focus();
+                                      }
+                                    }
+                                  }}
+                                  className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                  placeholder="W"
+                                />
+                                <div className="relative flex-shrink-0">
+                                  <button
+                                    id={`row-${row.id}-width-unit`}
+                                    type="button"
+                                    onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        setOpenUnitPickerId(null);
+                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                        if (heightInput) heightInput.focus();
+                                      } else if (e.key === " " || e.key === "Spacebar") {
+                                        e.preventDefault();
+                                        const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
+                                        updateRow(row.id, { widthUnit: nextUnit });
+                                      } else if (e.key === "ArrowLeft") {
+                                        e.preventDefault();
+                                        setOpenUnitPickerId(null);
                                         const widthInput = document.getElementById(`error-row-${row.id}-width`);
                                         if (widthInput) widthInput.focus();
+                                      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                        e.preventDefault();
+                                        const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
+                                        updateRow(row.id, { widthUnit: nextUnit });
+                                      }
+                                    }}
+                                    onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                    className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                  >
+                                    {row.widthUnit === 'FT' ? 'ft' : 'in'}
+                                    <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                  </button>
+                                  {openUnitPickerId === `${row.id}-w` && (
+                                    <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
+                                      {['FT', 'IN'].map(u => (
+                                        <button
+                                          key={u}
+                                          type="button"
+                                          tabIndex={-1}
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            updateRow(row.id, { widthUnit: u });
+                                            setOpenUnitPickerId(null);
+                                            setTimeout(() => {
+                                              const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                              if (heightInput) heightInput.focus();
+                                            }, 50);
+                                          }}
+                                          className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                            row.widthUnit === u
+                                              ? 'bg-blue-600 text-white'
+                                              : 'text-slate-600 hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          {u.toLowerCase()}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="py-1 px-2 tabular-nums">
+                              <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                <input
+                                  id={`error-row-${row.id}-height`}
+                                  value={row.height !== undefined ? row.height : (isSqft ? '' : '1')}
+                                  onChange={(e) => {
+                                    updateRow(row.id, { height: e.target.value });
+                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                      if (heightUnitBtn) heightUnitBtn.focus();
+                                      else if (isModeB) {
+                                        const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                        if (pcsInput) pcsInput.focus();
                                       } else {
                                         const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                         if (qtyInput) qtyInput.focus();
                                       }
-                                    } else if (e.key === "ArrowLeft") {
+                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
-                                      const descInput = document.getElementById(`row-${row.id}-description`);
-                                      if (descInput) descInput.focus();
+                                      const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                      if (widthUnitBtn) widthUnitBtn.focus();
+                                      else {
+                                        const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                        if (widthInput) widthInput.focus();
+                                      }
                                     }
                                   }}
-                                  title={`Mode ${currentMode} — Locked to Tally master`}
-                                  className={`h-8 min-w-[58px] px-2 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-default outline-none ${
-                                    currentMode === 'A'
-                                      ? 'border-blue-600 bg-blue-600 text-white'
-                                      : 'border-emerald-600 bg-emerald-600 text-white'
-                                  }`}
-                                >
-                                  <span className="text-sm font-extrabold">{currentMode}</span>
-                                  <span className="text-[9px] font-bold opacity-90">{currentMode === 'A' ? 'Pcs' : (isSqft ? 'SqFt' : displayUnit)}</span>
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-1 px-2 tabular-nums">
-                              {isDirect ? (
-                                <div className="h-10 w-[90px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
-                                  —
-                                </div>
-                              ) : (
-                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                  <input
-                                    id={`error-row-${row.id}-width`}
-                                    value={row.width}
-                                    onChange={(e) => {
-                                      updateRow(row.id, { width: e.target.value });
-                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
-                                    }}
+                                  className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                  placeholder="L"
+                                />
+                                <div className="relative flex-shrink-0">
+                                  <button
+                                    id={`row-${row.id}-height-unit`}
+                                    type="button"
+                                    onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
-                                        if (widthUnitBtn) widthUnitBtn.focus();
-                                        else {
-                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
-                                        }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
-                                        if (modeBtn) modeBtn.focus();
-                                        else {
-                                          const descInput = document.getElementById(`row-${row.id}-description`);
-                                          if (descInput) descInput.focus();
-                                        }
-                                      }
-                                    }}
-                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
-                                    placeholder="W"
-                                  />
-                                  <div className="relative flex-shrink-0">
-                                    <button
-                                      id={`row-${row.id}-width-unit`}
-                                      type="button"
-                                      onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          e.preventDefault();
-                                          setOpenUnitPickerId(null);
-                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
-                                        } else if (e.key === " " || e.key === "Spacebar") {
-                                          e.preventDefault();
-                                          const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
-                                          updateRow(row.id, { widthUnit: nextUnit });
-                                        } else if (e.key === "ArrowLeft") {
-                                          e.preventDefault();
-                                          setOpenUnitPickerId(null);
-                                          const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                          if (widthInput) widthInput.focus();
-                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                                          e.preventDefault();
-                                          const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
-                                          updateRow(row.id, { widthUnit: nextUnit });
-                                        }
-                                      }}
-                                      onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
-                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                    >
-                                      {row.widthUnit === 'FT' ? 'ft' : 'in'}
-                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
-                                    </button>
-                                    {openUnitPickerId === `${row.id}-w` && (
-                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                        {['FT', 'IN'].map(u => (
-                                          <button
-                                            key={u}
-                                            type="button"
-                                            tabIndex={-1}
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              updateRow(row.id, { widthUnit: u });
-                                              setOpenUnitPickerId(null);
-                                              setTimeout(() => {
-                                                const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                                if (heightInput) heightInput.focus();
-                                              }, 50);
-                                            }}
-                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                                              row.widthUnit === u
-                                                ? 'bg-blue-600 text-white'
-                                                : 'text-slate-600 hover:bg-slate-50'
-                                            }`}
-                                          >
-                                            {u.toLowerCase()}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-1 px-2 tabular-nums">
-                              {isDirect ? (
-                                <div className="h-10 w-[90px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
-                                  —
-                                </div>
-                              ) : (
-                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                  <input
-                                    id={`error-row-${row.id}-height`}
-                                    value={row.height}
-                                    onChange={(e) => {
-                                      updateRow(row.id, { height: e.target.value });
-                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
-                                        if (heightUnitBtn) heightUnitBtn.focus();
-                                        else if (isSqftModeA) {
-                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                          if (rateSqft) rateSqft.focus();
-                                        } else {
+                                        setOpenUnitPickerId(null);
+                                        if (isModeB) {
                                           const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                           if (pcsInput) pcsInput.focus();
-                                          else if (qtyInput) qtyInput.focus();
+                                        } else {
+                                          const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                          if (qtyInput) qtyInput.focus();
                                         }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if (e.key === " " || e.key === "Spacebar") {
                                         e.preventDefault();
-                                        const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
-                                        if (widthUnitBtn) widthUnitBtn.focus();
-                                        else {
-                                          const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                          if (widthInput) widthInput.focus();
-                                        }
+                                        const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
+                                        updateRow(row.id, { heightUnit: nextUnit });
+                                      } else if (e.key === "ArrowLeft") {
+                                        e.preventDefault();
+                                        setOpenUnitPickerId(null);
+                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                        if (heightInput) heightInput.focus();
+                                      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                        e.preventDefault();
+                                        const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
+                                        updateRow(row.id, { heightUnit: nextUnit });
                                       }
                                     }}
-                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`}
-                                    placeholder="L"
-                                  />
-                                  <div className="relative flex-shrink-0">
-                                    <button
-                                      id={`row-${row.id}-height-unit`}
-                                      type="button"
-                                      onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                          e.preventDefault();
-                                          setOpenUnitPickerId(null);
-                                          if (isSqftModeA) {
-                                            const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                            if (rateSqft) rateSqft.focus();
-                                          } else {
-                                            const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                            if (pcsInput) pcsInput.focus();
-                                            else if (qtyInput) qtyInput.focus();
-                                          }
-                                        } else if (e.key === " " || e.key === "Spacebar") {
-                                          e.preventDefault();
-                                          const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
-                                          updateRow(row.id, { heightUnit: nextUnit });
-                                        } else if (e.key === "ArrowLeft") {
-                                          e.preventDefault();
-                                          setOpenUnitPickerId(null);
-                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
-                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                                          e.preventDefault();
-                                          const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
-                                          updateRow(row.id, { heightUnit: nextUnit });
-                                        }
-                                      }}
-                                      onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
-                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                    >
-                                      {row.heightUnit === 'FT' ? 'ft' : 'in'}
-                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
-                                    </button>
-                                    {openUnitPickerId === `${row.id}-h` && (
-                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                        {['FT', 'IN'].map(u => (
-                                          <button
-                                            key={u}
-                                            type="button"
-                                            tabIndex={-1}
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              updateRow(row.id, { heightUnit: u });
-                                              setOpenUnitPickerId(null);
-                                              setTimeout(() => {
+                                    onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                    className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                  >
+                                    {row.heightUnit === 'FT' ? 'ft' : 'in'}
+                                    <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                  </button>
+                                  {openUnitPickerId === `${row.id}-h` && (
+                                    <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
+                                      {['FT', 'IN'].map(u => (
+                                        <button
+                                          key={u}
+                                          type="button"
+                                          tabIndex={-1}
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            updateRow(row.id, { heightUnit: u });
+                                            setOpenUnitPickerId(null);
+                                            setTimeout(() => {
+                                              if (isModeB) {
+                                                const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                                if (pcsInput) pcsInput.focus();
+                                              } else {
                                                 const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                                 if (qtyInput) qtyInput.focus();
-                                              }, 50);
-                                            }}
-                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                                              row.heightUnit === u
-                                                ? 'bg-blue-600 text-white'
-                                                : 'text-slate-600 hover:bg-slate-50'
-                                            }`}
-                                          >
-                                            {u.toLowerCase()}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
+                                              }
+                                            }, 50);
+                                          }}
+                                          className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                            row.heightUnit === u
+                                              ? 'bg-blue-600 text-white'
+                                              : 'text-slate-600 hover:bg-slate-50'
+                                          }`}
+                                        >
+                                          {u.toLowerCase()}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
+                              </div>
                             </td>
                             <td className="py-1 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">
                               {sqft > 0 ? sqft.toFixed(2) : '—'}
                             </td>
                             {/* Pcs/No Column */}
                             <td className="py-1 px-2 tabular-nums text-center">
-                              {isSqftModeB ? (
+                              {isModeB ? (
                                 <input
                                   id={`error-row-${row.id}-pcs`}
-                                  value={row.pcsNo ?? row.quantity ?? '1'}
+                                  value={row.pcsNo ?? '1'}
                                   onChange={(e) => {
                                     const val = e.target.value;
-                                    updateRow(row.id, { pcsNo: val, quantity: val });
-                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
+                                    updateRow(row.id, { pcsNo: val });
                                   }}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
@@ -1225,7 +1199,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       }
                                     }
                                   }}
-                                  className={`h-10 w-16 rounded-lg border-2 text-center text-xs font-bold transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'}`}
+                                  className="h-10 w-16 rounded-lg border-2 text-center text-xs font-bold border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
                                   placeholder="Pcs"
                                 />
                               ) : (
@@ -1234,32 +1208,30 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Quantity Column */}
                             <td className="py-1 px-2 text-center text-xs font-bold tabular-nums">
-                              {isSqftModeB ? (
+                              {isModeB ? (
                                 <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
-                              ) : isSqftModeA ? (
-                                <span className="text-slate-300 font-bold">—</span>
                               ) : (
                                 <div className="inline-flex items-center justify-center">
                                   <input
                                     id={`error-row-${row.id}-quantity`}
-                                    value={row.quantity || row.pcsNo || '1'}
+                                    value={row.quantity !== undefined ? row.quantity : '1'}
                                     onChange={(e) => {
                                       const val = e.target.value;
-                                      updateRow(row.id, { quantity: val, pcsNo: val });
+                                      updateRow(row.id, { quantity: val });
                                       setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
+                                        const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
                                         if (rateInput) rateInput.focus();
                                       } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
-                                        if (modeBtn) modeBtn.focus();
+                                        const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                        if (heightUnitBtn) heightUnitBtn.focus();
                                         else {
-                                          const descInput = document.getElementById(`row-${row.id}-description`);
-                                          if (descInput) descInput.focus();
+                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                          if (heightInput) heightInput.focus();
                                         }
                                       }
                                     }}
@@ -1272,7 +1244,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Rate/SqFt Column — EDITABLE in Mode A like Tally */}
                             <td className="py-1 px-2 text-center tabular-nums">
-                              {isSqftModeA ? (
+                              {isModeA ? (
                                 <input
                                   id={`row-${row.id}-rate-sqft`}
                                   value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
@@ -1301,12 +1273,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       }
                                     } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
-                                      const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
-                                      if (heightUnitBtn) heightUnitBtn.focus();
-                                      else {
-                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                        if (heightInput) heightInput.focus();
-                                      }
+                                      const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                      if (qtyInput) qtyInput.focus();
                                     }
                                   }}
                                   placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
@@ -1317,10 +1285,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 <span className="text-slate-300 font-bold">—</span>
                               )}
                             </td>
-                            {/* Rate per (unit) Column — EDITABLE in Mode B & Discrete like Tally */}
+                            {/* Rate per (unit) Column — In Mode A: Shows Sq.Ft * Rate/SqFt. In Mode B: Editable */}
                             <td className="py-1 px-2 text-center tabular-nums">
-                              {isSqftModeA ? (
-                                <span className="text-slate-300 font-bold">—</span>
+                              {isModeA ? (
+                                <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-200">
+                                  {calculatedRatePerUnit.toFixed(2)}
+                                  <span className="text-[10px] text-blue-500 font-bold">{displayUnit}</span>
+                                </span>
                               ) : (
                                 <div className="inline-flex items-center gap-1">
                                   <input
@@ -1351,20 +1322,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        if (isSqftModeB) {
-                                          const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          if (pcsInput) pcsInput.focus();
-                                        } else {
-                                          const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                          if (qtyInput) qtyInput.focus();
-                                        }
+                                        const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                        if (pcsInput) pcsInput.focus();
                                       }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
                                     className="h-9 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
-                                    title="Rate per unit — editable (like Tally)"
+                                    title="Rate per unit in Mode B — editable (like Tally)"
                                   />
-                                  <span className="text-[10px] text-slate-500 font-bold">{isSqftModeB ? 'sqft' : displayUnit}</span>
+                                  <span className="text-[10px] text-slate-500 font-bold">{displayUnit}</span>
                                 </div>
                               )}
                             </td>
