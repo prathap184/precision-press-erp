@@ -357,6 +357,12 @@ async function runStockSync() {
       cost_account_id: costAccountId,
       cost_method: 'average',
       tracking_method: 'none',
+      has_multiple_sizes: hasMultipleSizes,
+      default_width: defaultWidth,
+      default_length: defaultLength,
+      default_width_unit: defaultWidthUnit,
+      default_length_unit: defaultLengthUnit,
+      default_size_name: defaultSizeName,
       metadata: {
         unit: uom,
         calcType: isSqft ? 'SQFT' : 'QTY',

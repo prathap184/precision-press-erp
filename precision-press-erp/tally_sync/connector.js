@@ -27,7 +27,8 @@
 
 'use strict';
 
-require('dotenv').config();
+const { loadConfig } = require('./secure-config');
+const configStatus = loadConfig();
 const axios    = require('axios');
 const winston  = require('winston');
 const xml2js   = require('xml2js');

@@ -117,6 +117,13 @@ export const inventoryItem = pgTable(
     openingQuantity: numeric("opening_quantity").default("0"),
     openingRate: numeric("opening_rate").default("0"),
     openingValue: numeric("opening_value").default("0"),
+    // Tally Multiple Size Details fields
+    hasMultipleSizes: boolean("has_multiple_sizes").default(false),
+    defaultWidth: numeric("default_width"),
+    defaultLength: numeric("default_length"),
+    defaultWidthUnit: text("default_width_unit").default("FT"),
+    defaultLengthUnit: text("default_length_unit").default("FT"),
+    defaultSizeName: text("default_size_name"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "date" }),

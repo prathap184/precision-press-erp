@@ -53,8 +53,17 @@ interface InventoryItemOption {
   gstRate?: number | null;
   unitOfMeasure?: string | null;
   hasMultipleSizes?: boolean;
+  has_multiple_sizes?: boolean;
+  defaultWidth?: number | string | null;
+  defaultLength?: number | string | null;
   default_width?: number | string | null;
   default_length?: number | string | null;
+  defaultWidthUnit?: string | null;
+  defaultLengthUnit?: string | null;
+  default_width_unit?: string | null;
+  default_length_unit?: string | null;
+  defaultSizeName?: string | null;
+  default_size_name?: string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: any;
 }
@@ -526,6 +535,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
             const cleanUom = rawUom.replace(/[\s\._-]/g, '');
             const hasMultipleSizes = Boolean(
               (itemObj?.hasMultipleSizes ??
+              itemObj?.has_multiple_sizes ??
               itemObj?.metadata?.hasMultipleSizes ??
               itemObj?.metadata?.has_multiple_sizes) ||
               cleanUom === 'sqft' ||
@@ -577,6 +587,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                         const itemCleanUom = itemRawUom.replace(/[\s\._-]/g, '');
                         const itemHasSizes = Boolean(
                           (item.hasMultipleSizes ??
+                          item.has_multiple_sizes ??
                           item.metadata?.hasMultipleSizes ??
                           item.metadata?.has_multiple_sizes) ||
                           itemCleanUom === 'sqft' ||
@@ -587,8 +598,8 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           ? (Number(item.salePrice || 0) / 100)
                           : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
                         
-                        const defW = itemHasSizes ? String(item.metadata?.default_width ?? item.default_width ?? '1') : '';
-                        const defL = itemHasSizes ? String(item.metadata?.default_length ?? item.default_length ?? '1') : '';
+                        const defW = itemHasSizes ? String(item.default_width ?? item.defaultWidth ?? item.metadata?.default_width ?? item.metadata?.defaultWidth ?? '1') : '';
+                        const defL = itemHasSizes ? String(item.default_length ?? item.defaultLength ?? item.metadata?.default_length ?? item.metadata?.defaultLength ?? '1') : '';
 
                         const updated = [...lines];
                         updated[i] = {

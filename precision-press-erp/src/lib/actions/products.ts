@@ -56,13 +56,13 @@ function parseProduct(row: any): Product {
     tallyBillingMode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
     tally_uom: uom,
     tally_alt_uom: row.tally_alt_uom,
-    has_multiple_sizes: meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : isSqftOrFt),
-    hasMultipleSizes: meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : isSqftOrFt),
-    default_width: meta.defaultWidth ?? meta.default_width ?? ((meta.hasMultipleSizes || isSqftOrFt) ? 1 : undefined),
-    default_length: meta.defaultLength ?? meta.default_length ?? ((meta.hasMultipleSizes || isSqftOrFt) ? 1 : undefined),
-    default_width_unit: meta.defaultWidthUnit || meta.default_width_unit || 'FT',
-    default_length_unit: meta.defaultLengthUnit || meta.default_length_unit || 'FT',
-    default_size_name: meta.defaultSizeName || meta.default_size_name || ((meta.hasMultipleSizes || isSqftOrFt) ? '1 F x 1 F' : ''),
+    has_multiple_sizes: row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined ? Boolean(row.has_multiple_sizes) : (meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : isSqftOrFt)),
+    hasMultipleSizes: row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined ? Boolean(row.has_multiple_sizes) : (meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : isSqftOrFt)),
+    default_width: row.default_width != null ? Number(row.default_width) : (meta.defaultWidth ?? meta.default_width ?? ((row.has_multiple_sizes || meta.hasMultipleSizes || isSqftOrFt) ? 1 : undefined)),
+    default_length: row.default_length != null ? Number(row.default_length) : (meta.defaultLength ?? meta.default_length ?? ((row.has_multiple_sizes || meta.hasMultipleSizes || isSqftOrFt) ? 1 : undefined)),
+    default_width_unit: row.default_width_unit || meta.defaultWidthUnit || meta.default_width_unit || 'FT',
+    default_length_unit: row.default_length_unit || meta.defaultLengthUnit || meta.default_length_unit || 'FT',
+    default_size_name: row.default_size_name || meta.defaultSizeName || meta.default_size_name || ((row.has_multiple_sizes || meta.hasMultipleSizes || isSqftOrFt) ? '1 F x 1 F' : ''),
   };
 }
 

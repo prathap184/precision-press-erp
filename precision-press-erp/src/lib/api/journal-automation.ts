@@ -1414,7 +1414,15 @@ export async function createCogsJournalEntry(
     reference: string;
     date: string;
     currencyCode?: string;
-    lines: { inventoryItemId: string; quantity: number; warehouseId?: string | null }[];
+    lines: {
+      inventoryItemId: string;
+      quantity: number;
+      warehouseId?: string | null;
+      width?: number | null;
+      length?: number | null;
+      sqFt?: number | null;
+      pcsNo?: number | null;
+    }[];
   },
   tx: Tx,
   opts?: { reverse?: boolean }
@@ -1449,12 +1457,29 @@ export async function createCogsJournalEntry(
   };
 
   for (const line of data.lines) {
-    const units = Math.round(line.quantity / 100);
-    if (units <= 0) continue;
     const item = await tx.query.inventoryItem.findFirst({
       where: and(eq(inventoryItem.id, line.inventoryItemId), eq(inventoryItem.organizationId, ctx.organizationId)),
     });
     if (!item) continue;
+
+    const uom = String(item.unitOfMeasure || (item as any).tallyUom || (item.metadata as any)?.unit || '').trim().toLowerCase();
+    const isSqft = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft';
+
+    let units = 0;
+    if (isSqft) {
+      const width = Number(line.width || 0);
+      const length = Number(line.length || 0);
+      const area = Number(line.sqFt || (width > 0 && length > 0 ? width * length : 0));
+      const pcs = Number(line.pcsNo || Math.round(line.quantity / 100) || 1);
+      if (area > 0) {
+        units = Math.round(area * pcs);
+      } else {
+        units = Math.round(line.quantity / 100);
+      }
+    } else {
+      units = Math.round(line.quantity / 100);
+    }
+    if (units <= 0) continue;
 
     const cogsAcct =
       (item.costAccountId ? { id: item.costAccountId } : null) ??
