@@ -308,16 +308,29 @@ export default function ContactsPage() {
   // Auto-focus search bar if focus=search query param is present or when user visits Customer/Supplier Ledger
   useEffect(() => {
     const focusParam = searchParams.get("focus");
-    if (focusParam === "search" || focusParam === "1" || searchParams.get("type") === "customer") {
-      setTimeout(() => {
-        if (searchInputRef.current) {
-          searchInputRef.current.focus();
-          searchInputRef.current.select();
-          setDropdownOpen(true);
-        }
-      }, 100);
-    }
-  }, [searchParams]);
+    const isCustomerView = searchParams.get("type") === "customer" || focusParam === "search" || focusParam === "1";
+    if (!isCustomerView) return;
+
+    // Focus immediately if mounted
+    const triggerFocus = () => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+        searchInputRef.current.select();
+        setDropdownOpen(true);
+      }
+    };
+
+    triggerFocus();
+    const t1 = setTimeout(triggerFocus, 100);
+    const t2 = setTimeout(triggerFocus, 300);
+    const t3 = setTimeout(triggerFocus, 600);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, [searchParams, loading]);
 
   // Reset and fetch page 1 when filters change
   useEffect(() => {
