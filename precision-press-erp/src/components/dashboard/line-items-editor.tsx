@@ -508,7 +508,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
       <div className="overflow-x-auto">
         <div className="min-w-[1050px]">
           {/* Header Row Matching Tally & Proxy Order */}
-          <div className="grid grid-cols-[32px_1.7fr_1.1fr_75px_58px_70px_70px_60px_60px_80px_75px_85px_80px_95px_32px] gap-2 border-b-2 border-slate-100 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <div className="grid grid-cols-[32px_1.7fr_1.1fr_75px_58px_70px_70px_60px_60px_80px_75px_92px_80px_95px_32px] gap-2 border-b-2 border-slate-100 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
             <span className="text-center">#</span>
             <span>Name of Item</span>
             <span>Project <span className="text-[9px] font-normal normal-case text-slate-400 italic">(optional)</span></span>
@@ -565,7 +565,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
             return (
               <div
                 key={i}
-                className="grid grid-cols-[32px_1.7fr_1.1fr_75px_58px_70px_70px_60px_60px_80px_75px_85px_80px_95px_32px] gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors"
+                className="grid grid-cols-[32px_1.7fr_1.1fr_75px_58px_70px_70px_60px_60px_80px_75px_92px_80px_95px_32px] gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors"
               >
                 {/* Index # */}
                 <div className="text-center font-bold text-xs text-slate-400">
@@ -824,7 +824,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                         type="number"
                         step="0.01"
                         min="0"
-                        className="h-9 w-16 text-right text-xs font-bold font-mono bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl px-2 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                        className="h-9 w-20 text-right text-xs font-bold font-mono bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl px-1.5 focus:outline-none focus:border-emerald-600 focus:bg-white"
                         value={rateNum > 0 ? rateNum : ''}
                         onChange={(e) => updateLine(i, "unitPrice", e.target.value)}
                         placeholder="0.00"
@@ -839,7 +839,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                         type="number"
                         step="0.01"
                         min="0"
-                        className="h-9 w-16 text-right text-xs font-bold font-mono bg-slate-50 border border-slate-300 text-slate-800 rounded-xl px-2 focus:outline-none focus:border-blue-600 focus:bg-white"
+                        className="h-9 w-20 text-right text-xs font-bold font-mono bg-slate-50 border border-slate-300 text-slate-800 rounded-xl px-1.5 focus:outline-none focus:border-blue-600 focus:bg-white"
                         value={rateNum > 0 ? rateNum : ''}
                         onChange={(e) => updateLine(i, "unitPrice", e.target.value)}
                         placeholder="0.00"
