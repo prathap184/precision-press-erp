@@ -159,7 +159,7 @@ export function QuotationBuilder() {
         const activeProducts = productData.filter((product: Product) => product.status === 'ACTIVE');
         setProducts(activeProducts);
         setCustomers(customerData);
-        setRows([makeRow(activeProducts[0])]);
+        setRows([makeRow()]);
       } catch (error) {
         console.error(error);
         toast.error('Unable to load quotation data.');
@@ -411,6 +411,18 @@ export function QuotationBuilder() {
       if (updates.productId) {
         const product = products.find((item) => item.id === updates.productId);
         next.productName = product?.name || '';
+        const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || '').trim().toLowerCase();
+        const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+        const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
+        const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (hasMultipleSizes ? 'B' : 'A');
+        
+        // Populate default dimensions and settings for the selected product
+        next.billingMode = defaultMode;
+        next.width = hasMultipleSizes ? String(product?.default_width || '1') : '';
+        next.widthUnit = (product?.default_width_unit as any) || 'FT';
+        next.height = hasMultipleSizes ? String(product?.default_length || '1') : '';
+        next.heightUnit = (product?.default_length_unit as any) || 'FT';
+        next.manualRate = undefined; // reset manual rate so product baseRate takes effect
       }
       if (next.eyeletType === 'NONE') {
         next.eyeletCount = 0;

@@ -596,24 +596,22 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b-2 border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        <th className="py-1.5 px-2 w-8 text-center"></th>
-                        <th className="py-1.5 px-2 min-w-[220px]">
-                          <div>Name of Item</div>
-                        </th>
-                        <th className="py-1.5 px-2 text-center">HSN Code</th>
-                        <th className="py-1.5 px-2 text-center">GST %</th>
-                        <th className="py-1.5 px-2 text-center">T</th>
-                        <th className="py-1.5 px-2">Width</th>
-                        <th className="py-1.5 px-2">Length</th>
-                        <th className="py-1.5 px-2 text-center">Sq. Ft.</th>
-                        <th className="py-1.5 px-2 text-center">Pcs/No</th>
-                        <th className="py-1.5 px-2 text-center">Quantity</th>
-                        <th className="py-1.5 px-2 text-center">Rate/SqFt</th>
-                        <th className="py-1.5 px-2 text-center">Rate per</th>
-                        <th className="py-1.5 px-2">Finish</th>
-                        <th className="py-1.5 px-2">File Path <span className="normal-case font-normal text-slate-400 tracking-normal italic">(optional)</span></th>
-                        <th className="py-1.5 px-2 text-right">Amount</th>
-                        <th className="py-1.5 px-2 text-center">×</th>
+                        <th className="py-2.5 px-2 w-8 text-center">#</th>
+                        <th className="py-2.5 px-2 min-w-[220px]">Name of Item</th>
+                        <th className="py-2.5 px-2 text-center">HSN Code</th>
+                        <th className="py-2.5 px-2 text-center">GST %</th>
+                        <th className="py-2.5 px-2 text-center">T</th>
+                        <th className="py-2.5 px-2 text-center">Width</th>
+                        <th className="py-2.5 px-2 text-center">Length</th>
+                        <th className="py-2.5 px-2 text-center">Sq. Ft.</th>
+                        <th className="py-2.5 px-2 text-center">Pcs/No</th>
+                        <th className="py-2.5 px-2 text-center">Quantity</th>
+                        <th className="py-2.5 px-2 text-center">Rate/SqFt</th>
+                        <th className="py-2.5 px-2 text-center">Rate per</th>
+                        <th className="py-2.5 px-2 text-center">Finish</th>
+                        <th className="py-2.5 px-2">File Path <span className="normal-case font-normal text-slate-400 tracking-normal italic">(optional)</span></th>
+                        <th className="py-2.5 px-2 text-right">Amount</th>
+                        <th className="py-2.5 px-2 text-center">×</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -654,20 +652,43 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const gstRate = product?.gst_rate || 18;
 
                         return (
-                          <tr key={row.id} className="group transition-colors hover:bg-slate-50/50">
-                            <td className="py-1 px-2 text-center text-xs font-bold text-slate-400 tabular-nums">{index + 1}</td>
-                            <td className="py-1 px-2 tabular-nums">
+                          <tr key={row.id} className="group transition-colors hover:bg-slate-50/50 align-top">
+                            <td className="py-2 px-2 text-center text-xs font-bold text-slate-400 tabular-nums align-top pt-3">{index + 1}</td>
+                            <td className="py-2 px-2 tabular-nums align-top">
                               {(() => {
                                   const selProd = products.find((p: any) => p.id === row.productId);
                                   const isOpen = openRowId === row.id;
                                   const qTerm = searchQuery.trim().toLowerCase();
-                                  const isExactCurrent = qTerm === (selProd?.name || '').toLowerCase();
                                   const qTokens = qTerm.split(/\s+/).filter(Boolean);
-                                  const matched = (qTokens.length > 0 && !isExactCurrent)
-                                    ? products.filter((p: any) => {
-                                        const target = `${p.name || ''} ${p.id || ''} ${p.code || ''} ${p.sku || ''} ${p.category || ''}`.toLowerCase();
-                                        return qTokens.every(tok => target.includes(tok));
-                                      })
+                                  const matched = (qTokens.length > 0)
+                                    ? products
+                                        .filter((p: any) => {
+                                          const target = `${p.name || ''} ${p.id || ''} ${p.code || ''} ${p.sku || ''} ${p.category || ''}`.toLowerCase();
+                                          return qTokens.every(tok => target.includes(tok));
+                                        })
+                                        .sort((a: any, b: any) => {
+                                          const aName = (a.name || '').toLowerCase();
+                                          const bName = (b.name || '').toLowerCase();
+                                          // 1. Exact match gets highest priority
+                                          if (aName === qTerm && bName !== qTerm) return -1;
+                                          if (bName === qTerm && aName !== qTerm) return 1;
+                                          // 2. Name starts with query
+                                          const aStarts = aName.startsWith(qTerm);
+                                          const bStarts = bName.startsWith(qTerm);
+                                          if (aStarts && !bStarts) return -1;
+                                          if (bStarts && !aStarts) return 1;
+                                          // 3. Name contains query vs only category contains
+                                          const aInName = aName.includes(qTerm);
+                                          const bInName = bName.includes(qTerm);
+                                          if (aInName && !bInName) return -1;
+                                          if (bInName && !aInName) return 1;
+                                          // 4. All tokens match in name
+                                          const aTokensInName = qTokens.every(tok => aName.includes(tok));
+                                          const bTokensInName = qTokens.every(tok => bName.includes(tok));
+                                          if (aTokensInName && !bTokensInName) return -1;
+                                          if (bTokensInName && !aTokensInName) return 1;
+                                          return 0;
+                                        })
                                     : products;
 
                                   const grouped = matched.reduce((acc: any, p: any) => {
@@ -675,14 +696,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     if (!acc[cat]) acc[cat] = [];
                                     acc[cat].push(p);
                                     return acc;
-                                  }, {});
-                                  const displayedItems: any[] = [];
-                                  Object.values(grouped).forEach((prods: any) => displayedItems.push(...prods));
+                                  }, {} as Record<string, any[]>);
+                                  const displayedItems: any[] = matched;
 
                                   let runningIdx = 0;
 
                                   return (
-                                    <div className="space-y-1.5 min-w-[200px]">
+                                    <div className="space-y-1 min-w-[220px]">
                                       <div id={`error-row-${row.id}-product`} className="relative w-full">
                                       <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                                         <input
@@ -829,7 +849,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                                             return Object.entries(grouped).map(([cat, prods]: [string, any]) => (
                                               <div key={cat} className="last:border-b-0">
-                                                <div className="bg-slate-100/90 px-3.5 py-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10 backdrop-blur-sm border-b border-slate-200/80 flex items-center justify-between">
+                                                <div className="bg-slate-100/95 px-3.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200/80 flex items-center justify-between">
                                                   <span>{cat.replace(/_/g, ' ')}</span>
                                                   <span className="text-[9px] font-bold text-slate-400">{prods.length} items</span>
                                                 </div>
@@ -909,7 +929,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         </div>
                                       )}
                                     </div>
-                                    <div className="flex items-center gap-1.5">
+                                    <div className="flex items-center gap-1.5 pt-0.5">
                                       <span className="text-[10px] font-bold text-slate-400 select-none pl-1" title="Tally Additional Description">↳</span>
                                       <input
                                         id={`row-${row.id}-description`}
@@ -918,16 +938,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           const val = e.target.value;
                                           updateRow(row.id, { description: val, projectName: val });
                                         }}
-                                        placeholder="Description / notes (e.g. specs, details)..."
+                                        placeholder="Description / notes (optional)..."
                                         onKeyDown={(e) => {
                                           if (e.key === "Enter") {
                                             e.preventDefault();
-                                            const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
-                                            if (modeBtn) {
-                                              modeBtn.focus();
-                                            } else if (isSqftModeB) {
+                                            if (hasMultipleSizes) {
                                               const widthInput = document.getElementById(`error-row-${row.id}-width`);
                                               if (widthInput) widthInput.focus();
+                                              else {
+                                                const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                                if (qtyInput) qtyInput.focus();
+                                              }
                                             } else {
                                               const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                               if (qtyInput) qtyInput.focus();
@@ -938,7 +959,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             if (prodInput) prodInput.focus();
                                           }
                                         }}
-                                        className="h-8 w-full rounded-lg border border-slate-200 bg-slate-50/80 px-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
+                                        className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
                                         title="Additional Description for stock item (like Tally Prime) — saved to order_items"
                                       />
                                     </div>
@@ -946,11 +967,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   );
                                 })()}
                             </td>
-                            <td className="py-1 px-2 text-center text-xs font-bold text-slate-500 tabular-nums">
+                            <td className="py-2 px-2 text-center text-xs font-bold text-slate-500 tabular-nums align-top pt-3">
                               {product?.hsn || product?.hsn_code || row.hsnCode || '—'}
                             </td>
-                            <td className="py-1 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">{gstRate}</td>
-                            <td className="py-1 px-2 text-center tabular-nums">
+                            <td className="py-2 px-2 text-center text-xs font-bold text-slate-600 tabular-nums align-top pt-3">{gstRate}</td>
+                            <td className="py-2 px-2 text-center tabular-nums align-top">
                               <span
                                 id={`row-${row.id}-mode-btn`}
                                 tabIndex={0}
@@ -970,7 +991,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   }
                                 }}
                                 title={`Mode ${currentMode} — Locked to Tally master`}
-                                className={`h-8 min-w-[42px] px-2 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-default outline-none ${
+                                className={`h-10 min-w-[40px] px-2.5 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-default outline-none ${
                                   currentMode === 'A'
                                     ? 'border-blue-600 bg-blue-600 text-white'
                                     : 'border-emerald-600 bg-emerald-600 text-white'
@@ -980,7 +1001,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               </span>
                             </td>
                             {/* Width Column */}
-                            <td className="py-1 px-2 tabular-nums">
+                            <td className="py-2 px-2 tabular-nums align-top">
                               {!hasMultipleSizes ? (
                                 <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
                               ) : (
@@ -1078,7 +1099,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               )}
                             </td>
                             {/* Length Column */}
-                            <td className="py-1 px-2 tabular-nums">
+                            <td className="py-2 px-2 tabular-nums align-top">
                               {!hasMultipleSizes ? (
                                 <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
                               ) : (
@@ -1188,11 +1209,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               )}
                             </td>
-                            <td className="py-1 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">
+                            <td className="py-2 px-2 text-center text-xs font-bold text-slate-600 tabular-nums align-top pt-3">
                               {sqft > 0 ? sqft.toFixed(2) : '—'}
                             </td>
                             {/* Pcs/No Column */}
-                            <td className="py-1 px-2 tabular-nums text-center">
+                            <td className="py-2 px-2 tabular-nums text-center align-top">
                               {hasMultipleSizes && isModeB ? (
                                 <input
                                   id={`error-row-${row.id}-pcs`}
@@ -1220,13 +1241,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   placeholder="Pcs"
                                 />
                               ) : (
-                                <span className="text-slate-300 font-bold">—</span>
+                                <div className="h-10 flex items-center justify-center text-slate-300 font-bold">—</div>
                               )}
                             </td>
                             {/* Quantity Column */}
-                            <td className="py-1 px-2 text-center text-xs font-bold tabular-nums">
+                            <td className="py-2 px-2 text-center text-xs font-bold tabular-nums align-top">
                               {hasMultipleSizes && isModeB ? (
-                                <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
+                                <div className="h-10 flex items-center justify-center text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</div>
                               ) : (
                                 <div className="inline-flex items-center justify-center">
                                   <input
@@ -1260,7 +1281,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               )}
                             </td>
                             {/* Rate/SqFt Column — EDITABLE only in Mode A with Multiple Sizes */}
-                            <td className="py-1 px-2 text-center tabular-nums">
+                            <td className="py-2 px-2 text-center tabular-nums align-top">
                               {hasMultipleSizes && isModeA ? (
                                 <input
                                   id={`row-${row.id}-rate-sqft`}
@@ -1295,22 +1316,24 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     }
                                   }}
                                   placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
-                                  className="h-9 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
+                                  className="h-10 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
                                   title="Rate per sq.ft in Mode A — editable (like Tally)"
                                 />
                               ) : (
-                                <span className="text-slate-300 font-bold">—</span>
+                                <div className="h-10 flex items-center justify-center text-slate-300 font-bold">—</div>
                               )}
                             </td>
                             {/* Rate per (unit) Column — In Mode A: Shows Sq.Ft * Rate/SqFt. In Mode B & Direct: Editable */}
-                            <td className="py-1 px-2 text-center tabular-nums">
+                            <td className="py-2 px-2 text-center tabular-nums align-top">
                               {hasMultipleSizes && isModeA ? (
-                                <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-200">
-                                  {calculatedRatePerUnit.toFixed(2)}
-                                  <span className="text-[10px] text-blue-500 font-bold">{displayUnit}</span>
-                                </span>
+                                <div className="h-10 flex items-center justify-center">
+                                  <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 shadow-2xs">
+                                    {calculatedRatePerUnit.toFixed(2)}
+                                    <span className="text-[10px] text-blue-500 font-bold">{displayUnit}</span>
+                                  </span>
+                                </div>
                               ) : (
-                                <div className="inline-flex items-center gap-1">
+                                <div className="h-10 inline-flex items-center justify-center gap-1">
                                   <input
                                     id={`row-${row.id}-rate-unit`}
                                     value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
@@ -1344,16 +1367,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
-                                    className="h-9 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
+                                    className="h-10 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
                                     title="Rate per unit in Mode B — editable (like Tally)"
                                   />
                                   <span className="text-[10px] text-slate-500 font-bold">{displayUnit}</span>
                                 </div>
                               )}
                             </td>
-                            <td className="py-1 px-2 tabular-nums">
+                            <td className="py-2 px-2 tabular-nums align-top">
                               {isDirect ? (
-                                <div className="h-8 w-full min-w-[80px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
+                                <div className="h-10 w-full min-w-[80px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
                                   —
                                 </div>
                               ) : (
@@ -1383,7 +1406,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       }
                                     }}
-                                    className="h-8 w-full min-w-[80px] rounded-lg border-2 border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                    className="h-10 w-full min-w-[80px] rounded-lg border-2 border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
                                   >
                                     <option value="NONE">None</option>
                                     <option value="METAL">Metal</option>
@@ -1392,7 +1415,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               )}
                             </td>
-                            <td className="py-1 px-2 tabular-nums">
+                            <td className="py-2 px-2 tabular-nums align-top">
                               <div className="flex items-center gap-1.5 min-w-[210px]">
                                 <div className="relative flex-1">
                                   <input
@@ -1525,10 +1548,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </button>
                               </div>
                             </td>
-                            <td className="py-1 px-2 text-right text-sm font-black text-slate-900 tabular-nums">
+                            <td className="py-2 px-2 text-right text-sm font-black text-slate-900 tabular-nums align-top pt-3">
                               {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
-                            <td className="py-1 px-2 text-center tabular-nums">
+                            <td className="py-2 px-2 text-center tabular-nums align-top pt-2">
                               <button
                                 id={`row-${row.id}-delete-btn`}
                                 type="button"
