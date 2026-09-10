@@ -14,11 +14,19 @@ import { useRouter } from 'next/navigation';
 
 import { useCreateDrawer } from '@/components/dashboard/create-drawer';
 
+interface ShortcutItemDef {
+  hotkey: string;
+  label: string;
+  hasChildren?: boolean;
+  onClick: () => void;
+}
+
 export function ShortcutMenu({}: ShortcutMenuProps) {
   const { menuState, closeMenu, setMenuState } = useGlobalShortcuts();
   const { open: openDrawer } = useCreateDrawer();
   const { profile } = useAuth();
   const router = useRouter();
+  const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
 
   const allowedRoles = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'];
 
@@ -29,11 +37,77 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
         '/sales-register', '/quotation-register', '/receipt-register', 
         '/payment-entry', '/admin/treasury', '/admin/journal-transfers', 
         '/purchase', '/accountant/day-book', '/accountant/ledger', 
-        '/accountant/bank-ledger', '/accountant/cash-ledger'
+        '/accountant/bank-ledger', '/accountant/cash-ledger',
+        '/accounting/contacts'
       ];
       routesToPrefetch.forEach(route => router.prefetch(route));
     }
   }, [menuState, profile, router]);
+
+  // Derive menu items for current menuState
+  const currentItems: ShortcutItemDef[] = React.useMemo(() => {
+    if (menuState === 'VOUCHERS') {
+      return [
+        { hotkey: 'F8', label: 'Invoice', onClick: () => { openDrawer("invoice"); closeMenu(); } },
+        { hotkey: 'F10', label: 'Quote', onClick: () => { router.push('/quotation-builder'); closeMenu(); } },
+        { hotkey: 'F6', label: 'Receipt entry (sync) / gpay or cash', onClick: () => { openDrawer("customerCredit"); closeMenu(); } },
+        { hotkey: 'F5', label: 'Payment', onClick: () => { router.push('/purchases'); closeMenu(); } },
+        { hotkey: 'F4', label: 'Contra', onClick: () => { router.push('/accounting/contra'); closeMenu(); } },
+        { hotkey: 'F7', label: 'Journal', onClick: () => { router.push('/accounting/journal'); closeMenu(); } },
+      ];
+    }
+    if (menuState === 'DISPLAY_REPORTS') {
+      return [
+        { hotkey: 'D', label: 'Day Book', onClick: () => { router.push('/reports/day-book'); closeMenu(); } },
+        { hotkey: 'A', label: 'Account Books', hasChildren: true, onClick: () => setMenuState('ACCOUNT_BOOKS') },
+      ];
+    }
+    if (menuState === 'ACCOUNT_BOOKS') {
+      return [
+        { hotkey: 'L', label: 'Ledgers', hasChildren: true, onClick: () => setMenuState('LEDGERS') },
+      ];
+    }
+    if (menuState === 'LEDGERS') {
+      return [
+        { hotkey: 'D', label: 'Day Book', onClick: () => { router.push('/reports/day-book'); closeMenu(); } },
+        { hotkey: 'G', label: 'General Ledger', onClick: () => { router.push('/reports/general-ledger'); closeMenu(); } },
+        { hotkey: 'C', label: 'Customer Ledger', onClick: () => { router.push('/accounting/contacts?type=customer&focus=search'); closeMenu(); } },
+        { hotkey: 'S', label: 'Supplier Ledger', onClick: () => { router.push('/accounting/contacts?type=supplier&focus=search'); closeMenu(); } },
+        { hotkey: 'A', label: 'Chart of Accounts', onClick: () => { router.push('/accounting/accounts'); closeMenu(); } },
+        { hotkey: 'B', label: 'Bank Accounts', onClick: () => { router.push('/accounting/banking'); closeMenu(); } },
+      ];
+    }
+    return [];
+  }, [menuState, openDrawer, closeMenu, router, setMenuState]);
+
+  // Reset selectedIndex whenever menuState changes
+  React.useEffect(() => {
+    setSelectedIndex(0);
+  }, [menuState]);
+
+  // Keyboard navigation for ArrowUp, ArrowDown, and Enter
+  React.useEffect(() => {
+    if (menuState === null || currentItems.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev + 1) % currentItems.length);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev - 1 + currentItems.length) % currentItems.length);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const item = currentItems[selectedIndex];
+        if (item && item.onClick) {
+          item.onClick();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [menuState, currentItems, selectedIndex]);
 
   if (!profile || !allowedRoles.includes(profile.role)) {
     return null;
@@ -66,49 +140,28 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
 
         {/* Body */}
         <div className="p-4 bg-white min-h-[300px]">
-          
-          {menuState === 'VOUCHERS' && (
-            <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { openDrawer("invoice"); closeMenu(); }} />
-              <ShortcutItem hotkey="F10" label="Quote" onClick={() => { router.push('/quotation-builder'); closeMenu(); }} />
-              <ShortcutItem hotkey="F6" label="Receipt entry (sync) / gpay or cash" onClick={() => { openDrawer("customerCredit"); closeMenu(); }} />
-              <ShortcutItem hotkey="F5" label="Payment" onClick={() => { router.push('/purchases'); closeMenu(); }} />
-              <ShortcutItem hotkey="F4" label="Contra" onClick={() => { router.push('/accounting/contra'); closeMenu(); }} />
-              <ShortcutItem hotkey="F7" label="Journal" onClick={() => { router.push('/accounting/journal'); closeMenu(); }} />
-            </div>
-          )}
-
-          {menuState === 'DISPLAY_REPORTS' && (
-            <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="D" label="Day Book" onClick={() => {
-                router.push('/reports/day-book');
-                closeMenu();
-              }} />
-              <ShortcutItem hotkey="A" label="Account Books" hasChildren onClick={() => setMenuState('ACCOUNT_BOOKS')} />
-            </div>
-          )}
-
-          {menuState === 'ACCOUNT_BOOKS' && (
-            <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="L" label="Ledgers" hasChildren onClick={() => setMenuState('LEDGERS')} />
-            </div>
-          )}
-
-          {menuState === 'LEDGERS' && (
-            <div className="grid grid-cols-1 gap-2">
-              <ShortcutItem hotkey="D" label="Day Book" onClick={() => { router.push('/reports/day-book'); closeMenu(); }} />
-              <ShortcutItem hotkey="G" label="General Ledger" onClick={() => { router.push('/reports/general-ledger'); closeMenu(); }} />
-              <ShortcutItem hotkey="C" label="Customer Ledger" onClick={() => { router.push('/contacts?type=customer'); closeMenu(); }} />
-              <ShortcutItem hotkey="S" label="Supplier Ledger" onClick={() => { router.push('/contacts?type=supplier'); closeMenu(); }} />
-              <ShortcutItem hotkey="A" label="Chart of Accounts" onClick={() => { router.push('/accounting/accounts'); closeMenu(); }} />
-              <ShortcutItem hotkey="B" label="Bank Accounts" onClick={() => { router.push('/accounting/banking'); closeMenu(); }} />
-            </div>
-          )}
+          <div className="grid grid-cols-1 gap-2">
+            {currentItems.map((item, idx) => (
+              <ShortcutItem
+                key={`${item.hotkey}-${item.label}`}
+                hotkey={item.hotkey}
+                label={item.label}
+                hasChildren={item.hasChildren}
+                isSelected={idx === selectedIndex}
+                onMouseEnter={() => setSelectedIndex(idx)}
+                onClick={item.onClick}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Footer info */}
         <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 text-xs font-medium text-slate-400 flex justify-between">
-          <span>Press <kbd className="font-mono bg-white border border-slate-200 px-1 rounded mx-0.5 text-slate-500">Esc</kbd> to close</span>
+          <span className="flex items-center gap-1.5">
+            <span>Navigate <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-500">↑</kbd><kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-500">↓</kbd></span>
+            <span>Select <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-500">Enter</kbd></span>
+            <span>or press key</span>
+          </span>
           {(menuState === 'ACCOUNT_BOOKS' || menuState === 'LEDGERS') && (
             <button 
               onClick={() => {
@@ -127,19 +180,44 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
   );
 }
 
-function ShortcutItem({ hotkey, label, hasChildren, onClick }: { hotkey: string; label: string; hasChildren?: boolean; onClick?: () => void }) {
+function ShortcutItem({ 
+  hotkey, 
+  label, 
+  hasChildren, 
+  isSelected, 
+  onMouseEnter, 
+  onClick 
+}: { 
+  hotkey: string; 
+  label: string; 
+  hasChildren?: boolean; 
+  isSelected?: boolean; 
+  onMouseEnter?: () => void; 
+  onClick?: () => void; 
+}) {
   return (
     <div 
-      className="flex items-center justify-between px-4 py-3 rounded-xl hover:bg-blue-50 text-slate-700 transition-colors group cursor-default"
+      className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all cursor-pointer select-none border ${
+        isSelected
+          ? 'bg-blue-600 text-white font-semibold border-blue-600 shadow-md ring-2 ring-blue-400/30'
+          : 'bg-white hover:bg-blue-50 text-slate-700 border-transparent'
+      }`}
+      onMouseEnter={onMouseEnter}
       onClick={onClick}
     >
       <div className="flex items-center gap-4">
-        <span className="w-10 text-center font-bold font-mono text-xs bg-slate-100 text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-700 px-2 py-1 rounded">
+        <span className={`w-10 text-center font-bold font-mono text-xs px-2 py-1 rounded transition-colors ${
+          isSelected
+            ? 'bg-white/20 text-white'
+            : 'bg-slate-100 text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-700'
+        }`}>
           {hotkey}
         </span>
-        <span className="font-medium group-hover:text-blue-900">{label}</span>
+        <span className={isSelected ? 'text-white' : 'font-medium text-slate-800'}>{label}</span>
       </div>
-      {hasChildren && <ChevronRight size={16} className="text-slate-400 group-hover:text-blue-500" />}
+      {hasChildren && (
+        <ChevronRight size={16} className={isSelected ? 'text-white' : 'text-slate-400'} />
+      )}
     </div>
   );
 }

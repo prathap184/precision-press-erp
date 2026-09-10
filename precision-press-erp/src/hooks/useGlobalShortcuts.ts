@@ -198,11 +198,11 @@ export function useGlobalShortcuts() {
           closeMenu();
         } else if (key === 'c') {
           e.preventDefault();
-          router.push('/contacts?type=customer');
+          router.push('/accounting/contacts?type=customer&focus=search');
           closeMenu();
         } else if (key === 's') {
           e.preventDefault();
-          router.push('/contacts?type=supplier');
+          router.push('/accounting/contacts?type=supplier&focus=search');
           closeMenu();
         } else if (key === 'a') {
           e.preventDefault();

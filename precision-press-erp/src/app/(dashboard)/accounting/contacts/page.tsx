@@ -300,7 +300,24 @@ export default function ContactsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [total, setTotal] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [highlightIndex, setHighlightIndex] = useState(0);
   useDocumentTitle("Contacts · All Contacts");
+
+  // Auto-focus search bar if focus=search query param is present or when user visits Customer/Supplier Ledger
+  useEffect(() => {
+    const focusParam = searchParams.get("focus");
+    if (focusParam === "search" || focusParam === "1" || searchParams.get("type") === "customer") {
+      setTimeout(() => {
+        if (searchInputRef.current) {
+          searchInputRef.current.focus();
+          searchInputRef.current.select();
+          setDropdownOpen(true);
+        }
+      }, 100);
+    }
+  }, [searchParams]);
 
   // Reset and fetch page 1 when filters change
   useEffect(() => {
@@ -606,14 +623,138 @@ export default function ContactsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:max-w-xs">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <div className="relative w-full sm:max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
             <Input
-              placeholder="Search contacts..."
+              ref={searchInputRef}
+              placeholder="Search contacts (use ↑ ↓ arrows to select)..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              onFocus={() => {
+                setDropdownOpen(true);
+                setHighlightIndex(0);
+              }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setDropdownOpen(true);
+                setHighlightIndex(0);
+              }}
+              onKeyDown={(e) => {
+                if (contacts.length === 0) return;
+
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  if (!dropdownOpen) {
+                    setDropdownOpen(true);
+                    setHighlightIndex(0);
+                    return;
+                  }
+                  setHighlightIndex((prev) => Math.min(prev + 1, contacts.length - 1));
+                } else if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setHighlightIndex((prev) => Math.max(prev - 1, 0));
+                } else if (e.key === "Enter") {
+                  if (dropdownOpen && contacts.length > 0) {
+                    e.preventDefault();
+                    const selected = contacts[highlightIndex] || contacts[0];
+                    if (selected) {
+                      setDropdownOpen(false);
+                      router.push(`/accounting/contacts/${selected.id}/statement`);
+                    }
+                  }
+                } else if (e.key === "Escape") {
+                  setDropdownOpen(false);
+                }
+              }}
+              onBlur={() => {
+                // Delayed close so click events on dropdown items work reliably
+                setTimeout(() => setDropdownOpen(false), 200);
+              }}
+              className="pl-9 pr-8"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  searchInputRef.current?.focus();
+                }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full z-10"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+
+            {/* Dropdown list */}
+            {dropdownOpen && (
+              <div className="absolute left-0 top-full mt-1.5 w-full min-w-[340px] z-[9999] max-h-72 overflow-y-auto rounded-xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100">
+                {contacts.length === 0 ? (
+                  <div className="p-4 text-xs italic text-slate-400 text-center">
+                    {loading || refetching ? "Searching contacts..." : "No matching contacts found."}
+                  </div>
+                ) : (
+                  contacts.slice(0, 30).map((c, idx) => {
+                    const isHighlighted = idx === highlightIndex;
+                    return (
+                      <div
+                        key={c.id}
+                        ref={(el) => {
+                          if (el && isHighlighted) el.scrollIntoView({ block: "nearest" });
+                        }}
+                        onMouseEnter={() => setHighlightIndex(idx)}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          setDropdownOpen(false);
+                          router.push(`/accounting/contacts/${c.id}/statement`);
+                        }}
+                        className={`cursor-pointer px-3.5 py-2.5 transition-colors flex items-center justify-between gap-3 ${
+                          isHighlighted
+                            ? "bg-blue-600 text-white font-medium"
+                            : "hover:bg-slate-50 text-slate-800"
+                        }`}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-sm font-semibold truncate ${isHighlighted ? "text-white" : "text-slate-900"}`}>
+                              {c.name}
+                            </span>
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-mono uppercase font-bold ${
+                                isHighlighted
+                                  ? "bg-white/20 text-white"
+                                  : c.type === "customer"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : "bg-orange-100 text-orange-700"
+                              }`}
+                            >
+                              {c.type}
+                            </span>
+                          </div>
+                          <div className={`text-xs truncate mt-0.5 ${isHighlighted ? "text-blue-100" : "text-slate-500"}`}>
+                            {c.phone || c.email || "No phone"}
+                            {c.taxNumber ? ` • GST: ${c.taxNumber}` : ""}
+                          </div>
+                        </div>
+
+                        {c.owesYou && c.owesYou > 0 ? (
+                          <div className="text-right shrink-0">
+                            <span className={`text-xs font-bold tabular-nums ${isHighlighted ? "text-white" : "text-emerald-600"}`}>
+                              {formatMoney(c.owesYou, c.currencyCode || "INR")}
+                            </span>
+                            <div className={`text-[10px] uppercase font-bold tracking-wider ${isHighlighted ? "text-blue-100" : "text-slate-400"}`}>
+                              Due
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                )}
+                <div className="px-3 py-2 bg-slate-50 text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100">
+                  <span>Press <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-600">Enter</kbd> to open Statement</span>
+                  <span>Navigate <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-600">↑</kbd><kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-600">↓</kbd></span>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground shrink-0">From</span>
@@ -692,7 +833,13 @@ export default function ContactsPage() {
                 data={contacts}
                 loading={loading}
                 emptyMessage="No contacts found."
-                onRowClick={(r) => router.push(`/contacts/${r.id}`)}
+                onRowClick={(r) => {
+                  if (typeFilter === "customer" || typeFilter === "supplier") {
+                    router.push(`/accounting/contacts/${r.id}/statement`);
+                  } else {
+                    router.push(`/contacts/${r.id}`);
+                  }
+                }}
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={handleSort}
