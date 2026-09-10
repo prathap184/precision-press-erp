@@ -67,8 +67,9 @@ export function CurrencyInput({
         }}
         placeholder={placeholder}
         disabled={disabled}
+        style={{ border: 'none', outline: 'none', boxShadow: 'none' }}
         className={cn(
-          "flex-1 min-w-0 bg-transparent text-right font-mono tabular-nums outline-none placeholder:text-muted-foreground",
+          "flex-1 min-w-0 bg-transparent border-0 border-none text-right font-mono tabular-nums outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 placeholder:text-muted-foreground",
           size === "sm" ? "text-xs px-2 py-1" : "text-sm px-3 py-1 md:text-sm",
         )}
       />

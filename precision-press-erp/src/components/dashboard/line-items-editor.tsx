@@ -493,25 +493,18 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
   return (
     <div className="space-y-4">
-      {/* Top Header with Add Row button matching Proxy Order */}
-      <div className="flex items-center justify-between pb-2">
+      {/* Top Header */}
+      <div className="pb-2">
         <div className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</div>
-        <button
-          type="button"
-          onClick={addLine}
-          className="flex items-center gap-1 rounded-lg bg-slate-900 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-colors cursor-pointer shadow-xs"
-        >
-          <Plus size={12} /> Add Row
-        </button>
       </div>
 
       <div className="overflow-x-auto">
-        <div className="min-w-[1050px]">
+        <div className="min-w-[1160px]">
           {/* Header Row Matching Tally & Proxy Order */}
-          <div className="grid grid-cols-[32px_1.7fr_1.1fr_75px_58px_70px_70px_60px_60px_80px_75px_92px_80px_95px_32px] gap-2 border-b-2 border-slate-100 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <div className="grid grid-cols-[32px_1.3fr_0.8fr_75px_58px_70px_70px_60px_60px_80px_75px_105px_80px_95px_32px] gap-2 border-b-2 border-slate-100 px-4 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400 items-center">
             <span className="text-center">#</span>
-            <span>Name of Item</span>
-            <span>Project <span className="text-[9px] font-normal normal-case text-slate-400 italic">(optional)</span></span>
+            <span className="text-left pl-1">Name of Item</span>
+            <span className="text-left pl-1">Project <span className="text-[9px] font-normal normal-case text-slate-400 italic">(optional)</span></span>
             <span className="text-center">GST%</span>
             <span className="text-center">T</span>
             <span className="text-center">Width</span>
@@ -521,8 +514,8 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
             <span className="text-center">Quantity</span>
             <span className="text-center">Rate/SqFt</span>
             <span className="text-center">Rate per</span>
-            <span className="text-right">Finish</span>
-            <span className="text-right">Amount</span>
+            <span className="text-center">Finish</span>
+            <span className="text-right pr-2">Amount</span>
             <span />
           </div>
 
@@ -565,7 +558,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
             return (
               <div
                 key={i}
-                className="grid grid-cols-[32px_1.7fr_1.1fr_75px_58px_70px_70px_60px_60px_80px_75px_92px_80px_95px_32px] gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors"
+                className="grid grid-cols-[32px_1.3fr_0.8fr_75px_58px_70px_70px_60px_60px_80px_75px_105px_80px_95px_32px] gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors"
               >
                 {/* Index # */}
                 <div className="text-center font-bold text-xs text-slate-400">
@@ -660,10 +653,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                       <SelectValue placeholder="0%" />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 shadow-xl z-[9999]">
-                      <SelectItem value="none">0% No Tax</SelectItem>
+                      <SelectItem value="none">0%</SelectItem>
                       {taxRates.map((t) => (
                         <SelectItem key={t.id} value={t.id} className="font-semibold">
-                          {formatRatePct(t.rate)}% ({t.name})
+                          {formatRatePct(t.rate)}%
                         </SelectItem>
                       ))}
                     </SelectContent>
