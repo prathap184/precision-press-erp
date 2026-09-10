@@ -26,7 +26,8 @@ const TALLY_HOST = process.env.TALLY_HOST || 'localhost';
 const TALLY_PORT = parseInt(process.env.TALLY_PORT || '9000', 10);
 
 const GROUPS_XML_PATH = path.resolve(__dirname, '../tally_sync/all ledgers/listofstockgroups.xml');
-const ITEMS_XML_PATH  = path.resolve(__dirname, '../tally_sync/all ledgers/stockitems.xml');
+const ITEMS_XML_PATH  = path.resolve(__dirname, '../tally_sync/all ledgers/stock.xml');
+const ITEMS_XML_FALLBACK = path.resolve(__dirname, '../tally_sync/all ledgers/stockitems.xml');
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false }
@@ -213,6 +214,9 @@ async function runStockSync() {
     if (fs.existsSync(ITEMS_XML_PATH)) {
       itemsXml = fs.readFileSync(ITEMS_XML_PATH, 'utf8');
       console.log(`📂 Loaded ${ITEMS_XML_PATH}`);
+    } else if (fs.existsSync(ITEMS_XML_FALLBACK)) {
+      itemsXml = fs.readFileSync(ITEMS_XML_FALLBACK, 'utf8');
+      console.log(`📂 Loaded ${ITEMS_XML_FALLBACK}`);
     } else {
       console.error('❌ Stock Items XML file not found!');
       return;
@@ -254,12 +258,26 @@ async function runStockSync() {
     const mDirect = body.match(/<STKITEMSIZESBILLINGTYPE>([^<]+)<\/STKITEMSIZESBILLINGTYPE>/i);
     const tagVal = (mUdf ? mUdf[1] : (mDirect ? mDirect[1] : '')).trim().toUpperCase();
 
+    // Check "Set Multiple Size Details" from Tally UDF
+    const hasMultipleSizes = body.includes('<UDF:ITEMMULTIPLESIZE.LIST') || body.includes('ItemMultipleSize');
+    const widthM = body.match(/<UDF:ITEMWIDTHUDF[^>]*>\s*([\d.]+)\s*<\/UDF:ITEMWIDTHUDF>/i);
+    const lengthM = body.match(/<UDF:ITEMLENGTHUDF[^>]*>\s*([\d.]+)\s*<\/UDF:ITEMLENGTHUDF>/i);
+    const widthUnitM = body.match(/<UDF:ITEMWIDTHUNITUDF[^>]*>([^<]+)<\/UDF:ITEMWIDTHUNITUDF>/i);
+    const lengthUnitM = body.match(/<UDF:ITEMLENGTHUNITUDF[^>]*>([^<]+)<\/UDF:ITEMLENGTHUNITUDF>/i);
+    const sizeNameM = body.match(/<UDF:ITEMSIZENAMEUDF[^>]*>([^<]+)<\/UDF:ITEMSIZENAMEUDF>/i) || body.match(/<UDF:ITEMNEWSIZENAMEUDF[^>]*>([^<]+)<\/UDF:ITEMNEWSIZENAMEUDF>/i);
+
+    const defaultWidth = widthM ? parseFloat(widthM[1]) : (hasMultipleSizes ? 1 : null);
+    const defaultLength = lengthM ? parseFloat(lengthM[1]) : (hasMultipleSizes ? 1 : null);
+    const defaultWidthUnit = widthUnitM ? clean(widthUnitM[1]).toUpperCase() : 'FT';
+    const defaultLengthUnit = lengthUnitM ? clean(lengthUnitM[1]).toUpperCase() : 'FT';
+    const defaultSizeName = sizeNameM ? clean(sizeNameM[1]) : (hasMultipleSizes ? '1 F x 1 F' : '');
+
     const hasSqftInUnit = /sqft|sq\.ft|sqf/i.test(uom) || /sqft|sq\.ft|sqf/i.test(rawAltUom);
     const hasSqftInBal = (openBalM && /sqft|sq\.ft|sqf/i.test(openBalM[1])) || (openRateM && /sqft|sq\.ft|sqf/i.test(openRateM[1]));
-    const isSqft = hasSqftInUnit || hasSqftInBal;
+    const isSqft = hasMultipleSizes || hasSqftInUnit || hasSqftInBal;
     const normalizedUom = isSqft ? 'sqft' : (uom && !uom.includes('Not Applicable') ? uom : 'No');
     const isPieceItem = !isSqft;
-    const billingMode = tagVal === 'A' ? 'A' : 'B';
+    const billingMode = tagVal === 'A' ? 'A' : (tagVal === 'B' ? 'B' : (isPieceItem ? 'A' : 'B'));
 
     // Extract LATEST active HSN code
     const hsnMatches = [...body.matchAll(/<HSNCODE>([^<]+)<\/HSNCODE>/gi)];
@@ -345,6 +363,13 @@ async function runStockSync() {
         billingMode: billingMode,
         baseRate: openRate,
         hsn: hsn,
+        hasMultipleSizes: hasMultipleSizes,
+        has_multiple_sizes: hasMultipleSizes,
+        defaultWidth: defaultWidth,
+        defaultLength: defaultLength,
+        defaultWidthUnit: defaultWidthUnit,
+        defaultLengthUnit: defaultLengthUnit,
+        defaultSizeName: defaultSizeName,
       },
       is_active: true,
       description: description || `Stock Item: ${name} (${parentGroup})`

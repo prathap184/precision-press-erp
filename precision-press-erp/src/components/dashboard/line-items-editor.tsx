@@ -51,6 +51,10 @@ interface InventoryItemOption {
   inventoryAccountId?: string | null;
   expenseAccountId?: string | null;
   gstRate?: number | null;
+  unitOfMeasure?: string | null;
+  hasMultipleSizes?: boolean;
+  default_width?: number | string | null;
+  default_length?: number | string | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: any;
 }
@@ -331,12 +335,22 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
           if (matched) {
             needsUpdate = true;
             const uom = String(matched.unitOfMeasure || (matched as any).tallyUom || matched.metadata?.unit || '').trim().toLowerCase();
-            const isSqft = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft';
-            const defaultMode = (matched as any).tallyBillingMode || matched.metadata?.tallyBillingMode || (isSqft ? 'B' : 'A');
+            const cleanUom = uom.replace(/[\s\._-]/g, '');
+            const hasMultipleSizes = Boolean(
+              matched.hasMultipleSizes ??
+              matched.metadata?.hasMultipleSizes ??
+              matched.metadata?.has_multiple_sizes ??
+              (cleanUom === 'sqft' || cleanUom === 'sqf')
+            );
+            const defaultMode = (matched as any).tallyBillingMode || matched.metadata?.tallyBillingMode || (hasMultipleSizes ? 'B' : 'A');
+            const defW = hasMultipleSizes ? String(matched.metadata?.default_width ?? matched.default_width ?? '1') : '';
+            const defL = hasMultipleSizes ? String(matched.metadata?.default_length ?? matched.default_length ?? '1') : '';
             return {
               ...line,
               inventoryItemId: matched.id,
               billingMode: line.billingMode || defaultMode,
+              width: line.width || defW,
+              length: line.length || defL,
             };
           }
         }
@@ -408,9 +422,39 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
     const finish = parseFloat(line.finishAmount || "0");
     const delivery = parseFloat(line.deliveryAmount || "0");
     
-    const isModeA = line.billingMode === 'A';
-    const sqFt = isModeA ? 1 : ((width > 0 && length > 0) ? width * length : 1);
-    return (sqFt * qty * rate) + finish + delivery;
+    const itemObj = inventoryItems.find((itm) => itm.id === line.inventoryItemId);
+    const rawUom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || itemObj?.metadata?.unit || '').trim().toLowerCase();
+    const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+    const hasMultipleSizes = Boolean(
+      (itemObj?.hasMultipleSizes ??
+      itemObj?.metadata?.hasMultipleSizes ??
+      itemObj?.metadata?.has_multiple_sizes) ||
+      cleanUom === 'sqft' ||
+      cleanUom === 'sqf' ||
+      (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0)
+    );
+
+    const isModeA = (line.billingMode || (itemObj as any)?.tallyBillingMode || itemObj?.metadata?.tallyBillingMode) === 'A';
+    
+    if (!hasMultipleSizes) {
+      // Direct piece/unit billing: Quantity * Rate per unit + finish + delivery
+      return (qty * rate) + finish + delivery;
+    }
+
+    const sqFt = (width > 0 && length > 0) ? (width * length) : 0;
+
+    if (isModeA) {
+      // Mode A: Quantity is user-entered pieces; Rate per unit is (SqFt * Rate/SqFt)
+      // Amount = Quantity * (SqFt * Rate/SqFt)
+      const calculatedRatePerUnit = sqFt > 0 ? (sqFt * rate) : rate;
+      return (qty * calculatedRatePerUnit) + finish + delivery;
+    } else {
+      // Mode B: Pcs is user-entered; Quantity is (SqFt * Pcs); Rate per unit is Rate/SqFt
+      // Amount = (SqFt * Pcs) * Rate/SqFt
+      const pcs = parseFloat(line.pcsNo || line.quantity || "1") || 1;
+      const totalBilledSqft = sqFt * pcs;
+      return (totalBilledSqft * rate) + finish + delivery;
+    }
   }
 
   // Tax-EXCLUSIVE: tax is computed on top of qty*price, matching how the
@@ -478,17 +522,29 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
               taxContext === "purchase" && selectedRate ? reclaimHint(selectedRate) : null;
 
             const itemObj = inventoryItems.find((itm) => itm.id === line.inventoryItemId);
-            const uom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || itemObj?.metadata?.unit || '').trim().toLowerCase();
-            const isSqftItem = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft' || Boolean(parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0);
-            const defaultMode = (itemObj as any)?.tallyBillingMode || itemObj?.metadata?.tallyBillingMode || 'B';
+            const rawUom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || itemObj?.metadata?.unit || '').trim().toLowerCase();
+            const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+            const hasMultipleSizes = Boolean(
+              (itemObj?.hasMultipleSizes ??
+              itemObj?.metadata?.hasMultipleSizes ??
+              itemObj?.metadata?.has_multiple_sizes) ||
+              cleanUom === 'sqft' ||
+              cleanUom === 'sqf' ||
+              (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0)
+            );
+            const defaultMode = (itemObj as any)?.tallyBillingMode || itemObj?.metadata?.tallyBillingMode || (hasMultipleSizes ? 'B' : 'A');
             const currentMode = line.billingMode || defaultMode;
+            const isModeA = currentMode === 'A';
+            const isModeB = currentMode === 'B';
+
             const widthNum = parseFloat(line.width || "0");
             const lengthNum = parseFloat(line.length || "0");
             const pcs = Math.max(1, parseFloat(line.pcsNo || line.quantity || "1") || 1);
-            const sqFtNum = (widthNum > 0 && lengthNum > 0) ? (widthNum * lengthNum) : 0;
-            const calculatedSqFt = sqFtNum > 0 ? sqFtNum.toFixed(2) : "--";
+            const sqFtNum = hasMultipleSizes && widthNum > 0 && lengthNum > 0 ? (widthNum * lengthNum) : 0;
+            const calculatedSqFt = sqFtNum > 0 ? sqFtNum.toFixed(2) : "—";
             const totalBilledSqft = sqFtNum * pcs;
             const rateNum = parseFloat(line.unitPrice) || 0;
+            const calculatedRatePerUnit = isModeA ? (sqFtNum > 0 ? sqFtNum * rateNum : rateNum) : rateNum;
 
             return (
               <div
@@ -517,12 +573,23 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           || taxRates.find(t => t.rate === 1800) 
                           || (taxRates.length > 0 ? taxRates[0] : null);
 
-                        const itemUom = String(item.unitOfMeasure || (item as any).tallyUom || item.metadata?.unit || '').trim().toLowerCase();
-                        const isItemSqft = itemUom === 'sqft' || itemUom === 'sqf' || itemUom === 'sq.ft' || itemUom === 'sq ft';
-                        const itemDefaultMode = (item as any).tallyBillingMode || item.metadata?.tallyBillingMode || "B";
-                        const effectiveRate = !isItemSqft
+                        const itemRawUom = String(item.unitOfMeasure || (item as any).tallyUom || item.metadata?.unit || '').trim().toLowerCase();
+                        const itemCleanUom = itemRawUom.replace(/[\s\._-]/g, '');
+                        const itemHasSizes = Boolean(
+                          (item.hasMultipleSizes ??
+                          item.metadata?.hasMultipleSizes ??
+                          item.metadata?.has_multiple_sizes) ||
+                          itemCleanUom === 'sqft' ||
+                          itemCleanUom === 'sqf'
+                        );
+                        const itemDefaultMode = (item as any).tallyBillingMode || item.metadata?.tallyBillingMode || (itemHasSizes ? 'B' : 'A');
+                        const effectiveRate = !itemHasSizes
                           ? (Number(item.salePrice || 0) / 100)
                           : (item.metadata?.baseRate != null ? Number(item.metadata.baseRate) : (Number(item.salePrice || 0) / 100));
+                        
+                        const defW = itemHasSizes ? String(item.metadata?.default_width ?? item.default_width ?? '1') : '';
+                        const defL = itemHasSizes ? String(item.metadata?.default_length ?? item.default_length ?? '1') : '';
+
                         const updated = [...lines];
                         updated[i] = {
                           ...updated[i],
@@ -531,6 +598,8 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           unitPrice: effectiveRate.toString(),
                           billingMode: itemDefaultMode,
                           pcsNo: "1",
+                          width: defW,
+                          length: defL,
                           accountId: (taxContext === "purchase" ? item.expenseAccountId : item.revenueAccountId) || updated[i].accountId,
                           taxRateId: matchingTax ? matchingTax.id : (taxRates.find(t => t.rate === 1800)?.id || updated[i].taxRateId),
                         };
@@ -586,13 +655,13 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Mode (T) Locked Badge */}
                 <div className="text-center">
-                  {!isSqftItem ? (
+                  {!hasMultipleSizes ? (
                     <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-black border ${
                       currentMode === 'A'
                         ? 'bg-blue-100 text-blue-800 border-blue-200'
                         : 'bg-emerald-100 text-emerald-800 border-emerald-200'
                     }`}>
-                      {currentMode || 'B'}
+                      {currentMode || 'A'}
                     </span>
                   ) : (
                     <span
@@ -611,7 +680,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Width */}
                 <div>
-                  {!isSqftItem ? (
+                  {!hasMultipleSizes ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
                     <div className="relative">
@@ -629,7 +698,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Length */}
                 <div>
-                  {!isSqftItem ? (
+                  {!hasMultipleSizes ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
                     <div className="relative">
@@ -650,9 +719,9 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   {calculatedSqFt}
                 </div>
 
-                {/* Pcs/No Column */}
+                {/* Pcs/No Column — Only in Mode B with Multiple Sizes */}
                 <div className="text-center">
-                  {isSqftItem && currentMode === 'B' ? (
+                  {hasMultipleSizes && isModeB ? (
                     <Input
                       className="h-9 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                       type="number"
@@ -673,7 +742,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Quantity Column */}
                 <div className="text-center text-xs font-bold tabular-nums">
-                  {!isSqftItem ? (
+                  {!hasMultipleSizes ? (
                     <div className="inline-flex items-center justify-center">
                       <Input
                         className="h-9 w-14 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
@@ -687,9 +756,9 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           onChange(updated);
                         }}
                       />
-                      <span className="ml-1 text-[10px] font-black text-slate-500">{uom ? uom.toUpperCase() : 'N'}</span>
+                      <span className="ml-1 text-[10px] font-black text-slate-500">{rawUom ? rawUom.toUpperCase() : 'N'}</span>
                     </div>
-                  ) : currentMode === 'B' ? (
+                  ) : isModeB ? (
                     <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
                   ) : (
                     <div className="inline-flex items-center justify-center">
@@ -710,12 +779,12 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   )}
                 </div>
 
-                {/* Rate/SqFt Column — EDITABLE in Mode B */}
+                {/* Rate/SqFt Column — EDITABLE in Mode A with Multiple Sizes; BLANK in Mode B */}
                 <div className="text-center text-xs font-bold text-slate-700 tabular-nums">
-                  {isSqftItem && currentMode === 'B' ? (
+                  {hasMultipleSizes && isModeA ? (
                     <CurrencyInput
                       size="sm"
-                      className="h-9 text-right text-xs font-bold font-mono bg-emerald-50 border-emerald-300 text-emerald-800 rounded-xl focus:border-emerald-600 focus:bg-white"
+                      className="h-9 text-right text-xs font-bold font-mono bg-blue-50 border-blue-300 text-blue-800 rounded-xl focus:border-blue-600 focus:bg-white"
                       value={line.unitPrice}
                       onChange={(v) => updateLine(i, "unitPrice", v)}
                       placeholder="0.00"
@@ -725,25 +794,41 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   )}
                 </div>
 
-                {/* Rate per Column — EDITABLE in Mode A and Non-SqFt */}
+                {/* Rate per Column — Shows calculated (Sq.Ft * Rate/SqFt) in Mode A; EDITABLE in Mode B & Direct */}
                 <div className="text-center text-xs font-bold tabular-nums">
-                  {isSqftItem && currentMode === 'B' ? (
-                    <span className="text-emerald-700 font-bold text-xs">
-                      {rateNum > 0 ? rateNum.toFixed(2) : '0.00'} sqft
+                  {hasMultipleSizes && isModeA ? (
+                    <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-200">
+                      {calculatedRatePerUnit.toFixed(2)}
+                      <span className="text-[10px] text-blue-500 font-bold">N</span>
                     </span>
+                  ) : hasMultipleSizes && isModeB ? (
+                    <div className="inline-flex items-center gap-1">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        className="h-9 w-16 text-right text-xs font-bold font-mono bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl px-2 focus:outline-none focus:border-emerald-600 focus:bg-white"
+                        value={rateNum > 0 ? rateNum : ''}
+                        onChange={(e) => updateLine(i, "unitPrice", e.target.value)}
+                        placeholder="0.00"
+                      />
+                      <span className="text-[10px] font-black text-emerald-600">
+                        sqft
+                      </span>
+                    </div>
                   ) : (
                     <div className="inline-flex items-center gap-1">
                       <input
                         type="number"
                         step="0.01"
                         min="0"
-                        className="h-9 w-16 text-right text-xs font-bold font-mono bg-blue-50 border border-blue-300 text-blue-800 rounded-xl px-2 focus:outline-none focus:border-blue-600 focus:bg-white"
+                        className="h-9 w-16 text-right text-xs font-bold font-mono bg-slate-50 border border-slate-300 text-slate-800 rounded-xl px-2 focus:outline-none focus:border-blue-600 focus:bg-white"
                         value={rateNum > 0 ? rateNum : ''}
                         onChange={(e) => updateLine(i, "unitPrice", e.target.value)}
                         placeholder="0.00"
                       />
                       <span className="text-[10px] font-black text-slate-500">
-                        {uom ? uom.toUpperCase() : 'N'}
+                        {rawUom ? rawUom.toUpperCase() : 'N'}
                       </span>
                     </div>
                   )}
@@ -751,7 +836,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Finish */}
                 <div>
-                  {!isSqftItem ? (
+                  {!hasMultipleSizes ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
                     <CurrencyInput

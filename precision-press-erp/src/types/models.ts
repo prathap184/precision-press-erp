@@ -423,6 +423,14 @@ export interface Product {
   tally_uom?: string;
   tally_alt_uom?: string;
 
+  /** Tally Item Size Details (Set Multiple Size Details) */
+  has_multiple_sizes?: boolean;
+  hasMultipleSizes?: boolean;
+  default_width?: number;
+  default_length?: number;
+  default_width_unit?: string;
+  default_length_unit?: string;
+
   createdAt: any;
   updatedAt: any;
 }

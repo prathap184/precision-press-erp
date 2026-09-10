@@ -41,8 +41,8 @@ interface AcdemaRow {
 }
 
 const makeRow = (product?: Product): AcdemaRow => {
-  const isSqft = (product as any)?.unit_of_measure?.toLowerCase() === 'sqft' || (product as any)?.tally_uom?.toLowerCase() === 'sqft';
-  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
+  const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (product.unit_of_measure?.toLowerCase() === 'sqft' || product.tally_uom?.toLowerCase() === 'sqft')) : false;
+  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (hasMultipleSizes ? 'B' : 'A');
   return {
     id: Math.random().toString(36).slice(2, 10),
     productId: product?.id || '',
@@ -52,10 +52,10 @@ const makeRow = (product?: Product): AcdemaRow => {
     hsnCode: '',
     billingMode: defaultMode,
     pcsNo: '1',
-    width: '',
-    widthUnit: 'FT',
-    height: '',
-    heightUnit: 'FT',
+    width: hasMultipleSizes ? String(product?.default_width || '1') : '',
+    widthUnit: (product?.default_width_unit as any) || 'FT',
+    height: hasMultipleSizes ? String(product?.default_length || '1') : '',
+    heightUnit: (product?.default_length_unit as any) || 'FT',
     quantity: '1',
     eyeletType: 'NONE',
     eyeletCount: 0,

@@ -621,30 +621,36 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const product = products.find((item: any) => item.id === row.productId);
                         const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
                         const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-                        const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
+                        // If product has multiple size details explicitly set in Tally (or UOM is sqft)
+                        const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
+                        const isSqft = hasMultipleSizes;
                         const isDirect = !isSqft;
                         const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
                         const isModeA = currentMode === 'A';
                         const isModeB = currentMode === 'B';
+                        const isSqftModeB = hasMultipleSizes && isModeB;
                         const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'No';
-                        const w = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? 0 : 1)) || 0;
-                        const h = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? 0 : 1)) || 0;
+                        const w = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 0)) || 0;
+                        const h = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 0)) || 0;
                         const wFt = row.widthUnit === 'IN' ? w / 12 : w;
                         const hFt = row.heightUnit === 'IN' ? h / 12 : h;
-                        const sqft = (wFt > 0 && hFt > 0) ? (wFt * hFt) : (isSqft ? 0 : 1);
+                        const sqft = hasMultipleSizes ? ((wFt > 0 && hFt > 0) ? (wFt * hFt) : 0) : 0;
                         const pcs = Math.max(1, Number(row.pcsNo || '1'));
                         const totalBilledSqft = sqft * pcs;
                         const productBaseRate = Number(product?.baseRate) || 0;
                         const baseRate = row.manualRate !== undefined && row.manualRate !== '' ? Number(row.manualRate) || 0 : productBaseRate;
                         const eyeletRate = (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
                         
-                        // In Mode A: Rate per Unit = Sq.Ft * Rate/SqFt. Amount = Quantity * Rate per Unit
-                        // In Mode B: Quantity = Sq.Ft * Pcs. Amount = Quantity * Rate per SqFt
-                        const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isModeB ? totalBilledSqft : 1)) || 1;
-                        const calculatedRatePerUnit = isModeA ? (sqft * baseRate) : baseRate;
-                        const amount = isModeA
-                          ? Number((qtyNum * calculatedRatePerUnit + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
-                          : Number((totalBilledSqft * baseRate + (row.eyeletType !== 'NONE' ? eyeletRate * pcs : 0)).toFixed(2));
+                        // If not multiple size (isDirect): Standard Quantity * Rate per
+                        // If multiple size & Mode A: Rate per = SqFt * Rate/SqFt, Quantity is user entered
+                        // If multiple size & Mode B: Quantity = SqFt * Pcs, Rate per is Rate/SqFt
+                        const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isDirect ? 1 : (isModeB ? totalBilledSqft : 1))) || 1;
+                        const calculatedRatePerUnit = isDirect ? baseRate : (isModeA ? (sqft * baseRate) : baseRate);
+                        const amount = isDirect
+                          ? Number((qtyNum * baseRate + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
+                          : (isModeA
+                              ? Number((qtyNum * calculatedRatePerUnit + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
+                              : Number((totalBilledSqft * baseRate + (row.eyeletType !== 'NONE' ? eyeletRate * pcs : 0)).toFixed(2)));
                         const gstRate = product?.gst_rate || 18;
 
                         return (
@@ -973,211 +979,221 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 <span className="text-sm font-extrabold">{currentMode}</span>
                               </span>
                             </td>
+                            {/* Width Column */}
                             <td className="py-1 px-2 tabular-nums">
-                              <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                <input
-                                  id={`error-row-${row.id}-width`}
-                                  value={row.width !== undefined ? row.width : (isSqft ? '' : '1')}
-                                  onChange={(e) => {
-                                    updateRow(row.id, { width: e.target.value });
-                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
-                                      if (widthUnitBtn) widthUnitBtn.focus();
-                                      else {
-                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                        if (heightInput) heightInput.focus();
-                                      }
-                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                      e.preventDefault();
-                                      const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
-                                      if (modeBtn) modeBtn.focus();
-                                      else {
-                                        const descInput = document.getElementById(`row-${row.id}-description`);
-                                        if (descInput) descInput.focus();
-                                      }
-                                    }
-                                  }}
-                                  className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
-                                  placeholder="W"
-                                />
-                                <div className="relative flex-shrink-0">
-                                  <button
-                                    id={`row-${row.id}-width-unit`}
-                                    type="button"
-                                    onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
+                              {!hasMultipleSizes ? (
+                                <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
+                              ) : (
+                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                  <input
+                                    id={`error-row-${row.id}-width`}
+                                    value={row.width !== undefined ? row.width : (product?.default_width || '1')}
+                                    onChange={(e) => {
+                                      updateRow(row.id, { width: e.target.value });
+                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
+                                    }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        setOpenUnitPickerId(null);
-                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                        if (heightInput) heightInput.focus();
-                                      } else if (e.key === " " || e.key === "Spacebar") {
+                                        const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                        if (widthUnitBtn) widthUnitBtn.focus();
+                                        else {
+                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                          if (heightInput) heightInput.focus();
+                                        }
+                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
-                                        updateRow(row.id, { widthUnit: nextUnit });
-                                      } else if (e.key === "ArrowLeft") {
-                                        e.preventDefault();
-                                        setOpenUnitPickerId(null);
-                                        const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                        if (widthInput) widthInput.focus();
-                                      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                                        e.preventDefault();
-                                        const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
-                                        updateRow(row.id, { widthUnit: nextUnit });
+                                        const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
+                                        if (modeBtn) modeBtn.focus();
+                                        else {
+                                          const descInput = document.getElementById(`row-${row.id}-description`);
+                                          if (descInput) descInput.focus();
+                                        }
                                       }
                                     }}
-                                    onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
-                                    className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                  >
-                                    {row.widthUnit === 'FT' ? 'ft' : 'in'}
-                                    <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
-                                  </button>
-                                  {openUnitPickerId === `${row.id}-w` && (
-                                    <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                      {['FT', 'IN'].map(u => (
-                                        <button
-                                          key={u}
-                                          type="button"
-                                          tabIndex={-1}
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            updateRow(row.id, { widthUnit: u });
-                                            setOpenUnitPickerId(null);
-                                            setTimeout(() => {
-                                              const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                              if (heightInput) heightInput.focus();
-                                            }, 50);
-                                          }}
-                                          className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                                            row.widthUnit === u
-                                              ? 'bg-blue-600 text-white'
-                                              : 'text-slate-600 hover:bg-slate-50'
-                                          }`}
-                                        >
-                                          {u.toLowerCase()}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
+                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                    placeholder="W"
+                                  />
+                                  <div className="relative flex-shrink-0">
+                                    <button
+                                      id={`row-${row.id}-width-unit`}
+                                      type="button"
+                                      onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          setOpenUnitPickerId(null);
+                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                          if (heightInput) heightInput.focus();
+                                        } else if (e.key === " " || e.key === "Spacebar") {
+                                          e.preventDefault();
+                                          const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
+                                          updateRow(row.id, { widthUnit: nextUnit });
+                                        } else if (e.key === "ArrowLeft") {
+                                          e.preventDefault();
+                                          setOpenUnitPickerId(null);
+                                          const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                          if (widthInput) widthInput.focus();
+                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                          e.preventDefault();
+                                          const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
+                                          updateRow(row.id, { widthUnit: nextUnit });
+                                        }
+                                      }}
+                                      onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                    >
+                                      {row.widthUnit === 'FT' ? 'ft' : 'in'}
+                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                    </button>
+                                    {openUnitPickerId === `${row.id}-w` && (
+                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
+                                        {['FT', 'IN'].map(u => (
+                                          <button
+                                            key={u}
+                                            type="button"
+                                            tabIndex={-1}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              updateRow(row.id, { widthUnit: u });
+                                              setOpenUnitPickerId(null);
+                                              setTimeout(() => {
+                                                const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                                if (heightInput) heightInput.focus();
+                                              }, 50);
+                                            }}
+                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                              row.widthUnit === u
+                                                ? 'bg-blue-600 text-white'
+                                                : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            {u.toLowerCase()}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                             </td>
+                            {/* Length Column */}
                             <td className="py-1 px-2 tabular-nums">
-                              <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                <input
-                                  id={`error-row-${row.id}-height`}
-                                  value={row.height !== undefined ? row.height : (isSqft ? '' : '1')}
-                                  onChange={(e) => {
-                                    updateRow(row.id, { height: e.target.value });
-                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
-                                      if (heightUnitBtn) heightUnitBtn.focus();
-                                      else if (isModeB) {
-                                        const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                        if (pcsInput) pcsInput.focus();
-                                      } else {
-                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                        if (qtyInput) qtyInput.focus();
-                                      }
-                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                      e.preventDefault();
-                                      const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
-                                      if (widthUnitBtn) widthUnitBtn.focus();
-                                      else {
-                                        const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                        if (widthInput) widthInput.focus();
-                                      }
-                                    }
-                                  }}
-                                  className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`}
-                                  placeholder="L"
-                                />
-                                <div className="relative flex-shrink-0">
-                                  <button
-                                    id={`row-${row.id}-height-unit`}
-                                    type="button"
-                                    onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
+                              {!hasMultipleSizes ? (
+                                <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
+                              ) : (
+                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                  <input
+                                    id={`error-row-${row.id}-height`}
+                                    value={row.height !== undefined ? row.height : (product?.default_length || '1')}
+                                    onChange={(e) => {
+                                      updateRow(row.id, { height: e.target.value });
+                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
+                                    }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        setOpenUnitPickerId(null);
-                                        if (isModeB) {
+                                        const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                        if (heightUnitBtn) heightUnitBtn.focus();
+                                        else if (isModeB) {
                                           const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
                                           if (pcsInput) pcsInput.focus();
                                         } else {
                                           const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                           if (qtyInput) qtyInput.focus();
                                         }
-                                      } else if (e.key === " " || e.key === "Spacebar") {
+                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
-                                        updateRow(row.id, { heightUnit: nextUnit });
-                                      } else if (e.key === "ArrowLeft") {
-                                        e.preventDefault();
-                                        setOpenUnitPickerId(null);
-                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                        if (heightInput) heightInput.focus();
-                                      } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                                        e.preventDefault();
-                                        const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
-                                        updateRow(row.id, { heightUnit: nextUnit });
+                                        const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                        if (widthUnitBtn) widthUnitBtn.focus();
+                                        else {
+                                          const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                          if (widthInput) widthInput.focus();
+                                        }
                                       }
                                     }}
-                                    onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
-                                    className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                  >
-                                    {row.heightUnit === 'FT' ? 'ft' : 'in'}
-                                    <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
-                                  </button>
-                                  {openUnitPickerId === `${row.id}-h` && (
-                                    <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                      {['FT', 'IN'].map(u => (
-                                        <button
-                                          key={u}
-                                          type="button"
-                                          tabIndex={-1}
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            updateRow(row.id, { heightUnit: u });
-                                            setOpenUnitPickerId(null);
-                                            setTimeout(() => {
-                                              if (isModeB) {
-                                                const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                                if (pcsInput) pcsInput.focus();
-                                              } else {
-                                                const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                if (qtyInput) qtyInput.focus();
-                                              }
-                                            }, 50);
-                                          }}
-                                          className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                                            row.heightUnit === u
-                                              ? 'bg-blue-600 text-white'
-                                              : 'text-slate-600 hover:bg-slate-50'
-                                          }`}
-                                        >
-                                          {u.toLowerCase()}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  )}
+                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                    placeholder="L"
+                                  />
+                                  <div className="relative flex-shrink-0">
+                                    <button
+                                      id={`row-${row.id}-height-unit`}
+                                      type="button"
+                                      onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          setOpenUnitPickerId(null);
+                                          if (isModeB) {
+                                            const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                            if (pcsInput) pcsInput.focus();
+                                          } else {
+                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                            if (qtyInput) qtyInput.focus();
+                                          }
+                                        } else if (e.key === " " || e.key === "Spacebar") {
+                                          e.preventDefault();
+                                          const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
+                                          updateRow(row.id, { heightUnit: nextUnit });
+                                        } else if (e.key === "ArrowLeft") {
+                                          e.preventDefault();
+                                          setOpenUnitPickerId(null);
+                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                          if (heightInput) heightInput.focus();
+                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                          e.preventDefault();
+                                          const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
+                                          updateRow(row.id, { heightUnit: nextUnit });
+                                        }
+                                      }}
+                                      onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                    >
+                                      {row.heightUnit === 'FT' ? 'ft' : 'in'}
+                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                    </button>
+                                    {openUnitPickerId === `${row.id}-h` && (
+                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
+                                        {['FT', 'IN'].map(u => (
+                                          <button
+                                            key={u}
+                                            type="button"
+                                            tabIndex={-1}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              updateRow(row.id, { heightUnit: u });
+                                              setOpenUnitPickerId(null);
+                                              setTimeout(() => {
+                                                if (isModeB) {
+                                                  const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                                  if (pcsInput) pcsInput.focus();
+                                                } else {
+                                                  const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                                  if (qtyInput) qtyInput.focus();
+                                                }
+                                              }, 50);
+                                            }}
+                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                              row.heightUnit === u
+                                                ? 'bg-blue-600 text-white'
+                                                : 'text-slate-600 hover:bg-slate-50'
+                                            }`}
+                                          >
+                                            {u.toLowerCase()}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
+                              )}
                             </td>
                             <td className="py-1 px-2 text-center text-xs font-bold text-slate-600 tabular-nums">
                               {sqft > 0 ? sqft.toFixed(2) : '—'}
                             </td>
                             {/* Pcs/No Column */}
                             <td className="py-1 px-2 tabular-nums text-center">
-                              {isModeB ? (
+                              {hasMultipleSizes && isModeB ? (
                                 <input
                                   id={`error-row-${row.id}-pcs`}
                                   value={row.pcsNo ?? '1'}
@@ -1209,7 +1225,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Quantity Column */}
                             <td className="py-1 px-2 text-center text-xs font-bold tabular-nums">
-                              {isModeB ? (
+                              {hasMultipleSizes && isModeB ? (
                                 <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
                               ) : (
                                 <div className="inline-flex items-center justify-center">
@@ -1243,9 +1259,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </div>
                               )}
                             </td>
-                            {/* Rate/SqFt Column — EDITABLE in Mode A like Tally */}
+                            {/* Rate/SqFt Column — EDITABLE only in Mode A with Multiple Sizes */}
                             <td className="py-1 px-2 text-center tabular-nums">
-                              {isModeA ? (
+                              {hasMultipleSizes && isModeA ? (
                                 <input
                                   id={`row-${row.id}-rate-sqft`}
                                   value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
@@ -1286,9 +1302,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 <span className="text-slate-300 font-bold">—</span>
                               )}
                             </td>
-                            {/* Rate per (unit) Column — In Mode A: Shows Sq.Ft * Rate/SqFt. In Mode B: Editable */}
+                            {/* Rate per (unit) Column — In Mode A: Shows Sq.Ft * Rate/SqFt. In Mode B & Direct: Editable */}
                             <td className="py-1 px-2 text-center tabular-nums">
-                              {isModeA ? (
+                              {hasMultipleSizes && isModeA ? (
                                 <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-200">
                                   {calculatedRatePerUnit.toFixed(2)}
                                   <span className="text-[10px] text-blue-500 font-bold">{displayUnit}</span>
