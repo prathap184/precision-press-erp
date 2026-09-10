@@ -311,26 +311,26 @@ export default function ContactsPage() {
     const isCustomerView = searchParams.get("type") === "customer" || focusParam === "search" || focusParam === "1";
     if (!isCustomerView) return;
 
-    // Focus immediately if mounted
-    const triggerFocus = () => {
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-        searchInputRef.current.select();
+    let attempts = 0;
+    const maxAttempts = 20;
+
+    const intervalId = setInterval(() => {
+      attempts++;
+      const el = searchInputRef.current || document.getElementById("contacts-search-input") as HTMLInputElement;
+      if (el) {
+        el.focus();
+        el.select();
         setDropdownOpen(true);
+        if (document.activeElement === el || attempts >= maxAttempts) {
+          clearInterval(intervalId);
+        }
+      } else if (attempts >= maxAttempts) {
+        clearInterval(intervalId);
       }
-    };
+    }, 100);
 
-    triggerFocus();
-    const t1 = setTimeout(triggerFocus, 100);
-    const t2 = setTimeout(triggerFocus, 300);
-    const t3 = setTimeout(triggerFocus, 600);
-
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, [searchParams, loading]);
+    return () => clearInterval(intervalId);
+  }, [searchParams]);
 
   // Reset and fetch page 1 when filters change
   useEffect(() => {
@@ -463,8 +463,6 @@ export default function ContactsPage() {
     (c) => c.type === "supplier" || c.type === "both"
   );
   const taxExemptCount = contacts.filter((c) => c.isTaxExempt).length;
-
-  if (loading) return <BrandLoader />;
 
   /* ---------- Empty state ---------- */
   const hasFilters = dateFrom || dateTo;
@@ -639,7 +637,9 @@ export default function ContactsPage() {
           <div className="relative w-full sm:max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
             <Input
+              id="contacts-search-input"
               ref={searchInputRef}
+              autoFocus
               placeholder="Search contacts (use ↑ ↓ arrows to select)..."
               value={search}
               onFocus={() => {
@@ -824,7 +824,7 @@ export default function ContactsPage() {
         </div>
 
         {/* Table */}
-        {refetching || pendingSearch ? (
+        {loading || refetching || pendingSearch ? (
           <div className="flex items-center justify-center py-20">
             <div className="brand-loader" aria-label="Loading">
               <div className="brand-loader-circle brand-loader-circle-1" />
