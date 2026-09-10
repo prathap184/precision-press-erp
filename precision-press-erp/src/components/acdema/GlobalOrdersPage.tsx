@@ -241,9 +241,15 @@ export function GlobalOrdersPage() {
           if (i.description || i.notes) desc += ` - ${i.description || i.notes}`;
           if (widthFt > 0 && heightFt > 0) desc += ` (${widthFt} FT x ${heightFt} FT)`;
           if (eyeletCount > 0) desc += ` + ${eyeletCount} ${eyeletType.toLowerCase()} eyelets`;
-          const uom = String(matchedInventory?.unitOfMeasure || (matchedInventory as any)?.tallyUom || matchedInventory?.metadata?.unit || '').trim().toLowerCase();
-          const isSqft = uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft';
-          const defaultMode = (matchedInventory as any)?.tallyBillingMode || matchedInventory?.metadata?.tallyBillingMode || 'B';
+          const uom = String(matchedInventory?.unitOfMeasure || (matchedInventory as any)?.tallyUom || (matchedInventory as any)?.tally_uom || matchedInventory?.metadata?.unit || '').trim().toLowerCase();
+          const isSqft = Boolean(
+            matchedInventory?.hasMultipleSizes ??
+            matchedInventory?.has_multiple_sizes ??
+            matchedInventory?.metadata?.hasMultipleSizes ??
+            matchedInventory?.metadata?.has_multiple_sizes ??
+            (uom === 'sqft' || uom === 'sqf' || uom === 'sq.ft' || uom === 'sq ft')
+          );
+          const defaultMode = (matchedInventory as any)?.tallyBillingMode || (matchedInventory as any)?.tally_billing_mode || matchedInventory?.metadata?.tallyBillingMode || matchedInventory?.metadata?.tally_billing_mode || 'B';
           const billingMode = (i.specs?.billingMode || i.billingMode || pricingSnap.billingMode || defaultMode).toUpperCase();
           const pcsNo = isSqft ? (i.specs?.pcsNo || i.pcsNo || pricingSnap.pcsNo || (qty > 0 ? qty.toString() : '1')).toString() : '';
           const baseRate = parseFloat(
@@ -263,9 +269,11 @@ export function GlobalOrdersPage() {
           const totalFinish = parseFloat(finishAmount || '0');
           const resolvedInvId = matchedInventory?.id || (inventory.some(inv => inv.id === targetId) ? targetId : '');
 
+          const effectiveQty = billingMode === 'A' ? qty.toString() : (pcsNo || qty.toString());
+
           return {
             description: desc,
-            quantity: qty.toString(),
+            quantity: effectiveQty,
             unitPrice: baseRate.toFixed(2),
             billingMode: billingMode as 'A' | 'B',
             pcsNo,
