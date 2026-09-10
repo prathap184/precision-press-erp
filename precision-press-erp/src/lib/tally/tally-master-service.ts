@@ -310,6 +310,10 @@ export async function loadTallyStockItems(): Promise<any[]> {
     const valM = body.match(/<OPENINGVALUE[^>]*>([^<]*)<\/OPENINGVALUE>/i) || body.match(/<CLOSINGVALUE[^>]*>([^<]*)<\/CLOSINGVALUE>/i);
     const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i) || body.match(/<CLOSINGBALANCE[^>]*>([^<]*)<\/CLOSINGBALANCE>/i);
     const guidM = body.match(/<GUID[^>]*>([^<]*)<\/GUID>/i);
+    const modeTagM = body.match(/<UDF:STKITEMSIZESBILLINGTYPE[^>]*>([^<]+)<\/UDF:STKITEMSIZESBILLINGTYPE>/i);
+    const tagVal = modeTagM ? cleanStr(modeTagM[1]).toUpperCase() : '';
+    // In Tally Prime, only items explicitly tagged with Mode A are Mode A; all other items default to Mode B
+    const billingMode = tagVal === 'A' ? 'A' : 'B';
 
     const group = parentM ? cleanStr(parentM[1]) : 'General';
     const rawUom = uomM ? cleanStr(uomM[1]) : 'N';
@@ -346,7 +350,7 @@ export async function loadTallyStockItems(): Promise<any[]> {
       uom: normalizedUom,
       rawUom: rawUom,
       isSqft,
-      billingMode: isSqft ? 'B' : 'A',
+      billingMode: billingMode,
       hsnCode: hsn || '32141000',
       rate,
       openingQuantity: qty,
@@ -696,7 +700,7 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
       const skuVal = existing?.sku || `SKU-${Date.now().toString().slice(-6)}`;
 
       const isSqft = item.isSqft ?? (item.uom?.toLowerCase() === 'sqft' || item.uom?.toLowerCase() === 'sq.ft' || item.uom?.toLowerCase() === 'sqf');
-      const billingMode = item.billingMode || (isSqft ? 'B' : 'A');
+      const billingMode = item.billingMode || 'B';
       const normalizedUom = isSqft ? 'sqft' : (item.uom || 'N');
 
       const payload: any = {

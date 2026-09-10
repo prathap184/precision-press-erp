@@ -273,15 +273,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       const product = products.find((p: any) => p.id === row.productId);
       const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
       const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-      const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
-      const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
+      const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
+      const isSqft = hasMultipleSizes;
+      const currentMode = row.billingMode || (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
       const isModeA = currentMode === 'A';
       const isModeB = currentMode === 'B';
 
       if (!row.productId) {
         errors[`row-${row.id}-product`] = `Item #${idx + 1}: Please select a product`;
       }
-      if (isModeB) {
+      if (isModeB && hasMultipleSizes) {
         if (!row.width || Number(row.width) <= 0) {
           errors[`row-${row.id}-width`] = `Item #${idx + 1}: Width is required`;
         }
@@ -289,7 +290,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           errors[`row-${row.id}-height`] = `Item #${idx + 1}: Length is required`;
         }
       }
-      if (isModeA) {
+      if (isModeA || !hasMultipleSizes) {
         if (!row.quantity || Number(row.quantity) <= 0) {
           errors[`row-${row.id}-quantity`] = `Item #${idx + 1}: Quantity must be at least 1`;
         }
@@ -623,7 +624,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
                         const isSqft = hasMultipleSizes;
                         const isDirect = !isSqft;
-                        const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
+                        const currentMode = row.billingMode || (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
                         const isModeA = currentMode === 'A';
                         const isModeB = currentMode === 'B';
                         const isSqftModeB = hasMultipleSizes && isModeB;
@@ -975,8 +976,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               <span
                                 id={`row-${row.id}-mode-btn`}
                                 tabIndex={0}
+                                role="button"
+                                onClick={() => {
+                                  const newMode = currentMode === 'A' ? 'B' : 'A';
+                                  updateRow(row.id, { billingMode: newMode });
+                                }}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
+                                  if (e.key === " " || e.key === "Enter") {
+                                    e.preventDefault();
+                                    const newMode = currentMode === 'A' ? 'B' : 'A';
+                                    updateRow(row.id, { billingMode: newMode });
+                                  } else if (e.key === "ArrowRight") {
                                     e.preventDefault();
                                     const widthInput = document.getElementById(`error-row-${row.id}-width`);
                                     if (widthInput) widthInput.focus();
@@ -990,8 +1000,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     if (descInput) descInput.focus();
                                   }
                                 }}
-                                title={`Mode ${currentMode} — Locked to Tally master`}
-                                className={`h-10 min-w-[40px] px-2.5 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-default outline-none ${
+                                title={`Mode ${currentMode} — Click or press Space to toggle between Mode A and Mode B`}
+                                className={`h-10 min-w-[40px] px-2.5 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-pointer outline-none transition-all active:scale-95 hover:opacity-90 ${
                                   currentMode === 'A'
                                     ? 'border-blue-600 bg-blue-600 text-white'
                                     : 'border-emerald-600 bg-emerald-600 text-white'

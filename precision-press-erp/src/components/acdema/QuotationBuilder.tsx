@@ -40,7 +40,7 @@ interface AcdemaRow {
 
 const makeRow = (product?: Product): AcdemaRow => {
   const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (product.unit_of_measure?.toLowerCase() === 'sqft' || product.tally_uom?.toLowerCase() === 'sqft')) : false;
-  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (hasMultipleSizes ? 'B' : 'A');
+  const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
   return {
     id: Math.random().toString(36).slice(2, 10),
     productId: product?.id || '',
@@ -335,20 +335,21 @@ export function QuotationBuilder() {
       const product = products.find((item) => item.id === row.productId);
       const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || (row as any).unit || '').trim().toLowerCase();
       const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-      const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
+      const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
+      const isSqft = hasMultipleSizes;
       const isDirect = !isSqft;
-      const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
+      const currentMode = row.billingMode || (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
       const isModeA = currentMode === 'A';
       const isModeB = currentMode === 'B';
-      const width = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? 0 : 1)) || 0;
-      const height = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? 0 : 1)) || 0;
+      const width = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 1)) || 1;
+      const height = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 1)) || 1;
       const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
       const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
-      const sqft = (widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : (isSqft ? 0 : 1);
+      const sqft = hasMultipleSizes ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 1) : 1;
       const pcs = Math.max(1, Number(row.pcsNo || '1'));
       const totalBilledSqft = sqft * pcs;
       const baseRate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : (product?.baseRate || 0);
-      const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isModeB ? totalBilledSqft : 1)) || 1;
+      const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isDirect ? 1 : (isModeB ? totalBilledSqft : 1))) || 1;
       const eyeletRate = (row.eyeletType === 'METAL'
         ? product?.eyeletPricing?.metal || 0
         : row.eyeletType === 'PLASTIC'
@@ -357,11 +358,11 @@ export function QuotationBuilder() {
           
       return {
         name: product?.name || 'Unknown Item',
-        width: widthInFt,
-        height: heightInFt,
-        quantity: isModeA ? qtyNum : pcs,
+        width: isDirect ? 1 : widthInFt,
+        height: isDirect ? 1 : heightInFt,
+        quantity: isDirect ? qtyNum : (isModeA ? qtyNum : pcs),
         rate: baseRate,
-        isDirectSelling: false,
+        isDirectSelling: isDirect,
         eyeletCount: row.eyeletType === 'NONE' ? 0 : (isModeA ? qtyNum : pcs),
         eyeletRate,
         gstRate: (product?.gst_rate || 18) / 100,
@@ -414,7 +415,7 @@ export function QuotationBuilder() {
         const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || '').trim().toLowerCase();
         const cleanUom = rawUom.replace(/[\s\._-]/g, '');
         const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
-        const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || (hasMultipleSizes ? 'B' : 'A');
+        const defaultMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
         
         // Populate default dimensions and settings for the selected product
         next.billingMode = defaultMode;
@@ -555,19 +556,20 @@ export function QuotationBuilder() {
         const product = products.find((item) => item.id === row.productId);
         const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || (row as any).unit || '').trim().toLowerCase();
         const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-        const isSqft = cleanUom === 'sqft' || cleanUom === 'sqf' || cleanUom === 'sqfeet' || cleanUom === 'squarefeet' || cleanUom === 'sqmtr' || cleanUom === 'sqm';
+        const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
+        const isSqft = hasMultipleSizes;
         const isDirect = !isSqft;
-        const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || row.billingMode || 'B';
+        const currentMode = row.billingMode || (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
         const isModeA = currentMode === 'A';
         const isModeB = currentMode === 'B';
-        const width = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? 0 : 1)) || 0;
-        const height = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? 0 : 1)) || 0;
+        const width = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 0)) || 0;
+        const height = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 0)) || 0;
         const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
         const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
-        const sqft = (widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : (isSqft ? 0 : 1);
+        const sqft = hasMultipleSizes ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 1) : 1;
         const pcs = Math.max(1, Number(row.pcsNo || '1'));
         const totalBilledSqft = sqft * pcs;
-        const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isModeB ? totalBilledSqft : 1)) || 1;
+        const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isDirect ? 1 : (isModeB ? totalBilledSqft : 1))) || 1;
         const effectiveRate = (row.manualRate !== undefined && row.manualRate !== '') 
           ? Number(row.manualRate) || 0 
           : (product?.baseRate || 0);
@@ -577,10 +579,12 @@ export function QuotationBuilder() {
             ? product?.eyeletPricing?.plastic || 0
             : 0);
 
-        const calculatedRatePerUnit = isModeA ? (sqft * effectiveRate) : effectiveRate;
-        const rowSubtotal = isModeA
-          ? Number((qtyNum * calculatedRatePerUnit + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
-          : Number((totalBilledSqft * effectiveRate + (row.eyeletType !== 'NONE' ? eyeletRate * pcs : 0)).toFixed(2));
+        const calculatedRatePerUnit = isDirect ? effectiveRate : (isModeA ? (sqft * effectiveRate) : effectiveRate);
+        const rowSubtotal = isDirect
+          ? Number((qtyNum * effectiveRate + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
+          : (isModeA
+              ? Number((qtyNum * calculatedRatePerUnit + (row.eyeletType !== 'NONE' ? eyeletRate : 0)).toFixed(2))
+              : Number((totalBilledSqft * effectiveRate + (row.eyeletType !== 'NONE' ? eyeletRate * pcs : 0)).toFixed(2)));
 
         return {
           productId: row.productId,
@@ -595,7 +599,7 @@ export function QuotationBuilder() {
           widthUnit: row.widthUnit,
           height,
           heightUnit: row.heightUnit,
-          quantity: isModeA ? qtyNum : (isSqft ? totalBilledSqft : pcs),
+          quantity: isModeA ? qtyNum : (isSqft ? totalBilledSqft : (Number(row.quantity) || pcs)),
           unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
           rate: effectiveRate,
           eyeletType: row.eyeletType,

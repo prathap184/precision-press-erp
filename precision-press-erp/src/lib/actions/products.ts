@@ -9,10 +9,8 @@ function parseProduct(row: any): Product {
   const meta = row.metadata || {};
   const uom = (row.unit_of_measure || row.tally_uom || 'N').trim();
   const isSqftOrFt = uom.toLowerCase() === 'sqft' || uom.toLowerCase() === 'ft';
-  // Mode A: Any discrete unit (Pkt, N, No, pc, Box, Set, Sh, R, Tube, Kg, lt, ltr, Mt, ml, etc.)
-  // Mode B: Dimension-based sqft / ft
-  const isDirectSelling = meta.isDirectSelling || !isSqftOrFt || row.category === 'LED- SMPS';
-  const defaultMode: 'A' | 'B' = isDirectSelling ? 'A' : 'B';
+  // In Tally Prime, only items explicitly tagged Mode A are Mode A. All other items default to Mode B.
+  const defaultMode: 'A' | 'B' = (row.tally_billing_mode === 'A' || meta.billingMode === 'A') ? 'A' : 'B';
 
   return {
     ...row,

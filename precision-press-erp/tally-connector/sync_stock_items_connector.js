@@ -277,7 +277,9 @@ async function runStockSync() {
     const isSqft = hasMultipleSizes || hasSqftInUnit || hasSqftInBal;
     const normalizedUom = isSqft ? 'sqft' : (uom && !uom.includes('Not Applicable') ? uom : 'No');
     const isPieceItem = !isSqft;
-    const billingMode = tagVal === 'A' ? 'A' : (tagVal === 'B' ? 'B' : (isPieceItem ? 'A' : 'B'));
+    // In Tally Prime, ONLY items explicitly tagged with Mode A (<UDF:STKITEMSIZESBILLINGTYPE>A</UDF:STKITEMSIZESBILLINGTYPE>) are Mode A.
+    // All other items default to Mode B in Tally voucher entry.
+    const billingMode = tagVal === 'A' ? 'A' : 'B';
 
     // Extract LATEST active HSN code
     const hsnMatches = [...body.matchAll(/<HSNCODE>([^<]+)<\/HSNCODE>/gi)];
