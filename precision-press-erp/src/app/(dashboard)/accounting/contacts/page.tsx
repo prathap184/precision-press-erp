@@ -301,36 +301,66 @@ export default function ContactsPage() {
   const [total, setTotal] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const dropdownListRef = useRef<HTMLDivElement>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
   useDocumentTitle("Contacts · All Contacts");
 
-  // Auto-focus search bar if focus=search query param is present or when user visits Customer/Supplier Ledger
+  // Helper to scroll dropdown container ONLY (never touching window scroll)
+  const scrollDropdownToIndex = useCallback((index: number) => {
+    const list = dropdownListRef.current;
+    if (!list) return;
+    const item = list.children[index] as HTMLElement | undefined;
+    if (item) {
+      const itemTop = item.offsetTop;
+      const itemBottom = itemTop + item.offsetHeight;
+      if (itemTop < list.scrollTop) {
+        list.scrollTop = itemTop;
+      } else if (itemBottom > list.scrollTop + list.clientHeight) {
+        list.scrollTop = itemBottom - list.clientHeight;
+      }
+    }
+  }, []);
+
+  // Auto-focus search bar ONLY ONCE on initial landing without jumping user's scroll
+  const hasAutoFocusedRef = useRef(false);
   useEffect(() => {
+    if (hasAutoFocusedRef.current) return;
     const focusParam = searchParams.get("focus");
     const isCustomerView = searchParams.get("type") === "customer" || focusParam === "search" || focusParam === "1";
     if (!isCustomerView) return;
 
     let attempts = 0;
-    const maxAttempts = 20;
+    const maxAttempts = 15;
 
     const intervalId = setInterval(() => {
       attempts++;
       const el = searchInputRef.current || document.getElementById("contacts-search-input") as HTMLInputElement;
       if (el) {
-        el.focus();
+        // Use preventScroll so it doesn't yank the page to the top
+        el.focus({ preventScroll: true });
         el.select();
         setDropdownOpen(true);
-        if (document.activeElement === el || attempts >= maxAttempts) {
-          clearInterval(intervalId);
-        }
+        hasAutoFocusedRef.current = true;
+        clearInterval(intervalId);
       } else if (attempts >= maxAttempts) {
         clearInterval(intervalId);
       }
-    }, 100);
+    }, 80);
 
     return () => clearInterval(intervalId);
   }, [searchParams]);
+
+  // If user scrolls the page, dismiss the dropdown and ensure autofocus is marked done
+  // so the scroll position remains completely stable when loading more items
+  useEffect(() => {
+    const handleScroll = () => {
+      setDropdownOpen(false);
+      hasAutoFocusedRef.current = true;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Reset and fetch page 1 when filters change
   useEffect(() => {
@@ -639,7 +669,6 @@ export default function ContactsPage() {
             <Input
               id="contacts-search-input"
               ref={searchInputRef}
-              autoFocus
               placeholder="Search contacts (use ↑ ↓ arrows to select)..."
               value={search}
               onFocus={() => {
@@ -659,12 +688,21 @@ export default function ContactsPage() {
                   if (!dropdownOpen) {
                     setDropdownOpen(true);
                     setHighlightIndex(0);
+                    scrollDropdownToIndex(0);
                     return;
                   }
-                  setHighlightIndex((prev) => Math.min(prev + 1, contacts.length - 1));
+                  setHighlightIndex((prev) => {
+                    const next = Math.min(prev + 1, contacts.length - 1);
+                    scrollDropdownToIndex(next);
+                    return next;
+                  });
                 } else if (e.key === "ArrowUp") {
                   e.preventDefault();
-                  setHighlightIndex((prev) => Math.max(prev - 1, 0));
+                  setHighlightIndex((prev) => {
+                    const next = Math.max(prev - 1, 0);
+                    scrollDropdownToIndex(next);
+                    return next;
+                  });
                 } else if (e.key === "Enter") {
                   if (dropdownOpen && contacts.length > 0) {
                     e.preventDefault();
@@ -699,7 +737,10 @@ export default function ContactsPage() {
 
             {/* Dropdown list */}
             {dropdownOpen && (
-              <div className="absolute left-0 top-full mt-1.5 w-full min-w-[340px] z-[9999] max-h-72 overflow-y-auto rounded-xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100">
+              <div
+                ref={dropdownListRef}
+                className="absolute left-0 top-full mt-1.5 w-full min-w-[340px] z-[9999] max-h-72 overflow-y-auto rounded-xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100"
+              >
                 {contacts.length === 0 ? (
                   <div className="p-4 text-xs italic text-slate-400 text-center">
                     {loading || refetching ? "Searching contacts..." : "No matching contacts found."}
@@ -710,9 +751,6 @@ export default function ContactsPage() {
                     return (
                       <div
                         key={c.id}
-                        ref={(el) => {
-                          if (el && isHighlighted) el.scrollIntoView({ block: "nearest" });
-                        }}
                         onMouseEnter={() => setHighlightIndex(idx)}
                         onMouseDown={(e) => {
                           e.preventDefault();
