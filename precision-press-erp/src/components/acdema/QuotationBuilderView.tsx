@@ -168,7 +168,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
       const cleanUom = rawUom.replace(/[\s\._-]/g, '');
       const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
       const isSqft = hasMultipleSizes;
-      const currentMode = row.billingMode || (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
+      const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
       const isModeA = currentMode === 'A';
       const isModeB = currentMode === 'B';
 
@@ -564,7 +564,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
                         const isSqft = hasMultipleSizes;
                         const isDirect = !isSqft;
-                        const currentMode = row.billingMode || (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
+                        const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
                         const isModeA = currentMode === 'A';
                         const isModeB = currentMode === 'B';
                         const isSqftModeB = hasMultipleSizes && isModeB;
@@ -892,33 +892,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             <td className="py-2 px-2 text-center tabular-nums align-top">
                               <span
                                 id={`row-${row.id}-mode-btn`}
-                                tabIndex={0}
-                                role="button"
-                                onClick={() => {
-                                  const newMode = currentMode === 'A' ? 'B' : 'A';
-                                  updateRow(row.id, { billingMode: newMode });
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === " " || e.key === "Enter") {
-                                    e.preventDefault();
-                                    const newMode = currentMode === 'A' ? 'B' : 'A';
-                                    updateRow(row.id, { billingMode: newMode });
-                                  } else if (e.key === "ArrowRight") {
-                                    e.preventDefault();
-                                    const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                    if (widthInput) widthInput.focus();
-                                    else {
-                                      const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                      if (qtyInput) qtyInput.focus();
-                                    }
-                                  } else if (e.key === "ArrowLeft") {
-                                    e.preventDefault();
-                                    const descInput = document.getElementById(`row-${row.id}-description`);
-                                    if (descInput) descInput.focus();
-                                  }
-                                }}
-                                title={`Mode ${currentMode} — Click or press Space to toggle between Mode A and Mode B`}
-                                className={`h-10 min-w-[40px] px-2.5 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-pointer outline-none transition-all active:scale-95 hover:opacity-90 ${
+                                tabIndex={-1}
+                                title={`Mode ${currentMode} — Locked to Tally master (cannot be changed)`}
+                                className={`h-10 min-w-[40px] px-2.5 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-not-allowed outline-none ${
                                   currentMode === 'A'
                                     ? 'border-blue-600 bg-blue-600 text-white'
                                     : 'border-emerald-600 bg-emerald-600 text-white'
@@ -950,12 +926,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         }
                                       } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const modeBtn = document.getElementById(`row-${row.id}-mode-btn`);
-                                        if (modeBtn) modeBtn.focus();
-                                        else {
-                                          const descInput = document.getElementById(`row-${row.id}-description`);
-                                          if (descInput) descInput.focus();
-                                        }
+                                        const descInput = document.getElementById(`row-${row.id}-description`);
+                                        if (descInput) descInput.focus();
                                       }
                                     }}
                                     className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}

@@ -444,7 +444,7 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
       const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
       const isSqft = hasMultipleSizes;
       const isDirect = !isSqft;
-      const currentMode = row.billingMode || (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
+      const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
       const isModeA = currentMode === 'A';
       const isModeB = currentMode === 'B';
       const width = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 1)) || 1;
@@ -762,7 +762,7 @@ ${parts.join(', ')}`;
           const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
           const isSqft = hasMultipleSizes;
           const isDirect = !isSqft;
-          const currentMode = row.billingMode || (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
+          const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
           const isModeA = currentMode === 'A';
           const isModeB = currentMode === 'B';
           const width = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 0)) || 0;
