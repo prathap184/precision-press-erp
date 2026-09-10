@@ -19,7 +19,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     newCustomerForm, setNewCustomerForm, handleCreateCustomer,
     setTiffError, tiffError, notes, setNotes, summary, submitProxyOrder,
     loading, addingAddress, handleAddDeliveryAddress, applyVoucher, setApplyVoucher,
-    verifyingGst, handleVerifyGst
+    verifyingGst, handleVerifyGst,
+    orderNumber, setOrderNumber, orderDate, setOrderDate
   } = vm;
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
@@ -402,10 +403,36 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         <div className="w-full">
           
           {/* Header */}
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
               <h1 className="text-[28px] font-bold font-black tracking-tight text-slate-900">Order Terminal</h1>
               <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Hindustan Enterprises</p>
+            </div>
+
+            {/* Order Sequence # and Date compact badges */}
+            <div className="relative z-20 flex items-center gap-2.5 bg-white/70 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/80 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 leading-tight">Order #</span>
+                <input
+                  type="text"
+                  value={orderNumber}
+                  onChange={(e) => setOrderNumber(e.target.value.toUpperCase())}
+                  placeholder="ORD-0001"
+                  className="h-7 w-28 bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-slate-800 font-mono font-black text-xs px-2.5 rounded-lg border border-slate-200/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+                  title="Sequential Order ID"
+                />
+              </div>
+              <div className="h-7 w-[1px] bg-slate-200/80 self-end mb-0.5" />
+              <div className="flex flex-col">
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 leading-tight">Date</span>
+                <input
+                  type="date"
+                  value={orderDate}
+                  onChange={(e) => setOrderDate(e.target.value)}
+                  className="h-7 bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-slate-800 font-bold text-xs px-2 rounded-lg border border-slate-200/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
+                  title="Order Date"
+                />
+              </div>
             </div>
           </div>
 

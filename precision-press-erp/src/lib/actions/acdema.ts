@@ -68,6 +68,8 @@ export interface ProxyOrderPayload {
   deliveryPricingSnapshot?: any;
   refOrderId?: string;
   parentOrderId?: string;
+  orderNumber?: string;
+  orderDate?: string;
   acdemaJobPayloadExtra?: {
     receiptAmount: string | number;
     receiptRef: string;
@@ -76,6 +78,10 @@ export interface ProxyOrderPayload {
     utr?: string;
     paymentMode?: string;
   };
+}
+
+export async function getNextOrderIdAction(): Promise<string> {
+  return generateOrderId();
 }
 
 async function getAuthorizedAcdemaUser() {
@@ -135,7 +141,7 @@ export async function createAcdemaProxyOrder(payload: ProxyOrderPayload): Promis
     if (!payload.items.length) throw new Error('At least one item is required.');
     if (payload.grandTotal <= 0) throw new Error('Grand total must be greater than zero.');
 
-    const baseId = await generateOrderId();
+    const baseId = payload.orderNumber?.trim() || await generateOrderId();
     const isMultiItem = payload.items.length > 1;
 
     const preparedItems = payload.items.map((item) => {
@@ -183,6 +189,7 @@ export async function createAcdemaProxyOrder(payload: ProxyOrderPayload): Promis
         gstRate: payload.gstRate,
         refOrderId: payload.refOrderId,
         parentOrderId: payload.parentOrderId,
+        orderDate: payload.orderDate,
         // ── Transactional Outbox ──────────────────────────────────────────────────
         // This opaque blob is picked up by executeOrderPlacementTx and inserted into
         // document_jobs as ACDEMA_POST_PROCESS inside the same BEGIN…COMMIT block.

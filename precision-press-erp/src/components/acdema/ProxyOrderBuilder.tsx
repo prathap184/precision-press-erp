@@ -11,7 +11,7 @@ import { getCustomers } from '@/lib/actions/users';
 import { createCustomer } from '@/lib/actions/users';
 import { getProducts } from '@/lib/actions/products';
 import { calculateRowSubtotal, calculateOrderSummary } from '@/lib/pricing-engine';
-import { createAcdemaProxyOrder } from '@/lib/actions/acdema';
+import { createAcdemaProxyOrder, getNextOrderIdAction } from '@/lib/actions/acdema';
 import { refreshAuthTokenCookie } from '@/lib/refresh-auth-token';
 import { ProxyOrderBuilderView } from '@/components/acdema/ProxyOrderBuilderView';
 import { getQuotationById, createStandaloneQuotation } from '@/lib/actions/quotations';
@@ -77,6 +77,8 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('HAND_CASH');
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('door');
   const [shippingAddress, setShippingAddress] = useState('');
+  const [orderNumber, setOrderNumber] = useState('');
+  const [orderDate, setOrderDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   const [notes, setNotes] = useState('');
   const [tiffError, setTiffError] = useState('');
@@ -161,12 +163,17 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
 
     const bootstrap = async () => {
       try {
-        const [productData, customerData, bankData] = await Promise.all([
+        const [productData, customerData, bankData, nextOrderNo] = await Promise.all([
           getProducts(), 
           getCustomers(),
-          supabase.from('bankAccounts').select('label')
+          supabase.from('bankAccounts').select('label'),
+          getNextOrderIdAction().catch(() => 'ORD-0001')
         ]);
         if (!active) return;
+
+        if (nextOrderNo) {
+          setOrderNumber(nextOrderNo);
+        }
 
         const activeProducts = productData.filter((product: Product) => product.status === 'ACTIVE');
         setProducts(activeProducts);
@@ -837,8 +844,10 @@ ${parts.join(', ')}`;
         tiffPath: resolvedRowPaths[0] || '',
         upiProofUrl: '',
         notes,
+        orderNumber: orderNumber.trim() || undefined,
+        orderDate: orderDate || undefined,
         referenceNumber: `${selectedCustomer.uid}-${Date.now().toString().slice(-6)}`,
-        depositDate: new Date().toISOString().split('T')[0],
+        depositDate: orderDate || new Date().toISOString().split('T')[0],
         voucherApplied: summary.voucherApplied,
         voucherGstDiscount: summary.voucherGstDiscount,
         acdemaJobPayloadExtra: paymentMode !== 'COD' ? {
@@ -919,6 +928,10 @@ ${parts.join(', ')}`;
     setDeliveryType,
     shippingAddress,
     setShippingAddress,
+    orderNumber,
+    setOrderNumber,
+    orderDate,
+    setOrderDate,
     showCreateCustomer,
     setShowCreateCustomer,
     creatingCustomer,

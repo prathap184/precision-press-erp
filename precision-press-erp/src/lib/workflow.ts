@@ -858,6 +858,8 @@ async function executeOrderPlacementTx(
     gstRate?: number;
     refOrderId?: string;
     parentOrderId?: string;
+    orderDate?: string;
+    orderNumber?: string;
     // Opaque extra data supplied by ACDEMA flow — included in the outbox job atomically
     acdemaJobPayloadExtra?: Record<string, any>;
     preFetchedProducts?: any[];
@@ -966,11 +968,11 @@ async function executeOrderPlacementTx(
   }
 
   // Generate IDs
-  const baseId = payload.idOverride || await generateOrderId();
+  const baseId = payload.idOverride || payload.orderNumber || await generateOrderId();
   const isMultiItem = payload.items.length > 1;
 
   // 3. Prepare Payloads
-  const now = new Date().toISOString();
+  const now = payload.orderDate ? new Date(payload.orderDate).toISOString() : new Date().toISOString();
 
   // Initial Statuses
   let initialStatus: OrderStatus = 'PLACED';

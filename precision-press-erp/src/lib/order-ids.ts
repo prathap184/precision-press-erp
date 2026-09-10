@@ -16,12 +16,34 @@ import { supabaseServer } from './supabase-server';
 export async function generateOrderId(): Promise<string> {
   const { data, error } = await supabaseServer.rpc('get_next_order_id');
   
-  if (error || !data) {
-    console.error('Failed to fetch next sequence ID, falling back to UUID:', error);
-    return `ORD-${generateUUIDShort()}`;
+  if (!error && data) {
+    return data;
   }
   
-  return data;
+  // Sequential fallback (e.g. ORD-0001, ORD-0002...)
+  try {
+    const { data: rows, error: rowsErr } = await supabaseServer
+      .from('orders')
+      .select('id')
+      .ilike('id', 'ORD-%');
+
+    let maxNum = 0;
+    if (rows && Array.isArray(rows) && rows.length > 0) {
+      for (const r of (rows as any[])) {
+        const base = (r?.id || '').split('-item')[0].trim();
+        const match = base.match(/^ORD-0*([1-9]\d{0,4})$/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      }
+    }
+    const nextNum = maxNum + 1;
+    return `ORD-${String(nextNum).padStart(4, '0')}`;
+  } catch (seqErr) {
+    console.error('Failed to compute sequential order ID, falling back to UUID:', seqErr);
+    return `ORD-${generateUUIDShort()}`;
+  }
 }
 
 export function generateChildOrderId(baseId: string, index: number): string {
