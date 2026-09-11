@@ -88,6 +88,16 @@ export async function GET(request: Request) {
       const descLower = ((ent.description || "") + " " + (ent.reference || "")).toLowerCase();
       const ref = ent.reference || "";
 
+      // Filter out auto-generated internal Cost of Sales / COGS entries from Day Book (to match standard Tally ERP 9 behavior)
+      if (
+        descLower.includes("cost of sales") ||
+        descLower.includes("restock inv-") ||
+        sType === "cost_of_sales" ||
+        sType === "cogs"
+      ) {
+        continue;
+      }
+
       let voucherType = "Journal";
       let link = `/accounting`;
 
