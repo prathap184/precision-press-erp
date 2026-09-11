@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useRouter } from "next/navigation";
-import { Plus, FileText, X, Banknote, Search, Loader2, Send, CheckCircle2 } from "lucide-react";
+import { Plus, FileText, X, Banknote, Search, Loader2, Send, CheckCircle2, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -26,6 +26,7 @@ import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ErrorState } from "@/components/dashboard/error-state";
 import { ContentReveal } from "@/components/ui/content-reveal";
+import { TallyPeriodModal } from "@/components/dashboard/TallyPeriodModal";
 
 interface Invoice {
   id: string;
@@ -216,7 +217,33 @@ export default function InvoicesPage() {
   const debouncedSearch = useDebounce(search);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Global F2 / f shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || (target as any).isContentEditable);
+      
+      if (e.key === "F2" || ((e.key === "f" || e.key === "F") && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        e.preventDefault();
+        setIsPeriodModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleApplyPeriod = (from: string, to: string) => {
+    if (!from && !to) {
+      setDateFrom("");
+      setDateTo("");
+      return;
+    }
+    setDateFrom(from);
+    setDateTo(to || from);
+  };
 
   // Bulk selection of invoice rows.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -648,6 +675,22 @@ export default function InvoicesPage() {
               className="h-8 w-56 pl-8 text-xs"
             />
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsPeriodModalOpen(true)}
+            title="Press F or F2 to filter by Date / Period"
+            className={`h-8 text-xs font-semibold gap-1.5 border-slate-300 hover:border-blue-500 ${
+              dateFrom || dateTo ? "bg-indigo-50 border-indigo-400 text-indigo-700" : ""
+            }`}
+          >
+            <Calendar size={14} className="text-blue-600" />
+            <span>Period</span>
+            <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono bg-amber-100 text-amber-800 border-amber-300">
+              F2
+            </Badge>
+          </Button>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground shrink-0">From</span>
             <DatePicker
@@ -790,6 +833,16 @@ export default function InvoicesPage() {
           </>
         )}
       </div>
+
+      {/* Tally Period Modal (F2) */}
+      <TallyPeriodModal
+        isOpen={isPeriodModalOpen}
+        onClose={() => setIsPeriodModalOpen(false)}
+        onApply={handleApplyPeriod}
+        initialFromDate={dateFrom}
+        initialToDate={dateTo}
+        title="Sales Invoices Period (F2)"
+      />
     </ContentReveal>
   );
 }

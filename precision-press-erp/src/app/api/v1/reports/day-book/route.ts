@@ -12,10 +12,14 @@ export async function GET(request: Request) {
   try {
     const ctx = await getAuthContext(request);
     const url = new URL(request.url);
-    const dateStr = url.searchParams.get("date") || new Date().toISOString().split("T")[0];
+    const dateParam = url.searchParams.get("date");
+    const fromParam = url.searchParams.get("from") || url.searchParams.get("fromDate");
+    const toParam = url.searchParams.get("to") || url.searchParams.get("toDate");
 
-    const startOfDay = new Date(dateStr + "T00:00:00.000Z");
-    const dateOnlyStr = startOfDay.toISOString().split("T")[0];
+    const fromDateStr = fromParam || dateParam || new Date().toISOString().split("T")[0];
+    const toDateStr = toParam || fromDateStr;
+
+    const startOfDay = new Date(fromDateStr + "T00:00:00.000Z");
 
     // ── 1. Opening Cash & Bank Balance Query ────────────────────────────────
     let openingBalance = 0;
@@ -33,14 +37,14 @@ export async function GET(request: Request) {
       openingBalance = 0;
     }
 
-    // ── 2. Query All Journal Entries for Selected Date ─────────────────────
+    // ── 2. Query All Journal Entries for Selected Date or Date Range ───────
     const journalEntries = await db.query.journalEntry.findMany({
       where: and(
         eq(journalEntry.organizationId, ctx.organizationId),
         eq(journalEntry.status, "posted"),
         isNull(journalEntry.deletedAt),
-        gte(journalEntry.date, dateOnlyStr),
-        lte(journalEntry.date, dateOnlyStr)
+        gte(journalEntry.date, fromDateStr),
+        lte(journalEntry.date, toDateStr)
       ),
       with: {
         lines: {
@@ -142,7 +146,9 @@ export async function GET(request: Request) {
     const closingBalance = openingBalance + totalDebits - totalCredits;
 
     return NextResponse.json({
-      date: dateOnlyStr,
+      date: fromDateStr,
+      fromDate: fromDateStr,
+      toDate: toDateStr,
       openingBalance,
       closingBalance,
       summary: {

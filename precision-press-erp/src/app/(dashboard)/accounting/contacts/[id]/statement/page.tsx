@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { X, BarChart3, Loader2, Download, Send } from "lucide-react";
+import { X, BarChart3, Loader2, Download, Send, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,6 +18,7 @@ import { formatMoney } from "@/lib/money";
 import { DatePicker } from "@/components/ui/date-picker";
 import { useContactContext } from "../contact-context";
 import { getOrgId } from "@/lib/org-helper";
+import { TallyPeriodModal } from "@/components/dashboard/TallyPeriodModal";
 
 export default function ContactStatementPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,7 +35,33 @@ export default function ContactStatementPage() {
   const [statementLoading, setStatementLoading] = useState(false);
   const [statementStartDate, setStatementStartDate] = useState("");
   const [statementEndDate, setStatementEndDate] = useState("");
+  const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
   const [sendingStatement, setSendingStatement] = useState(false);
+
+  // Global F2 / f shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || (target as any).isContentEditable);
+      
+      if (e.key === "F2" || ((e.key === "f" || e.key === "F") && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        e.preventDefault();
+        setIsPeriodModalOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleApplyPeriod = (from: string, to: string) => {
+    if (!from && !to) {
+      setStatementStartDate("");
+      setStatementEndDate("");
+      return;
+    }
+    setStatementStartDate(from);
+    setStatementEndDate(to || from);
+  };
 
   const statementTypeLabels: Record<string, string> = {
     invoice: "Invoice",
@@ -166,6 +193,22 @@ export default function ContactStatementPage() {
               <SelectItem value="last_12">Last 12 Months</SelectItem>
             </SelectContent>
           </Select>
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsPeriodModalOpen(true)}
+            title="Press F or F2 to filter by Date / Period"
+            className="h-8 text-xs font-semibold gap-1.5 border-slate-300 hover:border-blue-500"
+          >
+            <Calendar size={14} className="text-blue-600" />
+            <span>Period</span>
+            <Badge variant="secondary" className="px-1 py-0 text-[10px] font-mono bg-amber-100 text-amber-800 border-amber-300">
+              F2
+            </Badge>
+          </Button>
+
           <DatePicker
             value={statementStartDate}
             onChange={setStatementStartDate}
@@ -351,6 +394,16 @@ export default function ContactStatementPage() {
           </ContentReveal>
         )}
       </div>
+
+      {/* Tally Period Modal (F2) */}
+      <TallyPeriodModal
+        isOpen={isPeriodModalOpen}
+        onClose={() => setIsPeriodModalOpen(false)}
+        onApply={handleApplyPeriod}
+        initialFromDate={statementStartDate}
+        initialToDate={statementEndDate}
+        title="Statement Period (F2)"
+      />
     </ContentReveal>
   );
 }

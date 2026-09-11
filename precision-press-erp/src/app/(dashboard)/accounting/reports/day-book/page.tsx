@@ -1,26 +1,29 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { 
   Calendar, ChevronLeft, ChevronRight, Download, Printer, ArrowUpRight, Filter, Eye, RefreshCw
 } from 'lucide-react';
+import { TallyPeriodModal } from '@/components/dashboard/TallyPeriodModal';
 
 export default function DayBookPage() {
-  const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [fromDate, setFromDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [toDate, setToDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
   const [voucherFilter, setVoucherFilter] = useState<string>('ALL');
   const [themeMode, setThemeMode] = useState<'tally-classic' | 'tally-dark'>('tally-classic');
   const [loading, setLoading] = useState<boolean>(true);
   const [data, setData] = useState<any>(null);
 
-  const fetchDayBook = async (date: string) => {
+  const fetchDayBook = useCallback(async (from: string, to: string) => {
     setLoading(true);
     try {
       const orgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrgId') : null;
       const headers: Record<string, string> = {};
       if (orgId) headers['x-organization-id'] = orgId;
 
-      const res = await fetch(`/api/v1/reports/day-book?date=${date}`, { headers });
+      const res = await fetch(`/api/v1/reports/day-book?from=${from}&to=${to || from}`, { headers });
       if (res.ok) {
         const json = await res.json();
         setData(json);
@@ -30,22 +33,48 @@ export default function DayBookPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchDayBook(selectedDate);
-  }, [selectedDate]);
+    fetchDayBook(fromDate, toDate);
+  }, [fromDate, toDate, fetchDayBook]);
+
+  // Global F2 / f shortcut listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || (target as any).isContentEditable);
+      
+      if (e.key === 'F2' || ((e.key === 'f' || e.key === 'F') && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        e.preventDefault();
+        setIsPeriodModalOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleApplyPeriod = (newFrom: string, newTo: string) => {
+    const effectiveFrom = newFrom || new Date().toISOString().split('T')[0];
+    const effectiveTo = newTo || effectiveFrom;
+    setFromDate(effectiveFrom);
+    setToDate(effectiveTo);
+  };
 
   const handlePrevDay = () => {
-    const d = new Date(selectedDate + 'T00:00:00Z');
+    const d = new Date(fromDate + 'T00:00:00Z');
     d.setUTCDate(d.getUTCDate() - 1);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    const newD = d.toISOString().split('T')[0];
+    setFromDate(newD);
+    setToDate(newD);
   };
 
   const handleNextDay = () => {
-    const d = new Date(selectedDate + 'T00:00:00Z');
+    const d = new Date(toDate + 'T00:00:00Z');
     d.setUTCDate(d.getUTCDate() + 1);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    const newD = d.toISOString().split('T')[0];
+    setFromDate(newD);
+    setToDate(newD);
   };
 
   const filteredRecords = (data?.records || []).filter((r: any) => {
@@ -62,11 +91,9 @@ export default function DayBookPage() {
     return true;
   });
 
-  const formattedDate = new Intl.DateTimeFormat('en-IN', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  }).format(new Date(selectedDate + 'T00:00:00Z'));
+  const formattedDate = fromDate === toDate
+    ? new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(fromDate + 'T00:00:00Z'))
+    : `${new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short' }).format(new Date(fromDate + 'T00:00:00Z'))} to ${new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(toDate + 'T00:00:00Z'))}`;
 
   const isClassic = themeMode === 'tally-classic';
 
@@ -88,8 +115,15 @@ export default function DayBookPage() {
           <div className="text-center font-black tracking-widest text-emerald-200">
             DEMO COMPANY
           </div>
-          <div className="text-xs font-normal text-emerald-200">
-            {formattedDate}
+          <div className="text-xs font-normal text-emerald-200 flex items-center gap-2">
+            <span>{formattedDate}</span>
+            <button
+              onClick={() => setIsPeriodModalOpen(true)}
+              title="Press F or F2 to change period"
+              className="px-2 py-0.5 bg-amber-400 text-slate-950 text-[11px] font-black rounded hover:bg-amber-300 transition-colors shadow-sm"
+            >
+              F2 Period
+            </button>
           </div>
         </div>
 
@@ -104,15 +138,15 @@ export default function DayBookPage() {
             >
               <ChevronLeft size={14} /> Prev Day
             </button>
-            <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded border border-white/20">
+            <button
+              onClick={() => setIsPeriodModalOpen(true)}
+              className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1 rounded border border-white/20 font-bold text-white transition-colors cursor-pointer"
+              title="Press F or F2 to change period"
+            >
               <Calendar size={14} />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="bg-transparent font-bold outline-none cursor-pointer text-white"
-              />
-            </div>
+              <span>{formattedDate}</span>
+              <span className="bg-amber-400 text-slate-950 text-[10px] px-1.5 py-0.2 rounded font-black ml-1">F2</span>
+            </button>
             <button
               onClick={handleNextDay}
               className="px-2 py-1 bg-black/20 hover:bg-black/40 rounded border border-white/20 font-bold flex items-center gap-1"
@@ -129,7 +163,7 @@ export default function DayBookPage() {
               {isClassic ? '🌙 Dark Tally Theme' : '📜 Classic Tally Theme'}
             </button>
             <button
-              onClick={() => fetchDayBook(selectedDate)}
+              onClick={() => fetchDayBook(fromDate, toDate)}
               className="p-1.5 bg-black/20 hover:bg-black/40 rounded border border-white/20"
               title="Refresh"
             >
@@ -288,6 +322,16 @@ export default function DayBookPage() {
           )}
         </table>
       </div>
+
+      {/* Tally Period Modal (F2) */}
+      <TallyPeriodModal
+        isOpen={isPeriodModalOpen}
+        onClose={() => setIsPeriodModalOpen(false)}
+        onApply={handleApplyPeriod}
+        initialFromDate={fromDate}
+        initialToDate={toDate}
+        title="Day Book Period (F2)"
+      />
     </div>
   );
 }

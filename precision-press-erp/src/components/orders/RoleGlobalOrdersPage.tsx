@@ -673,7 +673,6 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
             </div>
           </div>
         )}
-        </div>
 
         {/* ── ROLE LOCK NOTICE ───────────────────────────────────────────── */}
         <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-800 text-xs font-medium">
