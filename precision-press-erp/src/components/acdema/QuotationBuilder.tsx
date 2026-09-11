@@ -11,9 +11,9 @@ import { getCustomers } from '@/lib/actions/users';
 import { createCustomer } from '@/lib/actions/users';
 import { getProducts } from '@/lib/actions/products';
 import { calculateRowSubtotal, calculateOrderSummary } from '@/lib/pricing-engine';
-import { createStandaloneQuotation } from '@/lib/actions/quotations';
+import { createStandaloneQuotation, getNextQuotationIdAction } from '@/lib/actions/quotations';
 import { refreshAuthTokenCookie } from '@/lib/refresh-auth-token';
-import { QuotationBuilderView } from '@/components/acdema/QuotationBuilderView';
+import { ProxyOrderBuilderView } from '@/components/acdema/ProxyOrderBuilderView';
 
 type PaymentMode = 'HAND_CASH' | 'COD' | 'UPI' | 'CREDIT';
 type DeliveryType = 'selfPickup' | 'door' | 'courier' | 'transport';
@@ -75,6 +75,8 @@ export function QuotationBuilder() {
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('HAND_CASH');
   const [deliveryType, setDeliveryType] = useState<DeliveryType>('door');
   const [shippingAddress, setShippingAddress] = useState('');
+  const [orderNumber, setOrderNumber] = useState('');
+  const [orderDate, setOrderDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [upiProofUrl, setUpiProofUrl] = useState('');
   const [upiPreview, setUpiPreview] = useState('');
   const [upiUploading, setUpiUploading] = useState(false);
@@ -153,13 +155,20 @@ export function QuotationBuilder() {
 
     const bootstrap = async () => {
       try {
-        const [productData, customerData] = await Promise.all([getProducts(), getCustomers()]);
+        const [productData, customerData, nextQuoteId] = await Promise.all([
+          getProducts(),
+          getCustomers(),
+          getNextQuotationIdAction().catch(() => 'QU-0001')
+        ]);
         if (!active) return;
 
         const activeProducts = productData.filter((product: Product) => product.status === 'ACTIVE');
         setProducts(activeProducts);
         setCustomers(customerData);
         setRows([makeRow()]);
+        if (nextQuoteId) {
+          setOrderNumber(nextQuoteId);
+        }
       } catch (error) {
         console.error(error);
         toast.error('Unable to load quotation data.');
@@ -624,6 +633,8 @@ export function QuotationBuilder() {
         : undefined;
 
       const quotationPayload = {
+        quotationNumber: orderNumber.trim() || undefined,
+        quotationDate: orderDate || undefined,
         customerId: selectedCustomerId,
         customerName: selectedCustomer?.displayName || selectedCustomer?.name || 'Customer',
         customerSnapshot,
@@ -685,6 +696,10 @@ export function QuotationBuilder() {
     setDeliveryType,
     shippingAddress,
     setShippingAddress,
+    orderNumber,
+    setOrderNumber,
+    orderDate,
+    setOrderDate,
     upiUploading,
     upiPreview,
     upiProofUrl,
@@ -709,5 +724,5 @@ export function QuotationBuilder() {
     handleVerifyGst,
   };
 
-  return <QuotationBuilderView vm={viewModel} />;
+  return <ProxyOrderBuilderView vm={viewModel} />;
 }

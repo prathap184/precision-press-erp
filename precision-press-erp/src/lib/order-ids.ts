@@ -57,3 +57,30 @@ export function generateInvoiceId(baseId: string): string {
 export function generateJobId(type: string, orderId: string): string {
   return `JOB-${type}-${orderId}-${generateUUIDShort()}`;
 }
+
+export async function generateQuotationNumber(): Promise<string> {
+  try {
+    const { data: rows, error: rowsErr } = await supabaseServer
+      .from('quotations')
+      .select('quotation_number')
+      .ilike('quotation_number', 'QU-%');
+
+    let maxNum = 0;
+    if (rows && Array.isArray(rows) && rows.length > 0) {
+      for (const r of (rows as any[])) {
+        const qNum = (r?.quotation_number || '').trim();
+        const match = qNum.match(/^QU-0*([1-9]\d{0,4})$/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNum) maxNum = num;
+        }
+      }
+    }
+    const nextNum = maxNum + 1;
+    return `QU-${String(nextNum).padStart(4, '0')}`;
+  } catch (seqErr) {
+    console.error('Failed to compute sequential quotation number:', seqErr);
+    return `QU-0001`;
+  }
+}
+

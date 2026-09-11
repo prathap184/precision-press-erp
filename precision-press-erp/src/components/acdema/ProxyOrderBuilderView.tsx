@@ -439,21 +439,25 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           {/* Header */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h1 className="text-[28px] font-bold font-black tracking-tight text-slate-900">Order Terminal</h1>
+              <h1 className="text-[28px] font-bold font-black tracking-tight text-slate-900">
+                {vm.mode === 'quotation' ? 'Quotation Builder' : 'Order Terminal'}
+              </h1>
               <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Hindustan Enterprises</p>
             </div>
 
-            {/* Order Sequence # and Date compact badges */}
+            {/* Order / Quote Sequence # and Date compact badges */}
             <div className="relative z-20 flex items-center gap-2.5 bg-white/70 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/80 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
               <div className="flex flex-col">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 leading-tight">Order #</span>
+                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 leading-tight">
+                  {vm.mode === 'quotation' ? 'Quote #' : 'Order #'}
+                </span>
                 <input
                   type="text"
                   value={orderNumber}
                   onChange={(e) => setOrderNumber(e.target.value.toUpperCase())}
-                  placeholder="ORD-0001"
+                  placeholder={vm.mode === 'quotation' ? 'QU-0001' : 'ORD-0001'}
                   className="h-7 w-28 bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-slate-800 font-mono font-black text-xs px-2.5 rounded-lg border border-slate-200/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                  title="Sequential Order ID"
+                  title={vm.mode === 'quotation' ? 'Sequential Quote ID' : 'Sequential Order ID'}
                 />
               </div>
               <div className="h-7 w-[1px] bg-slate-200/80 self-end mb-0.5" />
@@ -464,7 +468,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   value={orderDate}
                   onChange={(e) => setOrderDate(e.target.value)}
                   className="h-7 bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-slate-800 font-bold text-xs px-2 rounded-lg border border-slate-200/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
-                  title="Order Date"
+                  title={vm.mode === 'quotation' ? 'Quotation Date' : 'Order Date'}
                 />
               </div>
             </div>
@@ -1779,229 +1783,228 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
               </div>
             </div>
 
-            {/* Bottom Row: Logistics (left) + Payment Terminal (right) */}
-            <div className={`grid gap-4 ${vm.mode === 'quotation' ? 'lg:grid-cols-1' : 'lg:grid-cols-2'}`}>
+            {/* Bottom Row: Logistics (left) + Action/Payment Terminal (right) */}
+            <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
 
               {/* LEFT: Logistics Card */}
-              {vm.mode !== 'quotation' && (
-                <div className="rounded-[1.5rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
-                  <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
-                  <div className="flex gap-2">
-                    {[
-                      { id: 'selfPickup', label: 'PICKUP', key: 'p' },
-                      { id: 'door', label: 'DOOR', key: 'd' },
-                      { id: 'courier', label: 'COURIER', key: 'c' },
-                      { id: 'transport', label: 'TRANSPORT', key: 't' },
-                    ].map((opt, optIdx, arr) => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setDeliveryType(opt.id as any)}
-                        onKeyDown={(e) => {
-                          const k = e.key.toLowerCase();
-                          if (e.key === " " || e.key === "Spacebar") {
-                            // Space selects this delivery option and moves to next field
-                            e.preventDefault();
-                            setDeliveryType(opt.id as any);
-                            setTimeout(() => {
-                              if (opt.id !== 'selfPickup') {
-                                const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
-                                if (addrSelect) {
-                                  (addrSelect as HTMLElement).focus();
-                                  (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                  return;
-                                }
+              <div className="rounded-[1.5rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+                <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
+                <div className="flex gap-2">
+                  {[
+                    { id: 'selfPickup', label: 'PICKUP', key: 'p' },
+                    { id: 'door', label: 'DOOR', key: 'd' },
+                    { id: 'courier', label: 'COURIER', key: 'c' },
+                    { id: 'transport', label: 'TRANSPORT', key: 't' },
+                  ].map((opt, optIdx, arr) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setDeliveryType(opt.id as any)}
+                      onKeyDown={(e) => {
+                        const k = e.key.toLowerCase();
+                        if (e.key === " " || e.key === "Spacebar") {
+                          // Space selects this delivery option and moves to next field
+                          e.preventDefault();
+                          setDeliveryType(opt.id as any);
+                          setTimeout(() => {
+                            if (opt.id !== 'selfPickup') {
+                              const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
+                              if (addrSelect) {
+                                (addrSelect as HTMLElement).focus();
+                                (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                return;
                               }
-                              const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
-                                || document.getElementById('pay-mode-tab-cash')
-                                || document.getElementById('order-notes');
-                              if (payBtn) {
-                                payBtn.focus();
-                                payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              }
-                            }, 50);
-                          } else if (e.key === "ArrowRight") {
+                            }
+                            const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
+                              || document.getElementById('pay-mode-tab-cash')
+                              || document.getElementById('order-notes');
+                            if (payBtn) {
+                              payBtn.focus();
+                              payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }, 50);
+                        } else if (e.key === "ArrowRight") {
+                          e.preventDefault();
+                          const next = arr[(optIdx + 1) % arr.length];
+                          const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
+                          if (nextBtn) nextBtn.focus();
+                        } else if (e.key === "ArrowLeft") {
+                          e.preventDefault();
+                          const prev = arr[(optIdx - 1 + arr.length) % arr.length];
+                          const prevBtn = document.getElementById(`logistics-btn-${prev.id}`);
+                          if (prevBtn) prevBtn.focus();
+                        } else if (k === 'p' || k === 'd' || k === 'c' || k === 't') {
+                          const found = arr.find(item => item.key === k);
+                          if (found) {
                             e.preventDefault();
-                            const next = arr[(optIdx + 1) % arr.length];
+                            setDeliveryType(found.id as any);
+                            const targetBtn = document.getElementById(`logistics-btn-${found.id}`);
+                            if (targetBtn) targetBtn.focus();
+                          }
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (optIdx < arr.length - 1) {
+                            // Enter advances to next option: PICKUP -> DOOR -> COURIER -> TRANSPORT
+                            const next = arr[optIdx + 1];
                             const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
                             if (nextBtn) nextBtn.focus();
-                          } else if (e.key === "ArrowLeft") {
-                            e.preventDefault();
-                            const prev = arr[(optIdx - 1 + arr.length) % arr.length];
-                            const prevBtn = document.getElementById(`logistics-btn-${prev.id}`);
-                            if (prevBtn) prevBtn.focus();
-                          } else if (k === 'p' || k === 'd' || k === 'c' || k === 't') {
-                            const found = arr.find(item => item.key === k);
-                            if (found) {
-                              e.preventDefault();
-                              setDeliveryType(found.id as any);
-                              const targetBtn = document.getElementById(`logistics-btn-${found.id}`);
-                              if (targetBtn) targetBtn.focus();
+                          } else {
+                            // From last option (TRANSPORT), proceed to next field (Address or Payment)
+                            if (deliveryType !== 'selfPickup') {
+                              const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
+                              if (addrSelect) {
+                                (addrSelect as HTMLElement).focus();
+                                (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                return;
+                              }
                             }
-                          } else if (e.key === "Enter") {
-                            e.preventDefault();
-                            if (optIdx < arr.length - 1) {
-                              // Enter advances to next option: PICKUP -> DOOR -> COURIER -> TRANSPORT
-                              const next = arr[optIdx + 1];
-                              const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
-                              if (nextBtn) nextBtn.focus();
-                            } else {
-                              // From last option (TRANSPORT), proceed to next field (Address or Payment)
-                              if (deliveryType !== 'selfPickup') {
-                                const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
-                                if (addrSelect) {
-                                  (addrSelect as HTMLElement).focus();
-                                  (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                  return;
-                                }
-                              }
-                              const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
-                                || document.getElementById('pay-mode-tab-cash')
-                                || document.getElementById('order-notes');
-                              if (payBtn) {
-                                payBtn.focus();
-                                payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                              }
+                            const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
+                              || document.getElementById('pay-mode-tab-cash')
+                              || document.getElementById('order-notes');
+                            if (payBtn) {
+                              payBtn.focus();
+                              payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                           }
-                        }}
-                        id={`logistics-btn-${opt.id}`}
-                        className={`flex-1 rounded-xl py-1.5 text-[10px] font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
-                          deliveryType === opt.id ? 'bg-slate-900 text-white shadow-md border-2 border-slate-900' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-2 border-transparent'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
+                        }
+                      }}
+                      id={`logistics-btn-${opt.id}`}
+                      className={`flex-1 rounded-xl py-1.5 text-[10px] font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
+                        deliveryType === opt.id ? 'bg-slate-900 text-white shadow-md border-2 border-slate-900' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-2 border-transparent'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
 
-                  {deliveryType !== 'selfPickup' && (
-                    <div className="mt-2 space-y-2">
-                      {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address || (selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply) ? (
-                        <>
-                          <select
-                            id="error-shippingAddress"
-                            className={`h-10 w-full rounded-lg border-2 px-3 text-sm font-medium transition-all ${
-                              validationErrors['shippingAddress']
-                                ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
-                                : 'border-slate-200 bg-slate-50 text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'
-                            }`}
-                            value={shippingAddress}
-                            onChange={(e) => {
-                              setShippingAddress(e.target.value);
-                              setValidationErrors((prev) => {
-                                const next = { ...prev };
-                                delete next['shippingAddress'];
-                                return next;
-                              });
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                const addAddrBtn = document.getElementById("add-address-btn");
-                                if (addAddrBtn) {
-                                  addAddrBtn.focus();
-                                } else {
-                                  const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
-                                    || document.getElementById('pay-mode-tab-cash')
-                                    || document.getElementById('order-notes');
-                                  if (payBtn) {
-                                    payBtn.focus();
-                                    payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                  }
-                                }
-                              }
-                            }}
-                          >
-                            <option value="">Select Delivery Address</option>
-                            {selectedCustomer?.billing_address_line1 && (
-                              <option value={[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}>
-                                Primary: {[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}
-                              </option>
-                            )}
-                            {!selectedCustomer?.billing_address_line1 && ((selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state) && (
-                              <option value={[(selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city, (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply, (selectedCustomer as any)?.billing_pincode || (selectedCustomer as any)?.pincode].filter(Boolean).join(', ')}>
-                                Registered Location: {[(selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city, (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply, (selectedCustomer as any)?.billing_pincode || (selectedCustomer as any)?.pincode].filter(Boolean).join(', ')}
-                              </option>
-                            )}
-                            {selectedCustomer?.shipping_address_line1 && (
-                              <option value={[selectedCustomer.shipping_address_line1, selectedCustomer.shipping_address_line2, selectedCustomer.shipping_city, selectedCustomer.shipping_state, selectedCustomer.shipping_pincode].filter(Boolean).join(', ')}>
-                                Secondary: {[selectedCustomer.shipping_address_line1, selectedCustomer.shipping_address_line2, selectedCustomer.shipping_city, selectedCustomer.shipping_state, selectedCustomer.shipping_pincode].filter(Boolean).join(', ')}
-                              </option>
-                            )}
-                            {Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.map((addr: any, addrIdx: number) => {
-                              const fullAddr = `${selectedCustomer.displayName || selectedCustomer.name} ${selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}\n${addr.houseNumber || ''}, ${addr.roadName || ''}\n${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}`;
-                              return (
-                                <option key={addr.id || addrIdx} value={fullAddr}>
-                                  {addr.houseNumber || ''}, {addr.roadName || ''}, {addr.city || ''}, {addr.state || ''} - {addr.pincode || ''}
-                                </option>
-                              );
-                            })}
-                            {selectedCustomer?.address && <option value={selectedCustomer.address}>Legacy: {selectedCustomer.address}</option>}
-                          </select>
-                          {shippingAddress && shippingAddress !== 'Self Pickup' && (
-                            <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-2.5 text-xs font-semibold text-slate-600 whitespace-pre-line mt-1.5 text-left leading-relaxed">
-                              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Selected Delivery Address:</p>
-                              {shippingAddress}
-                            </div>
-                          )}
-                          <button
-                            id="add-address-btn"
-                            type="button"
-                            onClick={() => setShowAddressModal(true)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                const payTab = document.getElementById('pay-mode-tab-cash');
-                                if (payTab) payTab.focus();
-                              } else if (e.key === " " || e.key === "Spacebar") {
-                                e.preventDefault();
-                                setShowAddressModal(true);
-                              }
-                            }}
-                            className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none rounded px-1.5 py-0.5 border-2 border-transparent inline-block"
-                          >
-                            + Add Address
-                          </button>
-                        </>
-                      ) : (
-                        <button
+                {deliveryType !== 'selfPickup' && (
+                  <div className="mt-2 space-y-2">
+                    {((Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.length > 0) || selectedCustomer?.billing_address_line1 || selectedCustomer?.shipping_address_line1 || selectedCustomer?.address || (selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply) ? (
+                      <>
+                        <select
                           id="error-shippingAddress"
-                          type="button"
-                          onClick={() => setShowAddressModal(true)}
+                          className={`h-10 w-full rounded-lg border-2 px-3 text-sm font-medium transition-all ${
+                            validationErrors['shippingAddress']
+                              ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                              : 'border-slate-200 bg-slate-50 text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'
+                          }`}
+                          value={shippingAddress}
+                          onChange={(e) => {
+                            setShippingAddress(e.target.value);
+                            setValidationErrors((prev) => {
+                              const next = { ...prev };
+                              delete next['shippingAddress'];
+                              return next;
+                            });
+                          }}
                           onKeyDown={(e) => {
-                            if (e.key === " " || e.key === "Spacebar") {
+                            if (e.key === "Enter") {
                               e.preventDefault();
-                              setShowAddressModal(true);
-                            } else if (e.key === "Enter") {
-                              e.preventDefault();
-                              const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
-                                || document.getElementById('pay-mode-tab-cash')
-                                || document.getElementById('order-notes');
-                              if (payBtn) {
-                                payBtn.focus();
-                                payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              const addAddrBtn = document.getElementById("add-address-btn");
+                              if (addAddrBtn) {
+                                addAddrBtn.focus();
+                              } else {
+                                const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
+                                  || document.getElementById('pay-mode-tab-cash')
+                                  || document.getElementById('order-notes');
+                                if (payBtn) {
+                                  payBtn.focus();
+                                  payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
                               }
                             }
                           }}
-                          className={`flex h-10 w-full items-center justify-center rounded-xl border-2 border-dashed text-[11px] font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer ${
-                            validationErrors['shippingAddress'] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
-                          }`}
-                          title="Press Space to add address, or Enter to go to Payment"
                         >
-                          + Delivery Address
+                          <option value="">Select Delivery Address</option>
+                          {selectedCustomer?.billing_address_line1 && (
+                            <option value={[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}>
+                              Primary: {[selectedCustomer.billing_address_line1, selectedCustomer.billing_address_line2, selectedCustomer.billing_city, selectedCustomer.billing_state, selectedCustomer.billing_pincode].filter(Boolean).join(', ')}
+                            </option>
+                          )}
+                          {!selectedCustomer?.billing_address_line1 && ((selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city || (selectedCustomer as any)?.billing_state || selectedCustomer?.state) && (
+                            <option value={[(selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city, (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply, (selectedCustomer as any)?.billing_pincode || (selectedCustomer as any)?.pincode].filter(Boolean).join(', ')}>
+                              Registered Location: {[(selectedCustomer as any)?.billing_city || (selectedCustomer as any)?.city, (selectedCustomer as any)?.billing_state || selectedCustomer?.state || (selectedCustomer as any)?.place_of_supply, (selectedCustomer as any)?.billing_pincode || (selectedCustomer as any)?.pincode].filter(Boolean).join(', ')}
+                            </option>
+                          )}
+                          {selectedCustomer?.shipping_address_line1 && (
+                            <option value={[selectedCustomer.shipping_address_line1, selectedCustomer.shipping_address_line2, selectedCustomer.shipping_city, selectedCustomer.shipping_state, selectedCustomer.shipping_pincode].filter(Boolean).join(', ')}>
+                              Secondary: {[selectedCustomer.shipping_address_line1, selectedCustomer.shipping_address_line2, selectedCustomer.shipping_city, selectedCustomer.shipping_state, selectedCustomer.shipping_pincode].filter(Boolean).join(', ')}
+                            </option>
+                          )}
+                          {Array.isArray(selectedCustomer?.addresses) && selectedCustomer.addresses.map((addr: any, addrIdx: number) => {
+                            const fullAddr = `${selectedCustomer.displayName || selectedCustomer.name} ${selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}\n${addr.houseNumber || ''}, ${addr.roadName || ''}\n${addr.city || ''}, ${addr.state || ''} - ${addr.pincode || ''}`;
+                            return (
+                              <option key={addr.id || addrIdx} value={fullAddr}>
+                                {addr.houseNumber || ''}, {addr.roadName || ''}, {addr.city || ''}, {addr.state || ''} - {addr.pincode || ''}
+                              </option>
+                            );
+                          })}
+                          {selectedCustomer?.address && <option value={selectedCustomer.address}>Legacy: {selectedCustomer.address}</option>}
+                        </select>
+                        {shippingAddress && shippingAddress !== 'Self Pickup' && (
+                          <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-2.5 text-xs font-semibold text-slate-600 whitespace-pre-line mt-1.5 text-left leading-relaxed">
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Selected Delivery Address:</p>
+                            {shippingAddress}
+                          </div>
+                        )}
+                        <button
+                          id="add-address-btn"
+                          type="button"
+                          onClick={() => setShowAddressModal(true)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const payTab = document.getElementById('pay-mode-tab-cash') || document.getElementById('order-notes');
+                              if (payTab) payTab.focus();
+                            } else if (e.key === " " || e.key === "Spacebar") {
+                              e.preventDefault();
+                              setShowAddressModal(true);
+                            }
+                          }}
+                          className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none rounded px-1.5 py-0.5 border-2 border-transparent inline-block"
+                        >
+                          + Add Address
                         </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                      </>
+                    ) : (
+                      <button
+                        id="error-shippingAddress"
+                        type="button"
+                        onClick={() => setShowAddressModal(true)}
+                        onKeyDown={(e) => {
+                          if (e.key === " " || e.key === "Spacebar") {
+                            e.preventDefault();
+                            setShowAddressModal(true);
+                          } else if (e.key === "Enter") {
+                            e.preventDefault();
+                            const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
+                              || document.getElementById('pay-mode-tab-cash')
+                              || document.getElementById('order-notes');
+                            if (payBtn) {
+                              payBtn.focus();
+                              payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }
+                        }}
+                        className={`flex h-10 w-full items-center justify-center rounded-xl border-2 border-dashed text-[11px] font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer ${
+                          validationErrors['shippingAddress'] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        }`}
+                        title="Press Space to add address, or Enter to go to Terminal"
+                      >
+                        + Delivery Address
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
 
-              {/* RIGHT: Payment Terminal Card */}
-              <div className={vm.mode === 'quotation' ? 'max-w-lg mx-auto w-full' : ''}>
-                {/* Payment Terminal Card */}
+              {/* RIGHT: Payment / Quotation Actions Card */}
+              <div>
                 <div className="rounded-[1.5rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
-                  <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">Payment Terminal</h3>
+                  <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">
+                    {vm.mode === 'quotation' ? 'Quotation Actions' : 'Payment Terminal'}
+                  </h3>
                   
                   {vm.mode !== 'quotation' && (
                     <>
@@ -2270,7 +2273,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         className="mt-0.5 rounded-[4px] border-slate-300 text-emerald-500 w-4 h-4 shadow-sm focus:ring-2 focus:ring-blue-500" 
                       />
                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-snug group-hover:text-slate-800 transition-all">
-                        CONFIRM DIMENSIONS MATCH INDUSTRIAL SPECS & ARTWORK IS FINAL.
+                        {vm.mode === 'quotation' ? 'CONFIRM QUOTATION SPECIFICATIONS & PRICING ARE ACCURATE.' : 'CONFIRM DIMENSIONS MATCH INDUSTRIAL SPECS & ARTWORK IS FINAL.'}
                       </span>
                     </label>
                   </div>
@@ -2286,7 +2289,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   <button
                     id="submit-order-btn"
                     onClick={validateAndSubmit}
-                    disabled={loading || upiUploading || !acceptTerms || creditExceeded}
+                    disabled={loading || upiUploading || !acceptTerms || (vm.mode !== 'quotation' && creditExceeded)}
                     className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#00bfa5] text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-[#00bfa5]/25 hover:bg-[#00a892] disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none transition-all focus:ring-4 focus:ring-emerald-500/30 outline-none"
                   >
                     {loading ? <Loader2 className="animate-spin" size={18} /> : null}

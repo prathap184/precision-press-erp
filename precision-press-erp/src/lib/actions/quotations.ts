@@ -3,6 +3,7 @@
 import { supabaseServer } from '@/lib/supabase-server';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
+import { generateQuotationNumber } from '@/lib/order-ids';
 
 export async function generateQuotationFromChildOrders(
   childOrderIds: string[],
@@ -113,17 +114,17 @@ export async function generateQuotationFromChildOrders(
       })
       .in('id', childOrderIds);
 
-    if (updateErr) {
-      console.warn('Failed to update orders with quotation status:', updateErr.message);
-    }
-
     return { success: true, quotationId, quotationNumber };
-
   } catch (err: any) {
     console.error('[generateQuotationFromChildOrders] Error:', err);
     return { success: false, error: err.message };
   }
 }
+
+export async function getNextQuotationIdAction(): Promise<string> {
+  return generateQuotationNumber();
+}
+
 export async function createStandaloneQuotation(payload: any) {
   try {
     const token = cookies().get('token')?.value;
@@ -131,7 +132,8 @@ export async function createStandaloneQuotation(payload: any) {
     const { data: { user }, error: authError } = await supabaseServer.auth.getUser(token);
     if (authError || !user) throw new Error('Unauthorized');
     
-    const quotationNumber = `QT-${Date.now()}`;
+    const quotationNumber = payload.quotationNumber?.trim() || await generateQuotationNumber();
+    const quotationDate = payload.quotationDate || new Date().toISOString().split('T')[0];
     const quotationId = crypto.randomUUID();
     
     const { error } = await supabaseServer.from('quotations').insert({
@@ -139,17 +141,19 @@ export async function createStandaloneQuotation(payload: any) {
       quotation_number: quotationNumber,
       customer_id: payload.customerId,
       total_amount: payload.grandTotal,
-      items: payload.preparedItems,
+      items: payload.items || payload.preparedItems,
       tax_details: {
-        gstRate: payload.gstRate,
-        isInterstate: payload.isInterstate
+        gstRate: payload.gstRate || 0.18,
+        isInterstate: payload.isInterstate || false
       },
       customer_snapshot: payload.customerSnapshot,
       logistics_details: {
-        deliveryChoice: payload.deliveryChoice,
+        deliveryChoice: payload.deliveryType || payload.deliveryChoice,
         shippingAddress: payload.shippingAddress,
-        transportCharges: payload.transportCharges
+        transportCharges: payload.deliveryCharge || payload.transportCharges || 0
       },
+      notes: payload.notes || null,
+      quotation_date: quotationDate,
       status: 'PENDING',
       created_by: user.id
     });
