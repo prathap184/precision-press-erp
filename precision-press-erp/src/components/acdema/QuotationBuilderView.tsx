@@ -6,6 +6,7 @@ import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
 import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
+import { ItemDescriptionModal } from '@/components/dashboard/ItemDescriptionModal';
 
 export function QuotationBuilderView({ vm }: { vm: any }) {
   const {
@@ -23,6 +24,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
   } = vm;
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
+  const [activeDescRowId, setActiveDescRowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [highlightProductIndex, setHighlightProductIndex] = useState<number>(0);
   const [highlightCustomerIndex, setHighlightCustomerIndex] = useState<number>(0);
@@ -34,6 +36,30 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
   const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
+
+  const handleSaveDescAndAdvance = (rowId: string, text: string) => {
+    updateRow(rowId, { description: text, projectName: text });
+    setActiveDescRowId(null);
+    const row = rows.find((r: any) => r.id === rowId);
+    const product = products.find((p: any) => p?.id === row?.productId);
+    const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row?.unit || '').trim().toLowerCase();
+    const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+    const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
+
+    setTimeout(() => {
+      if (hasMultipleSizes) {
+        const widthInput = document.getElementById(`error-row-${rowId}-width`);
+        if (widthInput) widthInput.focus();
+        else {
+          const qtyInput = document.getElementById(`error-row-${rowId}-quantity`);
+          if (qtyInput) qtyInput.focus();
+        }
+      } else {
+        const qtyInput = document.getElementById(`error-row-${rowId}-quantity`);
+        if (qtyInput) qtyInput.focus();
+      }
+    }, 50);
+  };
 
   const handleRowFileSelect = async (rowId: string, file: File) => {
     // 1. Instantly display filename and prepare local blob preview
@@ -705,12 +731,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                               setSearchQuery('');
                                               setHighlightProductIndex(0);
                                               setTimeout(() => {
-                                                const descInput = document.getElementById(`row-${row.id}-description`);
-                                                const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                if (descInput) descInput.focus();
-                                                else if (widthInput && prodMode !== 'A') widthInput.focus();
-                                                else if (qtyInput) qtyInput.focus();
+                                                setActiveDescRowId(row.id);
                                               }, 60);
                                             }
                                           } else if (e.key === "Enter") {
@@ -729,19 +750,13 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                 setSearchQuery('');
                                                 setHighlightProductIndex(0);
                                                 setTimeout(() => {
-                                                  const descInput = document.getElementById(`row-${row.id}-description`);
-                                                  const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                  const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                  if (descInput) descInput.focus();
-                                                  else if (widthInput && prodMode !== 'A') widthInput.focus();
-                                                  else if (qtyInput) qtyInput.focus();
+                                                  setActiveDescRowId(row.id);
                                                 }, 60);
                                               }
                                             } else if (row.productId) {
                                               setOpenRowId(null);
                                               setTimeout(() => {
-                                                const descInput = document.getElementById(`row-${row.id}-description`);
-                                                if (descInput) descInput.focus();
+                                                setActiveDescRowId(row.id);
                                               }, 60);
                                             }
                                           } else if (e.key === "Escape") {
@@ -815,12 +830,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                       setSearchQuery('');
                                                       setHighlightProductIndex(0);
                                                       setTimeout(() => {
-                                                        const descInput = document.getElementById(`row-${row.id}-description`);
-                                                        const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                        if (descInput) descInput.focus();
-                                                        else if (widthInput && prodMode !== 'A') widthInput.focus();
-                                                        else if (qtyInput) qtyInput.focus();
+                                                        setActiveDescRowId(row.id);
                                                       }, 60);
                                                     }} 
                                                     className={`cursor-pointer border-b border-slate-100 p-2.5 pl-4 flex justify-between items-center transition-colors ${
@@ -868,33 +878,22 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       <input
                                         id={`row-${row.id}-description`}
                                         value={row.description !== undefined ? row.description : (row.projectName || '')}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          updateRow(row.id, { description: val, projectName: val });
-                                        }}
+                                        readOnly
+                                        onClick={() => setActiveDescRowId(row.id)}
+                                        onFocus={() => setActiveDescRowId(row.id)}
                                         placeholder="Description / notes (optional)..."
                                         onKeyDown={(e) => {
-                                           if (e.key === "Enter") {
-                                             e.preventDefault();
-                                             if (hasMultipleSizes) {
-                                               const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                               if (widthInput) widthInput.focus();
-                                               else {
-                                                 const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                 if (qtyInput) qtyInput.focus();
-                                               }
-                                             } else {
-                                               const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                               if (qtyInput) qtyInput.focus();
-                                             }
-                                           } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                             e.preventDefault();
-                                             const prodInput = document.getElementById(`row-${row.id}-product-input`);
-                                             if (prodInput) prodInput.focus();
-                                           }
-                                         }}
-                                        className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-                                        title="Additional Description for stock item (like Tally Prime) — saved to order_items"
+                                          if (e.key === "Enter" || e.key === " ") {
+                                            e.preventDefault();
+                                            setActiveDescRowId(row.id);
+                                          } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                            e.preventDefault();
+                                            const prodInput = document.getElementById(`row-${row.id}-product-input`);
+                                            if (prodInput) prodInput.focus();
+                                          }
+                                        }}
+                                        className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer truncate"
+                                        title="Additional Description for stock item (like Tally Prime) — Opens description window"
                                       />
                                     </div>
                                   </div>
@@ -1440,7 +1439,28 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                       id="quotation-notes"
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Specific color needs, hardware requirements..."
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          const target = e.currentTarget;
+                          const { selectionStart, value } = target;
+                          const beforeCursor = value.substring(0, selectionStart);
+                          const lastNewline = beforeCursor.lastIndexOf('\n');
+                          const currentLine = beforeCursor.substring(lastNewline + 1);
+
+                          // If current line is empty, finish Special Notes and advance to confirmation checkbox/submit
+                          if (currentLine.trim() === '') {
+                            e.preventDefault();
+                            const cleaned = notes.trimEnd();
+                            setNotes(cleaned);
+                            const chk = document.getElementById("confirm-dimensions");
+                            if (chk) {
+                              chk.focus();
+                              chk.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                          }
+                        }
+                      }}
+                      placeholder="Specific color needs, hardware requirements... (Enter for next line, Enter on empty line to exit, '.' for spacing)"
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs h-20 outline-none focus:border-slate-400 font-semibold resize-none transition-all"
                     />
                   </div>
@@ -1770,6 +1790,18 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Item Description Multiline Modal (Tally Style) */}
+          {activeDescRowId && (
+            <ItemDescriptionModal
+              isOpen={Boolean(activeDescRowId)}
+              onClose={() => setActiveDescRowId(null)}
+              onSaveAndAdvance={(text) => handleSaveDescAndAdvance(activeDescRowId, text)}
+              initialValue={rows.find((r: any) => r.id === activeDescRowId)?.description || rows.find((r: any) => r.id === activeDescRowId)?.projectName || ''}
+              itemName={products.find((p: any) => p.id === rows.find((r: any) => r.id === activeDescRowId)?.productId)?.name || 'Stock Item'}
+              title="Description for Stock Item"
+            />
           )}
 
     </RoleGuard>

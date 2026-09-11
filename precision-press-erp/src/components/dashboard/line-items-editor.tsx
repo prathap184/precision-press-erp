@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AccountPicker } from "./account-picker";
+import { ItemDescriptionModal } from "./ItemDescriptionModal";
 
 export interface LineItem {
   description: string;
@@ -397,6 +398,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
   const [inventoryItems, setInventoryItems] = useState<InventoryItemOption[]>([]);
   const [pendingFocusRowIndex, setPendingFocusRowIndex] = useState<number | null>(null);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
+  const [activeDescLineIndex, setActiveDescLineIndex] = useState<number | null>(null);
   const tableEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -513,6 +515,33 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
     );
     onChange(updated);
   }
+
+  const handleSaveDescAndAdvance = (lineIndex: number, text: string) => {
+    updateLine(lineIndex, "description", text);
+    setActiveDescLineIndex(null);
+    const line = lines[lineIndex];
+    const itemObj = inventoryItems.find((itm) => itm.id === line?.inventoryItemId);
+    const rawUom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || (itemObj as any)?.tally_uom || itemObj?.metadata?.unit || '').trim().toLowerCase();
+    const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+    const hasMultipleSizes = Boolean(
+      (itemObj?.hasMultipleSizes ??
+      itemObj?.has_multiple_sizes ??
+      itemObj?.metadata?.hasMultipleSizes ??
+      itemObj?.metadata?.has_multiple_sizes) ||
+      cleanUom === 'sqft' ||
+      cleanUom === 'sqf' ||
+      (parseFloat(line?.width || '0') > 0 && parseFloat(line?.length || '0') > 0)
+    );
+    setTimeout(() => {
+      if (hasMultipleSizes) {
+        const wInput = document.getElementById(`row-${lineIndex}-width`);
+        if (wInput) wInput.focus();
+      } else {
+        const qInput = document.getElementById(`row-${lineIndex}-quantity`);
+        if (qInput) qInput.focus();
+      }
+    }, 50);
+  };
 
   function addLine() {
     const defaultTax = taxRates.find(t => t.rate === 1800) || taxRates.find(t => t.name?.includes("18")) || taxRates[0];
@@ -702,13 +731,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                       value={line.inventoryItemId || ""}
                       inventoryItems={inventoryItems}
                       onSelectAdvance={() => {
-                        if (hasMultipleSizes) {
-                          const wInput = document.getElementById(`row-${i}-width`);
-                          if (wInput) wInput.focus();
-                        } else {
-                          const qInput = document.getElementById(`row-${i}-quantity`);
-                          if (qInput) qInput.focus();
-                        }
+                        setActiveDescLineIndex(i);
                       }}
                       onEndOfList={() => {
                         // End of list selected — delete this empty line and advance to next section
@@ -777,15 +800,35 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           taxRateId: matchingTax ? matchingTax.id : (taxRates.find(t => t.rate === 1800)?.id || updated[i].taxRateId),
                         };
                         onChange(updated);
+                        setTimeout(() => {
+                          setActiveDescLineIndex(i);
+                        }, 60);
                       }}
                     />
                   )}
-                  <Input
-                    className="h-7 text-xs bg-slate-50/70 border-slate-200 rounded-lg placeholder:text-slate-400"
-                    value={line.description}
-                    onChange={(e) => updateLine(i, "description", e.target.value)}
-                    placeholder="Custom description / item notes..."
-                  />
+                  <div className="flex items-center gap-1.5 pt-0.5">
+                    <span className="text-[10px] font-bold text-slate-400 select-none pl-1" title="Tally Additional Description">↳</span>
+                    <input
+                      id={`row-${i}-description`}
+                      value={line.description || ""}
+                      readOnly
+                      onClick={() => setActiveDescLineIndex(i)}
+                      onFocus={() => setActiveDescLineIndex(i)}
+                      placeholder="Description / notes (optional)..."
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setActiveDescLineIndex(i);
+                        } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                          e.preventDefault();
+                          const prodInput = document.getElementById(`row-${i}-product-input`);
+                          if (prodInput) prodInput.focus();
+                        }
+                      }}
+                      className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer truncate"
+                      title="Additional Description for stock item (like Tally Prime) — Opens description window"
+                    />
+                  </div>
                   <div className="hidden">
                     <AccountPicker
                       value={line.accountId}
@@ -1285,6 +1328,18 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
           </div>
         </div>
       </div>
+
+      {/* Item Description Multiline Modal (Tally Style) */}
+      {activeDescLineIndex !== null && lines[activeDescLineIndex] && (
+        <ItemDescriptionModal
+          isOpen={activeDescLineIndex !== null}
+          onClose={() => setActiveDescLineIndex(null)}
+          onSaveAndAdvance={(text) => handleSaveDescAndAdvance(activeDescLineIndex, text)}
+          initialValue={lines[activeDescLineIndex]?.description || ''}
+          itemName={inventoryItems.find((itm) => itm.id === lines[activeDescLineIndex]?.inventoryItemId)?.name || 'Stock Item'}
+          title="Description for Stock Item"
+        />
+      )}
     </div>
   );
 }

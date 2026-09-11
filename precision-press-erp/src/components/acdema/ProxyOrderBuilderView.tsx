@@ -6,6 +6,7 @@ import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
 import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
+import { ItemDescriptionModal } from '@/components/dashboard/ItemDescriptionModal';
 
 export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const {
@@ -36,6 +37,39 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
   const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
+  const [activeDescRowId, setActiveDescRowId] = useState<string | null>(null);
+
+  const handleSaveDescAndAdvance = (rowId: string, text: string) => {
+    updateRow(rowId, { description: text, projectName: text });
+    setActiveDescRowId(null);
+    const rowObj = rows.find((r: any) => r.id === rowId);
+    const p = products.find((prod: any) => prod.id === rowObj?.productId);
+    const rawUom = String((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'sqft').trim().toLowerCase();
+    const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+    const hasMultipleSizes = Boolean((p as any)?.has_multiple_sizes || (p as any)?.hasMultipleSizes || cleanUom === 'sqft' || cleanUom === 'sqf');
+    
+    setTimeout(() => {
+      if (hasMultipleSizes) {
+        const widthInput = document.getElementById(`error-row-${rowId}-width`);
+        if (widthInput) {
+          widthInput.focus();
+          try { (widthInput as HTMLInputElement).select(); } catch {}
+        } else {
+          const qtyInput = document.getElementById(`error-row-${rowId}-quantity`);
+          if (qtyInput) {
+            qtyInput.focus();
+            try { (qtyInput as HTMLInputElement).select(); } catch {}
+          }
+        }
+      } else {
+        const qtyInput = document.getElementById(`error-row-${rowId}-quantity`);
+        if (qtyInput) {
+          qtyInput.focus();
+          try { (qtyInput as HTMLInputElement).select(); } catch {}
+        }
+      }
+    }, 60);
+  };
 
   useEffect(() => {
     const handleExitRequest = () => {
@@ -918,12 +952,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                           setSearchQuery('');
                                                           setHighlightProductIndex(0);
                                                           setTimeout(() => {
-                                                            const descInput = document.getElementById(`row-${row.id}-description`);
-                                                            const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                            if (descInput) descInput.focus();
-                                                            else if (widthInput && prodMode !== 'A') widthInput.focus();
-                                                            else if (qtyInput) qtyInput.focus();
+                                                            setActiveDescRowId(row.id);
                                                           }, 60);
                                                         }}
                                                         className={`cursor-pointer px-3.5 py-2.5 transition-all flex items-center justify-between gap-3 ${
@@ -971,40 +1000,29 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         </div>
                                       )}
                                     </div>
-                                    <div className="flex items-center gap-1.5 pt-0.5">
-                                      <span className="text-[10px] font-bold text-slate-400 select-none pl-1" title="Tally Additional Description">↳</span>
-                                      <input
-                                        id={`row-${row.id}-description`}
-                                        value={row.description !== undefined ? row.description : (row.projectName || '')}
-                                        onChange={(e) => {
-                                          const val = e.target.value;
-                                          updateRow(row.id, { description: val, projectName: val });
-                                        }}
-                                        placeholder="Description / notes (optional)..."
-                                        onKeyDown={(e) => {
-                                          if (e.key === "Enter") {
-                                            e.preventDefault();
-                                            if (hasMultipleSizes) {
-                                              const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                              if (widthInput) widthInput.focus();
-                                              else {
-                                                const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                if (qtyInput) qtyInput.focus();
-                                              }
-                                            } else {
-                                              const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                              if (qtyInput) qtyInput.focus();
-                                            }
-                                          } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                            e.preventDefault();
-                                            const prodInput = document.getElementById(`row-${row.id}-product-input`);
-                                            if (prodInput) prodInput.focus();
-                                          }
-                                        }}
-                                        className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs"
-                                        title="Additional Description for stock item (like Tally Prime) — saved to order_items"
-                                      />
-                                    </div>
+                                     <div className="flex items-center gap-1.5 pt-0.5">
+                                       <span className="text-[10px] font-bold text-slate-400 select-none pl-1" title="Tally Additional Description">↳</span>
+                                       <input
+                                         id={`row-${row.id}-description`}
+                                         value={row.description !== undefined ? row.description : (row.projectName || '')}
+                                         readOnly
+                                         onClick={() => setActiveDescRowId(row.id)}
+                                         onFocus={() => setActiveDescRowId(row.id)}
+                                         placeholder="Description / notes (optional)..."
+                                         onKeyDown={(e) => {
+                                           if (e.key === "Enter" || e.key === " ") {
+                                             e.preventDefault();
+                                             setActiveDescRowId(row.id);
+                                           } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                             e.preventDefault();
+                                             const prodInput = document.getElementById(`row-${row.id}-product-input`);
+                                             if (prodInput) prodInput.focus();
+                                           }
+                                         }}
+                                         className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer truncate"
+                                         title="Additional Description for stock item (like Tally Prime) — Opens description window"
+                                       />
+                                     </div>
                                     </div>
                                   );
                                 })()}
@@ -2184,17 +2202,28 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       value={notes} 
                       onChange={(e) => setNotes(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          const chk = document.getElementById("confirm-dimensions");
-                          if (chk) {
-                            chk.focus();
-                            chk.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if (e.key === "Enter") {
+                          const target = e.currentTarget;
+                          const { selectionStart, value } = target;
+                          const beforeCursor = value.substring(0, selectionStart);
+                          const lastNewline = beforeCursor.lastIndexOf('\n');
+                          const currentLine = beforeCursor.substring(lastNewline + 1);
+
+                          // If current line is empty, finish Additional Notes and advance to terms/submit
+                          if (currentLine.trim() === '') {
+                            e.preventDefault();
+                            const cleaned = notes.trimEnd();
+                            setNotes(cleaned);
+                            const chk = document.getElementById("confirm-dimensions") || document.getElementById("order-submit-btn");
+                            if (chk) {
+                              chk.focus();
+                              chk.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
                           }
                         }
                       }}
-                      placeholder="Specific color needs, hardware requirements, special instructions..."
-                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs h-14 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white font-semibold resize-none transition-all"
+                      placeholder="Specific color needs, hardware requirements... (Enter for next line, Enter on empty line to exit, '.' for spacing)"
+                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs h-16 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white font-semibold resize-none transition-all"
                     />
                   </div>
 
@@ -2722,6 +2751,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* Item Description Multiline Modal (Tally Style) */}
+          {activeDescRowId && (
+            <ItemDescriptionModal
+              isOpen={Boolean(activeDescRowId)}
+              onClose={() => setActiveDescRowId(null)}
+              onSaveAndAdvance={(text) => handleSaveDescAndAdvance(activeDescRowId, text)}
+              initialValue={rows.find((r: any) => r.id === activeDescRowId)?.description || rows.find((r: any) => r.id === activeDescRowId)?.projectName || ''}
+              itemName={products.find((p: any) => p.id === rows.find((r: any) => r.id === activeDescRowId)?.productId)?.name || 'Stock Item'}
+              title="Description for Stock Item"
+            />
           )}
 
     </RoleGuard>

@@ -1215,13 +1215,30 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey || !e.shiftKey)) {
-                        e.preventDefault();
-                        const submitBtn = document.querySelector('button[type="submit"]') as HTMLElement;
-                        submitBtn?.focus();
+                      if (e.key === "Enter") {
+                        if (e.ctrlKey || e.metaKey) {
+                          e.preventDefault();
+                          const submitBtn = document.querySelector('button[type="submit"]') as HTMLElement;
+                          submitBtn?.focus();
+                          return;
+                        }
+                        const target = e.currentTarget;
+                        const { selectionStart, value } = target;
+                        const beforeCursor = value.substring(0, selectionStart);
+                        const lastNewline = beforeCursor.lastIndexOf('\n');
+                        const currentLine = beforeCursor.substring(lastNewline + 1);
+
+                        // If current line is empty, finish Notes and advance to submit
+                        if (currentLine.trim() === '') {
+                          e.preventDefault();
+                          const cleaned = notes.trimEnd();
+                          setNotes(cleaned);
+                          const submitBtn = document.querySelector('button[type="submit"]') as HTMLElement;
+                          submitBtn?.focus();
+                        }
                       }
                     }}
-                    placeholder="Specific notes, delivery instructions, remarks..."
+                    placeholder="Specific notes, delivery instructions, remarks... (Enter for next line, Enter on empty line to exit, '.' for spacing)"
                     rows={3}
                     className="rounded-xl border-slate-200 bg-slate-50 focus:bg-white text-xs font-medium"
                   />
