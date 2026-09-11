@@ -297,7 +297,12 @@ export function ReceiptForm() {
       <div className="grid gap-6 sm:grid-cols-3">
         <div className="space-y-2">
           <Label>Voucher Date *</Label>
-          <DatePicker value={date} onChange={setDate} />
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-xs transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring cursor-pointer"
+          />
         </div>
 
         <div className="space-y-2">

@@ -5134,10 +5134,15 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
                   type="customer"
                   initialContactName={initialData?.contactName}
                   onSelectAdvance={() => {
-                    const amtInput = document.getElementById("drawer-credit-amount") as HTMLElement;
-                    if (amtInput) {
-                      amtInput.focus();
-                      try { (amtInput as HTMLInputElement).select(); } catch {}
+                    const next = document.getElementById("receipt-mode-on_account") as HTMLElement;
+                    if (next) {
+                      next.focus();
+                    } else {
+                      const amtInput = document.getElementById("drawer-credit-amount") as HTMLElement;
+                      if (amtInput) {
+                        amtInput.focus();
+                        try { (amtInput as HTMLInputElement).select(); } catch {}
+                      }
                     }
                   }}
                 />
@@ -5148,33 +5153,71 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
                 <Label className="text-xs font-bold text-slate-500">Method of Adjustment *</Label>
                 <div className="flex flex-wrap gap-2">
                   <button
+                    id="receipt-mode-on_account"
                     type="button"
                     onClick={() => setSettlementMode("on_account")}
-                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.code === "Space") {
+                        e.preventDefault();
+                        setSettlementMode("on_account");
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        document.getElementById("receipt-mode-new_ref")?.focus();
+                      }
+                    }}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30 ${
                       settlementMode === "on_account"
-                        ? "bg-slate-900 text-white shadow-md"
+                        ? "bg-slate-900 text-white shadow-md ring-2 ring-slate-900"
                         : "bg-white/80 text-slate-600 hover:bg-white border border-slate-200"
                     }`}
                   >
                     On Account (General Advance)
                   </button>
                   <button
+                    id="receipt-mode-new_ref"
                     type="button"
                     onClick={() => setSettlementMode("new_ref")}
-                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.code === "Space") {
+                        e.preventDefault();
+                        setSettlementMode("new_ref");
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (settlementMode === "new_ref") {
+                          document.getElementById("receipt-ref-name-input")?.focus();
+                        } else {
+                          document.getElementById("receipt-mode-against_ref")?.focus();
+                        }
+                      }
+                    }}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-4 focus:ring-blue-500/30 ${
                       settlementMode === "new_ref"
-                        ? "bg-blue-600 text-white shadow-md"
+                        ? "bg-blue-600 text-white shadow-md ring-2 ring-blue-600"
                         : "bg-blue-50/70 text-blue-700 hover:bg-blue-100/70 border border-blue-200"
                     }`}
                   >
                     New Ref (Named Advance)
                   </button>
                   <button
+                    id="receipt-mode-against_ref"
                     type="button"
                     onClick={() => setSettlementMode("against_ref")}
-                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.code === "Space") {
+                        e.preventDefault();
+                        setSettlementMode("against_ref");
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (settlementMode === "against_ref") {
+                          document.getElementById("receipt-invoice-select-trigger")?.focus();
+                        } else {
+                          document.getElementById("receipt-date-received")?.focus();
+                        }
+                      }
+                    }}
+                    className={`px-4 py-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-4 focus:ring-amber-500/30 ${
                       settlementMode === "against_ref"
-                        ? "bg-amber-600 text-white shadow-md"
+                        ? "bg-amber-600 text-white shadow-md ring-2 ring-amber-600"
                         : "bg-amber-50/70 text-amber-800 hover:bg-amber-100/70 border border-amber-200"
                     }`}
                   >
@@ -5185,12 +5228,19 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
 
               {settlementMode === "new_ref" && (
                 <div className="space-y-2 rounded-2xl border border-blue-200 bg-blue-50/70 p-4">
-                  <Label className="text-xs font-bold text-blue-900 uppercase tracking-wide">Reference Name *</Label>
+                  <Label htmlFor="receipt-ref-name-input" className="text-xs font-bold text-blue-900 uppercase tracking-wide">Reference Name *</Label>
                   <Input
+                    id="receipt-ref-name-input"
                     value={referenceName}
                     onChange={(e) => setReferenceName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        document.getElementById("receipt-date-received")?.focus();
+                      }
+                    }}
                     placeholder="e.g. ADV-0001, ADV-ALPHA, PROJECT-X"
-                    className="h-10 text-xs rounded-xl bg-white border-blue-200 font-semibold"
+                    className="h-10 text-xs rounded-xl bg-white border-blue-200 font-semibold focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20"
                   />
                   <p className="text-[11px] text-blue-700 font-medium">
                     A unique name for this advance so you can track and settle it later against future invoices.
@@ -5201,8 +5251,17 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
               {settlementMode === "against_ref" && (
                 <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
                   <Label className="text-xs font-bold text-amber-900 uppercase tracking-wide">Against Invoice *</Label>
-                  <Select value={selectedInvoiceId} onValueChange={handleInvoiceSelect} disabled={!contactId || loadingInvoices}>
-                    <SelectTrigger className="h-10 text-xs rounded-xl bg-white border-amber-200 font-semibold">
+                  <Select
+                    value={selectedInvoiceId}
+                    onValueChange={(val) => {
+                      handleInvoiceSelect(val);
+                      setTimeout(() => {
+                        document.getElementById("receipt-date-received")?.focus();
+                      }, 50);
+                    }}
+                    disabled={!contactId || loadingInvoices}
+                  >
+                    <SelectTrigger id="receipt-invoice-select-trigger" className="h-10 text-xs rounded-xl bg-white border-amber-200 font-semibold focus:border-amber-600 focus:ring-4 focus:ring-amber-500/20">
                       <SelectValue placeholder={!contactId ? "Select customer first..." : loadingInvoices ? "Loading pending invoices..." : invoices.length === 0 ? "No pending invoices found" : "Select invoice to settle..."} />
                     </SelectTrigger>
                     <SelectContent className="bg-white border border-slate-200 shadow-2xl z-[9999]">
@@ -5219,12 +5278,39 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-500">Date Received</Label>
-                  <DatePicker value={date} onChange={setDate} placeholder="Date received" />
+                  <Label htmlFor="receipt-date-received" className="text-xs font-bold text-slate-500">Date Received</Label>
+                  <input
+                    id="receipt-date-received"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const amtInput = document.getElementById("drawer-credit-amount");
+                        if (amtInput) {
+                          amtInput.focus();
+                          try { (amtInput as HTMLInputElement).select(); } catch {}
+                        }
+                      }
+                    }}
+                    className="h-10 w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 font-bold text-sm px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-500" htmlFor="drawer-credit-amount">Amount</Label>
-                  <CurrencyInput id="drawer-credit-amount" value={amount} onChange={setAmount} className="rounded-xl" />
+                  <CurrencyInput
+                    id="drawer-credit-amount"
+                    value={amount}
+                    onChange={setAmount}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        document.getElementById("receipt-bank-account-trigger")?.focus();
+                      }
+                    }}
+                    className="rounded-xl"
+                  />
                 </div>
               </div>
 
@@ -5238,9 +5324,18 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
             <div className="rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 space-y-4">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Payment Account</h3>
               <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-500">Paid into *</Label>
+                <Label htmlFor="receipt-bank-account-trigger" className="text-xs font-bold text-slate-500">Paid into *</Label>
                 <Select value={bankAccountId} onValueChange={setBankAccountId}>
-                  <SelectTrigger className="h-10 text-xs rounded-xl bg-slate-50 border-slate-200 focus:bg-white font-medium">
+                  <SelectTrigger
+                    id="receipt-bank-account-trigger"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        document.getElementById("receipt-notes-input")?.focus();
+                      }
+                    }}
+                    className="h-10 text-xs rounded-xl bg-slate-50 border-slate-200 focus:bg-white font-medium"
+                  >
                     <SelectValue placeholder="Choose where the money landed..." />
                   </SelectTrigger>
                   <SelectContent className="bg-white border border-slate-200 shadow-2xl z-[9999]">
@@ -5266,15 +5361,27 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
             <div className="rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 space-y-4">
               <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Notes & Remarks</h3>
               <Textarea
+                id="receipt-notes-input"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    document.getElementById("receipt-submit-btn")?.focus();
+                  }
+                }}
                 placeholder="Specific remarks, transaction ref, UTR number..."
                 rows={3}
                 className="rounded-xl border-slate-200 bg-slate-50 focus:bg-white text-xs font-medium"
               />
             </div>
           </div>
-          <DrawerFooter onClose={onClose} saving={saving} label={settlementMode === "against_ref" ? "Record Receipt" : settlementMode === "new_ref" ? `Record Advance (${referenceName || "New Ref"})` : "Record on Account"} />
+          <DrawerFooter
+            submitId="receipt-submit-btn"
+            onClose={onClose}
+            saving={saving}
+            label={settlementMode === "against_ref" ? "Record Receipt" : settlementMode === "new_ref" ? `Record Advance (${referenceName || "New Ref"})` : "Record on Account"}
+          />
         </form>
       </SheetContent>
     </Sheet>
