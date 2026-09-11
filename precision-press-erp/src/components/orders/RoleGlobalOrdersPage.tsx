@@ -125,10 +125,62 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
   const [tab, setTab] = useState<TabType>('global');
   const [dateRange, setDateRange] = useState<{ start: Date | null; end: Date | null }>({ start: null, end: null });
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempFromDate, setTempFromDate] = useState('');
+  const [tempToDate, setTempToDate] = useState('');
   const [highlightedIds, setHighlightedIds] = useState<string[]>([]);
   const [parentTotals, setParentTotals] = useState<Record<string, number>>({});
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string | null>(null);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+
+  const openDateModal = () => {
+    setTempFromDate(dateRange.start ? dateRange.start.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+    setTempToDate(dateRange.end ? dateRange.end.toISOString().split('T')[0] : '');
+    setShowDatePicker(true);
+    setTimeout(() => {
+      const fromInput = document.getElementById("role-tally-from-date") as HTMLInputElement;
+      if (fromInput) {
+        fromInput.focus();
+        try { fromInput.select(); } catch {}
+      }
+    }, 50);
+  };
+
+  const handleApplyDateFilter = () => {
+    if (!tempFromDate) {
+      setDateRange({ start: null, end: null });
+      setShowDatePicker(false);
+      return;
+    }
+    const from = new Date(tempFromDate);
+    if (tempToDate) {
+      const to = new Date(tempToDate);
+      setDateRange({ start: from, end: to });
+    } else {
+      // Single day filter (From Date only)
+      setDateRange({ start: from, end: null });
+    }
+    setShowDatePicker(false);
+  };
+
+  // Keyboard shortcut listener for F2 / 'f'
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || (target as any).isContentEditable);
+      
+      // F2 or (f / F when not typing in an input)
+      if (e.key === 'F2' || ((e.key === 'f' || e.key === 'F') && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey)) {
+        e.preventDefault();
+        openDateModal();
+      }
+      if (e.key === 'Escape' && showDatePicker) {
+        e.preventDefault();
+        setShowDatePicker(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showDatePicker, dateRange]);
 
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -181,10 +233,22 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
   // ── Live orders listener ───────────────────────────────────────────────────
   useEffect(() => {
     let q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'), limit(limitCount));
-    if (dateRange.start) q = query(q, where('createdAt', '>=', dateRange.start.toISOString()));
-    if (dateRange.end) {
-      const end = new Date(dateRange.end); end.setHours(23, 59, 59, 999);
-      q = query(q, where('createdAt', '<=', end.toISOString()));
+    if (dateRange.start && dateRange.end) {
+      const startOfDay = new Date(dateRange.start);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(dateRange.end);
+      endOfDay.setHours(23, 59, 59, 999);
+      q = query(q, where('createdAt', '>=', startOfDay.toISOString()), where('createdAt', '<=', endOfDay.toISOString()));
+    } else if (dateRange.start) {
+      const startOfDay = new Date(dateRange.start);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(dateRange.start);
+      endOfDay.setHours(23, 59, 59, 999);
+      q = query(q, where('createdAt', '>=', startOfDay.toISOString()), where('createdAt', '<=', endOfDay.toISOString()));
+    } else if (dateRange.end) {
+      const endOfDay = new Date(dateRange.end);
+      endOfDay.setHours(23, 59, 59, 999);
+      q = query(q, where('createdAt', '<=', endOfDay.toISOString()));
     }
     const unsub = onSnapshot(q, (snap) => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Order[];
@@ -489,42 +553,126 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
           {/* Time Range picker */}
           <div className="relative flex-shrink-0">
             <button
-              onClick={() => setShowDatePicker(!showDatePicker)}
+              type="button"
+              onClick={openDateModal}
+              title="Press F or F2 to filter by Date / Period"
               className={`px-2.5 h-8 border rounded-lg text-xs font-semibold text-slate-700 hover:bg-white/40 transition-all flex items-center gap-1.5 ${
                 dateRange.start || dateRange.end
-                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50'
+                  ? 'border-indigo-600 text-indigo-600 bg-indigo-50 font-bold'
                   : 'border-white/30 bg-white/20 backdrop-blur-md'
               }`}
             >
               <Calendar size={12} />
               {dateRange.start && dateRange.end
-                ? `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}`
+                ? (dateRange.start.toISOString().split('T')[0] === dateRange.end.toISOString().split('T')[0]
+                    ? dateRange.start.toLocaleDateString()
+                    : `${dateRange.start.toLocaleDateString()} - ${dateRange.end.toLocaleDateString()}`)
                 : dateRange.start ? `From ${dateRange.start.toLocaleDateString()}`
                 : dateRange.end ? `Until ${dateRange.end.toLocaleDateString()}`
-                : 'Time Range'}
+                : 'Time Range (F2)'}
             </button>
-            {showDatePicker && (
-              <div className="absolute right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-50 w-72 flex flex-col gap-3">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Select Range</span>
-                  <button onClick={() => { setDateRange({ start: null, end: null }); setShowDatePicker(false); }} className="text-xs text-slate-400 hover:text-red-500 font-bold">Clear</button>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">Start Date</label>
-                  <input type="date" className="w-full border border-slate-200 rounded-lg p-2 text-xs outline-none focus:border-indigo-500"
-                    value={dateRange.start ? dateRange.start.toISOString().split('T')[0] : ''}
-                    onChange={e => setDateRange(p => ({ ...p, start: e.target.value ? new Date(e.target.value) : null }))} />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 block mb-1">End Date</label>
-                  <input type="date" className="w-full border border-slate-200 rounded-lg p-2 text-xs outline-none focus:border-indigo-500"
-                    value={dateRange.end ? dateRange.end.toISOString().split('T')[0] : ''}
-                    onChange={e => setDateRange(p => ({ ...p, end: e.target.value ? new Date(e.target.value) : null }))} />
-                </div>
-                <button onClick={() => setShowDatePicker(false)} className="mt-1 w-full bg-slate-900 text-white rounded-lg py-2 text-xs font-bold hover:bg-slate-800">Apply Filter</button>
-              </div>
-            )}
           </div>
+        </div>
+
+        {/* Tally-Style Small Period Modal Window */}
+        {showDatePicker && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="relative w-full max-w-sm rounded-2xl bg-white shadow-2xl border-2 border-slate-900 overflow-hidden">
+              {/* Tally Header */}
+              <div className="bg-slate-900 px-4 py-3 text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar size={16} className="text-emerald-400" />
+                  <h3 className="text-xs font-black uppercase tracking-wider">Change Period (F2)</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDatePicker(false)}
+                  className="text-slate-400 hover:text-white text-xs font-bold px-1.5 py-0.5 rounded transition-colors"
+                >
+                  ✕ [Esc]
+                </button>
+              </div>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleApplyDateFilter();
+                }}
+                className="p-5 space-y-4 bg-slate-50"
+              >
+                <div className="space-y-1.5">
+                  <label htmlFor="role-tally-from-date" className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                    <span>From Date *</span>
+                    <span className="text-[10px] font-semibold text-slate-400 font-mono">Enter ↵ to jump to 'To Date'</span>
+                  </label>
+                  <input
+                    id="role-tally-from-date"
+                    type="date"
+                    value={tempFromDate}
+                    onChange={(e) => setTempFromDate(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const toInput = document.getElementById("role-tally-to-date");
+                        if (toInput) {
+                          toInput.focus();
+                          try { (toInput as HTMLInputElement).select(); } catch {}
+                        }
+                      }
+                    }}
+                    className="h-10 w-full bg-white text-slate-900 font-bold text-sm px-3 rounded-xl border-2 border-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label htmlFor="role-tally-to-date" className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                    <span>To Date</span>
+                    <span className="text-[10px] font-semibold text-slate-400 font-mono">Optional (Leave blank for single day)</span>
+                  </label>
+                  <input
+                    id="role-tally-to-date"
+                    type="date"
+                    value={tempToDate}
+                    placeholder="Optional"
+                    onChange={(e) => setTempToDate(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleApplyDateFilter();
+                      }
+                    }}
+                    className="h-10 w-full bg-white text-slate-900 font-bold text-sm px-3 rounded-xl border-2 border-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
+                  />
+                </div>
+
+                <p className="text-[11px] text-slate-500 bg-blue-50/80 border border-blue-100 rounded-lg p-2 font-medium">
+                  💡 If <strong>To Date</strong> is left blank, only orders from <strong>{tempFromDate || 'From Date'}</strong> will be displayed.
+                </p>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTempFromDate('');
+                      setTempToDate('');
+                      setDateRange({ start: null, end: null });
+                      setShowDatePicker(false);
+                    }}
+                    className="h-10 flex-1 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-red-600 transition-all"
+                  >
+                    Clear (Show All)
+                  </button>
+                  <button
+                    type="submit"
+                    className="h-10 flex-1 rounded-xl bg-slate-900 text-xs font-bold text-white hover:bg-slate-800 shadow-md transition-all focus:ring-4 focus:ring-slate-900/20"
+                  >
+                    Apply (Enter ↵)
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
         </div>
 
         {/* ── ROLE LOCK NOTICE ───────────────────────────────────────────── */}
