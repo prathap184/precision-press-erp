@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useMemo, useRef } from "react";
-import { Plus, Trash2, Search, ChevronDown, Check } from "lucide-react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { Plus, Trash2, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -25,7 +25,9 @@ export interface LineItem {
   billingMode?: 'A' | 'B';
   pcsNo?: string;
   width?: string;
+  widthUnit?: 'FT' | 'IN';
   length?: string;
+  lengthUnit?: 'FT' | 'IN';
   sqFt?: string;
   finishAmount?: string;
   costCenterId?: string;
@@ -103,15 +105,22 @@ function SearchableProductSelect({
   value,
   inventoryItems = [],
   onSelect,
+  id,
+  onSelectAdvance,
+  onEndOfList,
 }: {
   value: string;
   inventoryItems: InventoryItemOption[];
   onSelect: (item: InventoryItemOption | null) => void;
+  id?: string;
+  onSelectAdvance?: () => void;
+  onEndOfList?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [highlightIndex, setHighlightIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownListRef = useRef<HTMLDivElement>(null);
 
   const itemsList = Array.isArray(inventoryItems) ? inventoryItems : [];
   const selectedItem = itemsList.find(
@@ -150,14 +159,46 @@ function SearchableProductSelect({
     }, {});
   }, [matched]);
 
+  const scrollDropdownToIndex = useCallback((index: number) => {
+    const list = dropdownListRef.current;
+    if (!list) return;
+    if (index < 0) {
+      list.scrollTop = 0;
+      return;
+    }
+    const items = list.querySelectorAll("[data-product-item='true']");
+    const item = items[index] as HTMLElement | undefined;
+    if (item) {
+      const itemTop = item.offsetTop;
+      const itemBottom = itemTop + item.offsetHeight;
+      if (itemTop < list.scrollTop) {
+        list.scrollTop = itemTop;
+      } else if (itemBottom > list.scrollTop + list.clientHeight) {
+        list.scrollTop = itemBottom - list.clientHeight;
+      }
+    }
+  }, []);
+
+  const handleSelectItem = (p: InventoryItemOption | null) => {
+    onSelect(p);
+    setIsOpen(false);
+    setSearch("");
+    setHighlightIndex(0);
+    if (onSelectAdvance) {
+      onSelectAdvance();
+      requestAnimationFrame(() => onSelectAdvance());
+    }
+  };
+
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className={`relative w-full ${isOpen ? "z-[9999]" : ""}`}>
       <div className={`flex h-10 w-full items-center rounded-xl px-3 transition-all duration-150 ${
         isOpen
           ? "border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-md"
           : "border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white"
       }`}>
         <input
+          id={id}
           value={isOpen ? search : (selectedItem?.name ?? "")}
           placeholder="Select item..."
           data-dropdown-open={isOpen ? "true" : "false"}
@@ -165,35 +206,59 @@ function SearchableProductSelect({
             setIsOpen(true);
             setSearch(e.target.value);
             setHighlightIndex(0);
+            scrollDropdownToIndex(0);
           }}
           onFocus={() => {
             setIsOpen(true);
             setSearch("");
-            setHighlightIndex(0);
+            setHighlightIndex(-1);
           }}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();
               if (!isOpen) {
                 setIsOpen(true);
-                setHighlightIndex(0);
+                setHighlightIndex(!search.trim() ? -1 : 0);
                 return;
               }
-              setHighlightIndex((prev) => Math.min(prev + 1, Math.min(matched.length - 1, 49)));
+              setHighlightIndex((prev) => {
+                const next = Math.min(prev + 1, Math.min(matched.length - 1, 49));
+                scrollDropdownToIndex(next);
+                return next;
+              });
             } else if (e.key === "ArrowUp") {
               e.preventDefault();
-              setHighlightIndex((prev) => Math.max(prev - 1, 0));
+              setHighlightIndex((prev) => {
+                const next = Math.max(prev - 1, !search.trim() ? -1 : 0);
+                if (next >= 0) scrollDropdownToIndex(next);
+                return next;
+              });
             } else if (e.key === "Enter") {
-              if (isOpen && matched.length > 0) {
-                e.preventDefault();
-                const p = matched[highlightIndex] || matched[0];
-                if (p) {
-                  onSelect(p);
-                  setIsOpen(false);
-                  setSearch("");
-                  setHighlightIndex(0);
+              e.preventDefault();
+              if (!isOpen) {
+                // Dropdown closed — check if this row is empty (no product selected)
+                if (!value && onEndOfList) {
+                  // Empty row + Enter = End of List, remove this row
+                  onEndOfList();
+                } else if (onSelectAdvance) {
+                  // Item already selected — double Enter = advance to next field
+                  onSelectAdvance();
                 }
+              } else if (highlightIndex === -1 || matched.length === 0) {
+                // END OF LIST row highlighted — close dropdown and finish item list
+                setIsOpen(false);
+                setSearch("");
+                if (onEndOfList) {
+                  onEndOfList();
+                } else if (onSelectAdvance) {
+                  onSelectAdvance();
+                }
+              } else {
+                const p = matched[highlightIndex] || matched[0];
+                if (p) handleSelectItem(p);
               }
+            } else if (e.key === "Escape") {
+              setIsOpen(false);
             }
           }}
           className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0 placeholder:text-slate-400"
@@ -206,20 +271,41 @@ function SearchableProductSelect({
       </div>
 
       {isOpen && (
-        <div className="absolute left-0 top-full mt-2 w-[480px] sm:w-[560px] z-[99999] max-h-80 overflow-y-auto rounded-2xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100">
-          <div
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onSelect(null);
-              setIsOpen(false);
-              setSearch("");
-              setHighlightIndex(0);
-            }}
-            className="cursor-pointer p-3 px-4 bg-slate-50/80 hover:bg-slate-100 text-xs font-bold text-slate-500 italic flex justify-between items-center transition-colors border-b border-slate-100"
-          >
-            <span>✍️ Custom item (no inventory catalog link)</span>
-            {!value && <Check className="size-4 text-blue-600 shrink-0" />}
-          </div>
+        <div
+          ref={dropdownListRef}
+          className="absolute left-0 top-full mt-1.5 w-[480px] sm:w-[520px] z-[99999] max-h-80 overflow-y-auto rounded-2xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100"
+        >
+          {/* END OF LIST row — only when no search query */}
+          {!search.trim() && (
+            <div
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setIsOpen(false);
+                setSearch("");
+                if (onEndOfList) {
+                  onEndOfList();
+                } else {
+                  handleSelectItem(null);
+                  if (onSelectAdvance) setTimeout(() => onSelectAdvance(), 60);
+                }
+              }}
+              className={`cursor-pointer px-3.5 py-2.5 transition-all flex items-center justify-between gap-3 border-b-2 border-slate-200/80 ${
+                highlightIndex === -1
+                  ? 'bg-amber-500 text-white font-black shadow-inner'
+                  : 'bg-amber-50 hover:bg-amber-100/80 text-amber-900 font-bold'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black">❖</span>
+                <span className="text-xs uppercase tracking-wider font-black">End of List</span>
+              </div>
+              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                highlightIndex === -1 ? 'bg-amber-700 text-white' : 'bg-amber-200/60 text-amber-800'
+              }`}>
+                Press Enter ↵ to finish items
+              </span>
+            </div>
+          )}
 
           {matched.length === 0 ? (
             <div className="p-4 text-xs text-slate-400 italic text-center bg-white">
@@ -230,61 +316,72 @@ function SearchableProductSelect({
               let runningIdx = 0;
               return Object.entries(grouped).map(([cat, prods]) => (
                 <div key={cat} className="bg-white">
-                  <div className="bg-slate-100/90 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10 border-b border-slate-200/80 shadow-xs">
-                    {cat.replace(/_/g, " ")}
+                  {/* Category header with item count */}
+                  <div className="bg-slate-100/95 px-3.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 sticky top-0 z-10 border-b border-slate-200/80 flex items-center justify-between">
+                    <span>{cat.replace(/_/g, " ")}</span>
+                    <span className="text-[9px] font-bold text-slate-400">{prods.length} items</span>
                   </div>
-                  {prods.map((p) => {
-                    const currentIdx = runningIdx++;
-                    const isHighlighted = currentIdx === highlightIndex;
-                    const isSelected = p.id === value;
-                    const code = p.metadata?.code || p.metadata?.sku || p.id.slice(0, 8);
-                    const price = p.salePrice ? (p.salePrice / 100).toFixed(2) : (p.metadata?.baseRate ? Number(p.metadata.baseRate).toFixed(2) : null);
+                  <div className="divide-y divide-slate-50">
+                    {prods.map((p) => {
+                      const currentIdx = runningIdx++;
+                      const isHighlighted = currentIdx === highlightIndex;
+                      const isSelected = p.id === value;
+                      const code = (p as any)?.metadata?.code || (p as any)?.metadata?.sku || (p as any)?.code || p.id.slice(0, 8).toUpperCase();
+                      const priceVal = p.salePrice ? (p.salePrice / 100) : (p.metadata?.baseRate ? Number(p.metadata.baseRate) : null);
+                      const priceStr = priceVal !== null ? `₹${priceVal.toFixed(2)}` : null;
+                      const uom = String((p as any)?.unitOfMeasure || (p as any)?.tallyUom || (p as any)?.tally_uom || p?.metadata?.unit || 'N').trim().toLowerCase();
+                      const uomDisplay = (uom === 'sqft' || uom === 'sq.ft' || uom === 'sqf') ? 'sq.ft' : uom;
+                      const gstRate = (p as any)?.gstRate || p?.metadata?.gstRate || (p as any)?.gst_rate || 18;
+                      const stock = (p as any)?.currentStock ?? (p as any)?.current_stock;
 
-                    return (
-                      <div
-                        key={p.id}
-                        ref={(el) => {
-                          if (el && isHighlighted) {
-                            el.scrollIntoView({ block: "nearest" });
-                          }
-                        }}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          onSelect(p);
-                          setIsOpen(false);
-                          setSearch("");
-                          setHighlightIndex(0);
-                        }}
-                        className={`cursor-pointer border-b border-slate-100 p-3 px-4 flex justify-between items-center transition-colors ${
-                          isHighlighted
-                            ? "bg-blue-600 text-white font-extrabold shadow-sm"
-                            : isSelected
-                              ? "bg-blue-50 text-blue-800 font-extrabold"
-                              : "hover:bg-slate-50 text-slate-800"
-                        }`}
-                      >
-                        <div className="min-w-0 pr-3">
-                          <div className={`text-xs font-bold truncate ${isHighlighted ? "text-white" : "text-slate-900"}`}>
-                            {p.name}
-                          </div>
-                          {price && (
-                            <div className={`text-[11px] font-mono mt-0.5 ${isHighlighted ? "text-blue-100" : "text-slate-500"}`}>
-                              Base Rate: ₹{price}
-                            </div>
-                          )}
-                        </div>
-                        {code && (
-                          <span className={`text-[10px] font-mono font-bold tracking-wider px-2 py-0.5 rounded-lg shrink-0 uppercase border ${
+                      return (
+                        <div
+                          key={p.id}
+                          data-product-item="true"
+                          onMouseEnter={() => setHighlightIndex(currentIdx)}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectItem(p);
+                          }}
+                          className={`cursor-pointer px-3.5 py-2.5 transition-all flex items-center justify-between gap-3 ${
                             isHighlighted
-                              ? "bg-blue-700 text-white border-blue-500"
-                              : "text-slate-600 bg-slate-100 border-slate-200"
+                              ? "bg-blue-600 text-white font-extrabold shadow-sm"
+                              : isSelected
+                                ? "bg-blue-50/90 text-blue-900 font-bold"
+                                : "hover:bg-slate-50 text-slate-700 font-medium"
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className={`text-xs font-bold truncate leading-tight ${isHighlighted ? "text-white" : "text-slate-900"}`}>
+                              {p.name}
+                            </div>
+                            <div className={`text-[10px] mt-0.5 font-medium flex items-center gap-1.5 flex-wrap ${isHighlighted ? 'text-blue-100' : 'text-slate-400'}`}>
+                              {priceStr && <span>{priceStr} / {uomDisplay}</span>}
+                              {priceStr && <span>•</span>}
+                              <span>GST {gstRate}%</span>
+                              {stock !== undefined && stock !== null && (
+                                <>
+                                  <span>•</span>
+                                  <span className={stock < 0 ? (isHighlighted ? 'text-amber-200 font-bold' : 'text-red-500 font-bold') : ''}>
+                                    {Number(stock).toLocaleString()} {uomDisplay} in stock
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider flex-shrink-0 ${
+                            isHighlighted
+                              ? 'bg-blue-700 text-white'
+                              : isSelected
+                                ? 'bg-blue-200/80 text-blue-800'
+                                : 'bg-slate-100 text-slate-500'
                           }`}>
                             {code}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ));
             })()
@@ -298,6 +395,20 @@ function SearchableProductSelect({
 export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext }: LineItemsEditorProps) {
   const [taxRates, setTaxRates] = useState<TaxRateOption[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItemOption[]>([]);
+  const [pendingFocusRowIndex, setPendingFocusRowIndex] = useState<number | null>(null);
+  const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
+  const tableEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (pendingFocusRowIndex !== null && lines.length > pendingFocusRowIndex) {
+      const idx = pendingFocusRowIndex;
+      setPendingFocusRowIndex(null);
+      setTimeout(() => {
+        const el = document.getElementById(`row-${idx}-product-input`);
+        if (el) el.focus();
+      }, 80);
+    }
+  }, [lines.length, pendingFocusRowIndex]);
 
   // Fetch the org's tax rates once (org via x-organization-id, mirroring the
   // bank-flow tax dropdown). Best-effort: on failure only "No tax" is offered.
@@ -415,12 +526,18 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
         taxRateId: defaultTax?.id || "", 
         inventoryItemId: "",
         width: "",
+        widthUnit: "FT",
         length: "",
+        lengthUnit: "FT",
         finishAmount: "",
         deliveryMode: "door",
         deliveryAmount: "" 
       },
     ]);
+    // Scroll the new row into view after React renders it
+    setTimeout(() => {
+      tableEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 80);
   }
 
   function removeLine(index: number) {
@@ -430,8 +547,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
   function lineAmount(line: LineItem) {
     const qty = parseFloat(line.quantity) || 0;
-    const width = parseFloat(line.width || "0");
-    const length = parseFloat(line.length || "0");
+    const widthRaw = parseFloat(line.width || "0");
+    const lengthRaw = parseFloat(line.length || "0");
+    const width = (line.widthUnit || 'FT') === 'IN' ? widthRaw / 12 : widthRaw;
+    const length = (line.lengthUnit || 'FT') === 'IN' ? lengthRaw / 12 : lengthRaw;
     const rate = parseFloat(line.unitPrice) || 0;
     const finish = parseFloat(line.finishAmount || "0");
     const delivery = parseFloat(line.deliveryAmount || "0");
@@ -498,79 +617,123 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
         <div className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</div>
       </div>
 
-      <div className="overflow-x-auto">
-        <div className="min-w-[1160px]">
-          {/* Header Row Matching Tally & Proxy Order */}
-          <div className="grid grid-cols-[32px_1.3fr_0.8fr_75px_58px_70px_70px_60px_60px_80px_75px_105px_80px_95px_32px] gap-2 border-b-2 border-slate-100 px-4 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400 items-center">
-            <span className="text-center">#</span>
-            <span className="text-left pl-1">Name of Item</span>
-            <span className="text-left pl-1">Project <span className="text-[9px] font-normal normal-case text-slate-400 italic">(optional)</span></span>
-            <span className="text-center">GST%</span>
-            <span className="text-center">T</span>
-            <span className="text-center">Width</span>
-            <span className="text-center">Length</span>
-            <span className="text-center">Sq.Ft.</span>
-            <span className="text-center">Pcs/No</span>
-            <span className="text-center">Quantity</span>
-            <span className="text-center">Rate/SqFt</span>
-            <span className="text-center">Rate per</span>
-            <span className="text-center">Finish</span>
-            <span className="text-right pr-2">Amount</span>
-            <span />
-          </div>
+      <div className="overflow-x-auto min-h-[380px]">
+        <div className="min-w-[1160px] min-h-[380px] flex flex-col justify-between">
+          <div>
+            {/* Header Row Matching Tally & Proxy Order */}
+            <div className="grid grid-cols-[32px_1.3fr_0.8fr_75px_58px_70px_70px_60px_60px_80px_75px_105px_80px_95px_32px] gap-2 border-b-2 border-slate-100 px-4 pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400 items-center">
+              <span className="text-center">#</span>
+              <span className="text-left pl-1">Name of Item</span>
+              <span className="text-left pl-1">Project <span className="text-[9px] font-normal normal-case text-slate-400 italic">(optional)</span></span>
+              <span className="text-center">GST%</span>
+              <span className="text-center">T</span>
+              <span className="text-center">Width</span>
+              <span className="text-center">Length</span>
+              <span className="text-center">Sq.Ft.</span>
+              <span className="text-center">Pcs/No</span>
+              <span className="text-center">Quantity</span>
+              <span className="text-center">Rate/SqFt</span>
+              <span className="text-center">Rate per</span>
+              <span className="text-center">Finish</span>
+              <span className="text-right pr-2">Amount</span>
+              <span />
+            </div>
 
-          {/* Line Rows */}
-          {lines.map((line, i) => {
-            if (line.description === "Logistics / Shipping") return null;
+            {/* Line Rows */}
+            {(() => {
+              let serialNo = 0;
+              return lines.map((line, i) => {
+              if (line.description === "Logistics / Shipping") return null;
+              serialNo++;
 
-            const selectedRate = line.taxRateId
-              ? taxRates.find((t) => t.id === line.taxRateId)
-              : undefined;
-            const hint =
-              taxContext === "purchase" && selectedRate ? reclaimHint(selectedRate) : null;
+              const selectedRate = line.taxRateId
+                ? taxRates.find((t) => t.id === line.taxRateId)
+                : undefined;
+              const hint =
+                taxContext === "purchase" && selectedRate ? reclaimHint(selectedRate) : null;
 
-            const itemObj = inventoryItems.find((itm) => itm.id === line.inventoryItemId);
-            const rawUom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || (itemObj as any)?.tally_uom || itemObj?.metadata?.unit || '').trim().toLowerCase();
-            const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-            const hasMultipleSizes = Boolean(
-              (itemObj?.hasMultipleSizes ??
-              itemObj?.has_multiple_sizes ??
-              itemObj?.metadata?.hasMultipleSizes ??
-              itemObj?.metadata?.has_multiple_sizes) ||
-              cleanUom === 'sqft' ||
-              cleanUom === 'sqf' ||
-              (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0)
-            );
-            const defaultMode = (itemObj as any)?.tallyBillingMode || (itemObj as any)?.tally_billing_mode || itemObj?.metadata?.tallyBillingMode || itemObj?.metadata?.tally_billing_mode || 'B';
-            const currentMode = line.billingMode || defaultMode;
-            const isModeA = currentMode === 'A';
-            const isModeB = currentMode === 'B';
+              const itemObj = inventoryItems.find((itm) => itm.id === line.inventoryItemId);
+              const rawUom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || (itemObj as any)?.tally_uom || itemObj?.metadata?.unit || '').trim().toLowerCase();
+              const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+              const hasMultipleSizes = Boolean(
+                (itemObj?.hasMultipleSizes ??
+                itemObj?.has_multiple_sizes ??
+                itemObj?.metadata?.hasMultipleSizes ??
+                itemObj?.metadata?.has_multiple_sizes) ||
+                cleanUom === 'sqft' ||
+                cleanUom === 'sqf' ||
+                (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0)
+              );
+              const defaultMode = (itemObj as any)?.tallyBillingMode || (itemObj as any)?.tally_billing_mode || itemObj?.metadata?.tallyBillingMode || itemObj?.metadata?.tally_billing_mode || 'B';
+              const currentMode = line.billingMode || defaultMode;
+              const isModeA = currentMode === 'A';
+              const isModeB = currentMode === 'B';
 
-            const widthNum = parseFloat(line.width || "0");
-            const lengthNum = parseFloat(line.length || "0");
-            const pcs = Math.max(1, parseFloat(line.pcsNo || line.quantity || "1") || 1);
-            const sqFtNum = hasMultipleSizes && widthNum > 0 && lengthNum > 0 ? (widthNum * lengthNum) : 0;
-            const calculatedSqFt = sqFtNum > 0 ? sqFtNum.toFixed(2) : "—";
-            const totalBilledSqft = sqFtNum * pcs;
-            const rateNum = parseFloat(line.unitPrice) || 0;
-            const calculatedRatePerUnit = isModeA ? (sqFtNum > 0 ? sqFtNum * rateNum : rateNum) : rateNum;
+              // Convert inches to feet for sq.ft calculation
+              const widthRaw = parseFloat(line.width || "0");
+              const lengthRaw = parseFloat(line.length || "0");
+              const widthFt = (line.widthUnit || 'FT') === 'IN' ? widthRaw / 12 : widthRaw;
+              const lengthFt = (line.lengthUnit || 'FT') === 'IN' ? lengthRaw / 12 : lengthRaw;
+              const widthNum = widthFt;
+              const lengthNum = lengthFt;
+              const pcs = Math.max(1, parseFloat(line.pcsNo || line.quantity || "1") || 1);
+              const sqFtNum = hasMultipleSizes && widthNum > 0 && lengthNum > 0 ? (widthNum * lengthNum) : 0;
+              const calculatedSqFt = sqFtNum > 0 ? sqFtNum.toFixed(2) : "—";
+              const totalBilledSqft = sqFtNum * pcs;
+              const rateNum = parseFloat(line.unitPrice) || 0;
+              const calculatedRatePerUnit = isModeA ? (sqFtNum > 0 ? sqFtNum * rateNum : rateNum) : rateNum;
 
-            return (
-              <div
-                key={i}
-                className="grid grid-cols-[32px_1.3fr_0.8fr_75px_58px_70px_70px_60px_60px_80px_75px_105px_80px_95px_32px] gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors"
-              >
-                {/* Index # */}
+              return (
+                <div
+                  key={i}
+                  style={{ zIndex: Math.max(1, 60 - i) }}
+                  className="grid grid-cols-[32px_1.3fr_0.8fr_75px_58px_70px_70px_60px_60px_80px_75px_105px_80px_95px_32px] gap-2 border-b border-slate-100 px-4 py-3 last:border-b-0 items-center hover:bg-slate-50/50 transition-colors relative"
+                >
+                {/* Serial # */}
                 <div className="text-center font-bold text-xs text-slate-400">
-                  {i + 1}
+                  {serialNo}
                 </div>
 
                 {/* Name of Item */}
                 <div className="space-y-1.5 min-w-0">
                   {inventoryItems.length > 0 && (
                     <SearchableProductSelect
+                      id={`row-${i}-product-input`}
                       value={line.inventoryItemId || ""}
                       inventoryItems={inventoryItems}
+                      onSelectAdvance={() => {
+                        if (hasMultipleSizes) {
+                          const wInput = document.getElementById(`row-${i}-width`);
+                          if (wInput) wInput.focus();
+                        } else {
+                          const qInput = document.getElementById(`row-${i}-quantity`);
+                          if (qInput) qInput.focus();
+                        }
+                      }}
+                      onEndOfList={() => {
+                        // End of list selected — delete this empty line and advance to next section
+                        if (lines.length > 1) {
+                          removeLine(i);
+                        } else {
+                          updateLine(0, "inventoryItemId", "");
+                          updateLine(0, "description", "");
+                        }
+
+                        // Focus the next section outside the items table (Logistics Pickup Tab)
+                        setTimeout(() => {
+                          const nextTarget =
+                            document.getElementById("logistics-tab-pickup") ||
+                            document.getElementById("logistics-tab-door") ||
+                            document.getElementById("logistics-delivery-input") ||
+                            document.querySelector('input[placeholder*="Delivery address"]') ||
+                            document.getElementById("invoice-notes-input") ||
+                            document.getElementById("invoice-reference-input") ||
+                            document.querySelector('button[type="submit"]');
+                          if (nextTarget) {
+                            (nextTarget as HTMLElement).focus();
+                          }
+                        }, 50);
+                      }}
                       onSelect={(item) => {
                         if (!item) {
                           updateLine(i, "inventoryItemId", "");
@@ -693,15 +856,75 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   {!hasMultipleSizes ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
-                    <div className="relative">
-                      <Input
-                        className="h-9 text-center text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white pr-4"
+                    <div className="flex h-9 items-center rounded-xl border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white px-1 overflow-visible transition-all">
+                      <input
+                        id={`row-${i}-width`}
+                        className="w-full border-0 bg-transparent p-0 text-center text-xs font-bold font-mono text-slate-800 outline-none focus:ring-0"
                         type="number"
                         value={line.width || ""}
                         onChange={(e) => updateLine(i, "width", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const unitBtn = document.getElementById(`row-${i}-width-unit`);
+                            if (unitBtn) unitBtn.focus();
+                            else { const nextEl = document.getElementById(`row-${i}-length`); if (nextEl) nextEl.focus(); }
+                          }
+                        }}
                         placeholder="W"
                       />
-                      <span className="absolute right-1.5 top-2.5 text-[9px] font-bold text-slate-400 pointer-events-none">ft</span>
+                      <div className="relative flex-shrink-0">
+                        <button
+                          id={`row-${i}-width-unit`}
+                          type="button"
+                          onClick={() => setOpenUnitPickerId(openUnitPickerId === `${i}-w` ? null : `${i}-w`)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              setOpenUnitPickerId(null);
+                              const nextEl = document.getElementById(`row-${i}-length`);
+                              if (nextEl) nextEl.focus();
+                            } else if (e.key === " " || e.key === "Spacebar") {
+                              e.preventDefault();
+                              const updated = [...lines];
+                              updated[i] = { ...updated[i], widthUnit: (line.widthUnit === 'FT' ? 'IN' : 'FT') };
+                              onChange(updated);
+                            } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                              e.preventDefault();
+                              const updated = [...lines];
+                              updated[i] = { ...updated[i], widthUnit: (line.widthUnit === 'FT' ? 'IN' : 'FT') };
+                              onChange(updated);
+                            }
+                          }}
+                          onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                          className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        >
+                          {(line.widthUnit || 'FT') === 'FT' ? 'ft' : 'in'}
+                          <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                        </button>
+                        {openUnitPickerId === `${i}-w` && (
+                          <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
+                            {(['FT', 'IN'] as const).map(u => (
+                              <button
+                                key={u}
+                                type="button"
+                                tabIndex={-1}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  const updated = [...lines];
+                                  updated[i] = { ...updated[i], widthUnit: u };
+                                  onChange(updated);
+                                  setOpenUnitPickerId(null);
+                                  setTimeout(() => { const el = document.getElementById(`row-${i}-length`); if (el) el.focus(); }, 50);
+                                }}
+                                className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${(line.widthUnit || 'FT') === u ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                              >
+                                {u.toLowerCase()}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -711,15 +934,79 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   {!hasMultipleSizes ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
-                    <div className="relative">
-                      <Input
-                        className="h-9 text-center text-xs font-bold font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white pr-4"
+                    <div className="flex h-9 items-center rounded-xl border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white px-1 overflow-visible transition-all">
+                      <input
+                        id={`row-${i}-length`}
+                        className="w-full border-0 bg-transparent p-0 text-center text-xs font-bold font-mono text-slate-800 outline-none focus:ring-0"
                         type="number"
                         value={line.length || ""}
                         onChange={(e) => updateLine(i, "length", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const unitBtn = document.getElementById(`row-${i}-length-unit`);
+                            if (unitBtn) unitBtn.focus();
+                            else if (isModeB) { const el = document.getElementById(`row-${i}-pcs`); if (el) el.focus(); }
+                            else { const el = document.getElementById(`row-${i}-quantity`); if (el) el.focus(); }
+                          }
+                        }}
                         placeholder="L"
                       />
-                      <span className="absolute right-1.5 top-2.5 text-[9px] font-bold text-slate-400 pointer-events-none">ft</span>
+                      <div className="relative flex-shrink-0">
+                        <button
+                          id={`row-${i}-length-unit`}
+                          type="button"
+                          onClick={() => setOpenUnitPickerId(openUnitPickerId === `${i}-l` ? null : `${i}-l`)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              setOpenUnitPickerId(null);
+                              if (isModeB) { const el = document.getElementById(`row-${i}-pcs`); if (el) el.focus(); }
+                              else { const el = document.getElementById(`row-${i}-quantity`); if (el) el.focus(); }
+                            } else if (e.key === " " || e.key === "Spacebar") {
+                              e.preventDefault();
+                              const updated = [...lines];
+                              updated[i] = { ...updated[i], lengthUnit: (line.lengthUnit === 'FT' ? 'IN' : 'FT') };
+                              onChange(updated);
+                            } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                              e.preventDefault();
+                              const updated = [...lines];
+                              updated[i] = { ...updated[i], lengthUnit: (line.lengthUnit === 'FT' ? 'IN' : 'FT') };
+                              onChange(updated);
+                            }
+                          }}
+                          onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                          className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        >
+                          {(line.lengthUnit || 'FT') === 'FT' ? 'ft' : 'in'}
+                          <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                        </button>
+                        {openUnitPickerId === `${i}-l` && (
+                          <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
+                            {(['FT', 'IN'] as const).map(u => (
+                              <button
+                                key={u}
+                                type="button"
+                                tabIndex={-1}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  const updated = [...lines];
+                                  updated[i] = { ...updated[i], lengthUnit: u };
+                                  onChange(updated);
+                                  setOpenUnitPickerId(null);
+                                  setTimeout(() => {
+                                    if (isModeB) { const el = document.getElementById(`row-${i}-pcs`); if (el) el.focus(); }
+                                    else { const el = document.getElementById(`row-${i}-quantity`); if (el) el.focus(); }
+                                  }, 50);
+                                }}
+                                className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${(line.lengthUnit || 'FT') === u ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
+                              >
+                                {u.toLowerCase()}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -733,6 +1020,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 <div className="text-center">
                   {hasMultipleSizes && isModeB ? (
                     <Input
+                      id={`row-${i}-pcs`}
                       className="h-9 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                       type="number"
                       min="1"
@@ -742,6 +1030,13 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                         const updated = [...lines];
                         updated[i] = { ...updated[i], pcsNo: val, quantity: val };
                         onChange(updated);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const nextEl = document.getElementById(`row-${i}-unitPrice`);
+                          if (nextEl) nextEl.focus();
+                        }
                       }}
                       placeholder="Pcs"
                     />
@@ -755,6 +1050,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   {!hasMultipleSizes ? (
                     <div className="inline-flex items-center justify-center">
                       <Input
+                        id={`row-${i}-quantity`}
                         className="h-9 w-14 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                         type="number"
                         min="1"
@@ -765,6 +1061,13 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           updated[i] = { ...updated[i], quantity: val, pcsNo: val };
                           onChange(updated);
                         }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const nextEl = document.getElementById(`row-${i}-unitPrice`);
+                            if (nextEl) nextEl.focus();
+                          }
+                        }}
                       />
                       <span className="ml-1 text-[10px] font-black text-slate-500">{rawUom ? rawUom.toUpperCase() : 'N'}</span>
                     </div>
@@ -773,6 +1076,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   ) : (
                     <div className="inline-flex items-center justify-center">
                       <Input
+                        id={`row-${i}-quantity`}
                         className="h-9 w-14 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                         type="number"
                         min="1"
@@ -782,6 +1086,13 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           const updated = [...lines];
                           updated[i] = { ...updated[i], quantity: val, pcsNo: val };
                           onChange(updated);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const nextEl = document.getElementById(`row-${i}-unitPrice`);
+                            if (nextEl) nextEl.focus();
+                          }
                         }}
                       />
                       <span className="ml-1 text-[10px] font-black text-slate-500">N</span>
@@ -793,10 +1104,23 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 <div className="text-center text-xs font-bold text-slate-700 tabular-nums">
                   {hasMultipleSizes && isModeA ? (
                     <CurrencyInput
+                      id={`row-${i}-unitPrice`}
                       size="sm"
                       className="h-9 text-right text-xs font-bold font-mono bg-blue-50 border-blue-300 text-blue-800 rounded-xl focus:border-blue-600 focus:bg-white"
                       value={line.unitPrice}
                       onChange={(v) => updateLine(i, "unitPrice", v)}
+                      onKeyDown={(e: any) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (i === lines.length - 1) {
+                            setPendingFocusRowIndex(lines.length);
+                            addLine();
+                          } else {
+                            const nextEl = document.getElementById(`row-${i + 1}-product-input`);
+                            if (nextEl) nextEl.focus();
+                          }
+                        }
+                      }}
                       placeholder="0.00"
                     />
                   ) : (
@@ -814,12 +1138,25 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   ) : hasMultipleSizes && isModeB ? (
                     <div className="inline-flex items-center gap-1">
                       <input
+                        id={`row-${i}-unitPrice`}
                         type="number"
                         step="0.01"
                         min="0"
                         className="h-9 w-20 text-right text-xs font-bold font-mono bg-emerald-50 border border-emerald-300 text-emerald-800 rounded-xl px-1.5 focus:outline-none focus:border-emerald-600 focus:bg-white"
                         value={rateNum > 0 ? rateNum : ''}
                         onChange={(e) => updateLine(i, "unitPrice", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (i === lines.length - 1) {
+                              setPendingFocusRowIndex(lines.length);
+                              addLine();
+                            } else {
+                              const nextEl = document.getElementById(`row-${i + 1}-product-input`);
+                              if (nextEl) nextEl.focus();
+                            }
+                          }
+                        }}
                         placeholder="0.00"
                       />
                       <span className="text-[10px] font-black text-emerald-600">
@@ -829,12 +1166,25 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                   ) : (
                     <div className="inline-flex items-center gap-1">
                       <input
+                        id={`row-${i}-unitPrice`}
                         type="number"
                         step="0.01"
                         min="0"
                         className="h-9 w-20 text-right text-xs font-bold font-mono bg-slate-50 border border-slate-300 text-slate-800 rounded-xl px-1.5 focus:outline-none focus:border-blue-600 focus:bg-white"
                         value={rateNum > 0 ? rateNum : ''}
                         onChange={(e) => updateLine(i, "unitPrice", e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            if (i === lines.length - 1) {
+                              setPendingFocusRowIndex(lines.length);
+                              addLine();
+                            } else {
+                              const nextEl = document.getElementById(`row-${i + 1}-product-input`);
+                              if (nextEl) nextEl.focus();
+                            }
+                          }
+                        }}
                         placeholder="0.00"
                       />
                       <span className="text-[10px] font-black text-slate-500">
@@ -879,7 +1229,12 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 </div>
               </div>
             );
-          })}
+          });
+          })()}
+          </div>
+
+          {/* Scroll anchor — new rows scroll here */}
+          <div ref={tableEndRef} />
 
           {/* Add Line & Summary Footer (Vertical Pricing Breakdown matching Image 2) */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-slate-200 bg-slate-50/80 p-5">

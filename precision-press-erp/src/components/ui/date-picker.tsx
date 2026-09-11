@@ -14,15 +14,19 @@ import {
 } from "@/components/ui/popover"
 
 interface DatePickerProps {
+  id?: string
   value?: string
   onChange?: (value: string) => void
+  onKeyDown?: (e: React.KeyboardEvent<HTMLButtonElement>) => void
   placeholder?: string
   className?: string
 }
 
 export function DatePicker({
+  id,
   value,
   onChange,
+  onKeyDown,
   placeholder = "Pick a date",
   className,
 }: DatePickerProps) {
@@ -42,6 +46,8 @@ export function DatePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
+          onKeyDown={onKeyDown}
           variant="outline"
           className={cn(
             "w-full justify-start text-left font-normal h-9 bg-transparent",

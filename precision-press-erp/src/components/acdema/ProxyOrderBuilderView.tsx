@@ -516,13 +516,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 setCustomerDropdownOpen(false);
                                 setCustomerSearch('');
                                 setHighlightCustomerIndex(0);
-                                setTimeout(() => {
-                                  const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                                const firstRowId = rows[0]?.id;
+                                if (firstRowId) {
+                                  setOpenRowId(firstRowId);
+                                  setSearchQuery('');
+                                }
+                                const focusItem = () => {
+                                  const firstProductInput = (firstRowId ? document.getElementById(`row-${firstRowId}-product-input`) : null)
+                                    || (document.querySelector('input[placeholder="Select item..."]') as HTMLElement);
                                   if (firstProductInput) {
                                     firstProductInput.focus();
-                                    firstProductInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                   }
-                                }, 60);
+                                };
+                                focusItem();
+                                requestAnimationFrame(focusItem);
                               }
                             }
                           }
@@ -564,13 +571,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   setCustomerDropdownOpen(false);
                                   setCustomerSearch('');
                                   setHighlightCustomerIndex(0);
-                                  setTimeout(() => {
-                                    const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                                  const firstRowId = rows[0]?.id;
+                                  if (firstRowId) {
+                                    setOpenRowId(firstRowId);
+                                    setSearchQuery('');
+                                  }
+                                  const focusItem = () => {
+                                    const firstProductInput = (firstRowId ? document.getElementById(`row-${firstRowId}-product-input`) : null)
+                                      || (document.querySelector('input[placeholder="Select item..."]') as HTMLElement);
                                     if (firstProductInput) {
                                       firstProductInput.focus();
-                                      firstProductInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                     }
-                                  }, 60);
+                                  };
+                                  focusItem();
+                                  requestAnimationFrame(focusItem);
                                 }}
                                 className={`cursor-pointer border-b border-slate-100 p-3 transition-colors ${
                                   isHighlighted

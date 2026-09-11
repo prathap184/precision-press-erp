@@ -15,6 +15,7 @@ interface CurrencyInputProps {
   disabled?: boolean;
   name?: string;
   id?: string;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
 
 export function CurrencyInput({
@@ -27,6 +28,7 @@ export function CurrencyInput({
   disabled,
   name,
   id,
+  onKeyDown,
 }: CurrencyInputProps) {
   const { organization } = useOrganization();
   const prefix = manualPrefix !== undefined ? manualPrefix : getCurrencySymbol(organization?.currency);
@@ -59,6 +61,7 @@ export function CurrencyInput({
         type="text"
         inputMode="decimal"
         value={value}
+        onKeyDown={onKeyDown}
         onChange={(e) => {
           const v = e.target.value;
           if (v === "" || /^-?\d*\.?\d{0,2}$/.test(v)) {

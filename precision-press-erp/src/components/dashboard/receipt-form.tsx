@@ -103,6 +103,17 @@ export function ReceiptForm() {
       .catch((err) => console.error("Failed to load accounts", err));
   }, []);
 
+  // Auto-focus customer input on mount
+  useEffect(() => {
+    setTimeout(() => {
+      const el = document.getElementById("receipt-form-customer-search-input") as HTMLInputElement;
+      if (el) {
+        el.focus();
+        try { el.select(); } catch {}
+      }
+    }, 150);
+  }, []);
+
   // Update default Credit Account when Subtype changes
   useEffect(() => {
     if (accounts.length === 0) return;
@@ -327,7 +338,19 @@ export function ReceiptForm() {
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-2">
           <Label>{isCustomerReceipt ? "Received From (Customer) *" : "Contact / Payer (Optional)"}</Label>
-          <ContactPicker value={contactId} onChange={setContactId} type="customer" />
+          <ContactPicker
+            id="receipt-form-customer-search-input"
+            value={contactId}
+            onChange={setContactId}
+            type="customer"
+            onSelectAdvance={() => {
+              const amtInput = document.getElementById("receipt-form-amount-input") as HTMLElement;
+              if (amtInput) {
+                amtInput.focus();
+                try { (amtInput as HTMLInputElement).select(); } catch {}
+              }
+            }}
+          />
         </div>
 
         {isCustomerReceipt ? (
@@ -445,6 +468,7 @@ export function ReceiptForm() {
         <div className="space-y-2">
           <Label>Amount (₹) *</Label>
           <Input
+            id="receipt-form-amount-input"
             type="number"
             step="0.01"
             min="0"

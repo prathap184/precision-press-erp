@@ -178,10 +178,12 @@ function DrawerFooter({
   onClose,
   saving,
   label,
+  submitId,
 }: {
   onClose: () => void;
   saving: boolean;
   label: string;
+  submitId?: string;
 }) {
   return (
     <div className="sticky bottom-0 z-20 flex items-center justify-end gap-3 border-t border-slate-200/80 bg-white/95 px-6 py-4 backdrop-blur-md">
@@ -189,9 +191,10 @@ function DrawerFooter({
         Cancel
       </Button>
       <Button
+        id={submitId}
         type="submit"
         disabled={saving}
-        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl px-5 shadow-xs transition-all"
+        className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl px-5 shadow-xs transition-all focus:ring-4 focus:ring-emerald-500/30"
       >
         {saving ? "Saving..." : label}
       </Button>
@@ -710,6 +713,19 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
     }
   }, [open, initialData]);
 
+  // Auto-focus customer search input when Invoice Drawer opens
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => {
+        const el = document.getElementById("invoice-customer-search-input") as HTMLInputElement;
+        if (el) {
+          el.focus();
+          try { el.select(); } catch {}
+        }
+      }, 120);
+    }
+  }, [open]);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!contactId) { toast.error("Please select a customer"); return; }
@@ -801,8 +817,8 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
         </SheetHeader>
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
           <div className="flex-1 overflow-y-auto space-y-6 p-6 sm:p-8 bg-[#e2ecf8] text-slate-800">
-            {/* Top Row: Brand Banner Card, Customer Selector Card, Logistics Card */}
-            <div className="grid gap-6 grid-cols-1 lg:grid-cols-[1.2fr_2fr_2fr] xl:grid-cols-[1fr_2fr_2fr] items-stretch">
+            {/* Top Row: Brand Banner Card + Customer Selector Card */}
+            <div className="grid gap-6 grid-cols-1 lg:grid-cols-[1.2fr_3fr] xl:grid-cols-[1fr_3fr] items-stretch relative z-50">
               {/* Image / Brand Banner Card */}
               <div className="relative z-10 rounded-[2rem] bg-white/70 p-2.5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 flex flex-col justify-center min-h-[190px]">
                 <div className="w-full h-full rounded-[1.5rem] overflow-hidden relative bg-slate-100 min-h-[170px]">
@@ -815,7 +831,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
               </div>
 
               {/* Customer Card */}
-              <div className="relative z-20 rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 flex flex-col justify-between">
+              <div className="relative z-50 rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 flex flex-col justify-between">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Customer *</h3>
                   <button
@@ -827,77 +843,35 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                   </button>
                 </div>
                 <ContactPicker
+                  id="invoice-customer-search-input"
                   value={contactId}
                   onChange={setContactId}
                   type="customer"
                   initialContactName={initialData?.contactName}
+                  onSelectAdvance={() => {
+                    const refInput = document.getElementById("invoice-reference-input") as HTMLElement;
+                    if (refInput) {
+                      refInput.focus();
+                    } else {
+                      const itemInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                      if (itemInput) itemInput.focus();
+                    }
+                  }}
                 />
                 <div className="mt-3 space-y-1">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reference / PO Number</h4>
                   <Input
+                    id="invoice-reference-input"
                     value={reference}
                     onChange={(e) => setReference(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const itemInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                        if (itemInput) itemInput.focus();
+                      }
+                    }}
                     placeholder="Customer PO / Reference..."
-                    className="h-10 text-xs rounded-xl bg-slate-50 border-slate-200 focus:bg-white font-medium placeholder:text-slate-400"
-                  />
-                </div>
-              </div>
-
-              {/* Logistics Card */}
-              <div className="relative z-10 rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 flex flex-col justify-between">
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
-                  {savedAddresses.length > 0 && (
-                    <Select
-                      onValueChange={(val) => {
-                        if (val === "CUSTOM") return;
-                        setDeliveryAddress(val);
-                      }}
-                    >
-                      <SelectTrigger className="h-6 text-[10px] w-[140px] bg-blue-50 text-blue-700 border-blue-200 rounded-lg">
-                        <SelectValue placeholder="Saved..." />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 shadow-2xl z-[9999]">
-                        {savedAddresses.map((a, idx) => (
-                          <SelectItem key={idx} value={a.address}>
-                            <span className="font-bold">{a.label}:</span> <span className="text-xs">{a.address}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/50">
-                  {(["PICKUP", "DOOR", "COURIER", "TRANSPORT"] as const).map((mode) => {
-                    const isActive = deliveryMode === mode;
-                    return (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => {
-                          setDeliveryMode(mode);
-                          if (mode !== "PICKUP" && savedAddresses.length > 0 && !deliveryAddress) {
-                            setDeliveryAddress(savedAddresses[0].address);
-                          }
-                        }}
-                        className={`py-2 text-[10px] font-black tracking-wider uppercase rounded-xl transition-all ${
-                          isActive
-                            ? "bg-slate-900 text-white shadow-md"
-                            : "text-slate-500 hover:text-slate-900 hover:bg-white/60"
-                        }`}
-                      >
-                        {mode}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-3">
-                  <Input
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
-                    placeholder={deliveryMode === "PICKUP" ? "Self Pickup" : "Delivery address / location..."}
                     className="h-10 text-xs rounded-xl bg-slate-50 border-slate-200 focus:bg-white font-medium placeholder:text-slate-400"
                   />
                 </div>
@@ -905,8 +879,173 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
             </div>
 
             {/* ORDER ITEMS CARD */}
-            <div className="rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+            <div className="relative z-20 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
               <LineItemsEditor lines={lines} onChange={setLines} accountTypeFilter={["revenue"]} taxContext="sales" />
+            </div>
+
+            {/* LOGISTICS SECTION — Below order items, Proxy Order style */}
+            <div className="relative z-10 rounded-[2rem] bg-white/70 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
+                {savedAddresses.length > 0 && (
+                  <Select
+                    onValueChange={(val) => {
+                      if (val === "CUSTOM") return;
+                      setDeliveryAddress(val);
+                    }}
+                  >
+                    <SelectTrigger className="h-6 text-[10px] w-[140px] bg-blue-50 text-blue-700 border-blue-200 rounded-lg">
+                      <SelectValue placeholder="Saved address..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white dark:bg-slate-900 border border-slate-200 shadow-2xl z-[9999]">
+                      {savedAddresses.map((a, idx) => (
+                        <SelectItem key={idx} value={a.address}>
+                          <span className="font-bold">{a.label}:</span> <span className="text-xs">{a.address}</span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* PICKUP / DOOR / COURIER / TRANSPORT tabs */}
+              <div className="grid grid-cols-4 gap-1.5 p-1 bg-slate-100/90 rounded-2xl border border-slate-200/50 mb-4">
+                {(["PICKUP", "DOOR", "COURIER", "TRANSPORT"] as const).map((mode, idx, arr) => {
+                  const isActive = deliveryMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      id={`logistics-tab-${mode.toLowerCase()}`}
+                      type="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        setDeliveryMode(mode);
+                        if (mode !== "PICKUP" && savedAddresses.length > 0 && !deliveryAddress) {
+                          setDeliveryAddress(savedAddresses[0].address);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Spacebar") {
+                          e.preventDefault();
+                          // Space selects this option
+                          setDeliveryMode(mode);
+                          if (mode !== "PICKUP" && savedAddresses.length > 0 && !deliveryAddress) {
+                            setDeliveryAddress(savedAddresses[0].address);
+                          }
+                          // After selection with space, advance to next field
+                          setTimeout(() => {
+                            if (mode === "PICKUP") {
+                              const nextTarget =
+                                document.getElementById("ref-type-new-btn") ||
+                                document.getElementById("invoice-issue-date") ||
+                                document.getElementById("invoice-notes-input");
+                              nextTarget?.focus();
+                            } else {
+                              const addrInput =
+                                document.getElementById("logistics-delivery-input") ||
+                                document.getElementById("ref-type-new-btn");
+                              addrInput?.focus();
+                            }
+                          }, 50);
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (idx < arr.length - 1) {
+                            // Move to next tab: PICKUP -> DOOR -> COURIER -> TRANSPORT
+                            const nextMode = arr[idx + 1];
+                            document.getElementById(`logistics-tab-${nextMode.toLowerCase()}`)?.focus();
+                          } else {
+                            // On TRANSPORT (last option) -> advance straight to New Ref (Normal Bill)
+                            document.getElementById("ref-type-new-btn")?.focus();
+                          }
+                        } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                          e.preventDefault();
+                          const nextIdx = (idx + 1) % arr.length;
+                          const nextMode = arr[nextIdx];
+                          document.getElementById(`logistics-tab-${nextMode.toLowerCase()}`)?.focus();
+                        } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                          e.preventDefault();
+                          const prevIdx = (idx - 1 + arr.length) % arr.length;
+                          const prevMode = arr[prevIdx];
+                          document.getElementById(`logistics-tab-${prevMode.toLowerCase()}`)?.focus();
+                        }
+                      }}
+                      className={`py-2.5 text-[10px] font-black tracking-wider uppercase rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                        isActive
+                          ? "bg-slate-900 text-white shadow-md ring-2 ring-blue-500/50"
+                          : "text-slate-500 hover:text-slate-900 hover:bg-white/60"
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Address input / selector */}
+              {deliveryMode !== "PICKUP" && (
+                <div className="space-y-3">
+                  {savedAddresses.length > 0 ? (
+                    <>
+                      <Select value={deliveryAddress} onValueChange={setDeliveryAddress}>
+                        <SelectTrigger
+                          id="logistics-delivery-input"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              const nextTarget =
+                                document.getElementById("ref-type-new-btn") ||
+                                document.getElementById("invoice-issue-date");
+                              nextTarget?.focus();
+                            }
+                          }}
+                          className="h-10 text-xs rounded-xl bg-white border-slate-200 focus:border-blue-500 font-medium"
+                        >
+                          <SelectValue placeholder="Select delivery address..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-slate-200 shadow-2xl z-[9999]">
+                          {savedAddresses.map((a, idx) => (
+                            <SelectItem key={idx} value={a.address}>
+                              <div>
+                                <span className="font-bold text-xs">{a.label}:</span>
+                                <span className="text-xs text-slate-500 ml-1">{a.address}</span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {deliveryAddress && (
+                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Selected Delivery Address:</p>
+                          <p className="text-xs font-semibold text-slate-700">{deliveryAddress}</p>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <Input
+                      id="logistics-delivery-input"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const nextTarget =
+                            document.getElementById("ref-type-new-btn") ||
+                            document.getElementById("invoice-issue-date");
+                          nextTarget?.focus();
+                        }
+                      }}
+                      placeholder="Delivery address / location..."
+                      className="h-10 text-xs rounded-xl bg-white border-slate-200 focus:bg-white font-medium placeholder:text-slate-400"
+                    />
+                  )}
+                </div>
+              )}
+
+              {deliveryMode === "PICKUP" && (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 font-medium">
+                  Self Pickup — no delivery address required.
+                </div>
+              )}
             </div>
 
             {/* Bottom Row: Reference/Advance Terms & Additional Options */}
@@ -919,22 +1058,59 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                 <div className="space-y-2">
                   <div className="flex gap-2">
                     <button
+                      id="ref-type-new-btn"
                       type="button"
+                      tabIndex={0}
                       onClick={() => { setRefType("NEW_REF"); setSelectedCreditId(""); setAvailableCredits([]); }}
-                      className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Spacebar") {
+                          e.preventDefault();
+                          // Space selects New Ref
+                          setRefType("NEW_REF");
+                          setSelectedCreditId("");
+                          setAvailableCredits([]);
+                        } else if (e.key === "Enter" || e.key === "ArrowRight") {
+                          e.preventDefault();
+                          // Enter / ArrowRight goes to Agst Ref
+                          document.getElementById("ref-type-agst-btn")?.focus();
+                        }
+                      }}
+                      className={`px-4 py-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 ${
                         refType === "NEW_REF"
-                          ? "bg-slate-900 text-white shadow-md"
+                          ? "bg-slate-900 text-white shadow-md ring-2 ring-blue-500/50"
                           : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                       }`}
                     >
                       New Ref (Normal Bill)
                     </button>
                     <button
+                      id="ref-type-agst-btn"
                       type="button"
+                      tabIndex={0}
                       onClick={() => setRefType("AGST_REF")}
-                      className={`px-4 py-2 text-xs font-bold rounded-xl transition-all ${
+                      onKeyDown={(e) => {
+                        if (e.key === " " || e.key === "Spacebar") {
+                          e.preventDefault();
+                          // Space selects Agst Ref
+                          setRefType("AGST_REF");
+                        } else if (e.key === "ArrowLeft") {
+                          e.preventDefault();
+                          document.getElementById("ref-type-new-btn")?.focus();
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (refType === "AGST_REF" && availableCredits.length > 0) {
+                            const advSelect = document.getElementById("invoice-advance-select");
+                            if (advSelect) {
+                              advSelect.focus();
+                              return;
+                            }
+                          }
+                          document.getElementById("invoice-issue-date")?.focus();
+                        }
+                      }}
+                      className={`px-4 py-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 ${
                         refType === "AGST_REF"
-                          ? "bg-amber-600 text-white shadow-md"
+                          ? "bg-amber-600 text-white shadow-md ring-2 ring-blue-500/50"
                           : "bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100"
                       }`}
                     >
@@ -957,7 +1133,16 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                     )}
                     {availableCredits.length > 0 && (
                       <Select value={selectedCreditId} onValueChange={setSelectedCreditId}>
-                        <SelectTrigger className="w-full bg-white text-slate-900 border-amber-200 font-semibold shadow-xs h-10 px-3.5 rounded-xl">
+                        <SelectTrigger
+                          id="invoice-advance-select"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              document.getElementById("invoice-issue-date")?.focus();
+                            }
+                          }}
+                          className="w-full bg-white text-slate-900 border-amber-200 font-semibold shadow-xs h-10 px-3.5 rounded-xl focus:border-blue-500"
+                        >
                           <SelectValue placeholder="Pick an advance receipt..." />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-slate-200 shadow-2xl z-[9999]">
@@ -984,12 +1169,41 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                 {/* Dates */}
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-slate-500">Issue Date</Label>
-                    <DatePicker value={issueDate} onChange={setIssueDate} placeholder="Issue date" />
+                    <Label htmlFor="invoice-issue-date" className="text-xs font-bold text-slate-500">Issue Date</Label>
+                    <input
+                      id="invoice-issue-date"
+                      type="date"
+                      value={issueDate}
+                      onChange={(e) => setIssueDate(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          document.getElementById("invoice-due-date")?.focus();
+                        }
+                      }}
+                      className="h-10 w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 font-bold text-sm px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
+                    />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-slate-500">Due Date</Label>
-                    <DatePicker value={dueDate} onChange={setDueDate} placeholder="Due date" />
+                    <Label htmlFor="invoice-due-date" className="text-xs font-bold text-slate-500">Due Date</Label>
+                    <input
+                      id="invoice-due-date"
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const submitBtn = document.getElementById("invoice-submit-btn");
+                          if (submitBtn) {
+                            submitBtn.focus();
+                          } else {
+                            document.getElementById("invoice-notes-input")?.focus();
+                          }
+                        }
+                      }}
+                      className="h-10 w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 font-bold text-sm px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
+                    />
                   </div>
                 </div>
 
@@ -997,8 +1211,16 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-500">Notes to Customer</Label>
                   <Textarea
+                    id="invoice-notes-input"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && (e.ctrlKey || e.metaKey || !e.shiftKey)) {
+                        e.preventDefault();
+                        const submitBtn = document.querySelector('button[type="submit"]') as HTMLElement;
+                        submitBtn?.focus();
+                      }
+                    }}
                     placeholder="Specific notes, delivery instructions, remarks..."
                     rows={3}
                     className="rounded-xl border-slate-200 bg-slate-50 focus:bg-white text-xs font-medium"
@@ -1071,7 +1293,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
               </div>
             </div>
           </div>
-          <DrawerFooter onClose={onClose} saving={saving} label="Create Invoice" />
+          <DrawerFooter onClose={onClose} saving={saving} label="Create Invoice" submitId="invoice-submit-btn" />
         </form>
       </SheetContent>
     </Sheet>
@@ -4766,6 +4988,19 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
       .catch(() => {});
   }, [open, initialData]);
 
+  // Auto-focus customer search input when Receipt Drawer opens
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => {
+        const el = document.getElementById("receipt-customer-search-input") as HTMLInputElement;
+        if (el) {
+          el.focus();
+          try { el.select(); } catch {}
+        }
+      }, 120);
+    }
+  }, [open]);
+
   useEffect(() => {
     if (settlementMode !== "against_ref" || !contactId) {
       setInvoices([]);
@@ -4892,7 +5127,20 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
               
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-slate-500">Customer *</Label>
-                <ContactPicker value={contactId} onChange={setContactId} type="customer" initialContactName={initialData?.contactName} />
+                <ContactPicker
+                  id="receipt-customer-search-input"
+                  value={contactId}
+                  onChange={setContactId}
+                  type="customer"
+                  initialContactName={initialData?.contactName}
+                  onSelectAdvance={() => {
+                    const amtInput = document.getElementById("drawer-credit-amount") as HTMLElement;
+                    if (amtInput) {
+                      amtInput.focus();
+                      try { (amtInput as HTMLInputElement).select(); } catch {}
+                    }
+                  }}
+                />
               </div>
 
               {/* Settlement Mode Pills */}
