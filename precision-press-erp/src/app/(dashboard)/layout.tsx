@@ -32,9 +32,10 @@ export default function DashboardRootLayout({
   const isManagerWorkspacePage = pathname.startsWith('/manager/orders');
   const isPrinterWorkspacePage = pathname.startsWith('/printer/orders') || pathname === '/printer';
   const isProxyOrderPage = pathname.startsWith('/proxy-order') || pathname.startsWith('/admin/orders/proxy') || pathname.startsWith('/acdema');
+  const isQuotationPage = pathname.startsWith('/quotation-builder') || pathname.startsWith('/quotation');
   const isAccountingDashboard = pathname.startsWith('/accounting');
-  const displaySidebarExpanded = (isGlobalOrdersPage || isAcdemaViewPage || isAccountantLedgerPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isAccountingDashboard) ? false : isSidebarExpanded;
-  const mainPadding = (isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage) ? 'p-0' : isAccountantLedgerPage ? 'p-3 lg:p-4' : 'p-4 lg:p-6';
+  const displaySidebarExpanded = (isGlobalOrdersPage || isAcdemaViewPage || isAccountantLedgerPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isAccountingDashboard || isQuotationPage) ? false : isSidebarExpanded;
+  const mainPadding = (isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isQuotationPage) ? 'p-0' : isAccountantLedgerPage ? 'p-3 lg:p-4' : 'p-4 lg:p-6';
 
   return (
     <RoleGuard allowedRoles={['ADMIN', 'CUSTOMER', 'DESIGNER', 'SUPER_ADMIN', 'PRINTER', 'MANAGER', 'ACCOUNTANT', 'DISPATCH', 'SUPPORT', 'DELIVERY', 'ACDEMA', 'PASTING', 'FINISHING']}>
@@ -48,9 +49,9 @@ export default function DashboardRootLayout({
               error: { style: { background: '#ef4444', color: '#fff', fontWeight: 'bold' }, duration: 6000 },
             }}
           />
-          <div className={`min-h-screen ${(isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage) ? 'bg-[#d4d4d8]' : 'bg-slate-50'} font-sans antialiased text-slate-900 relative overflow-x-clip`}>
+          <div className={`min-h-screen ${(isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isQuotationPage) ? 'bg-[#d4d4d8]' : 'bg-slate-50'} font-sans antialiased text-slate-900 relative overflow-x-clip`}>
           {/* Decorative Layers omitted on full-canvas workspace pages */}
-          {!(isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage) && (
+          {!(isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isQuotationPage) && (
           <div className="fixed inset-0 pointer-events-none select-none z-0" aria-hidden="true">
             <div
               className="absolute inset-0 opacity-[0.35]"
