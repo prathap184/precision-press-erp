@@ -532,7 +532,7 @@ export default function InvoicesPage() {
             <h2 className="text-lg font-semibold tracking-tight">Start getting paid</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">Create your first invoice to begin tracking revenue.</p>
             <Button
-              onClick={() => openDrawer("invoice")}
+              onClick={() => router.push("/accounting/sales/new")}
               size="lg"
               className="mt-5 bg-emerald-600 hover:bg-emerald-700"
             >
@@ -656,7 +656,7 @@ export default function InvoicesPage() {
           </Tabs>
 
           <Button
-            onClick={() => openDrawer("invoice")}
+            onClick={() => router.push("/accounting/sales/new")}
             size="sm"
             className="bg-emerald-600 hover:bg-emerald-700"
           >
