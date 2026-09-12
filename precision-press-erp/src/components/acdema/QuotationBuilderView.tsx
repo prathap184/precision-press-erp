@@ -165,6 +165,55 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     });
   }, [filteredCustomers, customerSearch]);
 
+  const [productLimit, setProductLimit] = useState(100);
+  const [customerLimit, setCustomerLimit] = useState(100);
+
+  // Reset limit to 100 on new search or when opening drawer for instant 1ms rendering
+  useEffect(() => {
+    setProductLimit(100);
+  }, [searchQuery, selectedCategory, openRowId]);
+
+  useEffect(() => {
+    setCustomerLimit(100);
+  }, [customerSearch, customerDropdownOpen]);
+
+  // Expand limit if user navigates with arrows near boundary
+  useEffect(() => {
+    if (highlightProductIndex >= productLimit - 15) {
+      setProductLimit(prev => Math.max(prev, highlightProductIndex + 50));
+    }
+  }, [highlightProductIndex, productLimit]);
+
+  useEffect(() => {
+    if (highlightCustomerIndex >= customerLimit - 15) {
+      setCustomerLimit(prev => Math.max(prev, highlightCustomerIndex + 50));
+    }
+  }, [highlightCustomerIndex, customerLimit]);
+
+  const visibleProducts = useMemo(() => {
+    const limit = Math.max(productLimit, highlightProductIndex + 20);
+    return matchedProducts.slice(0, limit);
+  }, [matchedProducts, productLimit, highlightProductIndex]);
+
+  const visibleCustomers = useMemo(() => {
+    const limit = Math.max(customerLimit, highlightCustomerIndex + 20);
+    return sortedCustomers.slice(0, limit);
+  }, [sortedCustomers, customerLimit, highlightCustomerIndex]);
+
+  const handleProductScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 350) {
+      setProductLimit(prev => Math.min(matchedProducts.length, prev + 100));
+    }
+  };
+
+  const handleCustomerScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 350) {
+      setCustomerLimit(prev => Math.min(sortedCustomers.length, prev + 100));
+    }
+  };
+
   // High performance instant scroll on Arrow navigation (bypasses 2600-element ref thrashing)
   useEffect(() => {
     if (openRowId && highlightProductIndex >= 0) {
@@ -1884,7 +1933,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                   </div>
 
                   {/* Customer list */}
-                  <div className="flex-1 overflow-y-auto bg-[#eef6ff]">
+                  <div onScroll={handleCustomerScroll} className="flex-1 overflow-y-auto bg-[#eef6ff]">
                     {customerSearching && (
                       <div className="p-3 text-xs font-semibold text-blue-700 bg-blue-50/70 flex items-center gap-2">
                         <Loader2 size={13} className="animate-spin" /> Searching customer ledgers...
@@ -1905,7 +1954,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         </button>
                       </div>
                     ) : (
-                      sortedCustomers.map((c: any, idx: number) => {
+                      visibleCustomers.map((c: any, idx: number) => {
                         const isHighlighted = idx === highlightCustomerIndex;
                         const isSelected = (c.uid || c.id) === selectedCustomerId;
                         return (
@@ -2075,7 +2124,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                       </div>
 
                       {/* Product items list */}
-                      <div className="flex-1 overflow-y-auto bg-[#eef6ff]">
+                      <div onScroll={handleProductScroll} className="flex-1 overflow-y-auto bg-[#eef6ff]">
                         {/* End of List button when search query is empty */}
                         {!searchQuery.trim() && (
                           <div
@@ -2101,14 +2150,14 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                           </div>
                         )}
 
-                        {matched.length === 0 ? (
+                        {visibleProducts.length === 0 ? (
                           <div className="p-6 text-center text-xs text-slate-500 italic">
                             {selectedCategory
                               ? `No items found in category "${selectedCategory}" matching "${searchQuery}"`
                               : `No stock items match "${searchQuery}"`}
                           </div>
                         ) : (
-                          matched.map((p: any) => {
+                          visibleProducts.map((p: any) => {
                             const currentIndex = runningIdx++;
                             const isHighlighted = currentIndex === highlightProductIndex;
                             const isSelected = p.id === activeRow?.productId;
