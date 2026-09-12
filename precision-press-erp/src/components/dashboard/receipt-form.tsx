@@ -67,6 +67,7 @@ export function ReceiptForm() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [subType, setSubType] = useState("invoice_payment");
   const [contactId, setContactId] = useState("");
+  const [initialContactName, setInitialContactName] = useState("");
   const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
   const [bankAccountId, setBankAccountId] = useState("");
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -82,6 +83,25 @@ export function ReceiptForm() {
   const [loadingInvoices, setLoadingInvoices] = useState(false);
 
   const [saving, setSaving] = useState(false);
+
+  // Pre-fill from Global Orders or sessionStorage
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("pending_receipt_draft");
+      if (stored) {
+        sessionStorage.removeItem("pending_receipt_draft");
+        const data = JSON.parse(stored);
+        if (data.contactId) setContactId(data.contactId);
+        if (data.contactName) setInitialContactName(data.contactName);
+        if (data.amount) setAmount(String(data.amount));
+        if (data.notes || data.narration) setNarration(data.notes || data.narration);
+        if (data.reference) setReferenceName(data.reference);
+        if (data.settlementMode === "on_account") setAdjustmentType("ON_ACCOUNT");
+      }
+    } catch (e) {
+      console.error("Failed to load receipt draft", e);
+    }
+  }, []);
 
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -440,6 +460,7 @@ export function ReceiptForm() {
             <ContactPicker
               id="receipt-form-customer-search-input"
               value={contactId}
+              initialContactName={initialContactName}
               onChange={setContactId}
               type="customer"
               onSelectAdvance={() => {

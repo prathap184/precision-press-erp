@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import {
   FileText,
@@ -37,12 +37,24 @@ interface SavedAddress {
   address: string;
 }
 
+function normalizeDeliveryMode(mode?: string): string {
+  if (!mode) return "PICKUP";
+  const m = mode.trim().toUpperCase().replace(/[\s_-]+/g, "");
+  if (m.includes("DOOR")) return "DOOR";
+  if (m.includes("PICK") || m.includes("COUNTER") || m.includes("SELF")) return "PICKUP";
+  if (m.includes("COUR")) return "COURIER";
+  if (m.includes("TRANS")) return "TRANSPORT";
+  return mode;
+}
+
 export function InvoiceFormView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { open: openDrawer } = useCreateDrawer();
 
   const [saving, setSaving] = useState(false);
   const [contactId, setContactId] = useState("");
+  const [initialContactName, setInitialContactName] = useState("");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
@@ -75,24 +87,71 @@ export function InvoiceFormView() {
   >([]);
   const [selectedCreditId, setSelectedCreditId] = useState("");
 
-  // Auto-focus customer input on mount
+  // Pre-fill state from Global Orders / sessionStorage / URL params on mount
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("pending_invoice_draft");
+      if (stored) {
+        sessionStorage.removeItem("pending_invoice_draft");
+        const data = JSON.parse(stored);
+        if (data.contactId) setContactId(data.contactId);
+        if (data.contactName) setInitialContactName(data.contactName);
+        if (data.reference) setReference(data.reference);
+        if (data.deliveryMode) setDeliveryMode(normalizeDeliveryMode(data.deliveryMode));
+        if (data.deliveryAddress) setDeliveryAddress(data.deliveryAddress);
+        if (data.notes) setNotes(data.notes);
+        if (Array.isArray(data.lines) && data.lines.length > 0) {
+          setLines(
+            data.lines.map((l: any) => ({
+              description: l.description || "",
+              quantity: String(l.quantity ?? "1"),
+              unitPrice: String(l.unitPrice ?? ""),
+              billingMode: l.billingMode || undefined,
+              pcsNo: l.pcsNo ? String(l.pcsNo) : undefined,
+              accountId: l.accountId || "",
+              taxRateId: l.taxRateId || "",
+              inventoryItemId: l.inventoryItemId || undefined,
+              width: l.width ? String(l.width) : undefined,
+              length: l.length ? String(l.length) : undefined,
+              sqFt: l.sqFt ? String(l.sqFt) : undefined,
+              finishAmount: l.finishAmount ? String(l.finishAmount) : undefined,
+              deliveryMode: l.deliveryMode || undefined,
+              deliveryAmount: l.deliveryAmount ? String(l.deliveryAmount) : undefined,
+            }))
+          );
+        }
+        return;
+      }
+
+      // Check URL parameters fallback
+      const urlContactId = searchParams?.get("contactId");
+      const urlContactName = searchParams?.get("contactName");
+      const urlRef = searchParams?.get("ref") || searchParams?.get("reference") || searchParams?.get("orderId");
+      if (urlContactId) setContactId(urlContactId);
+      if (urlContactName) setInitialContactName(urlContactName);
+      if (urlRef) setReference(urlRef);
+    } catch (e) {
+      console.error("Failed to load invoice draft", e);
+    }
+  }, [searchParams]);
+
+  // Auto-focus customer input on mount if empty
   useEffect(() => {
     setTimeout(() => {
       const el = document.getElementById("invoice-page-customer-search-input") as HTMLInputElement;
-      if (el) {
+      if (el && !contactId) {
         el.focus();
         try {
           el.select();
         } catch {}
       }
     }, 150);
-  }, []);
+  }, [contactId]);
 
   // Fetch saved customer addresses
   useEffect(() => {
     if (!contactId) {
       setSavedAddresses([]);
-      setDeliveryAddress("");
       return;
     }
     const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
@@ -368,7 +427,10 @@ export function InvoiceFormView() {
             <ContactPicker
               id="invoice-page-customer-search-input"
               value={contactId}
-              onChange={setContactId}
+              initialContactName={initialContactName}
+              onChange={(id) => {
+                setContactId(id);
+              }}
               type="customer"
               onSelectAdvance={() => {
                 const refInput = document.getElementById("invoice-page-reference-input") as HTMLElement;
