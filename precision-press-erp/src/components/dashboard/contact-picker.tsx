@@ -144,6 +144,30 @@ export function ContactPicker({
       });
   }, [contacts, search]);
 
+  const [contactLimit, setContactLimit] = useState(100);
+
+  useEffect(() => {
+    setContactLimit(100);
+  }, [search, open]);
+
+  useEffect(() => {
+    if (highlightIndex >= contactLimit - 15) {
+      setContactLimit((prev) => Math.max(prev, highlightIndex + 50));
+    }
+  }, [highlightIndex, contactLimit]);
+
+  const visibleContacts = useMemo(() => {
+    const limit = Math.max(contactLimit, highlightIndex + 20);
+    return filteredContacts.slice(0, limit);
+  }, [filteredContacts, contactLimit, highlightIndex]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 350) {
+      setContactLimit((prev) => Math.min(filteredContacts.length, prev + 100));
+    }
+  };
+
   // Safe dropdown scroll (only scrolls inner dropdown list, never window)
   const scrollDropdownToIndex = useCallback((index: number) => {
     const list = dropdownListRef.current;
@@ -302,14 +326,15 @@ export function ContactPicker({
       {open && (
         <div
           ref={dropdownListRef}
+          onScroll={handleScroll}
           className="absolute left-0 top-full mt-1.5 w-full min-w-[340px] z-[9999] max-h-72 overflow-y-auto rounded-xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100"
         >
-          {filteredContacts.length === 0 ? (
+          {visibleContacts.length === 0 ? (
             <div className="p-4 text-xs italic text-slate-400 text-center">
               {loading ? "Loading contacts..." : `No ${type || "contact"} matching "${search}".`}
             </div>
           ) : (
-            filteredContacts.slice(0, 50).map((c, idx) => {
+            visibleContacts.map((c, idx) => {
               const isHighlighted = idx === highlightIndex;
               const isSelected = c.id === value;
               return (
