@@ -87,12 +87,13 @@ export function InvoiceFormView() {
   >([]);
   const [selectedCreditId, setSelectedCreditId] = useState("");
 
-  // Pre-fill state from Global Orders / sessionStorage / URL params on mount
+  // Pre-fill state from Global Orders / sessionStorage / localStorage / URL params on mount
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem("pending_invoice_draft");
+      const stored = sessionStorage.getItem("pending_invoice_draft") || localStorage.getItem("pending_invoice_draft");
       if (stored) {
         sessionStorage.removeItem("pending_invoice_draft");
+        localStorage.removeItem("pending_invoice_draft");
         const data = JSON.parse(stored);
         if (data.contactId) setContactId(data.contactId);
         if (data.contactName) setInitialContactName(data.contactName);
