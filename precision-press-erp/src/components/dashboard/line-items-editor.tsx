@@ -152,15 +152,39 @@ function SearchableProductSelect({
     );
   }, [itemsList, qTerm]);
 
+  const [productLimit, setProductLimit] = useState(100);
+
+  useEffect(() => {
+    setProductLimit(100);
+  }, [search, isOpen]);
+
+  useEffect(() => {
+    if (highlightIndex >= productLimit - 15) {
+      setProductLimit((prev) => Math.max(prev, highlightIndex + 50));
+    }
+  }, [highlightIndex, productLimit]);
+
+  const visibleMatched = useMemo(() => {
+    const limit = Math.max(productLimit, highlightIndex + 20);
+    return matched.slice(0, limit);
+  }, [matched, productLimit, highlightIndex]);
+
+  const handleDropdownScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop - clientHeight < 350) {
+      setProductLimit((prev) => Math.min(matched.length, prev + 100));
+    }
+  };
+
   const grouped = useMemo(() => {
-    return (matched || []).reduce((acc: Record<string, InventoryItemOption[]>, item) => {
+    return (visibleMatched || []).reduce((acc: Record<string, InventoryItemOption[]>, item) => {
       if (!item) return acc;
       const cat = item.metadata?.category || "General Products";
       if (!acc[cat]) acc[cat] = [];
       acc[cat].push(item);
       return acc;
     }, {});
-  }, [matched]);
+  }, [visibleMatched]);
 
   const scrollDropdownToIndex = useCallback((index: number) => {
     const list = dropdownListRef.current;
@@ -253,7 +277,7 @@ function SearchableProductSelect({
                 return;
               }
               setHighlightIndex((prev) => {
-                const next = Math.min(prev + 1, Math.min(matched.length - 1, 49));
+                const next = Math.min(prev + 1, matched.length - 1);
                 scrollDropdownToIndex(next);
                 return next;
               });
@@ -307,6 +331,7 @@ function SearchableProductSelect({
       {isOpen && (
         <div
           ref={dropdownListRef}
+          onScroll={handleDropdownScroll}
           className="absolute left-0 top-full mt-1.5 w-[480px] sm:w-[520px] z-[99999] max-h-80 overflow-y-auto rounded-2xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100"
         >
           {/* END OF LIST row — only when no search query */}
