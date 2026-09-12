@@ -48,9 +48,9 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
   const currentItems: ShortcutItemDef[] = React.useMemo(() => {
     if (menuState === 'VOUCHERS') {
       return [
-        { hotkey: 'F8', label: 'Invoice', onClick: () => { openDrawer("invoice"); closeMenu(); } },
+        { hotkey: 'F8', label: 'Invoice', onClick: () => { router.push('/accounting/sales/new'); closeMenu(); } },
         { hotkey: 'F10', label: 'Quote', onClick: () => { router.push('/quotation-builder'); closeMenu(); } },
-        { hotkey: 'F6', label: 'Receipt entry (sync) / gpay or cash', onClick: () => { openDrawer("customerCredit"); closeMenu(); } },
+        { hotkey: 'F6', label: 'Receipt entry (sync) / gpay or cash', onClick: () => { router.push('/accounting/receipt/new'); closeMenu(); } },
         { hotkey: 'F5', label: 'Payment', onClick: () => { router.push('/purchases'); closeMenu(); } },
         { hotkey: 'F4', label: 'Contra', onClick: () => { router.push('/accounting/contra'); closeMenu(); } },
         { hotkey: 'F7', label: 'Journal', onClick: () => { router.push('/accounting/journal'); closeMenu(); } },

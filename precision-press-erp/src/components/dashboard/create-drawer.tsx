@@ -97,13 +97,22 @@ export function useCreateDrawer() {
 }
 
 export function CreateDrawerProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [activeType, setActiveType] = useState<DrawerType | null>(null);
   const [initialData, setInitialData] = useState<DrawerInitialData | undefined>();
 
   const open = useCallback((type: DrawerType, data?: DrawerInitialData) => {
+    if (type === "invoice") {
+      router.push("/accounting/sales/new");
+      return;
+    }
+    if (type === "salesReceipt" || type === "customerCredit") {
+      router.push("/accounting/receipt/new");
+      return;
+    }
     setInitialData(data);
     setActiveType(type);
-  }, []);
+  }, [router]);
   const close = useCallback(() => { setActiveType(null); setInitialData(undefined); }, []);
 
   // Allow keyboard shortcuts (F6/F8) to open drawers via window event from anywhere

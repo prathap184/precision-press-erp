@@ -55,9 +55,9 @@ export function ShortcutMenu() {
             <div className="grid grid-cols-1 gap-2">
               <ShortcutItem hotkey="F4" label="Contra" onClick={() => { router.push('/accounting/contra'); closeMenu(); }} />
               <ShortcutItem hotkey="F5" label="Payment" onClick={() => { openDrawer("paymentVoucher"); closeMenu(); }} />
-              <ShortcutItem hotkey="F6" label="Receipt (GPay/Cash/Cheque)" onClick={() => { openDrawer("customerCredit"); closeMenu(); }} />
+              <ShortcutItem hotkey="F6" label="Receipt (GPay/Cash/Cheque)" onClick={() => { router.push('/accounting/receipt/new'); closeMenu(); }} />
               <ShortcutItem hotkey="F7" label="Journal" onClick={() => { router.push('/accounting/journal'); closeMenu(); }} />
-              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { openDrawer("invoice"); closeMenu(); }} />
+              <ShortcutItem hotkey="F8" label="Invoice" onClick={() => { router.push('/accounting/sales/new'); closeMenu(); }} />
               <ShortcutItem hotkey="F10" label="Quote" onClick={() => { window.location.href = '/sales/quotes'; }} />
             </div>
           )}
