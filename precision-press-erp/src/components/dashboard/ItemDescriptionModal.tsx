@@ -7,6 +7,7 @@ interface ItemDescriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveAndAdvance: (text: string) => void;
+  onBackNavigate?: () => void;
   initialValue: string;
   itemName?: string;
   title?: string;
@@ -16,6 +17,7 @@ export function ItemDescriptionModal({
   isOpen,
   onClose,
   onSaveAndAdvance,
+  onBackNavigate,
   initialValue,
   itemName = 'Item',
   title = 'Description for Stock Item',
@@ -43,14 +45,34 @@ export function ItemDescriptionModal({
 
   if (!isOpen) return null;
 
+  const handleGoBack = () => {
+    if (onBackNavigate) {
+      onBackNavigate();
+    } else {
+      onClose();
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
       e.preventDefault();
-      onSaveAndAdvance(text);
+      handleGoBack();
+      return;
+    }
+
+    if (e.key === 'Backspace' && (!text || text.length === 0 || (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0))) {
+      e.preventDefault();
+      handleGoBack();
       return;
     }
 
     if (e.key === 'Enter') {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        onSaveAndAdvance(text.trimEnd());
+        return;
+      }
+
       const target = e.currentTarget;
       const { selectionStart, value } = target;
       const beforeCursor = value.substring(0, selectionStart);
@@ -84,7 +106,7 @@ export function ItemDescriptionModal({
           </div>
           <button
             type="button"
-            onClick={() => onSaveAndAdvance(text)}
+            onClick={handleGoBack}
             className="text-slate-400 hover:text-white text-xs font-bold px-1.5 py-0.5 rounded transition-colors"
           >
             ✕ [Esc]

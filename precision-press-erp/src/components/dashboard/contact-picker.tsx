@@ -224,9 +224,13 @@ export function ContactPicker({
             scrollDropdownToIndex(0);
           }}
           onKeyDown={(e) => {
-            if (filteredContacts.length === 0) return;
+            if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+              e.preventDefault();
+              return;
+            }
 
             if (e.key === "ArrowDown") {
+              if (filteredContacts.length === 0) return;
               e.preventDefault();
               if (!open) {
                 setOpen(true);
@@ -240,6 +244,7 @@ export function ContactPicker({
                 return next;
               });
             } else if (e.key === "ArrowUp") {
+              if (filteredContacts.length === 0) return;
               e.preventDefault();
               setHighlightIndex((prev) => {
                 const next = Math.max(prev - 1, 0);
@@ -253,6 +258,9 @@ export function ContactPicker({
                 if (contact) {
                   handleSelect(contact);
                 }
+              } else if (onSelectAdvance) {
+                e.preventDefault();
+                onSelectAdvance();
               }
             } else if (e.key === "Escape") {
               setOpen(false);

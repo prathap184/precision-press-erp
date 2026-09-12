@@ -96,7 +96,7 @@ function AccountingSidebar({ isExpanded, isHovered }: { isExpanded: boolean; isH
     <aside
       className={cn(
         'sidebar flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 overflow-hidden',
-        'bg-white/30 backdrop-blur-2xl border-r border-white/50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]',
+        'bg-[#e8f1fa]/80 backdrop-blur-2xl border-r border-[#cfe0f5] shadow-[4px_0_24px_rgba(37,99,235,0.04)]',
         visualExpanded ? 'w-[280px]' : 'w-[72px]'
       )}
     >
@@ -452,7 +452,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
         onMouseLeave={() => setIsHovered(false)}
         className={cn(
           'sidebar flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 overflow-hidden',
-          'bg-white/30 backdrop-blur-2xl border-r border-white/50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]',
+          'bg-[#e8f1fa]/80 backdrop-blur-2xl border-r border-[#cfe0f5] shadow-[4px_0_24px_rgba(37,99,235,0.04)]',
           visualExpanded ? 'w-[280px]' : 'w-[72px]'
         )}
       >
@@ -467,7 +467,7 @@ export const Sidebar = ({ isExpanded = false, onToggle }: SidebarProps) => {
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
         'sidebar flex flex-col h-screen fixed left-0 top-0 z-50 transition-all duration-300 overflow-hidden',
-        'bg-white/30 backdrop-blur-2xl border-r border-white/50 shadow-[4px_0_24px_rgba(0,0,0,0.02)]',
+        'bg-[#e8f1fa]/80 backdrop-blur-2xl border-r border-[#cfe0f5] shadow-[4px_0_24px_rgba(37,99,235,0.04)]',
         visualExpanded ? 'w-[280px]' : 'w-[72px]'
       )}
     >

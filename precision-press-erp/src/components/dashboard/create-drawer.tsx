@@ -194,6 +194,18 @@ function DrawerFooter({
         id={submitId}
         type="submit"
         disabled={saving}
+        onKeyDown={(e) => {
+          if (e.key === "Backspace") {
+            e.preventDefault();
+            const notesInput = document.getElementById("invoice-notes-input") || document.getElementById("order-notes") || document.getElementById("notes");
+            if (notesInput) {
+              notesInput.focus();
+            } else {
+              const dueInput = document.getElementById("invoice-due-date");
+              if (dueInput) dueInput.focus();
+            }
+          }
+        }}
         className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl px-5 shadow-xs transition-all focus:ring-4 focus:ring-emerald-500/30"
       >
         {saving ? "Saving..." : label}
@@ -867,8 +879,12 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
-                        const itemInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
+                        const itemInput = document.getElementById("row-0-product-input") || (document.querySelector('input[placeholder="Select item..."]') as HTMLElement);
                         if (itemInput) itemInput.focus();
+                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                        e.preventDefault();
+                        const custInput = document.getElementById("invoice-customer-search-input");
+                        if (custInput) custInput.focus();
                       }
                     }}
                     placeholder="Customer PO / Reference..."
@@ -954,8 +970,29 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                             const nextMode = arr[idx + 1];
                             document.getElementById(`logistics-tab-${nextMode.toLowerCase()}`)?.focus();
                           } else {
-                            // On TRANSPORT (last option) -> advance straight to New Ref (Normal Bill)
+                            if (deliveryMode !== "PICKUP") {
+                              const addrInput = document.getElementById("logistics-delivery-input");
+                              if (addrInput) {
+                                addrInput.focus();
+                                return;
+                              }
+                            }
+                            // On last option -> advance straight to New Ref (Normal Bill)
                             document.getElementById("ref-type-new-btn")?.focus();
+                          }
+                        } else if (e.key === "Backspace") {
+                          e.preventDefault();
+                          if (idx === 0) {
+                            const lastIdx = lines.length - 1;
+                            const target = document.getElementById(`row-${lastIdx}-finishAmount`) ||
+                                           document.getElementById(`row-${lastIdx}-unitPrice`) ||
+                                           document.getElementById(`row-${lastIdx}-pcs`) ||
+                                           document.getElementById(`row-${lastIdx}-quantity`) ||
+                                           document.getElementById(`row-${lastIdx}-product-input`);
+                            target?.focus();
+                          } else {
+                            const prevMode = arr[idx - 1];
+                            document.getElementById(`logistics-tab-${prevMode.toLowerCase()}`)?.focus();
                           }
                         } else if (e.key === "ArrowRight" || e.key === "ArrowDown") {
                           e.preventDefault();
@@ -996,6 +1033,9 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                                 document.getElementById("ref-type-new-btn") ||
                                 document.getElementById("invoice-issue-date");
                               nextTarget?.focus();
+                            } else if (e.key === "Backspace") {
+                              e.preventDefault();
+                              document.getElementById(`logistics-tab-${deliveryMode.toLowerCase()}`)?.focus();
                             }
                           }}
                           className="h-10 text-xs rounded-xl bg-white border-slate-200 focus:border-blue-500 font-medium"
@@ -1032,6 +1072,9 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                             document.getElementById("ref-type-new-btn") ||
                             document.getElementById("invoice-issue-date");
                           nextTarget?.focus();
+                        } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                          e.preventDefault();
+                          document.getElementById(`logistics-tab-${deliveryMode.toLowerCase()}`)?.focus();
                         }
                       }}
                       placeholder="Delivery address / location..."
@@ -1073,6 +1116,13 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                           e.preventDefault();
                           // Enter / ArrowRight goes to Agst Ref
                           document.getElementById("ref-type-agst-btn")?.focus();
+                        } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                          e.preventDefault();
+                          if (deliveryMode !== "PICKUP") {
+                            const addrInput = document.getElementById("logistics-delivery-input");
+                            if (addrInput) { addrInput.focus(); return; }
+                          }
+                          document.getElementById(`logistics-tab-${deliveryMode.toLowerCase()}`)?.focus();
                         }
                       }}
                       className={`px-4 py-2 text-xs font-bold rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 ${
@@ -1093,7 +1143,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                           e.preventDefault();
                           // Space selects Agst Ref
                           setRefType("AGST_REF");
-                        } else if (e.key === "ArrowLeft") {
+                        } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                           e.preventDefault();
                           document.getElementById("ref-type-new-btn")?.focus();
                         } else if (e.key === "Enter") {
@@ -1139,6 +1189,9 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                             if (e.key === "Enter") {
                               e.preventDefault();
                               document.getElementById("invoice-issue-date")?.focus();
+                            } else if (e.key === "Backspace") {
+                              e.preventDefault();
+                              document.getElementById("ref-type-agst-btn")?.focus();
                             }
                           }}
                           className="w-full bg-white text-slate-900 border-amber-200 font-semibold shadow-xs h-10 px-3.5 rounded-xl focus:border-blue-500"
@@ -1179,6 +1232,16 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                         if (e.key === "Enter") {
                           e.preventDefault();
                           document.getElementById("invoice-due-date")?.focus();
+                        } else if (e.key === "Backspace") {
+                          e.preventDefault();
+                          if (refType === "AGST_REF" && availableCredits.length > 0) {
+                            const advSelect = document.getElementById("invoice-advance-select");
+                            if (advSelect) {
+                              advSelect.focus();
+                              return;
+                            }
+                          }
+                          document.getElementById("ref-type-agst-btn")?.focus();
                         }
                       }}
                       className="h-10 w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 font-bold text-sm px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
@@ -1194,12 +1257,16 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          const submitBtn = document.getElementById("invoice-submit-btn");
-                          if (submitBtn) {
-                            submitBtn.focus();
+                          const notesInput = document.getElementById("invoice-notes-input");
+                          if (notesInput) {
+                            notesInput.focus();
                           } else {
-                            document.getElementById("invoice-notes-input")?.focus();
+                            const submitBtn = document.getElementById("invoice-submit-btn");
+                            if (submitBtn) submitBtn.focus();
                           }
+                        } else if (e.key === "Backspace") {
+                          e.preventDefault();
+                          document.getElementById("invoice-issue-date")?.focus();
                         }
                       }}
                       className="h-10 w-full bg-slate-50 hover:bg-white focus:bg-white text-slate-800 font-bold text-sm px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
@@ -1218,7 +1285,7 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                       if (e.key === "Enter") {
                         if (e.ctrlKey || e.metaKey) {
                           e.preventDefault();
-                          const submitBtn = document.querySelector('button[type="submit"]') as HTMLElement;
+                          const submitBtn = document.getElementById("invoice-submit-btn") || (document.querySelector('button[type="submit"]') as HTMLElement);
                           submitBtn?.focus();
                           return;
                         }
@@ -1233,9 +1300,12 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
                           e.preventDefault();
                           const cleaned = notes.trimEnd();
                           setNotes(cleaned);
-                          const submitBtn = document.querySelector('button[type="submit"]') as HTMLElement;
+                          const submitBtn = document.getElementById("invoice-submit-btn") || (document.querySelector('button[type="submit"]') as HTMLElement);
                           submitBtn?.focus();
                         }
+                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                        e.preventDefault();
+                        document.getElementById("invoice-due-date")?.focus();
                       }
                     }}
                     placeholder="Specific notes, delivery instructions, remarks... (Enter for next line, Enter on empty line to exit, '.' for spacing)"

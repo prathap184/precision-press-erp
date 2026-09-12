@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle, ExternalLink, Copy } from 'lucide-react';
+import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Check, Image as ImageIcon, Star, AlertTriangle, ExternalLink, Copy } from 'lucide-react';
 import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
 import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
@@ -29,6 +29,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [highlightProductIndex, setHighlightProductIndex] = useState<number>(0);
   const [highlightCustomerIndex, setHighlightCustomerIndex] = useState<number>(0);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
+  const [logisticsDropdownOpen, setLogisticsDropdownOpen] = useState(false);
+  const [highlightLogisticsIndex, setHighlightLogisticsIndex] = useState<number>(0);
+  const [paymentDropdownOpen, setPaymentDropdownOpen] = useState(false);
+  const [highlightPaymentIndex, setHighlightPaymentIndex] = useState<number>(0);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
@@ -38,6 +42,160 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
   const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
   const [activeDescRowId, setActiveDescRowId] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  const tallyNaturalCompare = (aStr: any, bStr: any) => {
+    return String(aStr || '').trim().localeCompare(String(bStr || '').trim(), undefined, { numeric: true, sensitivity: 'base' });
+  };
+
+  const availableCategories = useMemo(() => {
+    const cats = new Set<string>();
+    (products || []).forEach((p: any) => {
+      const cat = (p.category || '').trim();
+      if (cat) cats.add(cat);
+    });
+    return Array.from(cats).sort((a, b) => tallyNaturalCompare(a, b));
+  }, [products]);
+
+  const matchProducts = (query: string, customCat: string | null = selectedCategory) => {
+    const catFiltered = customCat
+      ? products.filter((p: any) => (p.category || '').trim().toLowerCase() === customCat.trim().toLowerCase())
+      : products;
+
+    const qTrim = query.trim().toLowerCase();
+    if (!qTrim) {
+      return [...catFiltered].sort((a: any, b: any) => tallyNaturalCompare(a.name, b.name));
+    }
+
+    // Check if query begins with "ct " or "ct:" or "ct-" or "ct/" or is exactly "ct"
+    const isCtSearch = /^ct([:\s\-\/]|$)/i.test(qTrim);
+
+    if (isCtSearch) {
+      const ctQuery = qTrim.replace(/^ct[:\s\-\/]?\s*/i, '').trim();
+      if (!ctQuery) {
+        // Just typed "ct" -> show all products in natural order
+        return [...catFiltered].sort((a: any, b: any) => tallyNaturalCompare(a.name, b.name));
+      }
+
+      const ctTokens = ctQuery.split(/\s+/).filter(Boolean);
+      const catSearchTerm = ctTokens[0];
+      const itemTokens = ctTokens.slice(1);
+
+      return catFiltered
+        .filter((p: any) => {
+          const cat = (p.category || '').toLowerCase();
+          const fullTarget = `${p.name || ''} ${p.id || ''} ${p.code || ''} ${p.sku || ''}`.toLowerCase();
+
+          // 1. Direct match: entire ctQuery is in category
+          if (cat.includes(ctQuery)) return true;
+
+          // 2. Token match: first token matches category, remaining tokens match product fields
+          if (cat.includes(catSearchTerm)) {
+            return itemTokens.length === 0 || itemTokens.every(tok => fullTarget.includes(tok));
+          }
+
+          return false;
+        })
+        .sort((a: any, b: any) => {
+          const aCat = (a.category || '').toLowerCase();
+          const bCat = (b.category || '').toLowerCase();
+
+          // Exact category matches first
+          const aExact = aCat === ctQuery || aCat === catSearchTerm;
+          const bExact = bCat === ctQuery || bCat === catSearchTerm;
+          if (aExact && !bExact) return -1;
+          if (bExact && !aExact) return 1;
+
+          // Category starts with query
+          const aStarts = aCat.startsWith(ctQuery) || aCat.startsWith(catSearchTerm);
+          const bStarts = bCat.startsWith(ctQuery) || bCat.startsWith(catSearchTerm);
+          if (aStarts && !bStarts) return -1;
+          if (bStarts && !aStarts) return 1;
+
+          return tallyNaturalCompare(a.name, b.name);
+        });
+    }
+
+    // Standard token search
+    const qTokens = qTrim.split(/\s+/).filter(Boolean);
+    return catFiltered
+      .filter((p: any) => {
+        const target = `${p.name || ''} ${p.id || ''} ${p.code || ''} ${p.sku || ''} ${p.category || ''}`.toLowerCase();
+        return qTokens.every(tok => target.includes(tok));
+      })
+      .sort((a: any, b: any) => {
+        const aName = (a.name || '').toLowerCase();
+        const bName = (b.name || '').toLowerCase();
+        // 1. Exact match gets highest priority
+        if (aName === qTrim && bName !== qTrim) return -1;
+        if (bName === qTrim && aName !== qTrim) return 1;
+        // 2. Name starts with query
+        const aStarts = aName.startsWith(qTrim);
+        const bStarts = bName.startsWith(qTrim);
+        if (aStarts && !bStarts) return -1;
+        if (bStarts && !aStarts) return 1;
+        // 3. Name contains query vs only category contains
+        const aInName = aName.includes(qTrim);
+        const bInName = bName.includes(qTrim);
+        if (aInName && !bInName) return -1;
+        if (bInName && !aInName) return 1;
+        // 4. All tokens match in name
+        const aTokensInName = qTokens.every(tok => aName.includes(tok));
+        const bTokensInName = qTokens.every(tok => bName.includes(tok));
+        if (aTokensInName && !bTokensInName) return -1;
+        if (bTokensInName && !aTokensInName) return 1;
+        return tallyNaturalCompare(a.name, b.name);
+      });
+  };
+
+  const matchedProducts = useMemo(() => {
+    return matchProducts(searchQuery, selectedCategory);
+  }, [products, searchQuery, selectedCategory]);
+
+  const sortedCustomers = useMemo(() => {
+    const term = customerSearch.trim().toLowerCase();
+    const list = [...(filteredCustomers || [])];
+    if (!term) {
+      return list.sort((a: any, b: any) =>
+        tallyNaturalCompare(a.displayName || a.name, b.displayName || b.name)
+      );
+    }
+    return list.sort((a: any, b: any) => {
+      const aName = String(a.displayName || a.name || '').toLowerCase();
+      const bName = String(b.displayName || b.name || '').toLowerCase();
+      if (aName === term && bName !== term) return -1;
+      if (bName === term && aName !== term) return 1;
+      if (aName.startsWith(term) && !bName.startsWith(term)) return -1;
+      if (bName.startsWith(term) && !aName.startsWith(term)) return 1;
+      return tallyNaturalCompare(a.displayName || a.name, b.displayName || b.name);
+    });
+  }, [filteredCustomers, customerSearch]);
+
+  // High performance instant scroll on Arrow navigation (bypasses 2600-element ref thrashing)
+  useEffect(() => {
+    if (openRowId && highlightProductIndex >= 0) {
+      const el = document.getElementById(`stock-item-${highlightProductIndex}`);
+      if (el) {
+        el.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [highlightProductIndex, openRowId]);
+
+  useEffect(() => {
+    if (customerDropdownOpen && highlightCustomerIndex >= 0) {
+      const el = document.getElementById(`customer-item-${highlightCustomerIndex}`);
+      if (el) {
+        el.scrollIntoView({ block: 'nearest' });
+      }
+    }
+  }, [highlightCustomerIndex, customerDropdownOpen]);
+
+  const LOGISTICS_OPTIONS = useMemo(() => [
+    { id: 'selfPickup', label: 'PICKUP', sublabel: 'Self Collection at Store', key: 'p' },
+    { id: 'door', label: 'DOOR', sublabel: 'Direct Door Delivery', key: 'd' },
+    { id: 'courier', label: 'COURIER', sublabel: 'Dispatch via Courier Service', key: 'c' },
+    { id: 'transport', label: 'TRANSPORT', sublabel: 'Freight / Transport Service', key: 't' },
+  ], []);
 
   const handleSaveDescAndAdvance = (rowId: string, text: string) => {
     updateRow(rowId, { description: text, projectName: text });
@@ -69,6 +227,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         }
       }
     }, 60);
+  };
+
+  const handleBackFromDescModal = (rowId: string) => {
+    setActiveDescRowId(null);
+    setTimeout(() => {
+      const itemInput = document.getElementById(`row-${rowId}-product-input`);
+      if (itemInput) {
+        itemInput.focus();
+        try { (itemInput as HTMLInputElement).select(); } catch {}
+      }
+    }, 50);
   };
 
   useEffect(() => {
@@ -176,6 +345,40 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const hasAvailableCredit = selectedCustomer?.customerType === 'CREDIT' && creditAvailable > 0;
   const creditExceeded = paymentMethodTab === 'CREDIT' && summary.grandTotal > creditAvailable;
 
+  const PAYMENT_OPTIONS = useMemo(() => [
+    { id: 'HAND_CASH', label: 'CASH', tab: 'CASH_UPI' as const, key: 'c', description: 'Immediate Cash Settlement' },
+    { id: 'UPI', label: 'UPI', tab: 'CASH_UPI' as const, key: 'u', description: 'Instant QR / UPI Transfer' },
+    { id: 'BANK', label: 'BANK', tab: 'CASH_UPI' as const, key: 'b', description: 'Direct Bank / NEFT / RTGS' },
+    { id: 'COD', label: 'COD', tab: 'CASH_UPI' as const, key: 'o', description: 'Cash / Payment on Delivery' },
+    ...(hasAvailableCredit ? [
+      { id: 'CREDIT', label: 'CREDIT ACCOUNT', tab: 'CREDIT' as const, key: 'r', description: 'Post-paid Ledger Credit' }
+    ] : [])
+  ], [hasAvailableCredit]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (logisticsDropdownOpen && !target.closest('#logistics-dropdown-container')) {
+        setLogisticsDropdownOpen(false);
+      }
+      if (paymentDropdownOpen && !target.closest('#payment-dropdown-container')) {
+        setPaymentDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [logisticsDropdownOpen, paymentDropdownOpen]);
+
+  useEffect(() => {
+    const idx = LOGISTICS_OPTIONS.findIndex(o => o.id === deliveryType);
+    if (idx !== -1) setHighlightLogisticsIndex(idx);
+  }, [deliveryType, LOGISTICS_OPTIONS]);
+
+  useEffect(() => {
+    const idx = PAYMENT_OPTIONS.findIndex(o => o.id === paymentMode);
+    if (idx !== -1) setHighlightPaymentIndex(idx);
+  }, [paymentMode, PAYMENT_OPTIONS]);
+
   useEffect(() => {
     if (hasAvailableCredit) {
       setPaymentMethodTab('CREDIT');
@@ -235,16 +438,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         }
       } else {
         // Go to Logistics first, then Payment Terminal
-        const logisticsBtn = document.getElementById(`logistics-btn-${deliveryType}`)
-          || document.getElementById('logistics-btn-selfPickup')
-          || document.querySelector('[id^="logistics-btn-"]') as HTMLElement;
+        const logisticsBtn = document.getElementById('logistics-dropdown-btn');
         if (logisticsBtn) {
-          (logisticsBtn as HTMLElement).focus();
-          (logisticsBtn as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
+          logisticsBtn.focus();
+          logisticsBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
-          const nextEl = document.getElementById('pay-mode-btn-HAND_CASH')
-            || document.getElementById(`pay-mode-btn-${paymentMode}`)
-            || document.getElementById('pay-mode-tab-cash')
+          const nextEl = document.getElementById('payment-dropdown-btn')
             || document.getElementById('order-notes')
             || document.getElementById('confirm-dimensions');
           if (nextEl) {
@@ -379,15 +578,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
   useEffect(() => {
     if (!bootstrapLoading) {
-      const focusCustomer = () => {
+      const focusInitial = () => {
         const custInput = document.getElementById('proxy-customer-search-input') as HTMLInputElement;
         if (custInput) {
           custInput.focus();
+          try { custInput.select(); } catch {}
+        } else {
+          const dateInput = document.getElementById('order-date-input') as HTMLInputElement;
+          if (dateInput) dateInput.focus();
         }
       };
-      focusCustomer();
-      const t1 = setTimeout(focusCustomer, 60);
-      const t2 = setTimeout(focusCustomer, 200);
+      focusInitial();
+      const t1 = setTimeout(focusInitial, 60);
+      const t2 = setTimeout(focusInitial, 200);
       return () => {
         clearTimeout(t1);
         clearTimeout(t2);
@@ -433,47 +636,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
   return (
     <RoleGuard allowedRoles={['ACDEMA', 'ADMIN', 'SUPER_ADMIN']}>
-      <div className="font-sans text-slate-800 bg-[#d4d4d8] -m-4 p-4 md:-m-6 md:p-6 lg:-m-8 lg:p-8 relative z-10 min-h-[calc(100vh-4rem)] rounded-none">
+      <div className="font-sans text-slate-800 p-3 md:p-4 pt-2 md:pt-3 relative z-10 min-h-[calc(100vh-4rem)] rounded-none">
         <div className="w-full">
           
-          {/* Header */}
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <h1 className="text-[28px] font-bold font-black tracking-tight text-slate-900">
-                {vm.mode === 'quotation' ? 'Quotation Builder' : 'Order Terminal'}
-              </h1>
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Hindustan Enterprises</p>
-            </div>
-
-            {/* Order / Quote Sequence # and Date compact badges */}
-            <div className="relative z-20 flex items-center gap-2.5 bg-white/70 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-white/80 shadow-[0_4px_20px_rgb(0,0,0,0.03)]">
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 leading-tight">
-                  {vm.mode === 'quotation' ? 'Quote #' : 'Order #'}
-                </span>
-                <input
-                  type="text"
-                  value={orderNumber}
-                  onChange={(e) => setOrderNumber(e.target.value.toUpperCase())}
-                  placeholder={vm.mode === 'quotation' ? 'QU-0001' : 'ORD-0001'}
-                  className="h-7 w-28 bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-slate-800 font-mono font-black text-xs px-2.5 rounded-lg border border-slate-200/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
-                  title={vm.mode === 'quotation' ? 'Sequential Quote ID' : 'Sequential Order ID'}
-                />
-              </div>
-              <div className="h-7 w-[1px] bg-slate-200/80 self-end mb-0.5" />
-              <div className="flex flex-col">
-                <span className="text-[9px] font-black uppercase tracking-wider text-slate-400 leading-tight">Date</span>
-                <input
-                  type="date"
-                  value={orderDate}
-                  onChange={(e) => setOrderDate(e.target.value)}
-                  className="h-7 bg-slate-100/90 hover:bg-slate-100 focus:bg-white text-slate-800 font-bold text-xs px-2 rounded-lg border border-slate-200/80 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
-                  title={vm.mode === 'quotation' ? 'Quotation Date' : 'Order Date'}
-                />
-              </div>
-            </div>
-          </div>
-
           <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-[#e2ecf8]">
             {/* Grid Pattern */}
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-overlay"></div>
@@ -487,17 +652,63 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
           <div className="flex flex-col gap-4 pb-2">
             
-            {/* Top Row: Image, Customer */}
-            <div className={`grid gap-4 grid-cols-1 ${vm.mode === 'quotation' ? 'lg:grid-cols-[1.5fr_2.5fr] xl:grid-cols-[1.5fr_3fr]' : 'lg:grid-cols-[1.5fr_3fr] xl:grid-cols-[1fr_3fr]'} items-stretch`}>
+            {/* Top Row: Image, Order # / Date, Customer */}
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-[180px_auto_1fr] xl:grid-cols-[200px_auto_1fr] items-stretch">
               {/* Image Card */}
-              <div className="relative z-10 rounded-[2rem] bg-white/50 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-center min-h-[130px]">
+              <div className="relative z-10 rounded-[2rem] bg-white/50 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-center min-h-[120px]">
                 <div className="w-full h-full rounded-[1.5rem] overflow-hidden relative bg-white">
                   <img src={currentImage || 'https://images.unsplash.com/photo-1626282874430-c11ae32d2898?auto=format&fit=crop&w=1200'} className="absolute inset-0 w-full h-full object-cover" alt="Product preview" />
                 </div>
               </div>
 
+              {/* Order # & Date Card */}
+              <div className="relative z-20 rounded-[2rem] bg-white/50 p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-center shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight">
+                      {vm.mode === 'quotation' ? 'Quote #' : 'Order #'}
+                    </span>
+                    <input
+                      id="order-number-input"
+                      type="text"
+                      value={orderNumber}
+                      readOnly
+                      tabIndex={-1}
+                      placeholder={vm.mode === 'quotation' ? 'QU-0001' : 'ORD-0001'}
+                      className="h-10 w-28 bg-slate-50 text-slate-800 font-mono font-black text-xs px-3 rounded-xl border-2 border-slate-200 outline-none select-all cursor-default"
+                      title={vm.mode === 'quotation' ? 'Quote # (Auto-generated)' : 'Order # (Auto-generated)'}
+                    />
+                  </div>
+
+                  <div className="h-9 w-[1px] bg-slate-200 self-end mb-0.5" />
+
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight">
+                      Date
+                    </span>
+                    <input
+                      id="order-date-input"
+                      type="date"
+                      value={orderDate}
+                      onChange={(e) => setOrderDate(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const custInput = document.getElementById('proxy-customer-search-input');
+                          if (custInput) custInput.focus();
+                        } else if (e.key === "Backspace") {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="h-10 bg-slate-50 hover:bg-slate-100 focus:bg-white text-slate-800 font-bold text-xs px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
+                      title={vm.mode === 'quotation' ? 'Quotation Date' : 'Order Date'}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Customer Card */}
-              <div className="relative z-50 rounded-[2rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+              <div className="relative z-50 rounded-[2rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 min-w-0">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Customer</h3>
                   <button onClick={() => setShowCreateCustomer(true)} className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-700">
@@ -541,14 +752,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               setHighlightCustomerIndex(0);
                               return;
                             }
-                            setHighlightCustomerIndex((prev) => Math.min(prev + 1, filteredCustomers.length - 1));
+                            setHighlightCustomerIndex((prev) => Math.min(prev + 1, sortedCustomers.length - 1));
                           } else if (e.key === "ArrowUp") {
                             e.preventDefault();
                             setHighlightCustomerIndex((prev) => Math.max(prev - 1, 0));
                           } else if (e.key === "Enter") {
-                            if (customerDropdownOpen && filteredCustomers.length > 0) {
+                            if (customerDropdownOpen && sortedCustomers.length > 0) {
                               e.preventDefault();
-                              const customer = filteredCustomers[highlightCustomerIndex] || filteredCustomers[0];
+                              const customer = sortedCustomers[highlightCustomerIndex] || sortedCustomers[0];
                               if (customer) {
                                 setSelectedCustomerId(customer.uid || customer.id);
                                 setCustomerDropdownOpen(false);
@@ -569,6 +780,35 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 focusItem();
                                 requestAnimationFrame(focusItem);
                               }
+                            } else if (selectedCustomer || selectedCustomerId) {
+                              e.preventDefault();
+                              setCustomerDropdownOpen(false);
+                              const firstRowId = rows[0]?.id;
+                              if (firstRowId) {
+                                setOpenRowId(firstRowId);
+                                setSearchQuery('');
+                              }
+                              const focusItem = () => {
+                                const firstProductInput = (firstRowId ? document.getElementById(`row-${firstRowId}-product-input`) : null)
+                                  || (document.querySelector('input[placeholder="Select item..."]') as HTMLElement);
+                                if (firstProductInput) {
+                                  firstProductInput.focus();
+                                }
+                              };
+                              focusItem();
+                              requestAnimationFrame(focusItem);
+                            }
+                          } else if (e.key === "Backspace") {
+                            if (!customerSearch && !selectedCustomer) {
+                              e.preventDefault();
+                              setCustomerDropdownOpen(false);
+                              const dateInput = document.getElementById('order-date-input');
+                              if (dateInput) dateInput.focus();
+                            } else if (customerSearch === '') {
+                              e.preventDefault();
+                              setCustomerDropdownOpen(false);
+                              const dateInput = document.getElementById('order-date-input');
+                              if (dateInput) dateInput.focus();
                             }
                           }
                         }}
@@ -582,68 +822,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       />
                       <ChevronDown size={16} className={`ml-2 transition-colors shrink-0 ${customerDropdownOpen ? 'text-blue-600' : 'text-slate-400'}`} />
                     </div>
-
-                    {customerDropdownOpen && (
-                      <div
-                        className="absolute left-0 top-full mt-2 w-full z-[9999] max-h-64 overflow-y-auto rounded-xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100"
-                      >
-                        {customerSearching && (
-                          <div className="px-4 py-2 text-xs font-semibold text-blue-600 bg-blue-50/70 flex items-center gap-2">
-                            <Loader2 size={13} className="animate-spin" /> Searching server contacts database...
-                          </div>
-                        )}
-                        {filteredCustomers.length === 0 && !customerSearching ? (
-                          <div className="p-4 text-xs italic text-slate-400">No matches found.</div>
-                        ) : (
-                          filteredCustomers.map((customer: any, idx: number) => {
-                            const isHighlighted = idx === highlightCustomerIndex;
-                            return (
-                              <div
-                                key={customer.uid || customer.id}
-                                ref={(el) => {
-                                  if (el && isHighlighted) el.scrollIntoView({ block: 'nearest' });
-                                }}
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setSelectedCustomerId(customer.uid || customer.id);
-                                  setCustomerDropdownOpen(false);
-                                  setCustomerSearch('');
-                                  setHighlightCustomerIndex(0);
-                                  const firstRowId = rows[0]?.id;
-                                  if (firstRowId) {
-                                    setOpenRowId(firstRowId);
-                                    setSearchQuery('');
-                                  }
-                                  const focusItem = () => {
-                                    const firstProductInput = (firstRowId ? document.getElementById(`row-${firstRowId}-product-input`) : null)
-                                      || (document.querySelector('input[placeholder="Select item..."]') as HTMLElement);
-                                    if (firstProductInput) {
-                                      firstProductInput.focus();
-                                    }
-                                  };
-                                  focusItem();
-                                  requestAnimationFrame(focusItem);
-                                }}
-                                className={`cursor-pointer border-b border-slate-100 p-3 transition-colors ${
-                                  isHighlighted
-                                    ? 'bg-blue-600 text-white font-bold shadow-sm'
-                                    : (customer.uid === selectedCustomerId || customer.id === selectedCustomerId)
-                                      ? 'bg-blue-50 text-blue-800 font-bold'
-                                      : 'hover:bg-slate-50'
-                                }`}
-                              >
-                                <div className={`text-sm font-bold ${isHighlighted ? 'text-white' : 'text-slate-800'}`}>
-                                  {customer.displayName || customer.name}
-                                </div>
-                                <div className={`text-xs ${isHighlighted ? 'text-blue-100' : 'text-slate-500'}`}>
-                                  {customer.phone || 'No phone'} • {customer.businessName || customer.billing_city || 'Mysore'}
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    )}
                   </div>
                   
                   {selectedCustomer && (
@@ -657,16 +835,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             </div>
 
             {/* Middle Row: Items Card (Full Width) */}
-            <div className="w-full mb-3">
+            <div className="w-full mb-2">
               {/* Items Card */}
-              <div className="relative z-10 w-full rounded-[2rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col">
-                <div className="mb-3 flex items-center justify-between">
+              <div className="relative z-10 w-full rounded-[1.75rem] bg-white/50 p-3.5 pb-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col">
+                <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</h3>
                   <button
                     type="button"
                     tabIndex={-1}
                     onClick={addRow}
-                    className="flex items-center gap-1 rounded-lg bg-slate-900 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                    className="flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-colors cursor-pointer"
                   >
                     <Plus size={12} /> Add Row
                   </button>
@@ -676,22 +854,22 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   <table className="w-full text-left">
                     <thead>
                       <tr className="border-b-2 border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                        <th className="py-2.5 px-2 w-8 text-center">#</th>
-                        <th className="py-2.5 px-2 min-w-[220px]">Name of Item</th>
-                        <th className="py-2.5 px-2 text-center">HSN Code</th>
-                        <th className="py-2.5 px-2 text-center">GST %</th>
-                        <th className="py-2.5 px-2 text-center">T</th>
-                        <th className="py-2.5 px-2 text-center">Width</th>
-                        <th className="py-2.5 px-2 text-center">Length</th>
-                        <th className="py-2.5 px-2 text-center">Sq. Ft.</th>
-                        <th className="py-2.5 px-2 text-center">Pcs/No</th>
-                        <th className="py-2.5 px-2 text-center">Quantity</th>
-                        <th className="py-2.5 px-2 text-center">Rate/SqFt</th>
-                        <th className="py-2.5 px-2 text-center">Rate per</th>
-                        <th className="py-2.5 px-2 text-center">Finish</th>
-                        <th className="py-2.5 px-2">File Path <span className="normal-case font-normal text-slate-400 tracking-normal italic">(optional)</span></th>
-                        <th className="py-2.5 px-2 text-right">Amount</th>
-                        <th className="py-2.5 px-2 text-center">×</th>
+                        <th className="py-1.5 px-1.5 w-8 text-center">#</th>
+                        <th className="py-1.5 px-2 min-w-[220px] text-left">Name of Item</th>
+                        <th className="py-1.5 px-1 w-[88px] text-center">HSN Code</th>
+                        <th className="py-1.5 px-1 w-[55px] text-center">GST %</th>
+                        <th className="py-1.5 px-1 w-[45px] text-center">T</th>
+                        <th className="py-1.5 px-1 w-[95px] text-center">Width</th>
+                        <th className="py-1.5 px-1 w-[95px] text-center">Length</th>
+                        <th className="py-1.5 px-1 w-[75px] text-center">Sq. Ft.</th>
+                        <th className="py-1.5 px-1 w-[70px] text-center">Pcs/No</th>
+                        <th className="py-1.5 px-1 w-[105px] text-center">Quantity</th>
+                        <th className="py-1.5 px-1 w-[90px] text-center">Rate/SqFt</th>
+                        <th className="py-1.5 px-1 w-[105px] text-center">Rate per</th>
+                        <th className="py-1.5 px-1 w-[90px] text-center">Finish</th>
+                        <th className="py-1.5 px-2 min-w-[210px] text-left">File Path <span className="normal-case font-normal text-slate-400 tracking-normal italic">(optional)</span></th>
+                        <th className="py-1.5 px-2 w-[95px] text-right">Amount</th>
+                        <th className="py-1.5 px-1 w-9 text-center">×</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -733,156 +911,162 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                         return (
                           <tr key={row.id} className="group transition-colors hover:bg-slate-50/50 align-top">
-                            <td className="py-2 px-2 text-center text-xs font-bold text-slate-400 tabular-nums align-top pt-3">{index + 1}</td>
-                            <td className="py-2 px-2 tabular-nums align-top">
+                            <td className="py-1 px-1.5 text-center tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center text-xs font-bold text-slate-400">
+                                {index + 1}
+                              </div>
+                            </td>
+                            <td className="py-1 px-2 tabular-nums align-top">
                               {(() => {
                                   const selProd = products.find((p: any) => p.id === row.productId);
                                   const isOpen = openRowId === row.id;
-                                  const qTerm = searchQuery.trim().toLowerCase();
-                                  const qTokens = qTerm.split(/\s+/).filter(Boolean);
-                                  const matched = (qTokens.length > 0)
-                                    ? products
-                                        .filter((p: any) => {
-                                          const target = `${p.name || ''} ${p.id || ''} ${p.code || ''} ${p.sku || ''} ${p.category || ''}`.toLowerCase();
-                                          return qTokens.every(tok => target.includes(tok));
-                                        })
-                                        .sort((a: any, b: any) => {
-                                          const aName = (a.name || '').toLowerCase();
-                                          const bName = (b.name || '').toLowerCase();
-                                          // 1. Exact match gets highest priority
-                                          if (aName === qTerm && bName !== qTerm) return -1;
-                                          if (bName === qTerm && aName !== qTerm) return 1;
-                                          // 2. Name starts with query
-                                          const aStarts = aName.startsWith(qTerm);
-                                          const bStarts = bName.startsWith(qTerm);
-                                          if (aStarts && !bStarts) return -1;
-                                          if (bStarts && !aStarts) return 1;
-                                          // 3. Name contains query vs only category contains
-                                          const aInName = aName.includes(qTerm);
-                                          const bInName = bName.includes(qTerm);
-                                          if (aInName && !bInName) return -1;
-                                          if (bInName && !aInName) return 1;
-                                          // 4. All tokens match in name
-                                          const aTokensInName = qTokens.every(tok => aName.includes(tok));
-                                          const bTokensInName = qTokens.every(tok => bName.includes(tok));
-                                          if (aTokensInName && !bTokensInName) return -1;
-                                          if (bTokensInName && !aTokensInName) return 1;
-                                          return 0;
-                                        })
-                                    : products;
-
-                                  const grouped = matched.reduce((acc: any, p: any) => {
-                                    const cat = p.category || 'General Items';
-                                    if (!acc[cat]) acc[cat] = [];
-                                    acc[cat].push(p);
-                                    return acc;
-                                  }, {} as Record<string, any[]>);
-                                  const displayedItems: any[] = matched;
-
-                                  let runningIdx = 0;
+                                  const displayedItems = matchedProducts;
 
                                   return (
                                     <div className="space-y-1 min-w-[220px]">
                                       <div id={`error-row-${row.id}-product`} className="relative w-full">
                                       <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                        <input
-                                          id={`row-${row.id}-product-input`}
-                                          value={isOpen ? searchQuery : (selProd?.name ?? '')}
-                                          placeholder="Select item..."
-                                          data-dropdown-open={isOpen ? "true" : "false"}
-                                          onChange={(e) => {
-                                            setOpenRowId(row.id);
-                                            setSearchQuery(e.target.value);
-                                            setHighlightProductIndex(0);
-                                          }}
-                                          onFocus={() => {
-                                            setOpenRowId(row.id);
-                                            const currentName = selProd?.name || '';
-                                            setSearchQuery(currentName);
-                                            
-                                            // Find index in displayed grouped list
-                                            const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                            setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
-                                          }}
-                                          onKeyDown={(e) => {
-                                            if (e.key === "ArrowDown") {
-                                              e.preventDefault();
-                                              if (!isOpen) {
-                                                setOpenRowId(row.id);
-                                                const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                                setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
-                                                return;
-                                              }
-                                              setHighlightProductIndex((prev) => (prev === -1 ? 0 : Math.min(prev + 1, displayedItems.length - 1)));
-                                            } else if (e.key === "ArrowUp") {
-                                              e.preventDefault();
-                                              setHighlightProductIndex((prev) => {
-                                                if (prev <= 0 && !searchQuery.trim()) return -1;
-                                                return Math.max(prev - 1, 0);
-                                              });
-                                            } else if (e.key === " " && !searchQuery.trim() && isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
-                                              // Spacebar selection like Tally
-                                              e.preventDefault();
-                                              const p = displayedItems[highlightProductIndex];
-                                              if (p) {
-                                                const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
-                                                updateRow(row.id, { productId: p.id, billingMode: prodMode });
-                                                setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
-                                                setOpenRowId(null);
-                                                setSearchQuery('');
-                                                setHighlightProductIndex(0);
-                                                setTimeout(() => {
-                                                  const descInput = document.getElementById(`row-${row.id}-description`);
-                                                  const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                  const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                  if (descInput) descInput.focus();
-                                                  else if (widthInput && prodMode !== 'A') widthInput.focus();
-                                                  else if (qtyInput) qtyInput.focus();
-                                                }, 60);
-                                              }
-                                            } else if (e.key === "Enter") {
-                                              e.preventDefault();
-                                              // End of List if explicitly highlighting "End of List" (-1) OR on empty new row without search
-                                              if (highlightProductIndex === -1 || (!searchQuery.trim() && !row.productId && highlightProductIndex <= 0)) {
-                                                handleEndOfList(row.id);
-                                                return;
-                                              }
-                                              if (isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
-                                                const p = displayedItems[highlightProductIndex];
-                                                if (p) {
-                                                  const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
-                                                  updateRow(row.id, { productId: p.id, billingMode: prodMode });
-                                                  setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
-                                                  setOpenRowId(null);
-                                                  setSearchQuery('');
-                                                  setHighlightProductIndex(0);
-                                                  setTimeout(() => {
-                                                    const descInput = document.getElementById(`row-${row.id}-description`);
-                                                    const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                                    const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                    if (descInput) descInput.focus();
-                                                    else if (widthInput && prodMode !== 'A') widthInput.focus();
-                                                    else if (qtyInput) qtyInput.focus();
-                                                  }, 60);
-                                                  return;
-                                                }
-                                              } else if (!searchQuery.trim() && !row.productId) {
-                                                handleEndOfList(row.id);
-                                                return;
-                                              } else if (row.productId) {
-                                                setOpenRowId(null);
-                                                setTimeout(() => {
-                                                  const descInput = document.getElementById(`row-${row.id}-description`);
-                                                  if (descInput) descInput.focus();
-                                                }, 60);
-                                              }
-                                            } else if (e.key === "Escape") {
-                                              setOpenRowId(null);
-                                            }
-                                          }}
-                                          onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 200)}
-                                          className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
-                                        />
+                                         <input
+                                           id={`row-${row.id}-product-input`}
+                                           value={isOpen ? searchQuery : (selProd?.name ?? '')}
+                                           placeholder="Select item..."
+                                           data-dropdown-open={isOpen ? "true" : "false"}
+                                           onChange={(e) => {
+                                             setOpenRowId(row.id);
+                                             setSearchQuery(e.target.value);
+                                             setHighlightProductIndex(0);
+                                           }}
+                                           onFocus={(e) => {
+                                             setOpenRowId(row.id);
+                                             const currentName = selProd?.name || '';
+                                             setSearchQuery(currentName);
+                                             
+                                             // Find index in displayed grouped list
+                                             const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
+                                             setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
+
+                                             const inputEl = e.currentTarget;
+                                             setTimeout(() => {
+                                               try {
+                                                 inputEl.select();
+                                               } catch {}
+                                             }, 10);
+                                           }}
+                                           onMouseUp={(e) => {
+                                             if (document.activeElement === e.currentTarget && e.currentTarget.selectionStart === e.currentTarget.selectionEnd) {
+                                               try {
+                                                 e.currentTarget.select();
+                                               } catch {}
+                                             }
+                                           }}
+                                           onKeyDown={(e) => {
+                                             if (e.key === "ArrowDown") {
+                                               e.preventDefault();
+                                               if (!isOpen) {
+                                                 setOpenRowId(row.id);
+                                                 const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
+                                                 setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                                 return;
+                                               }
+                                               setHighlightProductIndex((prev) => (prev === -1 ? 0 : Math.min(prev + 1, displayedItems.length - 1)));
+                                             } else if (e.key === "ArrowUp") {
+                                               e.preventDefault();
+                                               setHighlightProductIndex((prev) => {
+                                                 if (prev <= 0 && !searchQuery.trim()) return -1;
+                                                 return Math.max(prev - 1, 0);
+                                               });
+                                             } else if (e.key === " " && !searchQuery.trim() && isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
+                                               // Spacebar selection like Tally
+                                               e.preventDefault();
+                                               const p = displayedItems[highlightProductIndex];
+                                               if (p) {
+                                                 const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
+                                                 updateRow(row.id, { productId: p.id, billingMode: prodMode });
+                                                 setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                 setOpenRowId(null);
+                                                 setSearchQuery('');
+                                                 setHighlightProductIndex(0);
+                                                 setTimeout(() => {
+                                                   setActiveDescRowId(row.id);
+                                                 }, 60);
+                                               }
+                                             } else if (e.key === "Enter") {
+                                               e.preventDefault();
+                                               // 1. End of List if explicitly highlighting "End of List" (-1) OR on empty new row without search
+                                               if (highlightProductIndex === -1 || (!searchQuery.trim() && !row.productId && highlightProductIndex <= 0)) {
+                                                 handleEndOfList(row.id);
+                                                 return;
+                                               }
+                                               // 2. If dropdown is open and an item is selected/highlighted
+                                               if (isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
+                                                 const p = displayedItems[highlightProductIndex];
+                                                 if (p) {
+                                                   const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
+                                                   updateRow(row.id, { productId: p.id, billingMode: prodMode });
+                                                   setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                   setOpenRowId(null);
+                                                   setSearchQuery('');
+                                                   setHighlightProductIndex(0);
+                                                   setTimeout(() => {
+                                                     setActiveDescRowId(row.id);
+                                                   }, 60);
+                                                   return;
+                                                 }
+                                               }
+                                               // 3. If item is already selected on this row, keep it and advance to description modal
+                                               if (row.productId) {
+                                                 setOpenRowId(null);
+                                                 setTimeout(() => {
+                                                   setActiveDescRowId(row.id);
+                                                 }, 60);
+                                                 return;
+                                               }
+                                               // 4. If search matches any product, select first product and advance
+                                               if (displayedItems.length > 0) {
+                                                 const p = displayedItems[0];
+                                                 const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
+                                                 updateRow(row.id, { productId: p.id, billingMode: prodMode });
+                                                 setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                 setOpenRowId(null);
+                                                 setSearchQuery('');
+                                                 setHighlightProductIndex(0);
+                                                 setTimeout(() => {
+                                                   setActiveDescRowId(row.id);
+                                                 }, 60);
+                                                 return;
+                                               }
+                                               // 5. Fallback
+                                               handleEndOfList(row.id);
+                                             } else if (e.key === "Backspace") {
+                                               const isFullSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === e.currentTarget.value.length;
+                                               if (!searchQuery.trim() || !row.productId || isFullSelected) {
+                                                 if (!searchQuery.trim() || isFullSelected) {
+                                                   e.preventDefault();
+                                                   setOpenRowId(null);
+                                                   if (index === 0) {
+                                                     const custInput = document.getElementById('proxy-customer-search-input') || document.getElementById('order-number-input');
+                                                     if (custInput) {
+                                                       custInput.focus();
+                                                       try { (custInput as HTMLInputElement).select(); } catch {}
+                                                     }
+                                                   } else {
+                                                     const prevRow = rows[index - 1];
+                                                     if (prevRow) {
+                                                       const prevTarget = document.getElementById(`row-${prevRow.id}-delete-btn`)
+                                                         || document.getElementById(`row-${prevRow.id}-browse-btn`)
+                                                         || document.getElementById(`error-row-${prevRow.id}-file`);
+                                                       if (prevTarget) prevTarget.focus();
+                                                     }
+                                                   }
+                                                 }
+                                               }
+                                             } else if (e.key === "Escape") {
+                                               setOpenRowId(null);
+                                             }
+                                           }}
+                                           onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 200)}
+                                           className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
+                                         />
                                          <ChevronDown
                                            size={14}
                                            className={`cursor-pointer transition-colors ${isOpen ? 'text-blue-600' : 'text-slate-400'}`}
@@ -899,111 +1083,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                            }}
                                          />
                                        </div>
-                                      {isOpen && (
-                                        <div className="absolute left-0 top-full mt-1.5 w-[440px] z-[9999] max-h-80 overflow-y-auto rounded-2xl border-2 border-blue-600 bg-white shadow-2xl divide-y divide-slate-100">
-                                          {!searchQuery.trim() && (
-                                            <div
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                handleEndOfList(row.id);
-                                              }}
-                                              className={`cursor-pointer px-3.5 py-2.5 transition-all flex items-center justify-between gap-3 border-b-2 border-slate-200/80 ${
-                                                highlightProductIndex === -1
-                                                  ? 'bg-amber-500 text-white font-black shadow-inner'
-                                                  : 'bg-amber-50 hover:bg-amber-100/80 text-amber-900 font-bold'
-                                              }`}
-                                            >
-                                              <div className="flex items-center gap-2">
-                                                <span className="text-xs font-black">❖</span>
-                                                <span className="text-xs uppercase tracking-wider font-black">End of List</span>
-                                              </div>
-                                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
-                                                highlightProductIndex === -1 ? 'bg-amber-700 text-white' : 'bg-amber-200/60 text-amber-800'
-                                              }`}>
-                                                Press Enter ↵ to finish items
-                                              </span>
-                                            </div>
-                                          )}
-                                          {(() => {
-                                            if (displayedItems.length === 0) return <div className="p-4 text-xs text-slate-400 italic">No products found.</div>;
-
-                                            return Object.entries(grouped).map(([cat, prods]: [string, any]) => (
-                                              <div key={cat} className="last:border-b-0">
-                                                <div className="bg-slate-100/95 px-3.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-200/80 flex items-center justify-between">
-                                                  <span>{cat.replace(/_/g, ' ')}</span>
-                                                  <span className="text-[9px] font-bold text-slate-400">{prods.length} items</span>
-                                                </div>
-                                                <div className="divide-y divide-slate-50">
-                                                  {prods.map((p: any) => {
-                                                    const currentIndex = runningIdx++;
-                                                    const isHighlighted = currentIndex === highlightProductIndex;
-                                                    const isSelected = p.id === row.productId;
-
-                                                    return (
-                                                      <div
-                                                        key={p.id}
-                                                        ref={(el) => {
-                                                          if (el && isHighlighted) {
-                                                            el.scrollIntoView({ block: 'nearest' });
-                                                          }
-                                                        }}
-                                                        onMouseDown={(e) => {
-                                                          e.preventDefault();
-                                                          const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
-                                                          updateRow(row.id, { productId: p.id, billingMode: prodMode });
-                                                          setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
-                                                          setOpenRowId(null);
-                                                          setSearchQuery('');
-                                                          setHighlightProductIndex(0);
-                                                          setTimeout(() => {
-                                                            setActiveDescRowId(row.id);
-                                                          }, 60);
-                                                        }}
-                                                        className={`cursor-pointer px-3.5 py-2.5 transition-all flex items-center justify-between gap-3 ${
-                                                          isHighlighted
-                                                            ? 'bg-blue-600 text-white font-extrabold shadow-sm'
-                                                            : isSelected
-                                                              ? 'bg-blue-50/90 text-blue-900 font-bold'
-                                                              : 'hover:bg-slate-50 text-slate-700 font-medium'
-                                                        }`}
-                                                      >
-                                                        <div className="min-w-0 flex-1">
-                                                          <div className="text-xs font-bold truncate leading-tight">{p.name}</div>
-                                                          <div className={`text-[10px] mt-0.5 font-medium flex items-center gap-1.5 flex-wrap ${isHighlighted ? 'text-blue-100' : 'text-slate-400'}`}>
-                                                            <span>
-                                                              ₹{p.baseRate?.toFixed(2)} / {((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'sqft').toLowerCase() === 'sqft' ? 'sq.ft' : ((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'N')}
-                                                            </span>
-                                                            <span>•</span>
-                                                            <span>GST {p.gst_rate || 18}%</span>
-                                                            {p.current_stock !== undefined && (
-                                                              <>
-                                                                <span>•</span>
-                                                                <span className={p.current_stock < 0 ? (isHighlighted ? 'text-amber-200 font-bold' : 'text-red-500 font-bold') : ''}>
-                                                                  {p.current_stock.toLocaleString()} {(p as any)?.unit_of_measure || (p as any)?.tally_uom || 'N'} in stock
-                                                                </span>
-                                                              </>
-                                                            )}
-                                                          </div>
-                                                        </div>
-                                                        <div className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider flex-shrink-0 ${
-                                                          isHighlighted
-                                                            ? 'bg-blue-700 text-white'
-                                                            : isSelected
-                                                              ? 'bg-blue-200/80 text-blue-800'
-                                                              : 'bg-slate-100 text-slate-500'
-                                                        }`}>
-                                                          {p.code || p.id}
-                                                        </div>
-                                                      </div>
-                                                    );
-                                                  })}
-                                                </div>
-                                              </div>
-                                            ));
-                                          })()}
-                                        </div>
-                                      )}
-                                    </div>
+                                      </div>
                                      <div className="flex items-center gap-1.5 pt-0.5">
                                        <span className="text-[10px] font-bold text-slate-400 select-none pl-1" title="Tally Additional Description">↳</span>
                                        <input
@@ -1017,10 +1097,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                            if (e.key === "Enter" || e.key === " ") {
                                              e.preventDefault();
                                              setActiveDescRowId(row.id);
-                                           } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                           } else if ((e.key === "ArrowLeft" || e.key === "Backspace") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                              e.preventDefault();
                                              const prodInput = document.getElementById(`row-${row.id}-product-input`);
-                                             if (prodInput) prodInput.focus();
+                                             if (prodInput) {
+                                               prodInput.focus();
+                                               try { (prodInput as HTMLInputElement).select(); } catch {}
+                                             }
                                            }
                                          }}
                                          className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer truncate"
@@ -1031,283 +1114,283 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   );
                                 })()}
                             </td>
-                            <td className="py-2 px-2 text-center text-xs font-bold text-slate-500 tabular-nums align-top pt-3">
-                              {product?.hsn || product?.hsn_code || row.hsnCode || '—'}
+                            <td className="py-1 px-1 text-center tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center text-xs font-bold text-slate-500">
+                                {product?.hsn || product?.hsn_code || row.hsnCode || '—'}
+                              </div>
                             </td>
-                            <td className="py-2 px-2 text-center text-xs font-bold text-slate-600 tabular-nums align-top pt-3">{gstRate}</td>
-                            <td className="py-2 px-2 text-center tabular-nums align-top">
-                              <span
-                                id={`row-${row.id}-mode-btn`}
-                                tabIndex={-1}
-                                title={`Mode ${currentMode} — Locked to Tally master (cannot be changed)`}
-                                className={`h-10 min-w-[40px] px-2.5 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-not-allowed outline-none ${
-                                  currentMode === 'A'
-                                    ? 'border-blue-600 bg-blue-600 text-white'
-                                    : 'border-emerald-600 bg-emerald-600 text-white'
-                                }`}
-                              >
-                                <span className="text-sm font-extrabold">{currentMode}</span>
-                              </span>
+                            <td className="py-1 px-1 text-center tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center text-xs font-bold text-slate-600">
+                                {gstRate}%
+                              </div>
+                            </td>
+                            <td className="py-1 px-1 text-center tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center">
+                                <span
+                                  id={`row-${row.id}-mode-btn`}
+                                  tabIndex={-1}
+                                  title={`Mode ${currentMode} — Locked to Tally master (cannot be changed)`}
+                                  className={`h-10 min-w-[36px] px-2.5 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center gap-1 shadow-sm select-none cursor-not-allowed outline-none ${
+                                    currentMode === 'A'
+                                      ? 'border-blue-600 bg-blue-600 text-white'
+                                      : 'border-emerald-600 bg-emerald-600 text-white'
+                                  }`}
+                                >
+                                  <span className="text-sm font-extrabold">{currentMode}</span>
+                                </span>
+                              </div>
                             </td>
                             {/* Width Column */}
-                            <td className="py-2 px-2 tabular-nums align-top">
-                              {!hasMultipleSizes ? (
-                                <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
-                              ) : (
-                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                  <input
-                                    id={`error-row-${row.id}-width`}
-                                    value={row.width !== undefined ? row.width : (product?.default_width || '1')}
-                                    onChange={(e) => {
-                                      updateRow(row.id, { width: e.target.value });
-                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
-                                        if (widthUnitBtn) widthUnitBtn.focus();
-                                        else {
-                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
-                                        }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        const descInput = document.getElementById(`row-${row.id}-description`);
-                                        if (descInput) descInput.focus();
-                                      }
-                                    }}
-                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
-                                    placeholder="W"
-                                  />
-                                  <div className="relative flex-shrink-0">
-                                    <button
-                                      id={`row-${row.id}-width-unit`}
-                                      type="button"
-                                      onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
+                            <td className="py-1 px-1 tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center">
+                                {!hasMultipleSizes ? (
+                                  <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
+                                ) : (
+                                  <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                    <input
+                                      id={`error-row-${row.id}-width`}
+                                      value={row.width !== undefined ? row.width : (product?.default_width || '1')}
+                                      onChange={(e) => {
+                                        updateRow(row.id, { width: e.target.value });
+                                        setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
+                                      }}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter") {
                                           e.preventDefault();
-                                          setOpenUnitPickerId(null);
-                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
-                                        } else if (e.key === " " || e.key === "Spacebar") {
+                                          const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                          if (widthUnitBtn) widthUnitBtn.focus();
+                                          else {
+                                            const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                            if (heightInput) heightInput.focus();
+                                          }
+                                        } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                           e.preventDefault();
-                                          const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
-                                          updateRow(row.id, { widthUnit: nextUnit });
-                                        } else if (e.key === "ArrowLeft") {
+                                          const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
+                                          if (descInput) descInput.focus();
+                                        } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                           e.preventDefault();
-                                          setOpenUnitPickerId(null);
-                                          const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                          if (widthInput) widthInput.focus();
-                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                                          e.preventDefault();
-                                          const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
-                                          updateRow(row.id, { widthUnit: nextUnit });
+                                          const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
+                                          if (descInput) descInput.focus();
                                         }
                                       }}
-                                      onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
-                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                    >
-                                      {row.widthUnit === 'FT' ? 'ft' : 'in'}
-                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
-                                    </button>
-                                    {openUnitPickerId === `${row.id}-w` && (
-                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                        {['FT', 'IN'].map(u => (
-                                          <button
-                                            key={u}
-                                            type="button"
-                                            tabIndex={-1}
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              updateRow(row.id, { widthUnit: u });
-                                              setOpenUnitPickerId(null);
-                                              setTimeout(() => {
-                                                const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                                if (heightInput) heightInput.focus();
-                                              }, 50);
-                                            }}
-                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                                              row.widthUnit === u
-                                                ? 'bg-blue-600 text-white'
-                                                : 'text-slate-600 hover:bg-slate-50'
-                                            }`}
-                                          >
-                                            {u.toLowerCase()}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
+                                      className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                      placeholder="W"
+                                    />
+                                    <div className="relative flex-shrink-0">
+                                      <button
+                                        id={`row-${row.id}-width-unit`}
+                                        type="button"
+                                        onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            setOpenUnitPickerId(null);
+                                            const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                            if (heightInput) heightInput.focus();
+                                          } else if (e.key === " " || e.key === "Spacebar") {
+                                            e.preventDefault();
+                                            const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
+                                            updateRow(row.id, { widthUnit: nextUnit });
+                                          } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                            e.preventDefault();
+                                            setOpenUnitPickerId(null);
+                                            const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                            if (widthInput) widthInput.focus();
+                                          } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                            e.preventDefault();
+                                            const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
+                                            updateRow(row.id, { widthUnit: nextUnit });
+                                          }
+                                        }}
+                                        onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                        className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                      >
+                                        {row.widthUnit === 'FT' ? 'ft' : 'in'}
+                                        <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                      </button>
+                                      {openUnitPickerId === `${row.id}-w` && (
+                                        <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
+                                          {['FT', 'IN'].map(u => (
+                                            <button
+                                              key={u}
+                                              type="button"
+                                              tabIndex={-1}
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                updateRow(row.id, { widthUnit: u });
+                                                setOpenUnitPickerId(null);
+                                                setTimeout(() => {
+                                                  const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                                  if (heightInput) heightInput.focus();
+                                                }, 50);
+                                              }}
+                                              className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                                row.widthUnit === u
+                                                  ? 'bg-blue-600 text-white'
+                                                  : 'text-slate-600 hover:bg-slate-50'
+                                              }`}
+                                            >
+                                              {u.toLowerCase()}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </td>
                             {/* Length Column */}
-                            <td className="py-2 px-2 tabular-nums align-top">
-                              {!hasMultipleSizes ? (
-                                <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
-                              ) : (
-                                <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
-                                  <input
-                                    id={`error-row-${row.id}-height`}
-                                    value={row.height !== undefined ? row.height : (product?.default_length || '1')}
-                                    onChange={(e) => {
-                                      updateRow(row.id, { height: e.target.value });
-                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
-                                        if (heightUnitBtn) heightUnitBtn.focus();
-                                        else if (isModeB) {
-                                          const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          if (pcsInput) pcsInput.focus();
-                                        } else {
-                                          const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                          if (qtyInput) qtyInput.focus();
-                                        }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
-                                        if (widthUnitBtn) widthUnitBtn.focus();
-                                        else {
-                                          const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                          if (widthInput) widthInput.focus();
-                                        }
-                                      }
-                                    }}
-                                    className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`}
-                                    placeholder="L"
-                                  />
-                                  <div className="relative flex-shrink-0">
-                                    <button
-                                      id={`row-${row.id}-height-unit`}
-                                      type="button"
-                                      onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
+                            <td className="py-1 px-1 tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center">
+                                {!hasMultipleSizes ? (
+                                  <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
+                                ) : (
+                                  <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                    <input
+                                      id={`error-row-${row.id}-height`}
+                                      value={row.height !== undefined ? row.height : (product?.default_length || '1')}
+                                      onChange={(e) => {
+                                        updateRow(row.id, { height: e.target.value });
+                                        setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
+                                      }}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter") {
                                           e.preventDefault();
-                                          setOpenUnitPickerId(null);
-                                          if (isModeB) {
+                                          const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                          if (heightUnitBtn) heightUnitBtn.focus();
+                                          else if (isModeB) {
                                             const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
                                             if (pcsInput) pcsInput.focus();
                                           } else {
                                             const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                             if (qtyInput) qtyInput.focus();
                                           }
-                                        } else if (e.key === " " || e.key === "Spacebar") {
+                                        } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                           e.preventDefault();
-                                          const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
-                                          updateRow(row.id, { heightUnit: nextUnit });
-                                        } else if (e.key === "ArrowLeft") {
+                                          const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                          if (widthUnitBtn) widthUnitBtn.focus();
+                                          else {
+                                            const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                            if (widthInput) widthInput.focus();
+                                          }
+                                        } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                           e.preventDefault();
-                                          setOpenUnitPickerId(null);
-                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
-                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                                          e.preventDefault();
-                                          const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
-                                          updateRow(row.id, { heightUnit: nextUnit });
+                                          const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                          if (widthUnitBtn) widthUnitBtn.focus();
+                                          else {
+                                            const widthInput = document.getElementById(`error-row-${row.id}-width`);
+                                            if (widthInput) widthInput.focus();
+                                          }
                                         }
                                       }}
-                                      onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
-                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                    >
-                                      {row.heightUnit === 'FT' ? 'ft' : 'in'}
-                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
-                                    </button>
-                                    {openUnitPickerId === `${row.id}-h` && (
-                                      <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                        {['FT', 'IN'].map(u => (
-                                          <button
-                                            key={u}
-                                            type="button"
-                                            tabIndex={-1}
-                                            onMouseDown={(e) => {
-                                              e.preventDefault();
-                                              updateRow(row.id, { heightUnit: u });
-                                              setOpenUnitPickerId(null);
-                                              setTimeout(() => {
-                                                if (isModeB) {
-                                                  const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                                  if (pcsInput) pcsInput.focus();
-                                                } else {
-                                                  const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                  if (qtyInput) qtyInput.focus();
-                                                }
-                                              }, 50);
-                                            }}
-                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
-                                              row.heightUnit === u
-                                                ? 'bg-blue-600 text-white'
-                                                : 'text-slate-600 hover:bg-slate-50'
-                                            }`}
-                                          >
-                                            {u.toLowerCase()}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
+                                      className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 transition-all ${validationErrors[`row-${row.id}-height`] ? 'text-red-600 placeholder-red-300' : ''}`}
+                                      placeholder="L"
+                                    />
+                                    <div className="relative flex-shrink-0">
+                                      <button
+                                        id={`row-${row.id}-height-unit`}
+                                        type="button"
+                                        onClick={() => setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)}
+                                        onKeyDown={(e) => {
+                                          if (e.key === "Enter") {
+                                            e.preventDefault();
+                                            setOpenUnitPickerId(null);
+                                            if (isModeB) {
+                                              const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                              if (pcsInput) pcsInput.focus();
+                                            } else {
+                                              const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                              if (qtyInput) qtyInput.focus();
+                                            }
+                                          } else if (e.key === " " || e.key === "Spacebar") {
+                                            e.preventDefault();
+                                            const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
+                                            updateRow(row.id, { heightUnit: nextUnit });
+                                          } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                            e.preventDefault();
+                                            setOpenUnitPickerId(null);
+                                            const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                            if (heightInput) heightInput.focus();
+                                          } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                            e.preventDefault();
+                                            const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
+                                            updateRow(row.id, { heightUnit: nextUnit });
+                                          }
+                                        }}
+                                        onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                        className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                      >
+                                        {row.heightUnit === 'FT' ? 'ft' : 'in'}
+                                        <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
+                                      </button>
+                                      {openUnitPickerId === `${row.id}-h` && (
+                                        <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
+                                          {['FT', 'IN'].map(u => (
+                                            <button
+                                              key={u}
+                                              type="button"
+                                              tabIndex={-1}
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                updateRow(row.id, { heightUnit: u });
+                                                setOpenUnitPickerId(null);
+                                                setTimeout(() => {
+                                                  if (isModeB) {
+                                                    const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                                    if (pcsInput) pcsInput.focus();
+                                                  } else {
+                                                    const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                                    if (qtyInput) qtyInput.focus();
+                                                  }
+                                                }, 50);
+                                              }}
+                                              className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
+                                                row.heightUnit === u
+                                                  ? 'bg-blue-600 text-white'
+                                                  : 'text-slate-600 hover:bg-slate-50'
+                                              }`}
+                                            >
+                                              {u.toLowerCase()}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </td>
-                            <td className="py-2 px-2 text-center text-xs font-bold text-slate-600 tabular-nums align-top pt-3">
-                              {sqft > 0 ? sqft.toFixed(2) : '—'}
+                            {/* Sq. Ft. Column */}
+                            <td className="py-1 px-1 text-center tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center text-xs font-bold text-slate-700">
+                                {sqft > 0 ? sqft.toFixed(2) : '—'}
+                              </div>
                             </td>
                             {/* Pcs/No Column */}
-                            <td className="py-2 px-2 tabular-nums text-center align-top">
-                              {hasMultipleSizes && isModeB ? (
-                                <input
-                                  id={`error-row-${row.id}-pcs`}
-                                  value={row.pcsNo ?? '1'}
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    updateRow(row.id, { pcsNo: val });
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
-                                      if (rateInput) rateInput.focus();
-                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                      e.preventDefault();
-                                      const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
-                                      if (heightUnitBtn) heightUnitBtn.focus();
-                                      else {
-                                        const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                        if (heightInput) heightInput.focus();
-                                      }
-                                    }
-                                  }}
-                                  className="h-10 w-16 rounded-lg border-2 text-center text-xs font-bold border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
-                                  placeholder="Pcs"
-                                />
-                              ) : (
-                                <div className="h-10 flex items-center justify-center text-slate-300 font-bold">—</div>
-                              )}
-                            </td>
-                            {/* Quantity Column */}
-                            <td className="py-2 px-2 text-center text-xs font-bold tabular-nums align-top">
-                              {hasMultipleSizes && isModeB ? (
-                                <div className="h-10 flex items-center justify-center text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</div>
-                              ) : (
-                                <div className="inline-flex items-center justify-center">
+                            <td className="py-1 px-1 tabular-nums text-center align-top">
+                              <div className="h-10 flex items-center justify-center">
+                                {hasMultipleSizes && isModeB ? (
                                   <input
-                                    id={`error-row-${row.id}-quantity`}
-                                    value={row.quantity !== undefined ? row.quantity : '1'}
+                                    id={`error-row-${row.id}-pcs`}
+                                    value={row.pcsNo ?? '1'}
                                     onChange={(e) => {
                                       const val = e.target.value;
-                                      updateRow(row.id, { quantity: val });
-                                      setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
+                                      updateRow(row.id, { pcsNo: val });
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
+                                        const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
                                         if (rateInput) rateInput.focus();
+                                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                        if (heightUnitBtn) heightUnitBtn.focus();
+                                        else {
+                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                          if (heightInput) heightInput.focus();
+                                        }
                                       } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
@@ -1318,69 +1401,86 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       }
                                     }}
-                                    className={`h-10 w-16 rounded-lg border-2 text-center text-xs font-bold transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'}`}
-                                    placeholder="Qty"
+                                    className="h-10 w-14 rounded-lg border-2 text-center text-xs font-bold border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                    placeholder="Pcs"
                                   />
-                                  <span className="ml-1 text-[11px] font-black text-slate-500">{displayUnit}</span>
-                                </div>
-                              )}
+                                ) : (
+                                  <div className="h-10 flex items-center justify-center text-slate-300 font-bold">—</div>
+                                )}
+                              </div>
+                            </td>
+                            {/* Quantity Column */}
+                            <td className="py-1 px-1 text-center tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center text-xs font-bold">
+                                {hasMultipleSizes && isModeB ? (
+                                  <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
+                                ) : (
+                                  <div className="inline-flex items-center justify-center gap-1">
+                                    <input
+                                      id={`error-row-${row.id}-quantity`}
+                                      value={row.quantity !== undefined ? row.quantity : '1'}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        updateRow(row.id, { quantity: val });
+                                        setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
+                                          if (rateInput) rateInput.focus();
+                                          else {
+                                            const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                            if (rateUnit) rateUnit.focus();
+                                            else {
+                                              const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                              if (finishSelect) finishSelect.focus();
+                                              else {
+                                                const fileInput = document.getElementById(`error-row-${row.id}-file`);
+                                                if (fileInput) fileInput.focus();
+                                              }
+                                            }
+                                          }
+                                        } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                          e.preventDefault();
+                                          const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                          if (heightUnitBtn) heightUnitBtn.focus();
+                                          else {
+                                            const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                            if (heightInput) heightInput.focus();
+                                            else {
+                                              const descInput = document.getElementById(`row-${row.id}-description`);
+                                              if (descInput) descInput.focus();
+                                            }
+                                          }
+                                        } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                          e.preventDefault();
+                                          const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                          if (heightUnitBtn) heightUnitBtn.focus();
+                                          else {
+                                            const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                            if (heightInput) heightInput.focus();
+                                            else {
+                                              const descInput = document.getElementById(`row-${row.id}-description`);
+                                              if (descInput) descInput.focus();
+                                            }
+                                          }
+                                        }
+                                      }}
+                                      className={`h-10 w-14 rounded-lg border-2 text-center text-xs font-bold transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'}`}
+                                      placeholder="Qty"
+                                    />
+                                    <span className="text-[11px] font-black text-slate-500">{displayUnit}</span>
+                                  </div>
+                                )}
+                              </div>
                             </td>
                             {/* Rate/SqFt Column — EDITABLE only in Mode A with Multiple Sizes */}
-                            <td className="py-2 px-2 text-center tabular-nums align-top">
-                              {hasMultipleSizes && isModeA ? (
-                                <input
-                                  id={`row-${row.id}-rate-sqft`}
-                                  value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
-                                  onChange={(e) => {
-                                    updateRow(row.id, { manualRate: e.target.value });
-                                  }}
-                                  onFocus={(e) => {
-                                    if (!row.manualRate && baseRate > 0) {
-                                      updateRow(row.id, { manualRate: baseRate.toFixed(2) });
-                                    }
-                                    e.target.select();
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
-                                      if (finishSelect) finishSelect.focus();
-                                      else {
-                                        const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                        if (fileInput) fileInput.focus();
-                                        else {
-                                          const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
-                                          if (browseBtn) browseBtn.focus();
-                                          else handleRowFinalEnter(index);
-                                        }
-                                      }
-                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                      e.preventDefault();
-                                      const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                      if (qtyInput) qtyInput.focus();
-                                    }
-                                  }}
-                                  placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
-                                  className="h-10 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
-                                  title="Rate per sq.ft in Mode A — editable (like Tally)"
-                                />
-                              ) : (
-                                <div className="h-10 flex items-center justify-center text-slate-300 font-bold">—</div>
-                              )}
-                            </td>
-                            {/* Rate per (unit) Column — In Mode A: Shows Sq.Ft * Rate/SqFt. In Mode B & Direct: Editable */}
-                            <td className="py-2 px-2 text-center tabular-nums align-top">
-                              {hasMultipleSizes && isModeA ? (
-                                <div className="h-10 flex items-center justify-center">
-                                  <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 shadow-2xs">
-                                    {calculatedRatePerUnit.toFixed(2)}
-                                    <span className="text-[10px] text-blue-500 font-bold">{displayUnit}</span>
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className="h-10 inline-flex items-center justify-center gap-1">
+                            <td className="py-1 px-1 text-center tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center">
+                                {hasMultipleSizes && isModeA ? (
                                   <input
-                                    id={`row-${row.id}-rate-unit`}
+                                    id={`row-${row.id}-rate-sqft`}
                                     value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
                                     onChange={(e) => {
                                       updateRow(row.id, { manualRate: e.target.value });
@@ -1405,63 +1505,135 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             else handleRowFinalEnter(index);
                                           }
                                         }
+                                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                        if (qtyInput) qtyInput.focus();
                                       } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                        if (pcsInput) pcsInput.focus();
+                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                        if (qtyInput) qtyInput.focus();
                                       }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
-                                    className="h-10 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
-                                    title="Rate per unit in Mode B — editable (like Tally)"
+                                    className="h-10 w-18 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
+                                    title="Rate per sq.ft in Mode A — editable (like Tally)"
                                   />
-                                  <span className="text-[10px] text-slate-500 font-bold">{displayUnit}</span>
-                                </div>
-                              )}
+                                ) : (
+                                  <div className="h-10 flex items-center justify-center text-slate-300 font-bold">—</div>
+                                )}
+                              </div>
                             </td>
-                            <td className="py-2 px-2 tabular-nums align-top">
-                              {isDirect ? (
-                                <div className="h-10 w-full min-w-[80px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
-                                  —
-                                </div>
-                              ) : (
-                                <div className="relative">
-                                  <select
-                                    id={`row-${row.id}-finish-select`}
-                                    value={row.eyeletType || "NONE"}
-                                    onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })}
-                                    onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
-                                        e.preventDefault();
-                                        const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                        if (fileInput) fileInput.focus();
-                                        else {
-                                          const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
-                                          if (browseBtn) browseBtn.focus();
-                                          else handleRowFinalEnter(index);
+                            {/* Rate per (unit) Column — In Mode A: Shows Sq.Ft * Rate/SqFt. In Mode B & Direct: Editable */}
+                            <td className="py-1 px-1 text-center tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center">
+                                {hasMultipleSizes && isModeA ? (
+                                  <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 shadow-2xs">
+                                    {calculatedRatePerUnit.toFixed(2)}
+                                    <span className="text-[10px] text-blue-500 font-bold">{displayUnit}</span>
+                                  </span>
+                                ) : (
+                                  <div className="inline-flex items-center justify-center gap-1">
+                                    <input
+                                      id={`row-${row.id}-rate-unit`}
+                                      value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
+                                      onChange={(e) => {
+                                        updateRow(row.id, { manualRate: e.target.value });
+                                      }}
+                                      onFocus={(e) => {
+                                        if (!row.manualRate && baseRate > 0) {
+                                          updateRow(row.id, { manualRate: baseRate.toFixed(2) });
                                         }
-                                      } else if (e.key === "ArrowLeft") {
-                                        e.preventDefault();
-                                        if (isSqftModeB) {
-                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                          if (rateSqft) rateSqft.focus();
-                                        } else {
-                                          const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                          if (rateUnit) rateUnit.focus();
+                                        e.target.select();
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                          if (finishSelect) finishSelect.focus();
+                                          else {
+                                            const fileInput = document.getElementById(`error-row-${row.id}-file`);
+                                            if (fileInput) fileInput.focus();
+                                            else {
+                                              const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                              if (browseBtn) browseBtn.focus();
+                                              else handleRowFinalEnter(index);
+                                            }
+                                          }
+                                        } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                          e.preventDefault();
+                                          const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                          if (pcsInput) pcsInput.focus();
+                                          else {
+                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                            if (qtyInput) qtyInput.focus();
+                                          }
+                                        } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                          e.preventDefault();
+                                          const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                          if (pcsInput) pcsInput.focus();
+                                          else {
+                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                            if (qtyInput) qtyInput.focus();
+                                          }
                                         }
-                                      }
-                                    }}
-                                    className="h-10 w-full min-w-[80px] rounded-lg border-2 border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
-                                  >
-                                    <option value="NONE">None</option>
-                                    <option value="METAL">Metal</option>
-                                    <option value="PLASTIC">Plastic</option>
-                                  </select>
-                                </div>
-                              )}
+                                      }}
+                                      placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
+                                      className="h-10 w-18 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
+                                      title="Rate per unit in Mode B — editable (like Tally)"
+                                    />
+                                    <span className="text-[10px] text-slate-500 font-bold">{displayUnit}</span>
+                                  </div>
+                                )}
+                              </div>
                             </td>
-                            <td className="py-2 px-2 tabular-nums align-top">
-                              <div className="flex items-center gap-1.5 min-w-[210px]">
+                            {/* Finish Column */}
+                            <td className="py-1 px-1 text-center tabular-nums align-top">
+                              <div className="h-10 flex items-center justify-center">
+                                {isDirect ? (
+                                  <div className="h-10 w-full min-w-[76px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
+                                    —
+                                  </div>
+                                ) : (
+                                  <div className="relative w-full min-w-[76px]">
+                                    <select
+                                      id={`row-${row.id}-finish-select`}
+                                      value={row.eyeletType || "NONE"}
+                                      onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          const fileInput = document.getElementById(`error-row-${row.id}-file`);
+                                          if (fileInput) fileInput.focus();
+                                          else {
+                                            const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                            if (browseBtn) browseBtn.focus();
+                                            else handleRowFinalEnter(index);
+                                          }
+                                        } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                          e.preventDefault();
+                                          if (isSqftModeB) {
+                                            const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                            if (rateSqft) rateSqft.focus();
+                                          } else {
+                                            const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                            if (rateUnit) rateUnit.focus();
+                                          }
+                                        }
+                                      }}
+                                      className="h-10 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all cursor-pointer"
+                                    >
+                                      <option value="NONE">None</option>
+                                      <option value="METAL">Metal</option>
+                                      <option value="PLASTIC">Plastic</option>
+                                    </select>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            {/* File Path Column */}
+                            <td className="py-1 px-2 tabular-nums align-top">
+                              <div className="flex items-center gap-1.5 min-w-[210px] h-10">
                                 <div className="relative flex-1">
                                   <input
                                     id={`error-row-${row.id}-file`}
@@ -1481,10 +1653,21 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           if (delBtn) delBtn.focus();
                                           else handleRowFinalEnter(index);
                                         }
+                                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                        if (finishSelect && !isDirect) finishSelect.focus();
+                                        else if (isSqftModeB) {
+                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                          if (rateSqft) rateSqft.focus();
+                                        } else {
+                                          const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                          if (rateUnit) rateUnit.focus();
+                                        }
                                       } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
-                                        if (finishSelect) finishSelect.focus();
+                                        if (finishSelect && !isDirect) finishSelect.focus();
                                         else if (isSqftModeB) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
                                           if (rateSqft) rateSqft.focus();
@@ -1564,7 +1747,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       e.preventDefault();
                                       const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
                                       if (inputEl) inputEl.click();
-                                    } else if (e.key === "ArrowLeft") {
+                                    } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                       e.preventDefault();
                                       const fileInput = document.getElementById(`error-row-${row.id}-file`);
                                       if (fileInput) fileInput.focus();
@@ -1593,92 +1776,92 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 </button>
                               </div>
                             </td>
-                            <td className="py-2 px-2 text-right text-sm font-black text-slate-900 tabular-nums align-top pt-3">
-                              {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {/* Amount Column */}
+                            <td className="py-1 px-2 text-right align-top">
+                              <div className="h-10 flex items-center justify-end text-sm font-black text-slate-900 tabular-nums">
+                                {amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </div>
                             </td>
-                            <td className="py-2 px-2 text-center tabular-nums align-top pt-2">
-                              <button
-                                id={`row-${row.id}-delete-btn`}
-                                type="button"
-                                disabled={rows.length <= 1}
-                                onClick={() => {
-                                  if (rows.length > 1) {
-                                    removeRow(row.id);
-                                  } else {
-                                    toast('Cannot delete the only remaining row.', { icon: 'ℹ️' });
-                                  }
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === " " || e.key === "Spacebar") {
-                                    e.preventDefault();
+                            {/* Delete Button Column */}
+                            <td className="py-1 px-1 text-center align-top">
+                              <div className="h-10 flex items-center justify-center">
+                                <button
+                                  id={`row-${row.id}-delete-btn`}
+                                  type="button"
+                                  disabled={rows.length <= 1}
+                                  onClick={() => {
                                     if (rows.length > 1) {
                                       removeRow(row.id);
-                                      setTimeout(() => {
-                                        const targetRow = rows[Math.max(0, index - 1)];
-                                        if (targetRow) {
-                                          const el = document.getElementById(`row-${targetRow.id}-product-input`);
-                                          if (el) el.focus();
-                                        }
-                                      }, 60);
                                     } else {
-                                      toast('Cannot delete the only row', { icon: 'ℹ️' });
+                                      toast('Cannot delete the only remaining row.', { icon: 'ℹ️' });
                                     }
-                                  } else if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    handleRowFinalEnter(index);
-                                  } else if (e.key === "ArrowLeft") {
-                                    e.preventDefault();
-                                    const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
-                                    if (browseBtn) browseBtn.focus();
-                                  }
-                                }}
-                                className={`rounded-lg p-2 transition-all outline-none focus:ring-4 focus:ring-rose-500/30 focus:border-2 focus:border-rose-600 ${
-                                  rows.length <= 1
-                                    ? 'opacity-20 cursor-not-allowed text-slate-400 bg-slate-100'
-                                    : 'bg-rose-50 text-rose-500 hover:bg-rose-100 focus:opacity-100 opacity-70 hover:opacity-100 cursor-pointer'
-                                }`}
-                                title={rows.length <= 1 ? "Cannot delete the only remaining item" : "Delete row (Space to delete, Enter to next row)"}
-                              >
-                                <Trash2 size={16} />
-                              </button>
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === " " || e.key === "Spacebar") {
+                                      e.preventDefault();
+                                      if (rows.length > 1) {
+                                        removeRow(row.id);
+                                        setTimeout(() => {
+                                          const targetRow = rows[Math.max(0, index - 1)];
+                                          if (targetRow) {
+                                            const el = document.getElementById(`row-${targetRow.id}-product-input`);
+                                            if (el) el.focus();
+                                          }
+                                        }, 60);
+                                      } else {
+                                        toast('Cannot delete the only row', { icon: 'ℹ️' });
+                                      }
+                                    } else if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      handleRowFinalEnter(index);
+                                    } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                      e.preventDefault();
+                                      const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                      if (browseBtn) browseBtn.focus();
+                                    }
+                                  }}
+                                  className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all outline-none focus:ring-4 focus:ring-rose-500/30 focus:border-2 focus:border-rose-600 ${
+                                    rows.length <= 1
+                                      ? 'opacity-20 cursor-not-allowed text-slate-400 bg-slate-100'
+                                      : 'bg-rose-50 text-rose-500 hover:bg-rose-100 focus:opacity-100 opacity-70 hover:opacity-100 cursor-pointer'
+                                  }`}
+                                  title={rows.length <= 1 ? "Cannot delete the only remaining item" : "Delete row (Space to delete, Enter to next row)"}
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
                       })}
-                      {/* TALLY PRIME ACCOUNTING LEDGER ROWS (MATCHING TALLY SCREENSHOT) */}
-                      {/* Spacer above PRICING DETAILS */}
-                      <tr className="h-6">
-                        <td colSpan={16} className="py-2"></td>
-                      </tr>
-
                       {/* Section Header: PRICING DETAILS */}
-                      <tr className="border-t-2 border-slate-200 bg-slate-100/60">
-                        <td className="py-2 px-2"></td>
-                        <td colSpan={14} className="py-2 px-2 text-[11px] font-black uppercase tracking-widest text-slate-700">
+                      <tr className="border-t-2 border-slate-200 bg-slate-100/50">
+                        <td className="py-1 px-2"></td>
+                        <td colSpan={14} className="py-1 px-2 text-[10px] font-black uppercase tracking-widest text-slate-700">
                           PRICING DETAILS
                         </td>
-                        <td className="py-2 px-2"></td>
+                        <td className="py-1 px-2"></td>
                       </tr>
 
                       {/* 1. Forwarding / Logistics Charge */}
                       {summary.deliveryCharges > 0 && (
-                        <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
-                          <td className="py-1 px-2"></td>
-                          <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                        <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
+                          <td className="py-0.5 px-2"></td>
+                          <td colSpan={13} className="py-0.5 px-2 font-bold text-slate-800">
                             zForwarding Charge- Sale
                           </td>
-                          <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900">
+                          <td className="py-0.5 px-2 text-right font-black tabular-nums text-slate-900">
                             {summary.deliveryCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
-                          <td className="py-1 px-2"></td>
+                          <td className="py-0.5 px-2"></td>
                         </tr>
                       )}
 
                       {/* 2. SGST / CGST or IGST Ledger rows */}
                       {summary.igst > 0 ? (
-                        <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
-                          <td className="py-1 px-2"></td>
-                          <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                        <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
+                          <td className="py-0.5 px-2"></td>
+                          <td colSpan={13} className="py-0.5 px-2 font-bold text-slate-800">
                             <div className="flex items-center gap-2 flex-wrap">
                               <span>IGST</span>
                               {summary.items?.length > 1 && (
@@ -1688,16 +1871,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               )}
                             </div>
                           </td>
-                          <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900">
+                          <td className="py-0.5 px-2 text-right font-black tabular-nums text-slate-900">
                             {summary.igst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
-                          <td className="py-1 px-2"></td>
+                          <td className="py-0.5 px-2"></td>
                         </tr>
                       ) : (
                         <>
-                          <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
-                            <td className="py-1 px-2"></td>
-                            <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                          <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
+                            <td className="py-0.5 px-2"></td>
+                            <td colSpan={13} className="py-0.5 px-2 font-bold text-slate-800">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span>SGST</span>
                                 {summary.items?.length > 1 && (
@@ -1707,14 +1890,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 )}
                               </div>
                             </td>
-                            <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900">
+                            <td className="py-0.5 px-2 text-right font-black tabular-nums text-slate-900">
                               {summary.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
-                            <td className="py-1 px-2"></td>
+                            <td className="py-0.5 px-2"></td>
                           </tr>
-                          <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
-                            <td className="py-1 px-2"></td>
-                            <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                          <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
+                            <td className="py-0.5 px-2"></td>
+                            <td colSpan={13} className="py-0.5 px-2 font-bold text-slate-800">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span>CGST</span>
                                 {summary.items?.length > 1 && (
@@ -1724,25 +1907,25 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 )}
                               </div>
                             </td>
-                            <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900">
+                            <td className="py-0.5 px-2 text-right font-black tabular-nums text-slate-900">
                               {summary.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
-                            <td className="py-1 px-2"></td>
+                            <td className="py-0.5 px-2"></td>
                           </tr>
                         </>
                       )}
 
                       {/* 3. Voucher / Discount Ledger row (if applied) */}
                       {summary.voucherApplied && (
-                        <tr className="border-t border-slate-100 bg-emerald-50/40 text-xs font-bold text-emerald-800">
-                          <td className="py-1 px-2"></td>
-                          <td colSpan={13} className="py-1 px-2 font-bold text-emerald-800">
+                        <tr className="border-t border-slate-100 bg-emerald-50/30 text-xs font-bold text-emerald-800">
+                          <td className="py-0.5 px-2"></td>
+                          <td colSpan={13} className="py-0.5 px-2 font-bold text-emerald-800">
                             Voucher Discount
                           </td>
-                          <td className="py-1 px-2 text-right font-black tabular-nums text-emerald-700">
+                          <td className="py-0.5 px-2 text-right font-black tabular-nums text-emerald-700">
                             - {summary.voucherGstDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </td>
-                          <td className="py-1 px-2"></td>
+                          <td className="py-0.5 px-2"></td>
                         </tr>
                       )}
 
@@ -1751,15 +1934,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const rawTotal = (summary.subtotal || 0) + (summary.gstAmount || 0) + (summary.deliveryCharges || 0) - (summary.voucherGstDiscount || 0);
                         const roundOff = Number((Math.round(summary.grandTotal) - summary.grandTotal).toFixed(2));
                         return (
-                          <tr className="border-t border-slate-100 bg-slate-50/40 text-xs font-bold text-slate-800">
-                            <td className="py-1 px-2"></td>
-                            <td colSpan={13} className="py-1 px-2 font-bold text-slate-800">
+                          <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
+                            <td className="py-0.5 px-2"></td>
+                            <td colSpan={13} className="py-0.5 px-2 font-bold text-slate-800">
                               Round Off
                             </td>
-                            <td className="py-1 px-2 text-right font-bold tabular-nums text-slate-600">
+                            <td className="py-0.5 px-2 text-right font-bold tabular-nums text-slate-600">
                               {roundOff !== 0 ? (roundOff > 0 ? `+${roundOff.toFixed(2)}` : roundOff.toFixed(2)) : '0.00'}
                             </td>
-                            <td className="py-1 px-2"></td>
+                            <td className="py-0.5 px-2"></td>
                           </tr>
                         );
                       })()}
@@ -1767,14 +1950,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     {/* Tally Total Row (Clean soft borders matching table theme, removing harsh black line) */}
                     <tfoot>
                       <tr className="border-t-2 border-b border-slate-200 bg-slate-50/80 text-xs font-black text-slate-900">
-                        <td className="py-2.5 px-2 text-center"></td>
-                        <td colSpan={13} className="py-2.5 px-2 font-black uppercase tracking-wider text-slate-800">
+                        <td className="py-1.5 px-2 text-center"></td>
+                        <td colSpan={13} className="py-1.5 px-2 font-black uppercase tracking-wider text-slate-800">
                           TOTAL
                         </td>
-                        <td className="py-2.5 px-2 text-right font-black tabular-nums text-sm text-slate-950">
+                        <td className="py-1.5 px-2 text-right font-black tabular-nums text-sm text-slate-950">
                           Rs. {summary.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
-                        <td className="py-2.5 px-2"></td>
+                        <td className="py-1.5 px-2"></td>
                       </tr>
                     </tfoot>
                   </table>
@@ -1788,94 +1971,195 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
               {/* LEFT: Logistics Card */}
               <div className="rounded-[1.5rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
-                <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
-                <div className="flex gap-2">
-                  {[
-                    { id: 'selfPickup', label: 'PICKUP', key: 'p' },
-                    { id: 'door', label: 'DOOR', key: 'd' },
-                    { id: 'courier', label: 'COURIER', key: 'c' },
-                    { id: 'transport', label: 'TRANSPORT', key: 't' },
-                  ].map((opt, optIdx, arr) => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setDeliveryType(opt.id as any)}
-                      onKeyDown={(e) => {
-                        const k = e.key.toLowerCase();
-                        if (e.key === " " || e.key === "Spacebar") {
-                          // Space selects this delivery option and moves to next field
-                          e.preventDefault();
-                          setDeliveryType(opt.id as any);
-                          setTimeout(() => {
-                            if (opt.id !== 'selfPickup') {
-                              const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
-                              if (addrSelect) {
-                                (addrSelect as HTMLElement).focus();
-                                (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                return;
-                              }
-                            }
-                            const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
-                              || document.getElementById('pay-mode-tab-cash')
-                              || document.getElementById('order-notes');
-                            if (payBtn) {
-                              payBtn.focus();
-                              payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                          }, 50);
-                        } else if (e.key === "ArrowRight") {
-                          e.preventDefault();
-                          const next = arr[(optIdx + 1) % arr.length];
-                          const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
-                          if (nextBtn) nextBtn.focus();
-                        } else if (e.key === "ArrowLeft") {
-                          e.preventDefault();
-                          const prev = arr[(optIdx - 1 + arr.length) % arr.length];
-                          const prevBtn = document.getElementById(`logistics-btn-${prev.id}`);
-                          if (prevBtn) prevBtn.focus();
-                        } else if (k === 'p' || k === 'd' || k === 'c' || k === 't') {
-                          const found = arr.find(item => item.key === k);
-                          if (found) {
-                            e.preventDefault();
-                            setDeliveryType(found.id as any);
-                            const targetBtn = document.getElementById(`logistics-btn-${found.id}`);
-                            if (targetBtn) targetBtn.focus();
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
+                </div>
+                
+                <div id="logistics-dropdown-container" className="relative">
+                  <button
+                    type="button"
+                    id="logistics-dropdown-btn"
+                    onClick={() => {
+                      setLogisticsDropdownOpen(prev => !prev);
+                      if (!logisticsDropdownOpen) {
+                        const idx = LOGISTICS_OPTIONS.findIndex(o => o.id === deliveryType);
+                        if (idx !== -1) setHighlightLogisticsIndex(idx);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === " " || e.key === "Spacebar") {
+                        e.preventDefault();
+                        setLogisticsDropdownOpen(prev => {
+                          const nextState = !prev;
+                          if (nextState) {
+                            const idx = LOGISTICS_OPTIONS.findIndex(o => o.id === deliveryType);
+                            if (idx !== -1) setHighlightLogisticsIndex(idx);
                           }
-                        } else if (e.key === "Enter") {
-                          e.preventDefault();
-                          if (optIdx < arr.length - 1) {
-                            // Enter advances to next option: PICKUP -> DOOR -> COURIER -> TRANSPORT
-                            const next = arr[optIdx + 1];
-                            const nextBtn = document.getElementById(`logistics-btn-${next.id}`);
-                            if (nextBtn) nextBtn.focus();
-                          } else {
-                            // From last option (TRANSPORT), proceed to next field (Address or Payment)
-                            if (deliveryType !== 'selfPickup') {
-                              const addrSelect = document.getElementById('error-shippingAddress') || document.querySelector('.space-y-2 select');
-                              if (addrSelect) {
-                                (addrSelect as HTMLElement).focus();
-                                (addrSelect as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' });
-                                return;
+                          return nextState;
+                        });
+                      } else if (e.key === "ArrowDown") {
+                        e.preventDefault();
+                        if (!logisticsDropdownOpen) {
+                          setLogisticsDropdownOpen(true);
+                          const idx = LOGISTICS_OPTIONS.findIndex(o => o.id === deliveryType);
+                          if (idx !== -1) setHighlightLogisticsIndex(idx);
+                        } else {
+                          setHighlightLogisticsIndex(prev => (prev + 1) % LOGISTICS_OPTIONS.length);
+                        }
+                      } else if (e.key === "ArrowUp") {
+                        e.preventDefault();
+                        if (!logisticsDropdownOpen) {
+                          setLogisticsDropdownOpen(true);
+                          const idx = LOGISTICS_OPTIONS.findIndex(o => o.id === deliveryType);
+                          if (idx !== -1) setHighlightLogisticsIndex(idx);
+                        } else {
+                          setHighlightLogisticsIndex(prev => (prev - 1 + LOGISTICS_OPTIONS.length) % LOGISTICS_OPTIONS.length);
+                        }
+                      } else if (e.key === "Enter") {
+                        e.preventDefault();
+                        if (logisticsDropdownOpen) {
+                          const selectedOpt = LOGISTICS_OPTIONS[highlightLogisticsIndex];
+                          if (selectedOpt) {
+                            setDeliveryType(selectedOpt.id as any);
+                            setLogisticsDropdownOpen(false);
+                            setTimeout(() => {
+                              if (selectedOpt.id !== 'selfPickup') {
+                                const addrSelect = document.getElementById('error-shippingAddress') || document.getElementById('add-address-btn');
+                                if (addrSelect) {
+                                  addrSelect.focus();
+                                  addrSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  return;
+                                }
                               }
+                              const payBtn = document.getElementById('payment-dropdown-btn') || document.getElementById('order-notes');
+                              if (payBtn) {
+                                payBtn.focus();
+                                payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }
+                            }, 50);
+                          }
+                        } else {
+                          if (deliveryType !== 'selfPickup') {
+                            const addrSelect = document.getElementById('error-shippingAddress') || document.getElementById('add-address-btn');
+                            if (addrSelect) {
+                              addrSelect.focus();
+                              addrSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              return;
                             }
-                            const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
-                              || document.getElementById('pay-mode-tab-cash')
-                              || document.getElementById('order-notes');
-                            if (payBtn) {
-                              payBtn.focus();
-                              payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                          const payBtn = document.getElementById('payment-dropdown-btn') || document.getElementById('order-notes');
+                          if (payBtn) {
+                            payBtn.focus();
+                            payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          }
+                        }
+                      } else if (e.key === "Escape") {
+                        if (logisticsDropdownOpen) {
+                          e.preventDefault();
+                          setLogisticsDropdownOpen(false);
+                        }
+                      } else if (e.key === "Backspace") {
+                        if (!logisticsDropdownOpen) {
+                          e.preventDefault();
+                          const lastRow = rows[rows.length - 1];
+                          if (lastRow) {
+                            const target = document.getElementById(`row-${lastRow.id}-delete-btn`)
+                              || document.getElementById(`row-${lastRow.id}-browse-btn`)
+                              || document.getElementById(`error-row-${lastRow.id}-file`)
+                              || document.getElementById(`row-${lastRow.id}-product-input`);
+                            if (target) {
+                              target.focus();
+                              target.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                           }
                         }
-                      }}
-                      id={`logistics-btn-${opt.id}`}
-                      className={`flex-1 rounded-xl py-1.5 text-[10px] font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none ${
-                        deliveryType === opt.id ? 'bg-slate-900 text-white shadow-md border-2 border-slate-900' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-2 border-transparent'
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
+                      } else if (['p', 'd', 'c', 't'].includes(e.key.toLowerCase())) {
+                        const opt = LOGISTICS_OPTIONS.find(o => o.key === e.key.toLowerCase());
+                        if (opt) {
+                          e.preventDefault();
+                          setDeliveryType(opt.id as any);
+                          setHighlightLogisticsIndex(LOGISTICS_OPTIONS.findIndex(o => o.id === opt.id));
+                        }
+                      }
+                    }}
+                    className="flex h-11 w-full items-center justify-between rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 text-sm font-black tracking-wide text-slate-800 transition-all hover:bg-slate-100/80 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer"
+                  >
+                    {(() => {
+                      const cur = LOGISTICS_OPTIONS.find(o => o.id === deliveryType) || LOGISTICS_OPTIONS[0];
+                      return (
+                        <>
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-slate-900 text-[10px] font-black text-white">
+                              {cur.label.charAt(0)}
+                            </span>
+                            <div className="text-left">
+                              <div className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-1.5">
+                                <span>{cur.label}</span>
+                                <span className="text-[10px] font-bold text-slate-400 normal-case">({cur.sublabel})</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 text-slate-400">
+                            <ChevronDown size={16} className={`transition-transform duration-200 ${logisticsDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} />
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {logisticsDropdownOpen && (
+                    <div className="absolute z-50 mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                      {LOGISTICS_OPTIONS.map((opt, idx) => {
+                        const isHighlighted = idx === highlightLogisticsIndex;
+                        const isSelected = deliveryType === opt.id;
+                        return (
+                          <div
+                            key={opt.id}
+                            onClick={() => {
+                              setDeliveryType(opt.id as any);
+                              setLogisticsDropdownOpen(false);
+                              setTimeout(() => {
+                                if (opt.id !== 'selfPickup') {
+                                  const addrSelect = document.getElementById('error-shippingAddress') || document.getElementById('add-address-btn');
+                                  if (addrSelect) {
+                                    addrSelect.focus();
+                                    return;
+                                  }
+                                }
+                                const payBtn = document.getElementById('payment-dropdown-btn') || document.getElementById('order-notes');
+                                if (payBtn) payBtn.focus();
+                              }, 50);
+                            }}
+                            onMouseEnter={() => setHighlightLogisticsIndex(idx)}
+                            className={`flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                              isHighlighted
+                                ? 'bg-blue-50 text-blue-900'
+                                : isSelected
+                                ? 'bg-slate-100 text-slate-900 font-bold'
+                                : 'text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <span className={`flex h-6 w-6 items-center justify-center rounded-lg text-[10px] font-black ${
+                                isSelected ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'
+                              }`}>
+                                {opt.label.charAt(0)}
+                              </span>
+                              <div>
+                                <span className="text-xs font-black uppercase tracking-wider">{opt.label}</span>
+                                <span className="block text-[10px] text-slate-400 font-medium">{opt.sublabel}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <kbd className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">{opt.key.toUpperCase()}</kbd>
+                              {isSelected && <Check size={14} className="text-blue-600 stroke-[3]" />}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {deliveryType !== 'selfPickup' && (
@@ -1905,14 +2189,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               if (addAddrBtn) {
                                 addAddrBtn.focus();
                               } else {
-                                const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
-                                  || document.getElementById('pay-mode-tab-cash')
+                                const payBtn = document.getElementById('payment-dropdown-btn')
                                   || document.getElementById('order-notes');
                                 if (payBtn) {
                                   payBtn.focus();
                                   payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 }
                               }
+                            } else if (e.key === "Backspace") {
+                              e.preventDefault();
+                              const logBtn = document.getElementById('logistics-dropdown-btn');
+                              if (logBtn) logBtn.focus();
                             }
                           }}
                         >
@@ -1955,11 +2242,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           onKeyDown={(e) => {
                             if (e.key === "Enter") {
                               e.preventDefault();
-                              const payTab = document.getElementById('pay-mode-tab-cash') || document.getElementById('order-notes');
+                              const payTab = document.getElementById('payment-dropdown-btn') || document.getElementById('order-notes');
                               if (payTab) payTab.focus();
                             } else if (e.key === " " || e.key === "Spacebar") {
                               e.preventDefault();
                               setShowAddressModal(true);
+                            } else if (e.key === "Backspace") {
+                              e.preventDefault();
+                              const addrSel = document.getElementById('error-shippingAddress');
+                              if (addrSel) addrSel.focus();
+                              else {
+                                const logBtn = document.getElementById('logistics-dropdown-btn');
+                                if (logBtn) logBtn.focus();
+                              }
                             }
                           }}
                           className="text-[10px] font-black uppercase tracking-widest text-blue-500 mt-1 hover:underline cursor-pointer focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none rounded px-1.5 py-0.5 border-2 border-transparent inline-block"
@@ -1978,13 +2273,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             setShowAddressModal(true);
                           } else if (e.key === "Enter") {
                             e.preventDefault();
-                            const payBtn = document.getElementById('pay-mode-btn-HAND_CASH')
-                              || document.getElementById('pay-mode-tab-cash')
+                            const payBtn = document.getElementById('payment-dropdown-btn')
                               || document.getElementById('order-notes');
                             if (payBtn) {
                               payBtn.focus();
                               payBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
+                          } else if (e.key === "Backspace") {
+                            e.preventDefault();
+                            const logBtn = document.getElementById('logistics-dropdown-btn');
+                            if (logBtn) logBtn.focus();
                           }
                         }}
                         className={`flex h-10 w-full items-center justify-center rounded-xl border-2 border-dashed text-[11px] font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer ${
@@ -2002,131 +2300,73 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
               {/* RIGHT: Payment / Quotation Actions Card */}
               <div>
                 <div className="rounded-[1.5rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
-                  <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-slate-400">
-                    {vm.mode === 'quotation' ? 'Quotation Actions' : 'Payment Terminal'}
-                  </h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">
+                      {vm.mode === 'quotation' ? 'Quotation Actions' : 'Payment Terminal'}
+                    </h3>
+                  </div>
                   
                   {vm.mode !== 'quotation' && (
                     <>
-                      {/* Top tabs */}
-                      <div className="flex gap-2 mb-2">
-                    <button
-                      type="button"
-                      id="pay-mode-tab-cash"
-                      onClick={() => {
-                        setPaymentMethodTab('CASH_UPI');
-                        setPaymentMode('HAND_CASH');
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setPaymentMethodTab('CASH_UPI');
-                          const subCash = document.getElementById('pay-mode-btn-HAND_CASH')
-                            || document.getElementById(`pay-mode-btn-${paymentMode}`);
-                          if (subCash) subCash.focus();
-                        } else if (e.key === "ArrowRight") {
-                          const credTab = document.getElementById('pay-mode-tab-credit');
-                          if (credTab) {
-                            e.preventDefault();
-                            credTab.focus();
-                          }
-                        }
-                      }}
-                      className={`flex-1 rounded-xl py-2 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
-                        paymentMethodTab === 'CASH_UPI'
-                          ? 'bg-slate-900 text-white shadow-md border-slate-900'
-                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-transparent'
-                      }`}
-                    >
-                      CASH
-                    </button>
-                    {hasAvailableCredit && (
-                      <button
-                        type="button"
-                        id="pay-mode-tab-credit"
-                        onClick={() => {
-                          setPaymentMethodTab('CREDIT');
-                          setPaymentMode('CREDIT');
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            setPaymentMethodTab('CREDIT');
-                            setPaymentMode('CREDIT');
-                            const next = document.getElementById('order-notes')
-                              || document.getElementById('confirm-dimensions');
-                            if (next) {
-                              next.focus();
-                              next.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                          } else if (e.key === "ArrowLeft") {
-                            const cashTab = document.getElementById('pay-mode-tab-cash');
-                            if (cashTab) {
-                              e.preventDefault();
-                              cashTab.focus();
-                            }
-                          }
-                        }}
-                        className={`flex-1 rounded-xl py-2 text-xs font-black uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
-                          paymentMethodTab === 'CREDIT'
-                            ? 'bg-slate-900 text-white shadow-md border-slate-900'
-                            : 'bg-slate-100 text-slate-500 hover:bg-slate-200 border-transparent'
-                        }`}
-                      >
-                        CREDIT ACCOUNT
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Cash/UPI/COD sub-buttons */}
-                  {paymentMethodTab === 'CASH_UPI' && (
-                    <div className="flex gap-1.5 p-1 bg-slate-100/60 rounded-xl mb-2 border border-slate-200/40">
-                      {[
-                        { id: 'HAND_CASH', label: 'CASH', key: 'c' },
-                        { id: 'UPI', label: 'UPI', key: 'u' },
-                        { id: 'BANK', label: 'BANK', key: 'b' },
-                        { id: 'COD', label: 'COD', key: 'o' }
-                      ].map((opt, optIdx, arr) => (
+                      {/* Payment Mode Dropdown */}
+                      <div id="payment-dropdown-container" className="relative mb-2">
                         <button
-                          key={opt.id}
                           type="button"
-                          id={`pay-mode-btn-${opt.id}`}
-                          onClick={() => setPaymentMode(opt.id as any)}
+                          id="payment-dropdown-btn"
+                          onClick={() => {
+                            setPaymentDropdownOpen(prev => !prev);
+                            if (!paymentDropdownOpen) {
+                              const idx = PAYMENT_OPTIONS.findIndex(o => o.id === paymentMode);
+                              if (idx !== -1) setHighlightPaymentIndex(idx);
+                            }
+                          }}
                           onKeyDown={(e) => {
-                            const k = e.key.toLowerCase();
                             if (e.key === " " || e.key === "Spacebar") {
-                              // Space selects this payment mode and moves to next field
                               e.preventDefault();
-                              setPaymentMode(opt.id as any);
-                              setTimeout(() => {
-                                const next = document.getElementById('order-notes')
-                                  || document.getElementById('confirm-dimensions');
-                                if (next) {
-                                  next.focus();
-                                  next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              setPaymentDropdownOpen(prev => {
+                                const nextState = !prev;
+                                if (nextState) {
+                                  const idx = PAYMENT_OPTIONS.findIndex(o => o.id === paymentMode);
+                                  if (idx !== -1) setHighlightPaymentIndex(idx);
                                 }
-                              }, 50);
-                            } else if (e.key === "ArrowRight") {
+                                return nextState;
+                              });
+                            } else if (e.key === "ArrowDown") {
                               e.preventDefault();
-                              const next = arr[(optIdx + 1) % arr.length];
-                              setPaymentMode(next.id as any);
-                              const nextBtn = document.getElementById(`pay-mode-btn-${next.id}`);
-                              if (nextBtn) nextBtn.focus();
-                            } else if (e.key === "ArrowLeft") {
+                              if (!paymentDropdownOpen) {
+                                setPaymentDropdownOpen(true);
+                                const idx = PAYMENT_OPTIONS.findIndex(o => o.id === paymentMode);
+                                if (idx !== -1) setHighlightPaymentIndex(idx);
+                              } else {
+                                setHighlightPaymentIndex(prev => (prev + 1) % PAYMENT_OPTIONS.length);
+                              }
+                            } else if (e.key === "ArrowUp") {
                               e.preventDefault();
-                              const prev = arr[(optIdx - 1 + arr.length) % arr.length];
-                              setPaymentMode(prev.id as any);
-                              const prevBtn = document.getElementById(`pay-mode-btn-${prev.id}`);
-                              if (prevBtn) prevBtn.focus();
+                              if (!paymentDropdownOpen) {
+                                setPaymentDropdownOpen(true);
+                                const idx = PAYMENT_OPTIONS.findIndex(o => o.id === paymentMode);
+                                if (idx !== -1) setHighlightPaymentIndex(idx);
+                              } else {
+                                setHighlightPaymentIndex(prev => (prev - 1 + PAYMENT_OPTIONS.length) % PAYMENT_OPTIONS.length);
+                              }
                             } else if (e.key === "Enter") {
                               e.preventDefault();
-                              if (optIdx < arr.length - 1) {
-                                // Advance to next payment option (CASH -> UPI -> BANK -> COD)
-                                const next = arr[optIdx + 1];
-                                const nextBtn = document.getElementById(`pay-mode-btn-${next.id}`);
-                                if (nextBtn) nextBtn.focus();
+                              if (paymentDropdownOpen) {
+                                const selectedOpt = PAYMENT_OPTIONS[highlightPaymentIndex];
+                                if (selectedOpt) {
+                                  setPaymentMode(selectedOpt.id as any);
+                                  setPaymentMethodTab(selectedOpt.tab);
+                                  setPaymentDropdownOpen(false);
+                                  setTimeout(() => {
+                                    const next = document.getElementById('order-notes')
+                                      || document.getElementById('confirm-dimensions');
+                                    if (next) {
+                                      next.focus();
+                                      next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }
+                                  }, 50);
+                                }
                               } else {
-                                // From last payment option (or when navigating forward), proceed to Additional Notes
                                 const next = document.getElementById('order-notes')
                                   || document.getElementById('confirm-dimensions');
                                 if (next) {
@@ -2134,60 +2374,141 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   next.scrollIntoView({ behavior: 'smooth', block: 'center' });
                                 }
                               }
-                            } else if (k === 'c' || k === 'u' || k === 'b' || k === 'o') {
-                              const found = arr.find(item => item.key === k);
-                              if (found) {
+                            } else if (e.key === "Escape") {
+                              if (paymentDropdownOpen) {
                                 e.preventDefault();
-                                setPaymentMode(found.id as any);
-                                const targetBtn = document.getElementById(`pay-mode-btn-${found.id}`);
-                                if (targetBtn) targetBtn.focus();
+                                setPaymentDropdownOpen(false);
+                              }
+                            } else if (e.key === "Backspace") {
+                              if (!paymentDropdownOpen) {
+                                e.preventDefault();
+                                if (deliveryType !== 'selfPickup') {
+                                  const addrBtn = document.getElementById('add-address-btn') || document.getElementById('error-shippingAddress');
+                                  if (addrBtn) {
+                                    addrBtn.focus();
+                                    return;
+                                  }
+                                }
+                                const logBtn = document.getElementById('logistics-dropdown-btn');
+                                if (logBtn) logBtn.focus();
+                              }
+                            } else if (['c', 'u', 'b', 'o', 'r'].includes(e.key.toLowerCase())) {
+                              const opt = PAYMENT_OPTIONS.find(o => o.key === e.key.toLowerCase());
+                              if (opt) {
+                                e.preventDefault();
+                                setPaymentMode(opt.id as any);
+                                setPaymentMethodTab(opt.tab);
+                                setHighlightPaymentIndex(PAYMENT_OPTIONS.findIndex(o => o.id === opt.id));
                               }
                             }
                           }}
-                          className={`flex-1 rounded-lg py-1.5 text-[9px] font-black uppercase tracking-wider transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 ${
-                            paymentMode === opt.id
-                              ? 'bg-white text-slate-900 shadow-sm border-slate-200/80'
-                              : 'text-slate-500 hover:bg-white/40 border-transparent'
-                          }`}
+                          className="flex h-11 w-full items-center justify-between rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 text-sm font-black tracking-wide text-slate-800 transition-all hover:bg-slate-100/80 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer"
                         >
-                          {opt.label}
+                          {(() => {
+                            const cur = PAYMENT_OPTIONS.find(o => o.id === paymentMode) || PAYMENT_OPTIONS[0];
+                            return (
+                              <>
+                                <div className="flex items-center gap-2.5">
+                                  <span className={`flex h-6 w-6 items-center justify-center rounded-lg text-[10px] font-black ${
+                                    cur.id === 'CREDIT' ? 'bg-purple-600 text-white' : 'bg-slate-900 text-white'
+                                  }`}>
+                                    {cur.label.charAt(0)}
+                                  </span>
+                                  <div className="text-left">
+                                    <div className="text-xs font-black uppercase text-slate-800 tracking-wider flex items-center gap-1.5">
+                                      <span>{cur.label}</span>
+                                      <span className="text-[10px] font-bold text-slate-400 normal-case">({cur.description})</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-slate-400">
+                                  <ChevronDown size={16} className={`transition-transform duration-200 ${paymentDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} />
+                                </div>
+                              </>
+                            );
+                          })()}
                         </button>
-                      ))}
-                    </div>
-                  )}
 
-                  {paymentMethodTab === 'CREDIT' && selectedCustomer?.customerType === 'CASH' && (
-                    <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/50 p-3 text-[11px] font-bold text-amber-800 flex items-start gap-1.5 leading-relaxed shadow-sm">
-                      <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                      <span>Note: Customer account is set to CASH mode. Selecting CREDIT may require manual approval.</span>
-                    </div>
-                  )}
-
-                  {paymentMethodTab === 'CREDIT' && selectedCustomer && (
-                    <div className="mb-4">
-                      {(() => {
-                        const creditLimit = selectedCustomer.creditLimit || 0;
-                        const usedCredit = selectedCustomer.usedCredit || 0;
-                        const available = creditLimit - usedCredit;
-                        const isExceeded = summary.grandTotal > available;
-                        return (
-                          <div className={`p-3 rounded-xl border ${isExceeded ? 'bg-red-50 border-red-200 text-red-600' : 'bg-blue-50 border-blue-200 text-blue-600'}`}>
-                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-1">
-                              <span>Available Credit</span>
-                              <span>₹{available.toLocaleString()}</span>
-                            </div>
-                            {isExceeded && (
-                              <p className="text-[9px] font-bold text-red-500 uppercase tracking-tight mt-1">
-                                Exceeds credit limit by ₹{(summary.grandTotal - available).toLocaleString()}
-                              </p>
-                            )}
+                        {/* Dropdown Menu */}
+                        {paymentDropdownOpen && (
+                          <div className="absolute z-50 mt-1.5 w-full rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl animate-in fade-in zoom-in-95 duration-100">
+                            {PAYMENT_OPTIONS.map((opt, idx) => {
+                              const isHighlighted = idx === highlightPaymentIndex;
+                              const isSelected = paymentMode === opt.id;
+                              return (
+                                <div
+                                  key={opt.id}
+                                  onClick={() => {
+                                    setPaymentMode(opt.id as any);
+                                    setPaymentMethodTab(opt.tab);
+                                    setPaymentDropdownOpen(false);
+                                    setTimeout(() => {
+                                      const next = document.getElementById('order-notes')
+                                        || document.getElementById('confirm-dimensions');
+                                      if (next) next.focus();
+                                    }, 50);
+                                  }}
+                                  onMouseEnter={() => setHighlightPaymentIndex(idx)}
+                                  className={`flex items-center justify-between px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                                    isHighlighted
+                                      ? 'bg-blue-50 text-blue-900'
+                                      : isSelected
+                                      ? 'bg-slate-100 text-slate-900 font-bold'
+                                      : 'text-slate-700 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5">
+                                    <span className={`flex h-6 w-6 items-center justify-center rounded-lg text-[10px] font-black ${
+                                      opt.id === 'CREDIT' ? 'bg-purple-600 text-white' : isSelected ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-600'
+                                    }`}>
+                                      {opt.label.charAt(0)}
+                                    </span>
+                                    <div>
+                                      <span className="text-xs font-black uppercase tracking-wider">{opt.label}</span>
+                                      <span className="block text-[10px] text-slate-400 font-medium">{opt.description}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <kbd className="text-[9px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">{opt.key.toUpperCase()}</kbd>
+                                    {isSelected && <Check size={14} className="text-blue-600 stroke-[3]" />}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                        );
-                      })()}
-                    </div>
-                  )}
+                        )}
+                      </div>
 
+                      {paymentMode === 'CREDIT' && selectedCustomer?.customerType === 'CASH' && (
+                        <div className="mb-2 rounded-xl border border-amber-200 bg-amber-50/50 p-3 text-[11px] font-bold text-amber-800 flex items-start gap-1.5 leading-relaxed shadow-sm">
+                          <AlertTriangle size={14} className="shrink-0 mt-0.5" />
+                          <span>Note: Customer account is set to CASH mode. Selecting CREDIT may require manual approval.</span>
+                        </div>
+                      )}
 
+                      {paymentMode === 'CREDIT' && selectedCustomer && (
+                        <div className="mb-2">
+                          {(() => {
+                            const creditLimit = selectedCustomer.creditLimit || 0;
+                            const usedCredit = selectedCustomer.usedCredit || 0;
+                            const available = creditLimit - usedCredit;
+                            const isExceeded = summary.grandTotal > available;
+                            return (
+                              <div className={`p-3 rounded-xl border ${isExceeded ? 'bg-red-50 border-red-200 text-red-600' : 'bg-blue-50 border-blue-200 text-blue-600'}`}>
+                                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-1">
+                                  <span>Available Credit</span>
+                                  <span>₹{available.toLocaleString()}</span>
+                                </div>
+                                {isExceeded && (
+                                  <p className="text-[9px] font-bold text-red-500 uppercase tracking-tight mt-1">
+                                    Exceeds credit limit by ₹{(summary.grandTotal - available).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </>
                   )}
 
@@ -2217,15 +2538,29 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             e.preventDefault();
                             const cleaned = notes.trimEnd();
                             setNotes(cleaned);
-                            const chk = document.getElementById("confirm-dimensions") || document.getElementById("order-submit-btn");
+                            const chk = document.getElementById("confirm-dimensions") || document.getElementById("submit-order-btn");
                             if (chk) {
                               chk.focus();
                               chk.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                           }
+                        } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                          e.preventDefault();
+                          if (vm.mode === 'quotation') {
+                            const lastRow = rows[rows.length - 1];
+                            if (lastRow) {
+                              const target = document.getElementById(`row-${lastRow.id}-delete-btn`)
+                                || document.getElementById(`row-${lastRow.id}-browse-btn`)
+                                || document.getElementById(`error-row-${lastRow.id}-file`);
+                              if (target) target.focus();
+                            }
+                          } else {
+                            const payBtn = document.getElementById('payment-dropdown-btn');
+                            if (payBtn) payBtn.focus();
+                          }
                         }
                       }}
-                      placeholder="Specific color needs, hardware requirements... (Enter for next line, Enter on empty line to exit, '.' for spacing)"
+                      placeholder="Specific color needs, hardware requirements..."
                       className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs h-16 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white font-semibold resize-none transition-all"
                     />
                   </div>
@@ -2268,6 +2603,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               submitBtn.focus();
                               submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
+                          } else if (e.key === "Backspace") {
+                            e.preventDefault();
+                            const notesEl = document.getElementById("order-notes");
+                            if (notesEl) {
+                              notesEl.focus();
+                              notesEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
                           }
                         }}
                         className="mt-0.5 rounded-[4px] border-slate-300 text-emerald-500 w-4 h-4 shadow-sm focus:ring-2 focus:ring-blue-500" 
@@ -2289,6 +2631,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   <button
                     id="submit-order-btn"
                     onClick={validateAndSubmit}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        validateAndSubmit();
+                      } else if (e.key === "Backspace") {
+                        e.preventDefault();
+                        const chk = document.getElementById("confirm-dimensions");
+                        if (chk) {
+                          chk.focus();
+                          chk.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                      }
+                    }}
                     disabled={loading || upiUploading || !acceptTerms || (vm.mode !== 'quotation' && creditExceeded)}
                     className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#00bfa5] text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-[#00bfa5]/25 hover:bg-[#00a892] disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none transition-all focus:ring-4 focus:ring-emerald-500/30 outline-none"
                   >
@@ -2761,11 +3116,377 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             <ItemDescriptionModal
               isOpen={Boolean(activeDescRowId)}
               onClose={() => setActiveDescRowId(null)}
+              onBackNavigate={() => handleBackFromDescModal(activeDescRowId)}
               onSaveAndAdvance={(text) => handleSaveDescAndAdvance(activeDescRowId, text)}
               initialValue={rows.find((r: any) => r.id === activeDescRowId)?.description || rows.find((r: any) => r.id === activeDescRowId)?.projectName || ''}
               itemName={products.find((p: any) => p.id === rows.find((r: any) => r.id === activeDescRowId)?.productId)?.name || 'Stock Item'}
               title="Description for Stock Item"
             />
+          )}
+
+          {/* Tally Full Vertical Right Sidebar Drawer (List of Ledger Accounts / List of Stock Items) */}
+          {(customerDropdownOpen || openRowId) && (
+            <div 
+              className="fixed right-0 top-0 bottom-0 w-[900px] lg:w-[980px] max-w-[96vw] z-[99999] bg-[#eef6ff] border-l-2 border-[#1a4a7a] shadow-2xl flex flex-col animate-in slide-in-from-right duration-150 font-sans"
+            >
+              {customerDropdownOpen ? (
+                <>
+                  {/* Ledger Header */}
+                  <div className="bg-[#1a4a7a] text-white py-2 px-4 flex items-center justify-between border-b border-[#12365a] shrink-0 select-none">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black tracking-wide">List of Ledger Accounts</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCustomerDropdownOpen(false)}
+                      className="h-5 px-2 rounded bg-[#12365a] hover:bg-[#0c2640] text-[10px] font-bold text-white flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span>Esc</span> ✕
+                    </button>
+                  </div>
+
+                  {/* Column Subheader Bar */}
+                  <div className="bg-[#dbeafc] border-b border-[#bad5f5] text-[#1a3a60] text-[11px] font-bold py-1.5 px-4 flex items-center justify-between shrink-0 select-none">
+                    <div className="flex-1 font-bold">Name of Ledger</div>
+                    <div className="w-48 text-left shrink-0">City / Area</div>
+                    <div className="w-44 text-center shrink-0">GSTIN</div>
+                    <div className="w-32 text-right shrink-0">Balance</div>
+                  </div>
+
+                  {/* Top Actions: + Create (Alt+C) */}
+                  <div className="bg-[#e2f0fd] border-b border-[#bad5f5] py-1 px-3 flex items-center justify-between shrink-0">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setShowCreateCustomer(true);
+                      }}
+                      className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold tracking-wide transition-colors"
+                    >
+                      <Plus size={11} />
+                      <span>Create (Alt+C)</span>
+                    </button>
+                    {customerSearch && (
+                      <span className="text-[10px] font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-[#bad5f5]">
+                        Filter: "{customerSearch}"
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Customer list */}
+                  <div className="flex-1 overflow-y-auto bg-[#eef6ff]">
+                    {customerSearching && (
+                      <div className="p-3 text-xs font-semibold text-blue-700 bg-blue-50/70 flex items-center gap-2">
+                        <Loader2 size={13} className="animate-spin" /> Searching customer ledgers...
+                      </div>
+                    )}
+                    {sortedCustomers.length === 0 && !customerSearching ? (
+                      <div className="p-8 text-center">
+                        <p className="text-xs font-bold text-slate-500">No matching ledger accounts found</p>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setShowCreateCustomer(true);
+                          }}
+                          className="mt-3 px-3 py-1 rounded bg-[#1a4a7a] text-white text-xs font-bold"
+                        >
+                          + Create New Customer
+                        </button>
+                      </div>
+                    ) : (
+                      sortedCustomers.map((c: any, idx: number) => {
+                        const isHighlighted = idx === highlightCustomerIndex;
+                        const isSelected = (c.uid || c.id) === selectedCustomerId;
+                        return (
+                          <div
+                            key={c.uid || c.id}
+                            id={`customer-item-${idx}`}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setSelectedCustomerId(c.uid || c.id);
+                              setCustomerDropdownOpen(false);
+                              setCustomerSearch('');
+                              setHighlightCustomerIndex(0);
+                              const firstRowId = rows[0]?.id;
+                              if (firstRowId) {
+                                setOpenRowId(firstRowId);
+                                setSearchQuery('');
+                              }
+                              const focusItem = () => {
+                                const firstProductInput = (firstRowId ? document.getElementById(`row-${firstRowId}-product-input`) : null)
+                                  || (document.querySelector('input[placeholder="Select item..."]') as HTMLElement);
+                                if (firstProductInput) firstProductInput.focus();
+                              };
+                              focusItem();
+                              requestAnimationFrame(focusItem);
+                            }}
+                            className={`py-1.5 px-3 cursor-pointer transition-colors flex items-center justify-between text-xs select-none ${
+                              isHighlighted
+                                ? 'bg-[#f5a623] text-black font-extrabold shadow-xs'
+                                : isSelected
+                                  ? 'bg-[#d8eafb] text-[#0f2942] font-bold'
+                                  : 'hover:bg-[#ddebfa] text-[#1e293b]'
+                            }`}
+                          >
+                            <div className="flex-1 min-w-0 pr-3">
+                              <div className="truncate font-bold text-xs leading-tight">
+                                {c.displayName || c.name}
+                              </div>
+                              {c.phone && (
+                                <div className={`text-[10px] ${isHighlighted ? 'text-black/80' : 'text-slate-500'}`}>
+                                  {c.phone}
+                                </div>
+                              )}
+                            </div>
+                            <div className={`w-48 text-left truncate text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
+                              {c.businessName || c.billing_city || '—'}
+                            </div>
+                            <div className={`w-44 text-center font-mono text-[11px] truncate shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
+                              {c.gstin || '—'}
+                            </div>
+                            <div className={`w-32 text-right font-bold text-[11px] shrink-0 ${isHighlighted ? 'text-black' : 'text-slate-800'}`}>
+                              {c.credit_balance !== undefined ? `₹${Number(c.credit_balance || 0).toLocaleString()}` : '—'}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+
+                  {/* Footer shortcuts */}
+                  <div className="bg-[#1a4a7a] text-white py-1 px-4 text-[10px] font-mono flex items-center justify-between border-t border-[#12365a] shrink-0 select-none">
+                    <span>↑/↓ Navigate • ↵ Enter Select</span>
+                    <span>Esc Close</span>
+                  </div>
+                </>
+              ) : openRowId ? (
+                (() => {
+                  const activeRow = rows.find((r: any) => r.id === openRowId);
+                  const matched = matchedProducts;
+                  const isCtActive = /^ct([:\s\-\/]|$)/i.test(searchQuery.trim());
+                  const ctSearchParam = searchQuery.trim().replace(/^ct[:\s\-\/]?\s*/i, '').trim();
+
+                  let runningIdx = 0;
+
+                  return (
+                    <>
+                      {/* Stock Items Header */}
+                      <div className="bg-[#1a4a7a] text-white py-2 px-4 flex items-center justify-between border-b border-[#12365a] shrink-0 select-none">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black tracking-wide">Stock Items</span>
+                          {selectedCategory && (
+                            <span className="bg-[#f5a623] text-black text-[10px] font-black px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1">
+                              <span>{selectedCategory}</span>
+                              <button
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setSelectedCategory(null);
+                                  setHighlightProductIndex(0);
+                                }}
+                                className="hover:bg-black/20 rounded px-0.5 ml-0.5 cursor-pointer"
+                                title="Clear Category Filter"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          )}
+                          {isCtActive && (
+                            <span className="bg-emerald-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1">
+                              <span>ct {ctSearchParam ? `"${ctSearchParam}"` : '(All Categories)'}</span>
+                            </span>
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOpenRowId(null);
+                            setSelectedCategory(null);
+                          }}
+                          className="h-5 px-2 rounded bg-[#12365a] hover:bg-[#0c2640] text-[10px] font-bold text-white flex items-center gap-1 transition-colors cursor-pointer"
+                        >
+                          <span>Esc</span> ✕
+                        </button>
+                      </div>
+
+                      {/* Category Filter Chips Bar */}
+                      {availableCategories.length > 0 && (
+                        <div className="bg-[#102d4b] px-3 py-1.5 flex items-center gap-1.5 overflow-x-auto border-b border-[#0c243c] shrink-0 select-none" style={{ scrollbarWidth: 'none' }}>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setSelectedCategory(null);
+                              setHighlightProductIndex(0);
+                            }}
+                            className={`px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider transition-colors shrink-0 cursor-pointer ${
+                              !selectedCategory
+                                ? 'bg-[#f5a623] text-black font-black shadow-xs'
+                                : 'bg-[#1a4a7a] text-blue-100 hover:bg-[#235b94]'
+                            }`}
+                          >
+                            All ({products.length})
+                          </button>
+                          {availableCategories.map((cat) => {
+                            const count = products.filter((p: any) => (p.category || '').trim().toLowerCase() === cat.toLowerCase()).length;
+                            const isCatActive = selectedCategory?.toLowerCase() === cat.toLowerCase();
+                            return (
+                              <button
+                                key={cat}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  setSelectedCategory(isCatActive ? null : cat);
+                                  setHighlightProductIndex(0);
+                                }}
+                                className={`px-2.5 py-1 rounded text-[11px] font-bold uppercase tracking-wider transition-colors shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                                  isCatActive
+                                    ? 'bg-[#f5a623] text-black font-black shadow-xs'
+                                    : 'bg-[#1a4a7a] text-blue-100 hover:bg-[#235b94]'
+                                }`}
+                              >
+                                <span>{cat}</span>
+                                <span className={`text-[10px] opacity-75 font-normal`}>({count})</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Column Subheader Bar (Exact Tally Columns) */}
+                      <div className="bg-[#dbeafc] border-b border-[#bad5f5] text-[#1a3a60] text-[11px] font-bold py-1.5 px-4 flex items-center justify-between shrink-0 select-none">
+                        <div className="flex-1 font-bold">Stock Item Name</div>
+                        <div className="w-28 text-center shrink-0">HSN Code</div>
+                        <div className="w-20 text-center shrink-0">GST Rate</div>
+                        <div className="w-32 text-right pr-2 shrink-0">B1 (Stock)</div>
+                        <div className="w-28 text-right shrink-0">Rate / Unit</div>
+                      </div>
+
+                      {/* Product items list */}
+                      <div className="flex-1 overflow-y-auto bg-[#eef6ff]">
+                        {/* End of List button when search query is empty */}
+                        {!searchQuery.trim() && (
+                          <div
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleEndOfList(openRowId);
+                            }}
+                            className={`cursor-pointer py-1.5 px-4 transition-all flex items-center justify-between text-xs select-none ${
+                              highlightProductIndex === -1
+                                ? 'bg-[#f5a623] text-black font-extrabold shadow-xs'
+                                : 'hover:bg-[#ddebfa] text-[#1e293b] font-bold'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs">♦</span>
+                              <span>End of List</span>
+                            </div>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                              highlightProductIndex === -1 ? 'bg-black text-white' : 'text-slate-500'
+                            }`}>
+                              Enter ↵
+                            </span>
+                          </div>
+                        )}
+
+                        {matched.length === 0 ? (
+                          <div className="p-6 text-center text-xs text-slate-500 italic">
+                            {selectedCategory
+                              ? `No items found in category "${selectedCategory}" matching "${searchQuery}"`
+                              : `No stock items match "${searchQuery}"`}
+                          </div>
+                        ) : (
+                          matched.map((p: any) => {
+                            const currentIndex = runningIdx++;
+                            const isHighlighted = currentIndex === highlightProductIndex;
+                            const isSelected = p.id === activeRow?.productId;
+                            const uom = ((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'sqft').toLowerCase() === 'sqft' ? 'sq.ft' : ((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'No');
+                            const hsn = p.hsn || p.hsn_code || (p as any)?.hsnCode || '—';
+                            const gst = p.gst_rate !== undefined ? p.gst_rate : 18;
+                            const stockQty = p.current_stock !== undefined ? `${p.current_stock.toLocaleString()} ${uom}` : '—';
+                            const rateStr = p.baseRate !== undefined ? `₹${Number(p.baseRate).toFixed(2)}` : '—';
+
+                            return (
+                              <div
+                                key={p.id}
+                                id={`stock-item-${currentIndex}`}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
+                                  updateRow(openRowId, { productId: p.id, billingMode: prodMode });
+                                  setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${openRowId}-product`]; return n; });
+                                  setOpenRowId(null);
+                                  setSearchQuery('');
+                                  setHighlightProductIndex(0);
+                                  setTimeout(() => {
+                                    setActiveDescRowId(openRowId);
+                                  }, 60);
+                                }}
+                                className={`py-1.5 px-4 cursor-pointer transition-colors flex items-center justify-between text-xs select-none ${
+                                  isHighlighted
+                                    ? 'bg-[#f5a623] text-black font-extrabold shadow-xs'
+                                    : isSelected
+                                      ? 'bg-[#d8eafb] text-[#0f2942] font-bold'
+                                      : 'hover:bg-[#ddebfa] text-[#1e293b]'
+                                }`}
+                              >
+                                <div className="flex-1 min-w-0 pr-3">
+                                  <div className="truncate font-bold leading-tight flex items-center gap-2">
+                                    <span className="truncate text-xs">{p.name}</span>
+                                    {p.category && (
+                                      <button
+                                        type="button"
+                                        title={`Click to show only "${p.category}" items`}
+                                        onMouseDown={(e) => {
+                                          e.stopPropagation();
+                                          e.preventDefault();
+                                          const catVal = (p.category || '').trim();
+                                          setSelectedCategory(selectedCategory?.toLowerCase() === catVal.toLowerCase() ? null : catVal);
+                                          setHighlightProductIndex(0);
+                                        }}
+                                        className={`px-1.5 py-0.5 text-[9px] font-black uppercase rounded transition-colors shrink-0 ${
+                                          isHighlighted
+                                            ? 'bg-black/20 text-black hover:bg-black/30'
+                                            : selectedCategory?.toLowerCase() === (p.category || '').trim().toLowerCase()
+                                              ? 'bg-blue-600 text-white font-black'
+                                              : 'bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200'
+                                        }`}
+                                      >
+                                        {p.category}
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className={`w-28 text-center font-mono text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
+                                  {hsn}
+                                </div>
+                                <div className={`w-20 text-center font-mono text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
+                                  {gst}%
+                                </div>
+                                <div className={`w-32 text-right pr-2 font-mono text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : (p.current_stock < 0 ? 'text-red-600 font-bold' : 'text-slate-700')}`}>
+                                  {stockQty}
+                                </div>
+                                <div className={`w-28 text-right font-bold text-[11px] shrink-0 ${isHighlighted ? 'text-black' : 'text-slate-800'}`}>
+                                  {rateStr}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Footer shortcuts */}
+                      <div className="bg-[#1a4a7a] text-white py-1 px-3 text-[10px] font-mono flex items-center justify-between border-t border-[#12365a] shrink-0 select-none">
+                        <span>↑/↓ Navigate • ↵ Enter Select</span>
+                        <span>Esc Close</span>
+                      </div>
+                    </>
+                  );
+                })()
+              ) : null}
+            </div>
           )}
 
     </RoleGuard>

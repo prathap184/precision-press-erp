@@ -49,9 +49,8 @@ export default function DashboardRootLayout({
               error: { style: { background: '#ef4444', color: '#fff', fontWeight: 'bold' }, duration: 6000 },
             }}
           />
-          <div className={`min-h-screen ${(isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isQuotationPage) ? 'bg-[#d4d4d8]' : 'bg-slate-50'} font-sans antialiased text-slate-900 relative overflow-x-clip`}>
-          {/* Decorative Layers omitted on full-canvas workspace pages */}
-          {!(isGlobalOrdersPage || isAcdemaViewPage || isDesignerWorkspacePage || isManagerWorkspacePage || isPrinterWorkspacePage || isProxyOrderPage || isQuotationPage) && (
+          <div className="min-h-screen bg-slate-50 font-sans antialiased text-slate-900 relative overflow-x-clip">
+          {/* Decorative Layers */}
           <div className="fixed inset-0 pointer-events-none select-none z-0" aria-hidden="true">
             <div
               className="absolute inset-0 opacity-[0.35]"
@@ -103,7 +102,6 @@ export default function DashboardRootLayout({
               <path d="M30 110 L30 30 L110 30" stroke="#00236f" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
           </div>
-          )}
           <style>{`
             @keyframes drift1 {
               0%   { transform: translate(0, 0) scale(1); }

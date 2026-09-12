@@ -109,6 +109,7 @@ function SearchableProductSelect({
   id,
   onSelectAdvance,
   onEndOfList,
+  onBackNavigate,
 }: {
   value: string;
   inventoryItems: InventoryItemOption[];
@@ -116,6 +117,7 @@ function SearchableProductSelect({
   id?: string;
   onSelectAdvance?: () => void;
   onEndOfList?: () => void;
+  onBackNavigate?: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -209,17 +211,45 @@ function SearchableProductSelect({
             setHighlightIndex(0);
             scrollDropdownToIndex(0);
           }}
-          onFocus={() => {
+          onFocus={(e) => {
             setIsOpen(true);
-            setSearch("");
-            setHighlightIndex(-1);
+            const currentName = selectedItem?.name || "";
+            setSearch(currentName);
+            const currIdx = matched.findIndex((p) => p.id === value);
+            setHighlightIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
+            const inputEl = e.currentTarget;
+            setTimeout(() => {
+              try {
+                inputEl.select();
+              } catch {}
+            }, 10);
+          }}
+          onMouseUp={(e) => {
+            if (document.activeElement === e.currentTarget && e.currentTarget.selectionStart === e.currentTarget.selectionEnd) {
+              try {
+                e.currentTarget.select();
+              } catch {}
+            }
           }}
           onKeyDown={(e) => {
+            if (e.key === "Backspace") {
+              const isFullSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === e.currentTarget.value.length;
+              if (!search || !value || isFullSelected) {
+                if ((!search || isFullSelected) && onBackNavigate) {
+                  e.preventDefault();
+                  setIsOpen(false);
+                  onBackNavigate();
+                  return;
+                }
+              }
+            }
+
             if (e.key === "ArrowDown") {
               e.preventDefault();
               if (!isOpen) {
                 setIsOpen(true);
-                setHighlightIndex(!search.trim() ? -1 : 0);
+                const currIdx = matched.findIndex((p) => p.id === value);
+                setHighlightIndex(currIdx >= 0 ? currIdx : (!search.trim() ? -1 : 0));
                 return;
               }
               setHighlightIndex((prev) => {
@@ -237,16 +267,12 @@ function SearchableProductSelect({
             } else if (e.key === "Enter") {
               e.preventDefault();
               if (!isOpen) {
-                // Dropdown closed — check if this row is empty (no product selected)
                 if (!value && onEndOfList) {
-                  // Empty row + Enter = End of List, remove this row
                   onEndOfList();
                 } else if (onSelectAdvance) {
-                  // Item already selected — double Enter = advance to next field
                   onSelectAdvance();
                 }
               } else if (highlightIndex === -1 || matched.length === 0) {
-                // END OF LIST row highlighted — close dropdown and finish item list
                 setIsOpen(false);
                 setSearch("");
                 if (onEndOfList) {
@@ -254,9 +280,16 @@ function SearchableProductSelect({
                 } else if (onSelectAdvance) {
                   onSelectAdvance();
                 }
-              } else {
-                const p = matched[highlightIndex] || matched[0];
+              } else if (highlightIndex >= 0 && matched[highlightIndex]) {
+                const p = matched[highlightIndex];
                 if (p) handleSelectItem(p);
+              } else if (value && onSelectAdvance) {
+                setIsOpen(false);
+                onSelectAdvance();
+              } else if (matched.length > 0) {
+                handleSelectItem(matched[0]);
+              } else if (onEndOfList) {
+                onEndOfList();
               }
             } else if (e.key === "Escape") {
               setIsOpen(false);
@@ -543,6 +576,17 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
     }, 50);
   };
 
+  const handleBackFromDescModal = (lineIndex: number) => {
+    setActiveDescLineIndex(null);
+    setTimeout(() => {
+      const itemInput = document.getElementById(`row-${lineIndex}-product-input`);
+      if (itemInput) {
+        itemInput.focus();
+        try { (itemInput as HTMLInputElement).select(); } catch {}
+      }
+    }, 50);
+  };
+
   function addLine() {
     const defaultTax = taxRates.find(t => t.rate === 1800) || taxRates.find(t => t.name?.includes("18")) || taxRates[0];
     onChange([
@@ -733,6 +777,19 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                       onSelectAdvance={() => {
                         setActiveDescLineIndex(i);
                       }}
+                      onBackNavigate={() => {
+                        if (i === 0) {
+                          const refInput = document.getElementById("invoice-reference-input") || document.getElementById("invoice-customer-search-input");
+                          refInput?.focus();
+                        } else {
+                          const prevIdx = i - 1;
+                          const target = document.getElementById(`row-${prevIdx}-finishAmount`) ||
+                                         document.getElementById(`row-${prevIdx}-unitPrice`) ||
+                                         document.getElementById(`row-${prevIdx}-pcs`) ||
+                                         document.getElementById(`row-${prevIdx}-quantity`);
+                          target?.focus();
+                        }
+                      }}
                       onEndOfList={() => {
                         // End of list selected — delete this empty line and advance to next section
                         if (lines.length > 1) {
@@ -819,7 +876,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
                           setActiveDescLineIndex(i);
-                        } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                        } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                           e.preventDefault();
                           const prodInput = document.getElementById(`row-${i}-product-input`);
                           if (prodInput) prodInput.focus();
@@ -912,6 +969,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                             const unitBtn = document.getElementById(`row-${i}-width-unit`);
                             if (unitBtn) unitBtn.focus();
                             else { const nextEl = document.getElementById(`row-${i}-length`); if (nextEl) nextEl.focus(); }
+                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                            e.preventDefault();
+                            const descEl = document.getElementById(`row-${i}-description`);
+                            if (descEl) descEl.focus();
                           }
                         }}
                         placeholder="W"
@@ -927,6 +988,11 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                               setOpenUnitPickerId(null);
                               const nextEl = document.getElementById(`row-${i}-length`);
                               if (nextEl) nextEl.focus();
+                            } else if (e.key === "Backspace") {
+                              e.preventDefault();
+                              setOpenUnitPickerId(null);
+                              const wEl = document.getElementById(`row-${i}-width`);
+                              if (wEl) wEl.focus();
                             } else if (e.key === " " || e.key === "Spacebar") {
                               e.preventDefault();
                               const updated = [...lines];
@@ -991,6 +1057,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                             if (unitBtn) unitBtn.focus();
                             else if (isModeB) { const el = document.getElementById(`row-${i}-pcs`); if (el) el.focus(); }
                             else { const el = document.getElementById(`row-${i}-quantity`); if (el) el.focus(); }
+                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                            e.preventDefault();
+                            const prevEl = document.getElementById(`row-${i}-width-unit`) || document.getElementById(`row-${i}-width`);
+                            if (prevEl) prevEl.focus();
                           }
                         }}
                         placeholder="L"
@@ -1006,6 +1076,11 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                               setOpenUnitPickerId(null);
                               if (isModeB) { const el = document.getElementById(`row-${i}-pcs`); if (el) el.focus(); }
                               else { const el = document.getElementById(`row-${i}-quantity`); if (el) el.focus(); }
+                            } else if (e.key === "Backspace") {
+                              e.preventDefault();
+                              setOpenUnitPickerId(null);
+                              const lEl = document.getElementById(`row-${i}-length`);
+                              if (lEl) lEl.focus();
                             } else if (e.key === " " || e.key === "Spacebar") {
                               e.preventDefault();
                               const updated = [...lines];
@@ -1079,6 +1154,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                           e.preventDefault();
                           const nextEl = document.getElementById(`row-${i}-unitPrice`);
                           if (nextEl) nextEl.focus();
+                        } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                          e.preventDefault();
+                          const prevEl = document.getElementById(`row-${i}-length-unit`) || document.getElementById(`row-${i}-length`);
+                          if (prevEl) prevEl.focus();
                         }
                       }}
                       placeholder="Pcs"
@@ -1109,6 +1188,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                             e.preventDefault();
                             const nextEl = document.getElementById(`row-${i}-unitPrice`);
                             if (nextEl) nextEl.focus();
+                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                            e.preventDefault();
+                            const prevEl = document.getElementById(`row-${i}-description`);
+                            if (prevEl) prevEl.focus();
                           }
                         }}
                       />
@@ -1135,6 +1218,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                             e.preventDefault();
                             const nextEl = document.getElementById(`row-${i}-unitPrice`);
                             if (nextEl) nextEl.focus();
+                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                            e.preventDefault();
+                            const prevEl = document.getElementById(`row-${i}-length-unit`) || document.getElementById(`row-${i}-length`);
+                            if (prevEl) prevEl.focus();
                           }
                         }}
                       />
@@ -1155,13 +1242,20 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                       onKeyDown={(e: any) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          if (i === lines.length - 1) {
+                          const finishEl = document.getElementById(`row-${i}-finishAmount`);
+                          if (finishEl) {
+                            finishEl.focus();
+                          } else if (i === lines.length - 1) {
                             setPendingFocusRowIndex(lines.length);
                             addLine();
                           } else {
                             const nextEl = document.getElementById(`row-${i + 1}-product-input`);
                             if (nextEl) nextEl.focus();
                           }
+                        } else if (e.key === "Backspace" && (e.currentTarget?.selectionStart === 0 || !e.currentTarget?.value)) {
+                          e.preventDefault();
+                          const prevEl = document.getElementById(`row-${i}-quantity`) || document.getElementById(`row-${i}-length-unit`) || document.getElementById(`row-${i}-length`);
+                          if (prevEl) prevEl.focus();
                         }
                       }}
                       placeholder="0.00"
@@ -1191,13 +1285,20 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            if (i === lines.length - 1) {
+                            const finishEl = document.getElementById(`row-${i}-finishAmount`);
+                            if (finishEl) {
+                              finishEl.focus();
+                            } else if (i === lines.length - 1) {
                               setPendingFocusRowIndex(lines.length);
                               addLine();
                             } else {
                               const nextEl = document.getElementById(`row-${i + 1}-product-input`);
                               if (nextEl) nextEl.focus();
                             }
+                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                            e.preventDefault();
+                            const prevEl = document.getElementById(`row-${i}-pcs`) || document.getElementById(`row-${i}-length-unit`) || document.getElementById(`row-${i}-length`);
+                            if (prevEl) prevEl.focus();
                           }
                         }}
                         placeholder="0.00"
@@ -1226,6 +1327,10 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                               const nextEl = document.getElementById(`row-${i + 1}-product-input`);
                               if (nextEl) nextEl.focus();
                             }
+                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                            e.preventDefault();
+                            const prevEl = document.getElementById(`row-${i}-quantity`) || document.getElementById(`row-${i}-description`);
+                            if (prevEl) prevEl.focus();
                           }
                         }}
                         placeholder="0.00"
@@ -1243,11 +1348,28 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
                     <CurrencyInput
+                      id={`row-${i}-finishAmount`}
                       size="sm"
                       placeholder="0.00"
                       className="h-9 text-right text-xs font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
                       value={line.finishAmount || ""}
                       onChange={(v) => updateLine(i, "finishAmount", v)}
+                      onKeyDown={(e: any) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (i === lines.length - 1) {
+                            setPendingFocusRowIndex(lines.length);
+                            addLine();
+                          } else {
+                            const nextEl = document.getElementById(`row-${i + 1}-product-input`);
+                            if (nextEl) nextEl.focus();
+                          }
+                        } else if (e.key === "Backspace" && (e.currentTarget?.selectionStart === 0 || !e.currentTarget?.value)) {
+                          e.preventDefault();
+                          const prevEl = document.getElementById(`row-${i}-unitPrice`);
+                          if (prevEl) prevEl.focus();
+                        }
+                      }}
                     />
                   )}
                 </div>
@@ -1260,6 +1382,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 {/* Delete Row Button */}
                 <div className="text-center">
                   <Button
+                    id={`row-${i}-delete-btn`}
                     type="button"
                     variant="ghost"
                     size="icon"
@@ -1334,6 +1457,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
         <ItemDescriptionModal
           isOpen={activeDescLineIndex !== null}
           onClose={() => setActiveDescLineIndex(null)}
+          onBackNavigate={() => handleBackFromDescModal(activeDescLineIndex)}
           onSaveAndAdvance={(text) => handleSaveDescAndAdvance(activeDescLineIndex, text)}
           initialValue={lines[activeDescLineIndex]?.description || ''}
           itemName={inventoryItems.find((itm) => itm.id === lines[activeDescLineIndex]?.inventoryItemId)?.name || 'Stock Item'}
