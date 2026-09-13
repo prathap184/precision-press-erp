@@ -1017,9 +1017,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                           const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                           if (heightInput) heightInput.focus();
                                         }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const descInput = document.getElementById(`row-${row.id}-description`);
+                                        const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
                                         if (descInput) descInput.focus();
                                       }
                                     }}
@@ -1035,7 +1035,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         e.preventDefault();
                                         const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                         if (heightInput) heightInput.focus();
-                                      } else if (e.key === "ArrowLeft") {
+                                      } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                         e.preventDefault();
                                         const widthInput = document.getElementById(`error-row-${row.id}-width`);
                                         if (widthInput) widthInput.focus();
@@ -1073,7 +1073,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                           const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                           if (qtyInput) qtyInput.focus();
                                         }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const widthUnitSelect = document.getElementById(`row-${row.id}-width-unit`);
                                         if (widthUnitSelect) widthUnitSelect.focus();
@@ -1100,7 +1100,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                           const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                           if (qtyInput) qtyInput.focus();
                                         }
-                                      } else if (e.key === "ArrowLeft") {
+                                      } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                         e.preventDefault();
                                         const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                         if (heightInput) heightInput.focus();
@@ -1132,7 +1132,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       e.preventDefault();
                                       const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
                                       if (rateInput) rateInput.focus();
-                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
                                       const heightUnitSelect = document.getElementById(`row-${row.id}-height-unit`);
                                       if (heightUnitSelect) heightUnitSelect.focus();
@@ -1168,13 +1168,22 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         e.preventDefault();
                                         const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
                                         if (rateInput) rateInput.focus();
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const heightUnitSelect = document.getElementById(`row-${row.id}-height-unit`);
-                                        if (heightUnitSelect) heightUnitSelect.focus();
-                                        else {
-                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
+                                        if (hasMultipleSizes) {
+                                          const heightUnitSelect = document.getElementById(`row-${row.id}-height-unit`);
+                                          if (heightUnitSelect) heightUnitSelect.focus();
+                                          else {
+                                            const heightInput = document.getElementById(`error-row-${row.id}-height`);
+                                            if (heightInput) heightInput.focus();
+                                            else {
+                                              const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
+                                              if (descInput) descInput.focus();
+                                            }
+                                          }
+                                        } else {
+                                          const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
+                                          if (descInput) descInput.focus();
                                         }
                                       }
                                     }}
@@ -1214,7 +1223,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                           else handleRowFinalEnter(index);
                                         }
                                       }
-                                    } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
                                       const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                       if (qtyInput) qtyInput.focus();
@@ -1265,10 +1274,14 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             else handleRowFinalEnter(index);
                                           }
                                         }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
                                         if (pcsInput) pcsInput.focus();
+                                        else {
+                                          const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                          if (qtyInput) qtyInput.focus();
+                                        }
                                       }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
@@ -1300,7 +1313,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                           if (browseBtn) browseBtn.focus();
                                           else handleRowFinalEnter(index);
                                         }
-                                      } else if (e.key === "ArrowLeft") {
+                                      } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                         e.preventDefault();
                                         if (isSqftModeB) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);

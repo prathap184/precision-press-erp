@@ -570,6 +570,17 @@ export function InvoiceFormView() {
     }, 60);
   };
 
+  const handleBackFromDescModal = (rowId: string) => {
+    setActiveDescRowId(null);
+    setTimeout(() => {
+      const itemInput = document.getElementById(`row-${rowId}-product-input`);
+      if (itemInput) {
+        itemInput.focus();
+        try { (itemInput as HTMLInputElement).select(); } catch {}
+      }
+    }, 50);
+  };
+
   const handleEndOfList = (rowId: string) => {
     setOpenRowId(null);
     setSearchQuery("");
@@ -1231,6 +1242,19 @@ export function InvoiceFormView() {
                                   onClick={() => setActiveDescRowId(row.id)}
                                   onFocus={() => setActiveDescRowId(row.id)}
                                   placeholder="Description / notes (optional)..."
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      setActiveDescRowId(row.id);
+                                    } else if ((e.key === "ArrowLeft" || e.key === "Backspace") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      e.preventDefault();
+                                      const prodInput = document.getElementById(`row-${row.id}-product-input`);
+                                      if (prodInput) {
+                                        prodInput.focus();
+                                        try { (prodInput as HTMLInputElement).select(); } catch {}
+                                      }
+                                    }
+                                  }}
                                   className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer truncate"
                                   title="Additional Description for stock item (like Tally Prime)"
                                 />
@@ -1284,10 +1308,10 @@ export function InvoiceFormView() {
                                         e.preventDefault();
                                         const hEl = document.getElementById(`row-${row.id}-height`);
                                         if (hEl) hEl.focus();
-                                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const prodInput = document.getElementById(`row-${row.id}-product-input`);
-                                        if (prodInput) prodInput.focus();
+                                        const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
+                                        if (descInput) descInput.focus();
                                       }
                                     }}
                                     className="w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0"
@@ -1352,7 +1376,7 @@ export function InvoiceFormView() {
                                           const qtyEl = document.getElementById(`row-${row.id}-quantity`);
                                           if (qtyEl) qtyEl.focus();
                                         }
-                                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const wEl = document.getElementById(`row-${row.id}-width`);
                                         if (wEl) wEl.focus();
@@ -1419,7 +1443,7 @@ export function InvoiceFormView() {
                                       e.preventDefault();
                                       const rateEl = document.getElementById(`row-${row.id}-rate`);
                                       if (rateEl) rateEl.focus();
-                                    } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
                                       const hEl = document.getElementById(`row-${row.id}-height`);
                                       if (hEl) hEl.focus();
@@ -1450,10 +1474,15 @@ export function InvoiceFormView() {
                                       e.preventDefault();
                                       const rateEl = document.getElementById(`row-${row.id}-rate`);
                                       if (rateEl) rateEl.focus();
-                                    } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
-                                      const hEl = document.getElementById(`row-${row.id}-height`);
-                                      if (hEl) hEl.focus();
+                                      if (isSqft) {
+                                        const hEl = document.getElementById(`row-${row.id}-height`);
+                                        if (hEl) hEl.focus();
+                                      } else {
+                                        const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
+                                        if (descInput) descInput.focus();
+                                      }
                                     }
                                   }}
                                   className="h-10 w-[100px] bg-slate-50 border-2 border-slate-200 rounded-lg text-center text-xs font-bold focus:bg-white focus:border-blue-600 outline-none"
@@ -1477,10 +1506,19 @@ export function InvoiceFormView() {
                                     e.preventDefault();
                                     const finishEl = document.getElementById(`row-${row.id}-finish`);
                                     if (finishEl) finishEl.focus();
-                                  } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                  } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                     e.preventDefault();
-                                    const pcsEl = document.getElementById(`row-${row.id}-pcs`) || document.getElementById(`row-${row.id}-quantity`);
-                                    if (pcsEl) pcsEl.focus();
+                                    if (isSqft && isModeB) {
+                                      const pcsEl = document.getElementById(`row-${row.id}-pcs`);
+                                      if (pcsEl) pcsEl.focus();
+                                    } else {
+                                      const qtyEl = document.getElementById(`row-${row.id}-quantity`);
+                                      if (qtyEl) qtyEl.focus();
+                                      else {
+                                        const descInput = document.getElementById(`row-${row.id}-description`);
+                                        if (descInput) descInput.focus();
+                                      }
+                                    }
                                   }
                                 }}
                                 className="h-10 w-[90px] text-center bg-slate-50 border-2 border-slate-200 rounded-lg text-xs font-mono font-bold focus:bg-white focus:border-blue-600 outline-none"
@@ -1508,7 +1546,7 @@ export function InvoiceFormView() {
                                   if (e.key === "Enter") {
                                     e.preventDefault();
                                     handleRowFinalEnter(index);
-                                  } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                  } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                     e.preventDefault();
                                     const rateEl = document.getElementById(`row-${row.id}-rate`);
                                     if (rateEl) rateEl.focus();
@@ -2451,8 +2489,8 @@ export function InvoiceFormView() {
         <ItemDescriptionModal
           isOpen={Boolean(activeDescRowId)}
           onClose={() => setActiveDescRowId(null)}
-          onBackNavigate={() => setActiveDescRowId(null)}
-          onSaveAndAdvance={(text) => handleSaveDescAndAdvance(activeDescRowId, text)}
+          onBackNavigate={() => activeDescRowId && handleBackFromDescModal(activeDescRowId)}
+          onSaveAndAdvance={(text) => activeDescRowId && handleSaveDescAndAdvance(activeDescRowId, text)}
           initialValue={rows.find((r) => r.id === activeDescRowId)?.description || ""}
           itemName={
             products.find((p) => p.id === rows.find((r) => r.id === activeDescRowId)?.productId)?.name ||
