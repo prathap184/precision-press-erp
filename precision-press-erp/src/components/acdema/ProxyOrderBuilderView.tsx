@@ -2403,12 +2403,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           })}
                           {selectedCustomer?.address && <option value={selectedCustomer.address}>Legacy: {selectedCustomer.address}</option>}
                         </select>
-                        {shippingAddress && shippingAddress !== 'Self Pickup' && (
-                          <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-2.5 text-xs font-semibold text-slate-600 whitespace-pre-line mt-1.5 text-left leading-relaxed">
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Selected Delivery Address:</p>
-                            {shippingAddress}
-                          </div>
-                        )}
                         <button
                           id="add-address-btn"
                           type="button"
