@@ -128,6 +128,7 @@ export function ReceiptForm() {
   const narrationInputRef = useRef<HTMLTextAreaElement>(null);
   const refNameInputRef = useRef<HTMLInputElement>(null);
   const modalAmountInputRef = useRef<HTMLInputElement>(null);
+  const refTypeCellRef = useRef<HTMLDivElement>(null);
   const bankDropdownRef = useRef<HTMLDivElement>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -335,7 +336,7 @@ export function ReceiptForm() {
             setRefTypeHighlightIndex((prev) => (prev - 1 + REF_TYPE_OPTIONS.length) % REF_TYPE_OPTIONS.length);
             return;
           }
-          if (e.key === "Enter") {
+          if (e.key === "Enter" || e.key === "Tab") {
             e.preventDefault();
             const selected = REF_TYPE_OPTIONS[refTypeHighlightIndex];
             if (selected) {
@@ -346,6 +347,7 @@ export function ReceiptForm() {
           if (e.key === "Escape") {
             e.preventDefault();
             setShowRefTypeMenu(false);
+            setTimeout(() => refTypeCellRef.current?.focus(), 20);
             return;
           }
         }
@@ -466,6 +468,7 @@ export function ReceiptForm() {
     setCurrentLineInvoiceId(undefined);
     setShowBillWiseModal(true);
     setShowRefTypeMenu(true);
+    setTimeout(() => refTypeCellRef.current?.focus(), 30);
   };
 
   // Handle selecting Ref Type from Method of Adj popup
@@ -1007,8 +1010,20 @@ export function ReceiptForm() {
                     {/* Type of Ref Cell */}
                     <td className="px-3.5 py-2 border-r-2 border-slate-400 font-black text-blue-900 relative overflow-visible">
                       <div
-                        onClick={() => setShowRefTypeMenu(true)}
-                        className="cursor-pointer hover:underline flex items-center justify-between py-1"
+                        ref={refTypeCellRef}
+                        tabIndex={0}
+                        onClick={() => { setShowRefTypeMenu(true); setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType)); }}
+                        onFocus={() => { setShowRefTypeMenu(true); setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType)); }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setShowRefTypeMenu(true);
+                            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType));
+                          } else if (e.key === "Escape") {
+                            setShowRefTypeMenu(false);
+                          }
+                        }}
+                        className="cursor-pointer hover:underline flex items-center justify-between py-1 gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-amber-50 rounded px-1"
                       >
                         <span>
                           {activeRefType === "AGST_REF"
@@ -1019,6 +1034,7 @@ export function ReceiptForm() {
                             ? "Advance"
                             : "On Account"}
                         </span>
+                        <span className="text-blue-400 text-[10px]">▾</span>
                       </div>
 
                       {/* Method of Adj. Floating Popup (Screenshot 1) */}
