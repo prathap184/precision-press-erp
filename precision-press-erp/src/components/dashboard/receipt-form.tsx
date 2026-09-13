@@ -66,6 +66,13 @@ function formatTallyDate(dateStr: string) {
   }
 }
 
+const REF_TYPE_OPTIONS: { type: RefType; label: string }[] = [
+  { type: "ADVANCE", label: "Advance" },
+  { type: "AGST_REF", label: "Agst Ref" },
+  { type: "NEW_REF", label: "New Ref" },
+  { type: "ON_ACCOUNT", label: "On Account" },
+];
+
 export function ReceiptForm() {
   const router = useRouter();
 
@@ -114,13 +121,15 @@ export function ReceiptForm() {
   const [acceptFocusYes, setAcceptFocusYes] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // DOM Refs for strict keyboard traversal
+  // DOM Refs for strict keyboard traversal & outside click
   const accountInputRef = useRef<HTMLInputElement>(null);
   const customerInputRef = useRef<HTMLInputElement>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
   const narrationInputRef = useRef<HTMLTextAreaElement>(null);
   const refNameInputRef = useRef<HTMLInputElement>(null);
   const modalAmountInputRef = useRef<HTMLInputElement>(null);
+  const bankDropdownRef = useRef<HTMLDivElement>(null);
+  const customerDropdownRef = useRef<HTMLDivElement>(null);
 
   // Selected Bank & Customer details
   const selectedBank = bankAccounts.find((b) => b.id === selectedBankId);
@@ -232,9 +241,142 @@ export function ReceiptForm() {
       .catch((err) => console.error("Failed to fetch invoices", err));
   }, [selectedCustomerId]);
 
-  // Global Keyboard Shortcuts (F2 Date, Ctrl+A Save, Escape)
+  // Click outside listener for dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        bankDropdownRef.current &&
+        !bankDropdownRef.current.contains(event.target as Node) &&
+        accountInputRef.current &&
+        !accountInputRef.current.contains(event.target as Node)
+      ) {
+        setShowBankDropdown(false);
+      }
+      if (
+        customerDropdownRef.current &&
+        !customerDropdownRef.current.contains(event.target as Node) &&
+        customerInputRef.current &&
+        !customerInputRef.current.contains(event.target as Node)
+      ) {
+        setShowCustomerDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Auto-scroll highlighted dropdown items into view
+  useEffect(() => {
+    if (showBankDropdown) {
+      document.getElementById(`bank-opt-${bankHighlightIndex}`)?.scrollIntoView({ block: "nearest" });
+    }
+  }, [bankHighlightIndex, showBankDropdown]);
+
+  useEffect(() => {
+    if (showCustomerDropdown) {
+      document.getElementById(`cust-opt-${customerHighlightIndex}`)?.scrollIntoView({ block: "nearest" });
+    }
+  }, [customerHighlightIndex, showCustomerDropdown]);
+
+  useEffect(() => {
+    if (showPendingBills) {
+      document.getElementById(`bill-opt-${pendingBillHighlightIndex}`)?.scrollIntoView({ block: "nearest" });
+    }
+  }, [pendingBillHighlightIndex, showPendingBills]);
+
+  useEffect(() => {
+    if (showRefTypeMenu) {
+      document.getElementById(`reftype-opt-${refTypeHighlightIndex}`)?.scrollIntoView({ block: "nearest" });
+    }
+  }, [refTypeHighlightIndex, showRefTypeMenu]);
+
+  // Global Keyboard Shortcuts (F2 Date, Ctrl+A Save, Escape, Modal Arrow & Enter navigation)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Accept Dialog Keyboard Navigation
+      if (showAcceptDialog) {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Tab") {
+          e.preventDefault();
+          setAcceptFocusYes((prev) => !prev);
+          return;
+        }
+        if (e.key === "y" || e.key === "Y") {
+          e.preventDefault();
+          handlePostVoucher();
+          return;
+        }
+        if (e.key === "n" || e.key === "N" || e.key === "Escape") {
+          e.preventDefault();
+          setShowAcceptDialog(false);
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (acceptFocusYes) {
+            handlePostVoucher();
+          } else {
+            setShowAcceptDialog(false);
+          }
+          return;
+        }
+        return;
+      }
+
+      // 2. Bill-wise Details Modal Popups Navigation (Method of Adj & Pending Bills)
+      if (showBillWiseModal) {
+        if (showRefTypeMenu) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setRefTypeHighlightIndex((prev) => (prev + 1) % REF_TYPE_OPTIONS.length);
+            return;
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setRefTypeHighlightIndex((prev) => (prev - 1 + REF_TYPE_OPTIONS.length) % REF_TYPE_OPTIONS.length);
+            return;
+          }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            const selected = REF_TYPE_OPTIONS[refTypeHighlightIndex];
+            if (selected) {
+              handleSelectRefType(selected.type);
+            }
+            return;
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            setShowRefTypeMenu(false);
+            return;
+          }
+        }
+
+        if (showPendingBills) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setPendingBillHighlightIndex((prev) => Math.min(prev + 1, invoices.length - 1));
+            return;
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setPendingBillHighlightIndex((prev) => Math.max(prev - 1, 0));
+            return;
+          }
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (invoices[pendingBillHighlightIndex]) {
+              handleSelectPendingBill(invoices[pendingBillHighlightIndex]);
+            }
+            return;
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            setShowPendingBills(false);
+            return;
+          }
+        }
+      }
+
+      // 3. Global hotkeys
       if (e.key === "F2") {
         e.preventDefault();
         setTempDate(date);
@@ -266,7 +408,20 @@ export function ReceiptForm() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [date, showPendingBills, showRefTypeMenu, showBillWiseModal, showAcceptDialog, showF2Modal, voucherAmount, selectedCustomerId]);
+  }, [
+    date,
+    showPendingBills,
+    showRefTypeMenu,
+    showBillWiseModal,
+    showAcceptDialog,
+    showF2Modal,
+    voucherAmount,
+    selectedCustomerId,
+    refTypeHighlightIndex,
+    pendingBillHighlightIndex,
+    acceptFocusYes,
+    invoices
+  ]);
 
   const validateBeforeAccept = () => {
     if (!selectedBankId) {
@@ -520,10 +675,24 @@ export function ReceiptForm() {
                   onClick={() => setShowBankDropdown(true)}
                   onFocus={() => setShowBankDropdown(true)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === "ArrowDown") {
+                    if (e.key === "ArrowDown") {
                       e.preventDefault();
                       setShowBankDropdown(true);
-                    } else if (e.key === "Tab") {
+                      setBankHighlightIndex((prev) => Math.min(prev + 1, bankAccounts.length - 1));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setShowBankDropdown(true);
+                      setBankHighlightIndex((prev) => Math.max(prev - 1, 0));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (showBankDropdown && bankAccounts[bankHighlightIndex]) {
+                        setSelectedBankId(bankAccounts[bankHighlightIndex].id);
+                        setShowBankDropdown(false);
+                        customerInputRef.current?.focus();
+                      } else {
+                        setShowBankDropdown(true);
+                      }
+                    } else if (e.key === "Tab" || e.key === "Escape") {
                       setShowBankDropdown(false);
                     }
                   }}
@@ -543,15 +712,16 @@ export function ReceiptForm() {
 
                 {/* Bank Accounts Dropdown */}
                 {showBankDropdown && (
-                  <div className="absolute left-0 top-full mt-1 w-full bg-white border-2 border-blue-600 shadow-2xl z-50 rounded overflow-hidden">
+                  <div ref={bankDropdownRef} className="absolute left-0 top-full mt-1 w-full bg-white border-2 border-blue-600 shadow-2xl z-50 rounded overflow-hidden">
                     <div className="bg-[#244b7a] text-white text-xs font-bold px-3.5 py-1.5 flex justify-between">
                       <span>List of Ledger Accounts</span>
-                      <span>Balance</span>
+                      <span className="text-amber-300 font-mono text-[10px]">↑↓ Navigate · Enter Select</span>
                     </div>
                     <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
                       {bankAccounts.map((b, idx) => (
                         <div
                           key={b.id}
+                          id={`bank-opt-${idx}`}
                           onClick={() => {
                             setSelectedBankId(b.id);
                             setShowBankDropdown(false);
@@ -642,10 +812,10 @@ export function ReceiptForm() {
 
                     {/* Customer Dropdown */}
                     {showCustomerDropdown && (
-                      <div className="absolute left-0 top-full mt-1 w-full bg-white border-2 border-blue-600 shadow-2xl z-50 rounded overflow-hidden">
+                      <div ref={customerDropdownRef} className="absolute left-0 top-full mt-1 w-full bg-white border-2 border-blue-600 shadow-2xl z-50 rounded overflow-hidden">
                         <div className="bg-[#244b7a] text-white text-xs font-bold px-3.5 py-1.5 flex justify-between">
                           <span>List of Customer Ledgers</span>
-                          <span>Cur Balance</span>
+                          <span className="text-amber-300 font-mono text-[10px]">↑↓ Navigate · Enter Select</span>
                         </div>
                         <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
                           {filteredCustomers.length === 0 ? (
@@ -654,6 +824,7 @@ export function ReceiptForm() {
                             filteredCustomers.map((c, idx) => (
                               <div
                                 key={c.id}
+                                id={`cust-opt-${idx}`}
                                 onClick={() => {
                                   setSelectedCustomerId(c.id);
                                   setCustomerSearch(c.name);
@@ -853,18 +1024,15 @@ export function ReceiptForm() {
                       {/* Method of Adj. Floating Popup (Screenshot 1) */}
                       {showRefTypeMenu && (
                         <div className="absolute left-0 top-full mt-1.5 w-48 bg-white border-2 border-blue-600 shadow-2xl z-[100] rounded overflow-hidden">
-                          <div className="bg-[#244b7a] text-white font-extrabold px-3.5 py-1.5 text-xs">
-                            Method of Adj.
+                          <div className="bg-[#244b7a] text-white font-extrabold px-3.5 py-1.5 text-xs flex justify-between items-center">
+                            <span>Method of Adj.</span>
+                            <span className="text-amber-300 font-mono text-[10px] font-normal">↑↓ · Enter</span>
                           </div>
                           <div className="divide-y divide-slate-100 text-xs font-semibold">
-                            {[
-                              { type: "ADVANCE", label: "Advance" },
-                              { type: "AGST_REF", label: "Agst Ref" },
-                              { type: "NEW_REF", label: "New Ref" },
-                              { type: "ON_ACCOUNT", label: "On Account" },
-                            ].map((opt, idx) => (
+                            {REF_TYPE_OPTIONS.map((opt, idx) => (
                               <div
                                 key={opt.type}
+                                id={`reftype-opt-${idx}`}
                                 onClick={() => handleSelectRefType(opt.type as RefType)}
                                 onMouseEnter={() => setRefTypeHighlightIndex(idx)}
                                 className={`px-3.5 py-2.5 cursor-pointer ${
@@ -978,6 +1146,7 @@ export function ReceiptForm() {
                         invoices.map((inv, idx) => (
                           <tr
                             key={inv.id}
+                            id={`bill-opt-${idx}`}
                             onClick={() => handleSelectPendingBill(inv)}
                             onMouseEnter={() => setPendingBillHighlightIndex(idx)}
                             className={`cursor-pointer ${
@@ -1020,33 +1189,30 @@ export function ReceiptForm() {
                 autoFocus={acceptFocusYes}
                 onClick={handlePostVoucher}
                 disabled={saving}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                    setAcceptFocusYes(false);
-                  } else if (e.key === "y" || e.key === "Y") {
-                    handlePostVoucher();
-                  }
-                }}
-                className="px-6 py-2 bg-[#244b7a] hover:bg-[#1b385c] text-white font-black text-xs rounded shadow focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                className={`px-6 py-2.5 font-black text-xs rounded shadow transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                  acceptFocusYes
+                    ? "bg-[#244b7a] text-white ring-2 ring-blue-600 scale-[1.03]"
+                    : "bg-[#244b7a] text-white hover:bg-[#1b385c]"
+                }`}
               >
-                {saving ? "Posting..." : "Yes (Y)"}
+                {saving ? "Posting..." : "Yes"}
+                <span className="ml-1.5 text-[10px] font-mono opacity-70">(Y / ↵)</span>
               </button>
               <button
                 type="button"
                 autoFocus={!acceptFocusYes}
                 onClick={() => setShowAcceptDialog(false)}
-                onKeyDown={(e) => {
-                  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                    setAcceptFocusYes(true);
-                  } else if (e.key === "n" || e.key === "N") {
-                    setShowAcceptDialog(false);
-                  }
-                }}
-                className="px-6 py-2 border-2 border-slate-400 hover:bg-slate-100 text-slate-800 font-bold text-xs rounded focus:ring-2 focus:ring-slate-600 focus:outline-none"
+                className={`px-6 py-2.5 font-bold text-xs rounded transition-all focus:outline-none focus:ring-2 focus:ring-slate-600 ${
+                  !acceptFocusYes
+                    ? "border-2 border-slate-600 bg-slate-100 text-slate-900 ring-2 ring-slate-600 scale-[1.03]"
+                    : "border-2 border-slate-400 hover:bg-slate-100 text-slate-800"
+                }`}
               >
-                No (N)
+                No
+                <span className="ml-1.5 text-[10px] font-mono opacity-70">(N / Esc)</span>
               </button>
             </div>
+            <p className="text-[10px] text-slate-400 font-mono">← → or Tab to switch · Enter to confirm</p>
           </div>
         </div>
       )}
