@@ -43,6 +43,42 @@ export interface ContactPickerProps {
   onSelectAdvance?: () => void;
 }
 
+function HighlightMatch({ text, query, isHighlighted }: { text: string; query: string; isHighlighted?: boolean }) {
+  if (!text) return null;
+  const q = (query || "").trim();
+  if (!q) return <>{text}</>;
+
+  const tokens = q.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return <>{text}</>;
+
+  const escapedTokens = tokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const regex = new RegExp(`(${escapedTokens.join("|")})`, "gi");
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const isMatch = tokens.some((t) => t.toLowerCase() === part.toLowerCase());
+        if (isMatch) {
+          return (
+            <mark
+              key={i}
+              className={
+                isHighlighted
+                  ? "bg-black text-amber-300 font-extrabold px-0.5 rounded-xs underline decoration-amber-400"
+                  : "bg-amber-300/90 text-amber-950 font-extrabold px-0.5 rounded-xs shadow-2xs"
+              }
+            >
+              {part}
+            </mark>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 export function ContactPicker({
   value,
   onChange,
@@ -356,7 +392,7 @@ export function ContactPicker({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className={`text-sm font-bold truncate ${isHighlighted ? "text-white" : "text-slate-900"}`}>
-                        {c.name}
+                        <HighlightMatch text={c.name} query={search} isHighlighted={isHighlighted} />
                       </span>
                       {typeBadge[c.type] && (
                         <span
@@ -371,8 +407,21 @@ export function ContactPicker({
                       )}
                     </div>
                     <div className={`text-xs truncate mt-0.5 ${isHighlighted ? "text-blue-100" : "text-slate-500"}`}>
-                      {c.phone || c.email || "No phone"}
-                      {c.taxNumber ? ` • GST: ${c.taxNumber}` : ""}
+                      {c.phone ? (
+                        <HighlightMatch text={c.phone} query={search} isHighlighted={isHighlighted} />
+                      ) : c.email ? (
+                        <HighlightMatch text={c.email} query={search} isHighlighted={isHighlighted} />
+                      ) : (
+                        "No phone"
+                      )}
+                      {c.taxNumber ? (
+                        <>
+                          {" • GST: "}
+                          <HighlightMatch text={c.taxNumber} query={search} isHighlighted={isHighlighted} />
+                        </>
+                      ) : (
+                        ""
+                      )}
                     </div>
                   </div>
 
