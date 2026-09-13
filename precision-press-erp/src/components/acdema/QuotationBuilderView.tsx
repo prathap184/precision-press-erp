@@ -259,6 +259,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
 
   const handleBackFromDescModal = (rowId: string) => {
     setActiveDescRowId(null);
+    setOpenRowId(rowId);
     setTimeout(() => {
       const itemInput = document.getElementById(`row-${rowId}-product-input`);
       if (itemInput) {
@@ -787,7 +788,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             <td className="py-2 px-2 tabular-nums align-top">
                               {(() => {
                                 const selProd = products.find((p: any) => p.id === row.productId);
-                                const isOpen = openRowId === row.id;
+                                const isOpen = openRowId === row.id && !activeDescRowId;
                                 const matched = matchedProducts;
 
                                  const grouped = matched.reduce((acc: any, p: any) => {
@@ -802,7 +803,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
 
                                 return (
                                   <div id={`error-row-${row.id}-product`} className="relative w-full min-w-[220px]">
-                                    <div className={`flex h-10 w-full items-center rounded-lg bg-slate-50 px-3 border ${validationErrors[`row-${row.id}-product`] ? 'border-red-400' : 'border-slate-200'}`}>
+                                    <div className={`flex h-10 w-full items-center rounded-lg px-3 border transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : activeDescRowId ? 'border-2 border-slate-200 bg-slate-50' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                                          <input
                                            id={`row-${row.id}-product-input`}
                                            value={isOpen ? searchQuery : (selProd?.name ?? '')}
@@ -866,7 +867,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                }
                                              } else if (e.key === "Enter") {
                                                e.preventDefault();
-                                               if (highlightProductIndex === -1 || (!searchQuery.trim() && !row.productId && highlightProductIndex <= 0)) {
+                                               if (highlightProductIndex === -1) {
                                                  handleEndOfList(row.id);
                                                  return;
                                                }
@@ -954,15 +955,20 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         id={`row-${row.id}-description`}
                                         value={row.description !== undefined ? row.description : (row.projectName || '')}
                                         readOnly
-                                        onClick={() => setActiveDescRowId(row.id)}
-                                        onFocus={() => setActiveDescRowId(row.id)}
+                                        tabIndex={-1}
+                                        onClick={() => {
+                                          setOpenRowId(null);
+                                          setActiveDescRowId(row.id);
+                                        }}
                                         placeholder="Description / notes (optional)..."
                                         onKeyDown={(e) => {
                                           if (e.key === "Enter" || e.key === " ") {
                                             e.preventDefault();
+                                            setOpenRowId(null);
                                             setActiveDescRowId(row.id);
                                           } else if ((e.key === "ArrowLeft" || e.key === "Backspace") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                             e.preventDefault();
+                                            setOpenRowId(row.id);
                                             const prodInput = document.getElementById(`row-${row.id}-product-input`);
                                             if (prodInput) {
                                               prodInput.focus();
@@ -1019,8 +1025,13 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         }
                                       } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
-                                        if (descInput) descInput.focus();
+                                        e.stopPropagation();
+                                        setOpenRowId(row.id);
+                                        const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                        if (itemInput) {
+                                          itemInput.focus();
+                                          try { (itemInput as HTMLInputElement).select(); } catch {}
+                                        }
                                       }
                                     }}
                                     className={`w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0 ${validationErrors[`row-${row.id}-width`] ? 'text-red-600 placeholder-red-300' : ''}`}
@@ -1170,6 +1181,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         if (rateInput) rateInput.focus();
                                       } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
+                                        e.stopPropagation();
                                         if (hasMultipleSizes) {
                                           const heightUnitSelect = document.getElementById(`row-${row.id}-height-unit`);
                                           if (heightUnitSelect) heightUnitSelect.focus();
@@ -1177,13 +1189,17 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                             if (heightInput) heightInput.focus();
                                             else {
-                                              const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
-                                              if (descInput) descInput.focus();
+                                              setOpenRowId(null);
+                                              setActiveDescRowId(row.id);
                                             }
                                           }
                                         } else {
-                                          const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
-                                          if (descInput) descInput.focus();
+                                          setOpenRowId(row.id);
+                                          const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                          if (itemInput) {
+                                            itemInput.focus();
+                                            try { (itemInput as HTMLInputElement).select(); } catch {}
+                                          }
                                         }
                                       }
                                     }}
@@ -1897,7 +1913,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           )}
 
           {/* Tally Full Vertical Right Sidebar Drawer (List of Ledger Accounts / List of Stock Items) */}
-          {(customerDropdownOpen || openRowId) && (
+          {(customerDropdownOpen || openRowId) && !activeDescRowId && (
             <div 
               className="fixed right-0 top-0 bottom-0 w-[900px] lg:w-[980px] max-w-[96vw] z-[99999] bg-[#eef6ff] border-l-2 border-[#1a4a7a] shadow-2xl flex flex-col animate-in slide-in-from-right duration-150 font-sans"
             >

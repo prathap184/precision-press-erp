@@ -24,10 +24,20 @@ export function ItemDescriptionModal({
 }: ItemDescriptionModalProps) {
   const [text, setText] = useState(initialValue || '');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mountedAtRef = useRef<number>(0);
 
   useEffect(() => {
     if (isOpen) {
+      mountedAtRef.current = Date.now();
       setText(initialValue || '');
+      if (typeof window !== 'undefined') {
+        try {
+          window.getSelection()?.removeAllRanges();
+          if (document.activeElement instanceof HTMLElement && document.activeElement !== textareaRef.current) {
+            document.activeElement.blur();
+          }
+        } catch {}
+      }
       const timer = setTimeout(() => {
         if (textareaRef.current) {
           textareaRef.current.focus();
@@ -38,7 +48,7 @@ export function ItemDescriptionModal({
             );
           } catch {}
         }
-      }, 50);
+      }, 40);
       return () => clearTimeout(timer);
     }
   }, [isOpen, initialValue]);
@@ -56,19 +66,31 @@ export function ItemDescriptionModal({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
       handleGoBack();
       return;
     }
 
-    if (e.key === 'Backspace' && (!text || text.length === 0 || (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0))) {
-      e.preventDefault();
-      handleGoBack();
-      return;
+    if (e.key === 'Backspace') {
+      // Guard against the preceding Backspace that opened this modal from immediately closing it
+      if (Date.now() - mountedAtRef.current < 400) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      if (!text || text.length === 0 || (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0)) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleGoBack();
+        return;
+      }
     }
 
     if (e.key === 'Enter') {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
+        e.stopPropagation();
         onSaveAndAdvance(text.trimEnd());
         return;
       }
@@ -82,6 +104,7 @@ export function ItemDescriptionModal({
       // If the current line is empty, exit and save!
       if (currentLine.trim() === '') {
         e.preventDefault();
+        e.stopPropagation();
         const cleanedText = text.trimEnd();
         onSaveAndAdvance(cleanedText);
       }
@@ -124,6 +147,7 @@ export function ItemDescriptionModal({
           <div className="space-y-1">
             <textarea
               ref={textareaRef}
+              autoFocus
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={handleKeyDown}

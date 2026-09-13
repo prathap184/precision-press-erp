@@ -562,10 +562,16 @@ export function InvoiceFormView() {
       const isSqft = prod ? prod.has_multiple_sizes : true;
       if (isSqft) {
         const el = document.getElementById(`row-${rowId}-width`);
-        if (el) el.focus();
+        if (el) {
+          el.focus();
+          try { (el as HTMLInputElement).select(); } catch {}
+        }
       } else {
         const el = document.getElementById(`row-${rowId}-quantity`);
-        if (el) el.focus();
+        if (el) {
+          el.focus();
+          try { (el as HTMLInputElement).select(); } catch {}
+        }
       }
     }, 60);
   };
@@ -575,6 +581,7 @@ export function InvoiceFormView() {
     setTimeout(() => {
       const itemInput = document.getElementById(`row-${rowId}-product-input`);
       if (itemInput) {
+        setOpenRowId(rowId);
         itemInput.focus();
         try { (itemInput as HTMLInputElement).select(); } catch {}
       }
@@ -1105,7 +1112,7 @@ export function InvoiceFormView() {
                       const isSqft = prod ? prod.has_multiple_sizes : true;
                       const isModeA = row.billingMode === "A";
                       const isModeB = !isModeA;
-                      const isOpen = openRowId === row.id;
+                      const isOpen = openRowId === row.id && !activeDescRowId;
 
                       return (
                         <tr key={row.id} className="group transition-colors hover:bg-slate-50/50 align-top">
@@ -1124,6 +1131,8 @@ export function InvoiceFormView() {
                                   className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${
                                     isOpen
                                       ? "border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm"
+                                      : activeDescRowId
+                                      ? "border-2 border-slate-200 bg-slate-50"
                                       : "border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white"
                                   }`}
                                 >
@@ -1162,11 +1171,14 @@ export function InvoiceFormView() {
                                         );
                                       } else if (e.key === "ArrowUp") {
                                         e.preventDefault();
-                                        setHighlightProductIndex((prev) => Math.max(prev - 1, 0));
+                                        setHighlightProductIndex((prev) => {
+                                          if (prev <= 0 && !searchQuery.trim()) return -1;
+                                          return Math.max(prev - 1, 0);
+                                        });
                                       } else if (e.key === "Enter") {
                                         e.preventDefault();
-                                        // End of list / double enter
-                                        if (highlightProductIndex === -1 || (!searchQuery.trim() && !row.productId && highlightProductIndex <= 0)) {
+                                        // End of list
+                                        if (highlightProductIndex === -1) {
                                           handleEndOfList(row.id);
                                           return;
                                         }
@@ -1239,22 +1251,12 @@ export function InvoiceFormView() {
                                   id={`row-${row.id}-description`}
                                   value={row.description || ""}
                                   readOnly
-                                  onClick={() => setActiveDescRowId(row.id)}
-                                  onFocus={() => setActiveDescRowId(row.id)}
-                                  placeholder="Description / notes (optional)..."
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter" || e.key === " ") {
-                                      e.preventDefault();
-                                      setActiveDescRowId(row.id);
-                                    } else if ((e.key === "ArrowLeft" || e.key === "Backspace") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                      e.preventDefault();
-                                      const prodInput = document.getElementById(`row-${row.id}-product-input`);
-                                      if (prodInput) {
-                                        prodInput.focus();
-                                        try { (prodInput as HTMLInputElement).select(); } catch {}
-                                      }
-                                    }
+                                  tabIndex={-1}
+                                  onClick={() => {
+                                    setOpenRowId(null);
+                                    setActiveDescRowId(row.id);
                                   }}
+                                  placeholder="Description / notes (optional)..."
                                   className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer truncate"
                                   title="Additional Description for stock item (like Tally Prime)"
                                 />
@@ -1302,16 +1304,25 @@ export function InvoiceFormView() {
                                   <input
                                     id={`row-${row.id}-width`}
                                     value={row.width}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => updateRow(row.id, { width: e.target.value })}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
                                         const hEl = document.getElementById(`row-${row.id}-height`);
-                                        if (hEl) hEl.focus();
+                                        if (hEl) {
+                                          hEl.focus();
+                                          try { (hEl as HTMLInputElement).select(); } catch {}
+                                        }
                                       } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
-                                        if (descInput) descInput.focus();
+                                        e.stopPropagation();
+                                        setOpenRowId(row.id);
+                                        const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                        if (itemInput) {
+                                          itemInput.focus();
+                                          try { (itemInput as HTMLInputElement).select(); } catch {}
+                                        }
                                       }
                                     }}
                                     className="w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0"
@@ -1365,21 +1376,31 @@ export function InvoiceFormView() {
                                   <input
                                     id={`row-${row.id}-height`}
                                     value={row.height}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => updateRow(row.id, { height: e.target.value })}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
                                         if (isModeB) {
                                           const pcsEl = document.getElementById(`row-${row.id}-pcs`);
-                                          if (pcsEl) pcsEl.focus();
+                                          if (pcsEl) {
+                                            pcsEl.focus();
+                                            try { (pcsEl as HTMLInputElement).select(); } catch {}
+                                          }
                                         } else {
                                           const qtyEl = document.getElementById(`row-${row.id}-quantity`);
-                                          if (qtyEl) qtyEl.focus();
+                                          if (qtyEl) {
+                                            qtyEl.focus();
+                                            try { (qtyEl as HTMLInputElement).select(); } catch {}
+                                          }
                                         }
                                       } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const wEl = document.getElementById(`row-${row.id}-width`);
-                                        if (wEl) wEl.focus();
+                                        if (wEl) {
+                                          wEl.focus();
+                                          try { (wEl as HTMLInputElement).select(); } catch {}
+                                        }
                                       }
                                     }}
                                     className="w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0"
@@ -1437,16 +1458,23 @@ export function InvoiceFormView() {
                                 <input
                                   id={`row-${row.id}-pcs`}
                                   value={row.pcsNo}
+                                  onFocus={(e) => e.target.select()}
                                   onChange={(e) => updateRow(row.id, { pcsNo: e.target.value })}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
                                       const rateEl = document.getElementById(`row-${row.id}-rate`);
-                                      if (rateEl) rateEl.focus();
+                                      if (rateEl) {
+                                        rateEl.focus();
+                                        try { (rateEl as HTMLInputElement).select(); } catch {}
+                                      }
                                     } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
                                       const hEl = document.getElementById(`row-${row.id}-height`);
-                                      if (hEl) hEl.focus();
+                                      if (hEl) {
+                                        hEl.focus();
+                                        try { (hEl as HTMLInputElement).select(); } catch {}
+                                      }
                                     }
                                   }}
                                   className="h-10 w-[70px] bg-slate-50 border-2 border-slate-200 rounded-lg text-center text-xs font-bold focus:bg-white focus:border-blue-600 outline-none"
@@ -1468,20 +1496,32 @@ export function InvoiceFormView() {
                                 <input
                                   id={`row-${row.id}-quantity`}
                                   value={row.quantity}
+                                  onFocus={(e) => e.target.select()}
                                   onChange={(e) => updateRow(row.id, { quantity: e.target.value })}
                                   onKeyDown={(e) => {
                                     if (e.key === "Enter") {
                                       e.preventDefault();
                                       const rateEl = document.getElementById(`row-${row.id}-rate`);
-                                      if (rateEl) rateEl.focus();
+                                      if (rateEl) {
+                                        rateEl.focus();
+                                        try { (rateEl as HTMLInputElement).select(); } catch {}
+                                      }
                                     } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                       e.preventDefault();
+                                      e.stopPropagation();
                                       if (isSqft) {
                                         const hEl = document.getElementById(`row-${row.id}-height`);
-                                        if (hEl) hEl.focus();
+                                        if (hEl) {
+                                          hEl.focus();
+                                          try { (hEl as HTMLInputElement).select(); } catch {}
+                                        }
                                       } else {
-                                        const descInput = document.getElementById(`row-${row.id}-description`) || document.getElementById(`row-${row.id}-product-input`);
-                                        if (descInput) descInput.focus();
+                                        setOpenRowId(row.id);
+                                        const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                        if (itemInput) {
+                                          itemInput.focus();
+                                          try { (itemInput as HTMLInputElement).select(); } catch {}
+                                        }
                                       }
                                     }
                                   }}
@@ -1496,27 +1536,40 @@ export function InvoiceFormView() {
                             <div className="h-10 flex items-center justify-center">
                               <input
                                 id={`row-${row.id}-rate`}
-                                type="number"
-                                step="0.01"
+                                inputMode="decimal"
                                 value={row.manualRate !== undefined && row.manualRate !== "" ? row.manualRate : row.baseRate || ""}
                                 placeholder={String(row.baseRate || "0.00")}
+                                onFocus={(e) => e.target.select()}
                                 onChange={(e) => updateRow(row.id, { manualRate: e.target.value })}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
                                     e.preventDefault();
                                     const finishEl = document.getElementById(`row-${row.id}-finish`);
-                                    if (finishEl) finishEl.focus();
+                                    if (finishEl) {
+                                      finishEl.focus();
+                                      try { (finishEl as HTMLInputElement).select(); } catch {}
+                                    }
                                   } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                     e.preventDefault();
+                                    e.stopPropagation();
                                     if (isSqft && isModeB) {
                                       const pcsEl = document.getElementById(`row-${row.id}-pcs`);
-                                      if (pcsEl) pcsEl.focus();
+                                      if (pcsEl) {
+                                        pcsEl.focus();
+                                        try { (pcsEl as HTMLInputElement).select(); } catch {}
+                                      }
                                     } else {
                                       const qtyEl = document.getElementById(`row-${row.id}-quantity`);
-                                      if (qtyEl) qtyEl.focus();
-                                      else {
-                                        const descInput = document.getElementById(`row-${row.id}-description`);
-                                        if (descInput) descInput.focus();
+                                      if (qtyEl) {
+                                        qtyEl.focus();
+                                        try { (qtyEl as HTMLInputElement).select(); } catch {}
+                                      } else {
+                                        setOpenRowId(row.id);
+                                        const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                        if (itemInput) {
+                                          itemInput.focus();
+                                          try { (itemInput as HTMLInputElement).select(); } catch {}
+                                        }
                                       }
                                     }
                                   }
@@ -1538,9 +1591,9 @@ export function InvoiceFormView() {
                             <div className="h-10 flex items-center justify-center">
                               <input
                                 id={`row-${row.id}-finish`}
-                                type="number"
-                                step="0.01"
+                                inputMode="decimal"
                                 value={row.finishAmount}
+                                onFocus={(e) => e.target.select()}
                                 onChange={(e) => updateRow(row.id, { finishAmount: e.target.value })}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
@@ -1549,7 +1602,10 @@ export function InvoiceFormView() {
                                   } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                     e.preventDefault();
                                     const rateEl = document.getElementById(`row-${row.id}-rate`);
-                                    if (rateEl) rateEl.focus();
+                                    if (rateEl) {
+                                      rateEl.focus();
+                                      try { (rateEl as HTMLInputElement).select(); } catch {}
+                                    }
                                   }
                                 }}
                                 className="h-10 w-[90px] text-center bg-slate-50 border-2 border-slate-200 rounded-lg text-xs font-mono font-medium focus:bg-white focus:border-blue-600 outline-none"
@@ -2093,7 +2149,7 @@ export function InvoiceFormView() {
       </div>
 
       {/* Tally Full Vertical Right Sidebar Drawer (List of Ledger Accounts / List of Stock Items) */}
-      {(customerDropdownOpen || openRowId) && (
+      {(customerDropdownOpen || openRowId) && !activeDescRowId && (
         <div className="fixed right-0 top-0 bottom-0 w-[900px] lg:w-[980px] max-w-[96vw] z-[99999] bg-[#eef6ff] border-l-2 border-[#1a4a7a] shadow-2xl flex flex-col animate-in slide-in-from-right duration-150 font-sans">
           {customerDropdownOpen ? (
             <>
