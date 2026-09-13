@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle, ExternalLink, Copy } from 'lucide-react';
+import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
 import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
 import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
@@ -31,9 +31,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
+  const [showConfirmQuotationModal, setShowConfirmQuotationModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [paymentMethodTab, setPaymentMethodTab] = useState<'CASH_UPI' | 'CREDIT'>('CASH_UPI');
-  const [acceptTerms, setAcceptTerms] = useState(false);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
   const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -430,12 +430,33 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
       return;
     }
     
-    if (paymentMethodTab === 'CREDIT') {
-      setShowCreditModal(true);
-    } else {
-      submitProxyOrder();
-    }
+    setShowConfirmQuotationModal(true);
   };
+
+  // Keyboard shortcut listener for Confirm Quotation Modal (Y/Enter = Yes, N/Esc = No)
+  useEffect(() => {
+    if (!showConfirmQuotationModal) return;
+    const handleConfirmKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowConfirmQuotationModal(false);
+        vm.submitQuotation();
+      } else if (e.key === 'n' || e.key === 'N' || e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowConfirmQuotationModal(false);
+        setTimeout(() => {
+          const submitBtn = document.getElementById("submit-quotation-btn");
+          if (submitBtn) submitBtn.focus();
+        }, 50);
+      }
+    };
+    window.addEventListener('keydown', handleConfirmKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleConfirmKeyDown, true);
+    };
+  }, [showConfirmQuotationModal, vm]);
 
   const [addressForm, setAddressForm] = useState({
     fullName: '', phone: '', pincode: '', state: '', stateCode: '', district: '', city: '', houseNo: '', roadName: '', area: '', addressType: 'Home'
@@ -1759,34 +1780,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                     </div>
                   </div>
 
-                  {/* Confirmation Checkbox */}
-                  <div className="mb-4">
-                    <label className="flex items-start gap-3 cursor-pointer group hover:bg-white/50 p-2 rounded-xl transition-all">
-                      <input 
-                        type="checkbox" 
-                        id="confirm-dimensions"
-                        checked={acceptTerms} 
-                        onChange={(e) => setAcceptTerms(e.target.checked)} 
-                        className="mt-0.5 rounded-[4px] border-slate-300 text-emerald-500 w-4 h-4 shadow-sm" 
-                      />
-                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-snug group-hover:text-slate-800 transition-all">
-                        CONFIRM DIMENSIONS MATCH INDUSTRIAL SPECS & ARTWORK IS FINAL.
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Warning hint */}
-                  {!acceptTerms && (
-                    <p className="text-[9px] text-amber-500 font-black uppercase tracking-widest text-center mb-3">
-                      ⚠ TICK CONFIRMATION CHECKBOX TO ENABLE
-                    </p>
-                  )}
-
                   {/* Action Button */}
                   <button
-                    onClick={vm.submitQuotation}
-                    disabled={vm.loading || !acceptTerms}
-                    className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#00bfa5] text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-[#00bfa5]/25 hover:bg-[#00a892] disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none transition-all"
+                    id="submit-quotation-btn"
+                    onClick={validateAndSubmit}
+                    disabled={vm.loading}
+                    className="flex h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#00bfa5] text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-[#00bfa5]/25 hover:bg-[#00a892] disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none transition-all cursor-pointer outline-none focus:ring-4 focus:ring-emerald-500/30"
                   >
                     {vm.loading ? <Loader2 className="animate-spin" size={18} /> : null}
                     SEND QUOTATION
@@ -1963,6 +1962,92 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                     if (success) setShowAddressModal(false);
                   }} disabled={addingAddress} className="h-12 flex-1 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50">
                     {addingAddress ? 'Saving...' : 'Save Address'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quotation Placement Confirmation Dialog */}
+          {showConfirmQuotationModal && (
+            <div 
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+              className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md animate-in fade-in duration-150"
+            >
+              <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 shrink-0">
+                    <CheckCircle2 size={26} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      Are you sure you want to create this quotation?
+                    </h3>
+                    <p className="text-xs font-semibold text-slate-500">
+                      Dimensions match industrial specs & artwork is final
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs">
+                  <div className="flex justify-between items-center text-slate-600 font-medium">
+                    <span>Customer</span>
+                    <span className="font-bold text-slate-900 truncate max-w-[200px]">
+                      {selectedCustomer?.displayName || selectedCustomer?.name || selectedCustomer?.businessName || 'Customer'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600 font-medium">
+                    <span>Total Items</span>
+                    <span className="font-bold text-slate-900">
+                      {rows.filter((r: any) => r.productId).length} Item(s)
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600 font-medium">
+                    <span>Sub Total</span>
+                    <span className="font-bold text-slate-900">
+                      Rs. {summary.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-black text-slate-950">
+                    <span>Grand Total</span>
+                    <span className="text-base text-emerald-600 font-black">
+                      Rs. {summary.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    id="confirm-quotation-cancel-btn"
+                    onClick={() => {
+                      setShowConfirmQuotationModal(false);
+                      setTimeout(() => {
+                        const submitBtn = document.getElementById("submit-quotation-btn");
+                        if (submitBtn) submitBtn.focus();
+                      }, 50);
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl border border-slate-200 bg-slate-100 text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>No</span>
+                    <kbd className="text-[9px] font-mono bg-slate-200 text-slate-600 px-1 py-0.5 rounded border border-slate-300">N / Esc</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    id="confirm-quotation-yes-btn"
+                    autoFocus
+                    onClick={() => {
+                      setShowConfirmQuotationModal(false);
+                      vm.submitQuotation();
+                    }}
+                    disabled={vm.loading}
+                    className="flex-1 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-[#00bfa5] hover:bg-[#00a892] transition-colors shadow-lg shadow-[#00bfa5]/25 disabled:opacity-50 flex justify-center items-center gap-1.5 cursor-pointer"
+                  >
+                    {vm.loading ? <Loader2 className="animate-spin" size={16} /> : null}
+                    <span>Yes</span>
+                    <kbd className="text-[9px] font-mono bg-[#008f7c] text-white px-1 py-0.5 rounded">Y / ↵</kbd>
                   </button>
                 </div>
               </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Check, Image as ImageIcon, Star, AlertTriangle, ExternalLink, Copy } from 'lucide-react';
+import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Check, Image as ImageIcon, Star, AlertTriangle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
 import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
 import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
@@ -152,10 +152,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [highlightPaymentIndex, setHighlightPaymentIndex] = useState<number>(0);
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
+  const [showConfirmOrderModal, setShowConfirmOrderModal] = useState(false);
   const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [paymentMethodTab, setPaymentMethodTab] = useState<'CASH_UPI' | 'CREDIT'>('CASH_UPI');
-  const [acceptTerms, setAcceptTerms] = useState(false);
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
   const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
   const [activeDescRowId, setActiveDescRowId] = useState<string | null>(null);
@@ -425,6 +425,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         setShowCreditModal(false);
         return;
       }
+      if (showConfirmOrderModal) {
+        setShowConfirmOrderModal(false);
+        return;
+      }
       if (showCreateCustomer) {
         setShowCreateCustomer(false);
         return;
@@ -449,7 +453,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           setShowExitConfirmModal(false);
           return;
         }
-        if (customerDropdownOpen || openRowId || openUnitPickerId || showAddressModal || showCreditModal || showCreateCustomer) {
+        if (customerDropdownOpen || openRowId || openUnitPickerId || showAddressModal || showCreditModal || showConfirmOrderModal || showCreateCustomer) {
           return;
         }
         e.preventDefault();
@@ -464,7 +468,36 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       window.removeEventListener('request-exit-proxy-order', handleExitRequest);
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [showExitConfirmModal, customerDropdownOpen, openRowId, openUnitPickerId, showAddressModal, showCreditModal, showCreateCustomer]);
+  }, [showExitConfirmModal, customerDropdownOpen, openRowId, openUnitPickerId, showAddressModal, showCreditModal, showConfirmOrderModal, showCreateCustomer]);
+
+  // Keyboard shortcut listener for Confirm Order Placement Modal (Y/Enter = Yes, N/Esc = No)
+  useEffect(() => {
+    if (!showConfirmOrderModal) return;
+    const handleConfirmKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowConfirmOrderModal(false);
+        if (paymentMethodTab === 'CREDIT') {
+          setShowCreditModal(true);
+        } else {
+          submitProxyOrder();
+        }
+      } else if (e.key === 'n' || e.key === 'N' || e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowConfirmOrderModal(false);
+        setTimeout(() => {
+          const submitBtn = document.getElementById("submit-order-btn");
+          if (submitBtn) submitBtn.focus();
+        }, 50);
+      }
+    };
+    window.addEventListener('keydown', handleConfirmKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleConfirmKeyDown, true);
+    };
+  }, [showConfirmOrderModal, paymentMethodTab, submitProxyOrder]);
 
   useEffect(() => {
     if (showAddressModal) {
@@ -722,11 +755,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       return;
     }
     
-    if (paymentMethodTab === 'CREDIT') {
-      setShowCreditModal(true);
-    } else {
-      submitProxyOrder();
-    }
+    setShowConfirmOrderModal(true);
   };
 
   const [addressForm, setAddressForm] = useState({
@@ -2160,11 +2189,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           </tr>
                         );
                       })}
-                      {/* Section Header: PRICING DETAILS */}
+                      {/* Section: SUB TOTAL */}
                       <tr className="border-t-2 border-slate-200 bg-slate-100/50">
                         <td className="py-1 px-2"></td>
-                        <td colSpan={14} className="py-1 px-2 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                          PRICING DETAILS
+                        <td colSpan={13} className="py-1 px-2 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                          SUB TOTAL
+                        </td>
+                        <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900 text-xs">
+                          {summary.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-1 px-2"></td>
                       </tr>
@@ -2853,15 +2885,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           const lastNewline = beforeCursor.lastIndexOf('\n');
                           const currentLine = beforeCursor.substring(lastNewline + 1);
 
-                          // If current line is empty, finish Additional Notes and advance to terms/submit
+                          // If current line is empty, finish Additional Notes and advance to submit
                           if (currentLine.trim() === '') {
                             e.preventDefault();
                             const cleaned = notes.trimEnd();
                             setNotes(cleaned);
-                            const chk = document.getElementById("confirm-dimensions") || document.getElementById("submit-order-btn");
-                            if (chk) {
-                              chk.focus();
-                              chk.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            const submitBtn = document.getElementById("submit-order-btn");
+                            if (submitBtn) {
+                              submitBtn.focus();
+                              submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
                             }
                           }
                         } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
@@ -2902,51 +2934,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     </div>
                   )}
 
-                  {/* Confirmation Checkbox */}
-                  <div className="mb-2">
-                    <label className="flex items-start gap-3 cursor-pointer group hover:bg-white/50 p-2 rounded-xl transition-all">
-                      <input 
-                        type="checkbox" 
-                        id="confirm-dimensions"
-                        checked={acceptTerms} 
-                        onChange={(e) => setAcceptTerms(e.target.checked)} 
-                        onKeyDown={(e) => {
-                          if (e.key === " " || e.key === "Spacebar") {
-                            // Space toggles checkbox naturally; advance to submit if checked
-                          } else if (e.key === "Enter") {
-                            e.preventDefault();
-                            if (!acceptTerms) {
-                              setAcceptTerms(true);
-                            }
-                            const submitBtn = document.getElementById("submit-order-btn");
-                            if (submitBtn) {
-                              submitBtn.focus();
-                              submitBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                          } else if (e.key === "Backspace") {
-                            e.preventDefault();
-                            const notesEl = document.getElementById("order-notes");
-                            if (notesEl) {
-                              notesEl.focus();
-                              notesEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            }
-                          }
-                        }}
-                        className="mt-0.5 rounded-[4px] border-slate-300 text-emerald-500 w-4 h-4 shadow-sm focus:ring-2 focus:ring-blue-500" 
-                      />
-                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest leading-snug group-hover:text-slate-800 transition-all">
-                        {vm.mode === 'quotation' ? 'CONFIRM QUOTATION SPECIFICATIONS & PRICING ARE ACCURATE.' : 'CONFIRM DIMENSIONS MATCH INDUSTRIAL SPECS & ARTWORK IS FINAL.'}
-                      </span>
-                    </label>
-                  </div>
-
-                  {/* Warning hint */}
-                  {!acceptTerms && (
-                    <p className="text-[9px] text-amber-500 font-black uppercase tracking-widest text-center mb-1.5">
-                      ⚠ TICK CONFIRMATION CHECKBOX TO ENABLE
-                    </p>
-                  )}
-
                   {/* Action Button */}
                   <button
                     id="submit-order-btn"
@@ -2957,15 +2944,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         validateAndSubmit();
                       } else if (e.key === "Backspace") {
                         e.preventDefault();
-                        const chk = document.getElementById("confirm-dimensions");
-                        if (chk) {
-                          chk.focus();
-                          chk.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const notesEl = document.getElementById("order-notes");
+                        if (notesEl) {
+                          notesEl.focus();
+                          notesEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                       }
                     }}
-                    disabled={loading || upiUploading || !acceptTerms || (vm.mode !== 'quotation' && creditExceeded)}
-                    className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#00bfa5] text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-[#00bfa5]/25 hover:bg-[#00a892] disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none transition-all focus:ring-4 focus:ring-emerald-500/30 outline-none"
+                    disabled={loading || upiUploading || (vm.mode !== 'quotation' && creditExceeded)}
+                    className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#00bfa5] text-sm font-black uppercase tracking-widest text-white shadow-lg shadow-[#00bfa5]/25 hover:bg-[#00a892] disabled:opacity-50 disabled:bg-slate-300 disabled:shadow-none transition-all focus:ring-4 focus:ring-emerald-500/30 outline-none cursor-pointer"
                   >
                     {loading ? <Loader2 className="animate-spin" size={18} /> : null}
                     {vm.mode === 'quotation' ? 'CREATE QUOTATION' : 'PLACE ORDER'}
@@ -3355,6 +3342,104 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     className="h-12 flex-1 rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-50 focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none border-2 border-transparent transition-all"
                   >
                     {addingAddress ? 'Saving...' : 'Save Address'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Order Placement Confirmation Dialog */}
+          {showConfirmOrderModal && (
+            <div 
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+              className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md animate-in fade-in duration-150"
+            >
+              <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-600 shrink-0">
+                    <CheckCircle2 size={26} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-slate-900">
+                      {vm.mode === 'quotation' ? 'Create Quotation?' : 'Are you sure you want to place order?'}
+                    </h3>
+                    <p className="text-xs font-semibold text-slate-500">
+                      {vm.mode === 'quotation' ? 'Confirm quotation details' : 'Dimensions match industrial specs & artwork is final'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 mb-5 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs">
+                  <div className="flex justify-between items-center text-slate-600 font-medium">
+                    <span>Customer</span>
+                    <span className="font-bold text-slate-900 truncate max-w-[200px]">
+                      {selectedCustomer?.displayName || selectedCustomer?.name || selectedCustomer?.businessName || 'Customer'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-600 font-medium">
+                    <span>Total Items</span>
+                    <span className="font-bold text-slate-900">
+                      {rows.filter((r: any) => r.productId).length} Item(s)
+                    </span>
+                  </div>
+                  {vm.mode !== 'quotation' && (
+                    <div className="flex justify-between items-center text-slate-600 font-medium">
+                      <span>Payment Mode</span>
+                      <span className="font-bold uppercase text-slate-900 px-2 py-0.5 rounded bg-slate-200/80 text-[10px]">
+                        {paymentMode}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-slate-600 font-medium">
+                    <span>Sub Total</span>
+                    <span className="font-bold text-slate-900">
+                      Rs. {summary.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-black text-slate-950">
+                    <span>Grand Total</span>
+                    <span className="text-base text-emerald-600 font-black">
+                      Rs. {summary.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    id="confirm-order-cancel-btn"
+                    onClick={() => {
+                      setShowConfirmOrderModal(false);
+                      setTimeout(() => {
+                        const submitBtn = document.getElementById("submit-order-btn");
+                        if (submitBtn) submitBtn.focus();
+                      }, 50);
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl border border-slate-200 bg-slate-100 text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <span>No</span>
+                    <kbd className="text-[9px] font-mono bg-slate-200 text-slate-600 px-1 py-0.5 rounded border border-slate-300">N / Esc</kbd>
+                  </button>
+                  <button
+                    type="button"
+                    id="confirm-order-yes-btn"
+                    autoFocus
+                    onClick={() => {
+                      setShowConfirmOrderModal(false);
+                      if (paymentMethodTab === 'CREDIT') {
+                        setShowCreditModal(true);
+                      } else {
+                        submitProxyOrder();
+                      }
+                    }}
+                    disabled={loading}
+                    className="flex-1 py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider text-white bg-[#00bfa5] hover:bg-[#00a892] transition-colors shadow-lg shadow-[#00bfa5]/25 disabled:opacity-50 flex justify-center items-center gap-1.5 cursor-pointer"
+                  >
+                    {loading ? <Loader2 className="animate-spin" size={16} /> : null}
+                    <span>Yes</span>
+                    <kbd className="text-[9px] font-mono bg-[#008f7c] text-white px-1 py-0.5 rounded">Y / ↵</kbd>
                   </button>
                 </div>
               </div>
