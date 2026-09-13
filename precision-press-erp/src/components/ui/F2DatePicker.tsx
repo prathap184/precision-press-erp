@@ -55,18 +55,27 @@ export function F2DatePicker({ currentFrom, currentTo, onApply, onClose }: F2Dat
 
   // Focus From on mount
   useEffect(() => {
-    fromInputRef.current?.focus();
-    fromInputRef.current?.select();
+    if (fromInputRef.current) {
+      fromInputRef.current.focus();
+      const len = fromInputRef.current.value ? fromInputRef.current.value.length : 0;
+      fromInputRef.current.setSelectionRange(len, len);
+    }
   }, []);
 
   // Focus whichever field is active
   useEffect(() => {
     if (stage === 'FROM') {
-      fromInputRef.current?.focus();
-      fromInputRef.current?.select();
+      if (fromInputRef.current) {
+        fromInputRef.current.focus();
+        const len = fromInputRef.current.value ? fromInputRef.current.value.length : 0;
+        fromInputRef.current.setSelectionRange(len, len);
+      }
     } else {
-      toInputRef.current?.focus();
-      toInputRef.current?.select();
+      if (toInputRef.current) {
+        toInputRef.current.focus();
+        const len = toInputRef.current.value ? toInputRef.current.value.length : 0;
+        toInputRef.current.setSelectionRange(len, len);
+      }
     }
   }, [stage]);
 

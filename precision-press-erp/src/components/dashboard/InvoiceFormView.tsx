@@ -43,9 +43,9 @@ interface InvoiceRow {
   billingMode?: "A" | "B";
   pcsNo: string;
   width: string;
-  widthUnit: "FT" | "IN";
+  widthUnit: "FT" | "IN" | "MTR";
   height: string;
-  heightUnit: "FT" | "IN";
+  heightUnit: "FT" | "IN" | "MTR";
   quantity: string;
   manualRate?: string;
   finishAmount?: string;
@@ -680,13 +680,11 @@ export function InvoiceFormView() {
         const el = document.getElementById(`row-${rowId}-width`);
         if (el) {
           el.focus();
-          try { (el as HTMLInputElement).select(); } catch {}
         }
       } else {
         const el = document.getElementById(`row-${rowId}-quantity`);
         if (el) {
           el.focus();
-          try { (el as HTMLInputElement).select(); } catch {}
         }
       }
     }, 60);
@@ -699,7 +697,6 @@ export function InvoiceFormView() {
       if (itemInput) {
         setOpenRowId(rowId);
         itemInput.focus();
-        try { (itemInput as HTMLInputElement).select(); } catch {}
       }
     }, 50);
   };
@@ -768,8 +765,8 @@ export function InvoiceFormView() {
 
       const w = Number(row.width || (prod?.default_width ?? 1)) || 0;
       const h = Number(row.height || (prod?.default_length ?? 1)) || 0;
-      const wFt = row.widthUnit === "IN" ? w / 12 : w;
-      const hFt = row.heightUnit === "IN" ? h / 12 : h;
+      const wFt = row.widthUnit === "IN" ? w / 12 : (row.widthUnit === "MTR" ? w * 3.28084 : w);
+      const hFt = row.heightUnit === "IN" ? h / 12 : (row.heightUnit === "MTR" ? h * 3.28084 : h);
       const sqft = isSqft ? (wFt > 0 && hFt > 0 ? wFt * hFt : 0) : 0;
       const pcs = Math.max(1, Number(row.pcsNo || "1"));
       const totalBilledSqft = sqft * pcs;
@@ -836,7 +833,6 @@ export function InvoiceFormView() {
         const dateInput = document.getElementById("invoice-date-input") as HTMLInputElement;
         if (dateInput) {
           dateInput.focus();
-          try { dateInput.select(); } catch {}
         }
         return;
       }
@@ -1130,16 +1126,46 @@ export function InvoiceFormView() {
                       }}
                       onFocus={(e) => {
                         setCustomerDropdownOpen(true);
+                        const target = e.currentTarget;
                         if (selectedCustomer) {
                           setCustomerSearch(selectedCustomer.displayName || selectedCustomer.name || "");
-                          e.target.select();
+                          setTimeout(() => {
+                            try {
+                              const len = target.value ? target.value.length : 0;
+                              target.setSelectionRange(len, len);
+                            } catch {}
+                          }, 20);
                         } else {
                           setCustomerSearch("");
                         }
                         setHighlightCustomerIndex(0);
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === "ArrowDown") {
+                        if (e.key === "End") {
+                          e.preventDefault();
+                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                          e.currentTarget.setSelectionRange(len, len);
+                          return;
+                        } else if (e.key === "Home") {
+                          e.preventDefault();
+                          e.currentTarget.setSelectionRange(0, 0);
+                          return;
+                        } else if (e.key === "ArrowRight") {
+                          const { selectionStart, selectionEnd, value } = e.currentTarget;
+                          if (selectionStart !== selectionEnd) {
+                            e.preventDefault();
+                            const len = value ? value.length : 0;
+                            e.currentTarget.setSelectionRange(len, len);
+                            return;
+                          }
+                        } else if (e.key === "ArrowLeft") {
+                          const { selectionStart, selectionEnd } = e.currentTarget;
+                          if (selectionStart !== selectionEnd) {
+                            e.preventDefault();
+                            e.currentTarget.setSelectionRange(0, 0);
+                            return;
+                          }
+                        } else if (e.key === "ArrowDown") {
                           e.preventDefault();
                           if (!customerDropdownOpen) {
                             setCustomerDropdownOpen(true);
@@ -1299,7 +1325,9 @@ export function InvoiceFormView() {
                                       setHighlightProductIndex(currIdx >= 0 ? currIdx : !currentName ? -1 : 0);
                                       setTimeout(() => {
                                         try {
-                                          e.target.select();
+                                          const el = e.target as HTMLInputElement;
+                                          const len = el.value ? el.value.length : 0;
+                                          el.setSelectionRange(len, len);
                                         } catch {}
                                       }, 10);
                                     }}
@@ -1449,24 +1477,28 @@ export function InvoiceFormView() {
                                   <input
                                     id={`row-${row.id}-width`}
                                     value={row.width}
-                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => updateRow(row.id, { width: e.target.value })}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
                                         e.preventDefault();
                                         const hEl = document.getElementById(`row-${row.id}-height`);
                                         if (hEl) {
                                           hEl.focus();
-                                          try { (hEl as HTMLInputElement).select(); } catch {}
                                         }
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         setOpenRowId(row.id);
                                         const itemInput = document.getElementById(`row-${row.id}-product-input`);
                                         if (itemInput) {
                                           itemInput.focus();
-                                          try { (itemInput as HTMLInputElement).select(); } catch {}
                                         }
                                       }
                                     }}
@@ -1481,12 +1513,12 @@ export function InvoiceFormView() {
                                       }
                                       className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200"
                                     >
-                                      {row.widthUnit === "FT" ? "ft" : "in"}
+                                      {row.widthUnit === "FT" ? "ft" : row.widthUnit === "IN" ? "in" : "m"}
                                       <ChevronDown size={10} />
                                     </button>
                                     {openUnitPickerId === `${row.id}-w` && (
                                       <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                        {["FT", "IN"].map((u) => (
+                                        {["FT", "IN", "MTR"].map((u) => (
                                           <button
                                             key={u}
                                             type="button"
@@ -1500,7 +1532,7 @@ export function InvoiceFormView() {
                                                 : "text-slate-600 hover:bg-slate-50"
                                             }`}
                                           >
-                                            {u.toLowerCase()}
+                                            {u === "MTR" ? "m" : u.toLowerCase()}
                                           </button>
                                         ))}
                                       </div>
@@ -1521,30 +1553,33 @@ export function InvoiceFormView() {
                                   <input
                                     id={`row-${row.id}-height`}
                                     value={row.height}
-                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => updateRow(row.id, { height: e.target.value })}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
                                         e.preventDefault();
                                         if (isModeB) {
                                           const pcsEl = document.getElementById(`row-${row.id}-pcs`);
                                           if (pcsEl) {
                                             pcsEl.focus();
-                                            try { (pcsEl as HTMLInputElement).select(); } catch {}
                                           }
                                         } else {
                                           const qtyEl = document.getElementById(`row-${row.id}-quantity`);
                                           if (qtyEl) {
                                             qtyEl.focus();
-                                            try { (qtyEl as HTMLInputElement).select(); } catch {}
                                           }
                                         }
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const wEl = document.getElementById(`row-${row.id}-width`);
                                         if (wEl) {
                                           wEl.focus();
-                                          try { (wEl as HTMLInputElement).select(); } catch {}
                                         }
                                       }
                                     }}
@@ -1559,12 +1594,12 @@ export function InvoiceFormView() {
                                       }
                                       className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200"
                                     >
-                                      {row.heightUnit === "FT" ? "ft" : "in"}
+                                      {row.heightUnit === "FT" ? "ft" : row.heightUnit === "IN" ? "in" : "m"}
                                       <ChevronDown size={10} />
                                     </button>
                                     {openUnitPickerId === `${row.id}-h` && (
                                       <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                        {["FT", "IN"].map((u) => (
+                                        {["FT", "IN", "MTR"].map((u) => (
                                           <button
                                             key={u}
                                             type="button"
@@ -1578,7 +1613,7 @@ export function InvoiceFormView() {
                                                 : "text-slate-600 hover:bg-slate-50"
                                             }`}
                                           >
-                                            {u.toLowerCase()}
+                                            {u === "MTR" ? "m" : u.toLowerCase()}
                                           </button>
                                         ))}
                                       </div>
@@ -1603,22 +1638,26 @@ export function InvoiceFormView() {
                                 <input
                                   id={`row-${row.id}-pcs`}
                                   value={row.pcsNo}
-                                  onFocus={(e) => e.target.select()}
                                   onChange={(e) => updateRow(row.id, { pcsNo: e.target.value })}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
+                                    if (e.key === "End") {
+                                      e.preventDefault();
+                                      const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                      e.currentTarget.setSelectionRange(len, len);
+                                    } else if (e.key === "Home") {
+                                      e.preventDefault();
+                                      e.currentTarget.setSelectionRange(0, 0);
+                                    } else if (e.key === "Enter") {
                                       e.preventDefault();
                                       const rateEl = document.getElementById(`row-${row.id}-rate`);
                                       if (rateEl) {
                                         rateEl.focus();
-                                        try { (rateEl as HTMLInputElement).select(); } catch {}
                                       }
-                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                       e.preventDefault();
                                       const hEl = document.getElementById(`row-${row.id}-height`);
                                       if (hEl) {
                                         hEl.focus();
-                                        try { (hEl as HTMLInputElement).select(); } catch {}
                                       }
                                     }
                                   }}
@@ -1641,31 +1680,34 @@ export function InvoiceFormView() {
                                 <input
                                   id={`row-${row.id}-quantity`}
                                   value={row.quantity}
-                                  onFocus={(e) => e.target.select()}
                                   onChange={(e) => updateRow(row.id, { quantity: e.target.value })}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
+                                    if (e.key === "End") {
+                                      e.preventDefault();
+                                      const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                      e.currentTarget.setSelectionRange(len, len);
+                                    } else if (e.key === "Home") {
+                                      e.preventDefault();
+                                      e.currentTarget.setSelectionRange(0, 0);
+                                    } else if (e.key === "Enter") {
                                       e.preventDefault();
                                       const rateEl = document.getElementById(`row-${row.id}-rate`);
                                       if (rateEl) {
                                         rateEl.focus();
-                                        try { (rateEl as HTMLInputElement).select(); } catch {}
                                       }
-                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                       e.preventDefault();
                                       e.stopPropagation();
                                       if (isSqft) {
                                         const hEl = document.getElementById(`row-${row.id}-height`);
                                         if (hEl) {
                                           hEl.focus();
-                                          try { (hEl as HTMLInputElement).select(); } catch {}
                                         }
                                       } else {
                                         setOpenRowId(row.id);
                                         const itemInput = document.getElementById(`row-${row.id}-product-input`);
                                         if (itemInput) {
                                           itemInput.focus();
-                                          try { (itemInput as HTMLInputElement).select(); } catch {}
                                         }
                                       }
                                     }
@@ -1684,36 +1726,38 @@ export function InvoiceFormView() {
                                 inputMode="decimal"
                                 value={row.manualRate !== undefined && row.manualRate !== "" ? row.manualRate : row.baseRate || ""}
                                 placeholder={String(row.baseRate || "0.00")}
-                                onFocus={(e) => e.target.select()}
                                 onChange={(e) => updateRow(row.id, { manualRate: e.target.value })}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
+                                  if (e.key === "End") {
+                                    e.preventDefault();
+                                    const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                    e.currentTarget.setSelectionRange(len, len);
+                                  } else if (e.key === "Home") {
+                                    e.preventDefault();
+                                    e.currentTarget.setSelectionRange(0, 0);
+                                  } else if (e.key === "Enter") {
                                     e.preventDefault();
                                     const finishEl = document.getElementById(`row-${row.id}-finish`);
                                     if (finishEl) {
                                       finishEl.focus();
-                                      try { (finishEl as HTMLInputElement).select(); } catch {}
                                     }
-                                  } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                  } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     if (isSqft && isModeB) {
                                       const pcsEl = document.getElementById(`row-${row.id}-pcs`);
                                       if (pcsEl) {
                                         pcsEl.focus();
-                                        try { (pcsEl as HTMLInputElement).select(); } catch {}
                                       }
                                     } else {
                                       const qtyEl = document.getElementById(`row-${row.id}-quantity`);
                                       if (qtyEl) {
                                         qtyEl.focus();
-                                        try { (qtyEl as HTMLInputElement).select(); } catch {}
                                       } else {
                                         setOpenRowId(row.id);
                                         const itemInput = document.getElementById(`row-${row.id}-product-input`);
                                         if (itemInput) {
                                           itemInput.focus();
-                                          try { (itemInput as HTMLInputElement).select(); } catch {}
                                         }
                                       }
                                     }
@@ -1738,7 +1782,6 @@ export function InvoiceFormView() {
                                 id={`row-${row.id}-finish`}
                                 inputMode="decimal"
                                 value={row.finishAmount}
-                                onFocus={(e) => e.target.select()}
                                 onChange={(e) => updateRow(row.id, { finishAmount: e.target.value })}
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") {
@@ -1749,7 +1792,6 @@ export function InvoiceFormView() {
                                     const rateEl = document.getElementById(`row-${row.id}-rate`);
                                     if (rateEl) {
                                       rateEl.focus();
-                                      try { (rateEl as HTMLInputElement).select(); } catch {}
                                     }
                                   }
                                 }}
@@ -2066,6 +2108,12 @@ export function InvoiceFormView() {
                           id="shipping-address-textarea"
                           rows={2}
                           value={shippingAddress}
+                          onFocus={(e) => {
+                            try {
+                              const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                              e.currentTarget.setSelectionRange(len, len);
+                            } catch {}
+                          }}
                           onChange={(e) => setShippingAddress(e.target.value)}
                           placeholder="Or type custom destination address..."
                           onKeyDown={(e) => {
@@ -2091,6 +2139,12 @@ export function InvoiceFormView() {
                         id="shipping-address-textarea"
                         rows={3}
                         value={shippingAddress}
+                        onFocus={(e) => {
+                          try {
+                            const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                            e.currentTarget.setSelectionRange(len, len);
+                          } catch {}
+                        }}
                         onChange={(e) => setShippingAddress(e.target.value)}
                         placeholder="Enter delivery destination address..."
                         onKeyDown={(e) => {
@@ -2240,6 +2294,12 @@ export function InvoiceFormView() {
                     id="invoice-notes"
                     rows={2}
                     value={notes}
+                    onFocus={(e) => {
+                      try {
+                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                        e.currentTarget.setSelectionRange(len, len);
+                      } catch {}
+                    }}
                     onChange={(e) => setNotes(e.target.value)}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {

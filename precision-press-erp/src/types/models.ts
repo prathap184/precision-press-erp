@@ -330,8 +330,8 @@ export interface OrderItem {
     height: number;
     quantity: number;
     sqft: number;
-    widthUnit: 'FT' | 'IN';
-    heightUnit: 'FT' | 'IN';
+    widthUnit: 'FT' | 'IN' | 'MTR';
+    heightUnit: 'FT' | 'IN' | 'MTR';
   };
   materialMetadata: {
     materialType: string;

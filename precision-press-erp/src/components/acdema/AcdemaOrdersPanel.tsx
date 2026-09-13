@@ -92,7 +92,7 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
       const mappedLines = (Array.isArray(parsedItems) ? parsedItems : []).map((i: any) => {
         const rawWidth = Number(i.specs?.width ?? i.width ?? 0); const rawHeight = Number(i.specs?.height ?? i.height ?? 0);
         const widthUnit = i.specs?.widthUnit ?? 'FT'; const heightUnit = i.specs?.heightUnit ?? 'FT';
-        const widthFt = widthUnit === 'IN' ? rawWidth / 12 : rawWidth; const heightFt = heightUnit === 'IN' ? rawHeight / 12 : rawHeight;
+        const widthFt = widthUnit === 'IN' ? rawWidth / 12 : (widthUnit === 'MTR' ? rawWidth * 3.28084 : rawWidth); const heightFt = heightUnit === 'IN' ? rawHeight / 12 : (heightUnit === 'MTR' ? rawHeight * 3.28084 : rawHeight);
         const qty = Number(i.specs?.quantity ?? i.quantity ?? 1);
         const pricingSnap = parseJson(i.pricingSnapshot ?? i.pricing_snapshot) || {};
         const eyeletType = pricingSnap.selectedEyeletType ?? 'NONE'; const eyeletRate = Number(pricingSnap.eyeletRate ?? 0);

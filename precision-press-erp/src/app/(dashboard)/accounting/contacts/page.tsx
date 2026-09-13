@@ -339,7 +339,10 @@ export default function ContactsPage() {
       if (el) {
         // Use preventScroll so it doesn't yank the page to the top
         el.focus({ preventScroll: true });
-        el.select();
+        try {
+          const len = el.value ? el.value.length : 0;
+          el.setSelectionRange(len, len);
+        } catch {}
         setDropdownOpen(true);
         hasAutoFocusedRef.current = true;
         clearInterval(intervalId);

@@ -377,19 +377,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         const widthInput = document.getElementById(`error-row-${rowId}-width`);
         if (widthInput) {
           widthInput.focus();
-          try { (widthInput as HTMLInputElement).select(); } catch {}
         } else {
           const qtyInput = document.getElementById(`error-row-${rowId}-quantity`);
           if (qtyInput) {
             qtyInput.focus();
-            try { (qtyInput as HTMLInputElement).select(); } catch {}
           }
         }
       } else {
         const qtyInput = document.getElementById(`error-row-${rowId}-quantity`);
         if (qtyInput) {
           qtyInput.focus();
-          try { (qtyInput as HTMLInputElement).select(); } catch {}
         }
       }
     }, 60);
@@ -402,7 +399,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       if (itemInput) {
         setOpenRowId(rowId);
         itemInput.focus();
-        try { (itemInput as HTMLInputElement).select(); } catch {}
       }
     }, 50);
   };
@@ -443,7 +439,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         const dateInput = document.getElementById('order-date-input') as HTMLInputElement;
         if (dateInput) {
           dateInput.focus();
-          try { dateInput.select(); } catch {}
         }
         return;
       }
@@ -479,7 +474,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         const firstModalInput = document.getElementById("modal-house-no") as HTMLInputElement;
         if (firstModalInput) {
           firstModalInput.focus();
-          try { firstModalInput.select(); } catch {}
         }
       }, 50);
       return () => clearTimeout(timer);
@@ -572,7 +566,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       const custInput = document.querySelector('input[placeholder="Search customer..."]') as HTMLInputElement;
       if (custInput) {
         custInput.focus();
-        try { custInput.select(); } catch {}
       }
     }, 150);
     return () => clearTimeout(t);
@@ -721,7 +714,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             : element.querySelector('input:not([type="hidden"]), select, textarea, button') as HTMLElement;
           if (focusable) {
             focusable.focus();
-            try { (focusable as HTMLInputElement).select(); } catch {}
           }
         }, 200);
       }
@@ -747,7 +739,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         const houseNoInput = document.getElementById('modal-house-no') as HTMLInputElement;
         if (houseNoInput) {
           houseNoInput.focus();
-          try { houseNoInput.select(); } catch {}
         }
       }, 100);
     }
@@ -759,7 +750,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         const custInput = document.getElementById('proxy-customer-search-input') as HTMLInputElement;
         if (custInput) {
           custInput.focus();
-          try { custInput.select(); } catch {}
         } else {
           const dateInput = document.getElementById('order-date-input') as HTMLInputElement;
           if (dateInput) dateInput.focus();
@@ -871,7 +861,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       value={dateDisplayInput}
                       onChange={(e) => setDateDisplayInput(e.target.value)}
                       onFocus={(e) => {
-                        try { e.target.select(); } catch {}
+                        try {
+                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                          e.currentTarget.setSelectionRange(len, len);
+                        } catch {}
                       }}
                       onBlur={() => {
                         const parsed = parseTallyDate(dateDisplayInput, orderDate);
@@ -925,16 +918,45 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         }}
                         onFocus={(e) => {
                           setCustomerDropdownOpen(true);
+                          const target = e.currentTarget;
                           if (selectedCustomer) {
                             setCustomerSearch(selectedCustomer.displayName || selectedCustomer.name || '');
-                            e.target.select();
+                            setTimeout(() => {
+                              try {
+                                target.select();
+                              } catch {}
+                            }, 20);
                           } else {
                             setCustomerSearch('');
                           }
                           setHighlightCustomerIndex(0);
                         }}
                         onKeyDown={(e) => {
-                          if (e.key === "ArrowDown") {
+                          if (e.key === "End") {
+                            e.preventDefault();
+                            const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                            e.currentTarget.setSelectionRange(len, len);
+                            return;
+                          } else if (e.key === "Home") {
+                            e.preventDefault();
+                            e.currentTarget.setSelectionRange(0, 0);
+                            return;
+                          } else if (e.key === "ArrowRight") {
+                            const { selectionStart, selectionEnd, value } = e.currentTarget;
+                            if (selectionStart !== selectionEnd) {
+                              e.preventDefault();
+                              const len = value ? value.length : 0;
+                              e.currentTarget.setSelectionRange(len, len);
+                              return;
+                            }
+                          } else if (e.key === "ArrowLeft") {
+                            const { selectionStart, selectionEnd } = e.currentTarget;
+                            if (selectionStart !== selectionEnd) {
+                              e.preventDefault();
+                              e.currentTarget.setSelectionRange(0, 0);
+                              return;
+                            }
+                          } else if (e.key === "ArrowDown") {
                             e.preventDefault();
                             if (!customerDropdownOpen) {
                               setCustomerDropdownOpen(true);
@@ -1077,8 +1099,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'No';
                         const w = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 0)) || 0;
                         const h = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 0)) || 0;
-                        const wFt = row.widthUnit === 'IN' ? w / 12 : w;
-                        const hFt = row.heightUnit === 'IN' ? h / 12 : h;
+                        const wFt = row.widthUnit === 'IN' ? w / 12 : (row.widthUnit === 'MTR' ? w * 3.28084 : w);
+                        const hFt = row.heightUnit === 'IN' ? h / 12 : (row.heightUnit === 'MTR' ? h * 3.28084 : h);
                         const sqft = hasMultipleSizes ? ((wFt > 0 && hFt > 0) ? (wFt * hFt) : 0) : 0;
                         const pcs = Math.max(1, Number(row.pcsNo || '1'));
                         const totalBilledSqft = sqft * pcs;
@@ -1137,16 +1159,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                              const inputEl = e.currentTarget;
                                              setTimeout(() => {
                                                try {
-                                                 inputEl.select();
+                                                 const len = inputEl.value ? inputEl.value.length : 0;
+                                                 inputEl.setSelectionRange(len, len);
                                                } catch {}
                                              }, 10);
-                                           }}
-                                           onMouseUp={(e) => {
-                                             if (document.activeElement === e.currentTarget && e.currentTarget.selectionStart === e.currentTarget.selectionEnd) {
-                                               try {
-                                                 e.currentTarget.select();
-                                               } catch {}
-                                             }
                                            }}
                                            onKeyDown={(e) => {
                                              if (e.key === "ArrowDown") {
@@ -1236,7 +1252,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                      const custInput = document.getElementById('proxy-customer-search-input') || document.getElementById('order-number-input');
                                                      if (custInput) {
                                                        custInput.focus();
-                                                       try { (custInput as HTMLInputElement).select(); } catch {}
+                                                       try {
+                                                         const len = (custInput as HTMLInputElement).value ? (custInput as HTMLInputElement).value.length : 0;
+                                                         (custInput as HTMLInputElement).setSelectionRange(len, len);
+                                                       } catch {}
                                                      }
                                                    } else {
                                                      const prevRow = rows[index - 1];
@@ -1329,7 +1348,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     <input
                                       id={`error-row-${row.id}-width`}
                                       value={row.width !== undefined ? row.width : (product?.default_width || '1')}
-                                      onFocus={(e) => e.target.select()}
                                       onChange={(e) => {
                                         updateRow(row.id, { width: e.target.value });
                                         setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
@@ -1343,7 +1361,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                             if (heightInput) {
                                               heightInput.focus();
-                                              try { (heightInput as HTMLInputElement).select(); } catch {}
                                             }
                                           }
                                         } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
@@ -1353,7 +1370,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           const itemInput = document.getElementById(`row-${row.id}-product-input`);
                                           if (itemInput) {
                                             itemInput.focus();
-                                            try { (itemInput as HTMLInputElement).select(); } catch {}
                                           }
                                         }
                                       }}
@@ -1372,11 +1388,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                             if (heightInput) {
                                               heightInput.focus();
-                                              try { (heightInput as HTMLInputElement).select(); } catch {}
                                             }
                                           } else if (e.key === " " || e.key === "Spacebar") {
                                             e.preventDefault();
-                                            const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
+                                            const nextUnit = row.widthUnit === 'FT' ? 'IN' : row.widthUnit === 'IN' ? 'MTR' : 'FT';
                                             updateRow(row.id, { widthUnit: nextUnit });
                                           } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                             e.preventDefault();
@@ -1384,23 +1399,22 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const widthInput = document.getElementById(`error-row-${row.id}-width`);
                                             if (widthInput) {
                                               widthInput.focus();
-                                              try { (widthInput as HTMLInputElement).select(); } catch {}
                                             }
                                           } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                                             e.preventDefault();
-                                            const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
+                                            const nextUnit = row.widthUnit === 'FT' ? 'IN' : row.widthUnit === 'IN' ? 'MTR' : 'FT';
                                             updateRow(row.id, { widthUnit: nextUnit });
                                           }
                                         }}
                                         onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
                                         className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                                       >
-                                        {row.widthUnit === 'FT' ? 'ft' : 'in'}
+                                        {row.widthUnit === 'FT' ? 'ft' : row.widthUnit === 'IN' ? 'in' : 'm'}
                                         <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
                                       </button>
                                       {openUnitPickerId === `${row.id}-w` && (
                                         <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                          {['FT', 'IN'].map(u => (
+                                          {['FT', 'IN', 'MTR'].map(u => (
                                             <button
                                               key={u}
                                               type="button"
@@ -1413,7 +1427,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                   const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                                   if (heightInput) {
                                                     heightInput.focus();
-                                                    try { (heightInput as HTMLInputElement).select(); } catch {}
                                                   }
                                                 }, 50);
                                               }}
@@ -1423,7 +1436,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                   : 'text-slate-600 hover:bg-slate-50'
                                               }`}
                                             >
-                                              {u.toLowerCase()}
+                                              {u === 'MTR' ? 'm' : u.toLowerCase()}
                                             </button>
                                           ))}
                                         </div>
@@ -1443,13 +1456,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     <input
                                       id={`error-row-${row.id}-height`}
                                       value={row.height !== undefined ? row.height : (product?.default_length || '1')}
-                                      onFocus={(e) => e.target.select()}
                                       onChange={(e) => {
                                         updateRow(row.id, { height: e.target.value });
                                         setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
                                       }}
                                       onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
+                                        if (e.key === "End") {
+                                          e.preventDefault();
+                                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                          e.currentTarget.setSelectionRange(len, len);
+                                        } else if (e.key === "Home") {
+                                          e.preventDefault();
+                                          e.currentTarget.setSelectionRange(0, 0);
+                                        } else if (e.key === "Enter") {
                                           e.preventDefault();
                                           const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
                                           if (heightUnitBtn) heightUnitBtn.focus();
@@ -1457,16 +1476,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
                                             if (pcsInput) {
                                               pcsInput.focus();
-                                              try { (pcsInput as HTMLInputElement).select(); } catch {}
                                             }
                                           } else {
                                             const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                             if (qtyInput) {
                                               qtyInput.focus();
-                                              try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                              try {
+                                                const len = (qtyInput as HTMLInputElement).value ? (qtyInput as HTMLInputElement).value.length : 0;
+                                                (qtyInput as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
                                             }
                                           }
-                                        } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                           e.preventDefault();
                                           const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
                                           if (widthUnitBtn) widthUnitBtn.focus();
@@ -1474,18 +1495,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const widthInput = document.getElementById(`error-row-${row.id}-width`);
                                             if (widthInput) {
                                               widthInput.focus();
-                                              try { (widthInput as HTMLInputElement).select(); } catch {}
-                                            }
-                                          }
-                                        } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                          e.preventDefault();
-                                          const widthUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
-                                          if (widthUnitBtn) widthUnitBtn.focus();
-                                          else {
-                                            const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                            if (widthInput) {
-                                              widthInput.focus();
-                                              try { (widthInput as HTMLInputElement).select(); } catch {}
                                             }
                                           }
                                         }
@@ -1506,18 +1515,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
                                               if (pcsInput) {
                                                 pcsInput.focus();
-                                                try { (pcsInput as HTMLInputElement).select(); } catch {}
                                               }
                                             } else {
                                               const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                               if (qtyInput) {
                                                 qtyInput.focus();
-                                                try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                                try {
+                                                  const len = (qtyInput as HTMLInputElement).value ? (qtyInput as HTMLInputElement).value.length : 0;
+                                                  (qtyInput as HTMLInputElement).setSelectionRange(len, len);
+                                                } catch {}
                                               }
                                             }
                                           } else if (e.key === " " || e.key === "Spacebar") {
                                             e.preventDefault();
-                                            const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
+                                            const nextUnit = row.heightUnit === 'FT' ? 'IN' : row.heightUnit === 'IN' ? 'MTR' : 'FT';
                                             updateRow(row.id, { heightUnit: nextUnit });
                                           } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                             e.preventDefault();
@@ -1525,23 +1536,22 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                             if (heightInput) {
                                               heightInput.focus();
-                                              try { (heightInput as HTMLInputElement).select(); } catch {}
                                             }
                                           } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                                             e.preventDefault();
-                                            const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
+                                            const nextUnit = row.heightUnit === 'FT' ? 'IN' : row.heightUnit === 'IN' ? 'MTR' : 'FT';
                                             updateRow(row.id, { heightUnit: nextUnit });
                                           }
                                         }}
                                         onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
                                         className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                                       >
-                                        {row.heightUnit === 'FT' ? 'ft' : 'in'}
+                                        {row.heightUnit === 'FT' ? 'ft' : row.heightUnit === 'IN' ? 'in' : 'm'}
                                         <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
                                       </button>
                                       {openUnitPickerId === `${row.id}-h` && (
                                         <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                                          {['FT', 'IN'].map(u => (
+                                          {['FT', 'IN', 'MTR'].map(u => (
                                             <button
                                               key={u}
                                               type="button"
@@ -1555,13 +1565,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                     const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
                                                     if (pcsInput) {
                                                       pcsInput.focus();
-                                                      try { (pcsInput as HTMLInputElement).select(); } catch {}
                                                     }
                                                   } else {
                                                     const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                                     if (qtyInput) {
                                                       qtyInput.focus();
-                                                      try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                                      try {
+                                                        const len = (qtyInput as HTMLInputElement).value ? (qtyInput as HTMLInputElement).value.length : 0;
+                                                        (qtyInput as HTMLInputElement).setSelectionRange(len, len);
+                                                      } catch {}
                                                     }
                                                   }
                                                 }, 50);
@@ -1572,7 +1584,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                   : 'text-slate-600 hover:bg-slate-50'
                                               }`}
                                             >
-                                              {u.toLowerCase()}
+                                              {u === 'MTR' ? 'm' : u.toLowerCase()}
                                             </button>
                                           ))}
                                         </div>
@@ -1595,20 +1607,25 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <input
                                     id={`error-row-${row.id}-pcs`}
                                     value={row.pcsNo ?? '1'}
-                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       updateRow(row.id, { pcsNo: val });
                                     }}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
                                         e.preventDefault();
                                         const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
                                         if (rateInput) {
                                           rateInput.focus();
-                                          try { (rateInput as HTMLInputElement).select(); } catch {}
                                         }
-                                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
                                         if (heightUnitBtn) heightUnitBtn.focus();
@@ -1616,18 +1633,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                           if (heightInput) {
                                             heightInput.focus();
-                                            try { (heightInput as HTMLInputElement).select(); } catch {}
-                                          }
-                                        }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
-                                        if (heightUnitBtn) heightUnitBtn.focus();
-                                        else {
-                                          const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) {
-                                            heightInput.focus();
-                                            try { (heightInput as HTMLInputElement).select(); } catch {}
                                           }
                                         }
                                       }
@@ -1650,24 +1655,42 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     <input
                                       id={`error-row-${row.id}-quantity`}
                                       value={row.quantity !== undefined ? row.quantity : '1'}
-                                      onFocus={(e) => e.target.select()}
+                                      onFocus={(e) => {
+                                        try {
+                                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                          e.currentTarget.setSelectionRange(len, len);
+                                        } catch {}
+                                      }}
                                       onChange={(e) => {
                                         const val = e.target.value;
                                         updateRow(row.id, { quantity: val });
                                         setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
                                       }}
                                       onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
+                                        if (e.key === "End") {
+                                          e.preventDefault();
+                                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                          e.currentTarget.setSelectionRange(len, len);
+                                        } else if (e.key === "Home") {
+                                          e.preventDefault();
+                                          e.currentTarget.setSelectionRange(0, 0);
+                                        } else if (e.key === "Enter") {
                                           e.preventDefault();
                                           const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
                                           if (rateInput) {
                                             rateInput.focus();
-                                            try { (rateInput as HTMLInputElement).select(); } catch {}
+                                            try {
+                                              const len = (rateInput as HTMLInputElement).value ? (rateInput as HTMLInputElement).value.length : 0;
+                                              (rateInput as HTMLInputElement).setSelectionRange(len, len);
+                                            } catch {}
                                           } else {
                                             const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
                                             if (rateUnit) {
                                               rateUnit.focus();
-                                              try { (rateUnit as HTMLInputElement).select(); } catch {}
+                                              try {
+                                                const len = (rateUnit as HTMLInputElement).value ? (rateUnit as HTMLInputElement).value.length : 0;
+                                                (rateUnit as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
                                             } else {
                                               const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
                                               if (finishSelect) finishSelect.focus();
@@ -1675,12 +1698,15 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                 const fileInput = document.getElementById(`error-row-${row.id}-file`);
                                                 if (fileInput) {
                                                   fileInput.focus();
-                                                  try { (fileInput as HTMLInputElement).select(); } catch {}
+                                                  try {
+                                                    const len = (fileInput as HTMLInputElement).value ? (fileInput as HTMLInputElement).value.length : 0;
+                                                    (fileInput as HTMLInputElement).setSelectionRange(len, len);
+                                                  } catch {}
                                                 }
                                               }
                                             }
                                           }
-                                        } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                           e.preventDefault();
                                           e.stopPropagation();
                                           if (hasMultipleSizes) {
@@ -1690,7 +1716,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               const heightInput = document.getElementById(`error-row-${row.id}-height`);
                                               if (heightInput) {
                                                 heightInput.focus();
-                                                try { (heightInput as HTMLInputElement).select(); } catch {}
+                                                try {
+                                                  const len = (heightInput as HTMLInputElement).value ? (heightInput as HTMLInputElement).value.length : 0;
+                                                  (heightInput as HTMLInputElement).setSelectionRange(len, len);
+                                                } catch {}
                                               }
                                             }
                                           } else {
@@ -1698,7 +1727,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const itemInput = document.getElementById(`row-${row.id}-product-input`);
                                             if (itemInput) {
                                               itemInput.focus();
-                                              try { (itemInput as HTMLInputElement).select(); } catch {}
+                                              try {
+                                                const len = (itemInput as HTMLInputElement).value ? (itemInput as HTMLInputElement).value.length : 0;
+                                                (itemInput as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
                                             }
                                           }
                                         }
@@ -1725,10 +1757,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       if (!row.manualRate && baseRate > 0) {
                                         updateRow(row.id, { manualRate: baseRate.toFixed(2) });
                                       }
-                                      e.target.select();
+                                      try {
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } catch {}
                                     }}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
                                         e.preventDefault();
                                         const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
                                         if (finishSelect) finishSelect.focus();
@@ -1736,26 +1778,25 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           const fileInput = document.getElementById(`error-row-${row.id}-file`);
                                           if (fileInput) {
                                             fileInput.focus();
-                                            try { (fileInput as HTMLInputElement).select(); } catch {}
+                                            try {
+                                              const len = (fileInput as HTMLInputElement).value ? (fileInput as HTMLInputElement).value.length : 0;
+                                              (fileInput as HTMLInputElement).setSelectionRange(len, len);
+                                            } catch {}
                                           } else {
                                             const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
                                             if (browseBtn) browseBtn.focus();
                                             else handleRowFinalEnter(index);
                                           }
                                         }
-                                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                         if (qtyInput) {
                                           qtyInput.focus();
-                                          try { (qtyInput as HTMLInputElement).select(); } catch {}
-                                        }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                        if (qtyInput) {
-                                          qtyInput.focus();
-                                          try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                          try {
+                                            const len = (qtyInput as HTMLInputElement).value ? (qtyInput as HTMLInputElement).value.length : 0;
+                                            (qtyInput as HTMLInputElement).setSelectionRange(len, len);
+                                          } catch {}
                                         }
                                       }
                                     }}
@@ -1788,10 +1829,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         if (!row.manualRate && baseRate > 0) {
                                           updateRow(row.id, { manualRate: baseRate.toFixed(2) });
                                         }
-                                        e.target.select();
+                                        try {
+                                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                          e.currentTarget.setSelectionRange(len, len);
+                                        } catch {}
                                       }}
                                       onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
+                                        if (e.key === "End") {
+                                          e.preventDefault();
+                                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                          e.currentTarget.setSelectionRange(len, len);
+                                        } else if (e.key === "Home") {
+                                          e.preventDefault();
+                                          e.currentTarget.setSelectionRange(0, 0);
+                                        } else if (e.key === "Enter") {
                                           e.preventDefault();
                                           const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
                                           if (finishSelect) finishSelect.focus();
@@ -1799,37 +1850,33 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const fileInput = document.getElementById(`error-row-${row.id}-file`);
                                             if (fileInput) {
                                               fileInput.focus();
-                                              try { (fileInput as HTMLInputElement).select(); } catch {}
+                                              try {
+                                                const len = (fileInput as HTMLInputElement).value ? (fileInput as HTMLInputElement).value.length : 0;
+                                                (fileInput as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
                                             } else {
                                               const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
                                               if (browseBtn) browseBtn.focus();
                                               else handleRowFinalEnter(index);
                                             }
                                           }
-                                        } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                           e.preventDefault();
                                           const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
                                           if (pcsInput) {
                                             pcsInput.focus();
-                                            try { (pcsInput as HTMLInputElement).select(); } catch {}
+                                            try {
+                                              const len = (pcsInput as HTMLInputElement).value ? (pcsInput as HTMLInputElement).value.length : 0;
+                                              (pcsInput as HTMLInputElement).setSelectionRange(len, len);
+                                            } catch {}
                                           } else {
                                             const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
                                             if (qtyInput) {
                                               qtyInput.focus();
-                                              try { (qtyInput as HTMLInputElement).select(); } catch {}
-                                            }
-                                          }
-                                        } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                          e.preventDefault();
-                                          const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          if (pcsInput) {
-                                            pcsInput.focus();
-                                            try { (pcsInput as HTMLInputElement).select(); } catch {}
-                                          } else {
-                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                            if (qtyInput) {
-                                              qtyInput.focus();
-                                              try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                              try {
+                                                const len = (qtyInput as HTMLInputElement).value ? (qtyInput as HTMLInputElement).value.length : 0;
+                                                (qtyInput as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
                                             }
                                           }
                                         }
@@ -1862,7 +1909,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           const fileInput = document.getElementById(`error-row-${row.id}-file`);
                                           if (fileInput) {
                                             fileInput.focus();
-                                            try { (fileInput as HTMLInputElement).select(); } catch {}
+                                            try {
+                                              const len = (fileInput as HTMLInputElement).value ? (fileInput as HTMLInputElement).value.length : 0;
+                                              (fileInput as HTMLInputElement).setSelectionRange(len, len);
+                                            } catch {}
                                           } else {
                                             const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
                                             if (browseBtn) browseBtn.focus();
@@ -1874,13 +1924,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
                                             if (rateSqft) {
                                               rateSqft.focus();
-                                              try { (rateSqft as HTMLInputElement).select(); } catch {}
+                                              try {
+                                                const len = (rateSqft as HTMLInputElement).value ? (rateSqft as HTMLInputElement).value.length : 0;
+                                                (rateSqft as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
                                             }
                                           } else {
                                             const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
                                             if (rateUnit) {
                                               rateUnit.focus();
-                                              try { (rateUnit as HTMLInputElement).select(); } catch {}
+                                              try {
+                                                const len = (rateUnit as HTMLInputElement).value ? (rateUnit as HTMLInputElement).value.length : 0;
+                                                (rateUnit as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
                                             }
                                           }
                                         }
@@ -1902,7 +1958,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <input
                                     id={`error-row-${row.id}-file`}
                                     value={row.fileName || row.tiffPath || ''}
-                                    onFocus={(e) => e.target.select()}
+                                    onFocus={(e) => {
+                                      try {
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } catch {}
+                                    }}
                                     onChange={(e) => {
                                       const cleaned = sanitizeTiffPath(e.target.value);
                                       updateRow(row.id, { tiffPath: cleaned, fileName: '' });
@@ -3275,7 +3336,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           const firstProductInput = document.querySelector('input[placeholder="Select item..."]') as HTMLElement;
                           if (firstProductInput) {
                             firstProductInput.focus();
-                            try { (firstProductInput as HTMLInputElement).select(); } catch {}
+                            try {
+                              const len = (firstProductInput as HTMLInputElement).value ? (firstProductInput as HTMLInputElement).value.length : 0;
+                              (firstProductInput as HTMLInputElement).setSelectionRange(len, len);
+                            } catch {}
                           }
                         }, 120);
                       }

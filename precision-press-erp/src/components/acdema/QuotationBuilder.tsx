@@ -28,9 +28,9 @@ interface AcdemaRow {
   billingMode?: 'A' | 'B';
   pcsNo: string;
   width: string;
-  widthUnit: 'FT' | 'IN';
+  widthUnit: 'FT' | 'IN' | 'MTR';
   height: string;
-  heightUnit: 'FT' | 'IN';
+  heightUnit: 'FT' | 'IN' | 'MTR';
   quantity: string;
   eyeletType: 'METAL' | 'PLASTIC' | 'NONE';
   eyeletCount: number;
@@ -352,8 +352,8 @@ export function QuotationBuilder() {
       const isModeB = currentMode === 'B';
       const width = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 1)) || 1;
       const height = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 1)) || 1;
-      const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
-      const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
+      const widthInFt = row.widthUnit === 'IN' ? width / 12 : (row.widthUnit === 'MTR' ? width * 3.28084 : width);
+      const heightInFt = row.heightUnit === 'IN' ? height / 12 : (row.heightUnit === 'MTR' ? height * 3.28084 : height);
       const sqft = hasMultipleSizes ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 1) : 1;
       const pcs = Math.max(1, Number(row.pcsNo || '1'));
       const totalBilledSqft = sqft * pcs;
@@ -573,8 +573,8 @@ export function QuotationBuilder() {
         const isModeB = currentMode === 'B';
         const width = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 0)) || 0;
         const height = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 0)) || 0;
-        const widthInFt = row.widthUnit === 'IN' ? width / 12 : width;
-        const heightInFt = row.heightUnit === 'IN' ? height / 12 : height;
+        const widthInFt = row.widthUnit === 'IN' ? width / 12 : (row.widthUnit === 'MTR' ? width * 3.28084 : width);
+        const heightInFt = row.heightUnit === 'IN' ? height / 12 : (row.heightUnit === 'MTR' ? height * 3.28084 : height);
         const sqft = hasMultipleSizes ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 1) : 1;
         const pcs = Math.max(1, Number(row.pcsNo || '1'));
         const totalBilledSqft = sqft * pcs;

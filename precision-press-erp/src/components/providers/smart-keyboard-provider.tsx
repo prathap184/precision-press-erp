@@ -23,8 +23,50 @@ function isVisible(el: HTMLElement): boolean {
   return el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0;
 }
 
+function selectAll(el: HTMLElement) {
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    if (["button", "submit", "checkbox", "radio", "file"].includes(el.type)) return;
+    try {
+      if (el.type === "number") {
+        el.type = "text";
+        el.setSelectionRange(0, el.value.length);
+        el.type = "number";
+      } else {
+        el.select();
+      }
+    } catch {}
+  }
+}
+
+function moveCursorToEnd(el: HTMLElement) {
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+    if (["button", "submit", "checkbox", "radio", "file"].includes(el.type)) return;
+    try {
+      if (el.type === "number") {
+        el.type = "text";
+        const len = el.value ? el.value.length : 0;
+        el.setSelectionRange(len, len);
+        el.type = "number";
+      } else {
+        const len = el.value ? el.value.length : 0;
+        el.setSelectionRange(len, len);
+      }
+    } catch {}
+  }
+}
+
 export function SmartKeyboardProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
+    function handleFocusIn(e: FocusEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+        if (["button", "submit", "checkbox", "radio", "file"].includes(target.type)) return;
+        setTimeout(() => {
+          selectAll(target);
+        }, 15);
+      }
+    }
+
     function handleKeyDown(e: KeyboardEvent) {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
 
@@ -54,22 +96,74 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
         }
       }
 
-      // Global Home & End key cursor positioning for all inputs & textareas across all pages
+      // Global Home, End, ArrowRight, ArrowLeft cursor positioning for all inputs & textareas across all pages
       if (e.key === "End" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
         if (tagName === "input" || tagName === "textarea") {
-          const input = target as HTMLInputElement | HTMLTextAreaElement;
-          const len = typeof input.value === "string" ? input.value.length : 0;
-          try {
-            e.preventDefault();
-            input.setSelectionRange(len, len);
-          } catch {}
+          e.preventDefault();
+          moveCursorToEnd(target);
+          return;
         }
       } else if (e.key === "Home" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
         if (tagName === "input" || tagName === "textarea") {
           const input = target as HTMLInputElement | HTMLTextAreaElement;
+          const isNumber = input.type === "number";
+          if (isNumber) {
+            try {
+              e.preventDefault();
+              input.type = "text";
+              input.setSelectionRange(0, 0);
+              input.type = "number";
+            } catch {}
+          } else {
+            try {
+              e.preventDefault();
+              input.setSelectionRange(0, 0);
+            } catch {}
+          }
+          return;
+        }
+      } else if (e.key === "ArrowRight" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        if (tagName === "input" || tagName === "textarea") {
+          const input = target as HTMLInputElement | HTMLTextAreaElement;
+          const isNumber = input.type === "number";
+          if (isNumber) {
+            try {
+              e.preventDefault();
+              input.type = "text";
+              const len = input.value ? input.value.length : 0;
+              input.setSelectionRange(len, len);
+              input.type = "number";
+            } catch {}
+            return;
+          }
           try {
-            e.preventDefault();
-            input.setSelectionRange(0, 0);
+            if (input.selectionStart !== input.selectionEnd) {
+              const len = typeof input.value === "string" ? input.value.length : 0;
+              e.preventDefault();
+              input.setSelectionRange(len, len);
+              return;
+            }
+          } catch {}
+        }
+      } else if (e.key === "ArrowLeft" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        if (tagName === "input" || tagName === "textarea") {
+          const input = target as HTMLInputElement | HTMLTextAreaElement;
+          const isNumber = input.type === "number";
+          if (isNumber) {
+            try {
+              e.preventDefault();
+              input.type = "text";
+              input.setSelectionRange(0, 0);
+              input.type = "number";
+            } catch {}
+            return;
+          }
+          try {
+            if (input.selectionStart !== input.selectionEnd) {
+              e.preventDefault();
+              input.setSelectionRange(0, 0);
+              return;
+            }
           } catch {}
         }
       }
@@ -98,16 +192,16 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           const val = input.value ?? "";
           const start = input.selectionStart ?? 0;
           const end = input.selectionEnd ?? 0;
-          const isAllSelected = val.length > 0 && start === 0 && end === val.length;
           const isEmpty = val.length === 0;
           const isAtBeginning = start === 0 && end === 0;
+          const isFullSelected = start === 0 && end === val.length && val.length > 0;
 
-          // If box is empty, cursor is at start 0, or entire value is selected (just landed):
+          // If box is empty, at beginning 0, or all text is selected:
           // -> Jump directly to previous field!
-          if (isEmpty || isAllSelected || isAtBeginning) {
+          if (isEmpty || isAtBeginning || isFullSelected) {
             shouldNavigateBack = true;
           } else {
-            // User pressed 'End' or cursor is inside text: allow character deletion
+            // User is typing or cursor is at end/inside text (after pressing End): allow character deletion
             return;
           }
         } else if (tagName === "textarea") {
@@ -115,11 +209,11 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           const val = textarea.value ?? "";
           const start = textarea.selectionStart ?? 0;
           const end = textarea.selectionEnd ?? 0;
-          const isAllSelected = val.length > 0 && start === 0 && end === val.length;
           const isEmpty = val.length === 0;
           const isAtBeginning = start === 0 && end === 0;
+          const isFullSelected = start === 0 && end === val.length && val.length > 0;
 
-          if (isEmpty || isAllSelected || isAtBeginning) {
+          if (isEmpty || isAtBeginning || isFullSelected) {
             shouldNavigateBack = true;
           } else {
             return;
@@ -133,17 +227,7 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           e.preventDefault();
           const prevEl = focusables[currentIndex - 1];
           prevEl.focus();
-
-          if (prevEl instanceof HTMLInputElement || prevEl instanceof HTMLTextAreaElement) {
-            try {
-              prevEl.select();
-            } catch {
-              try {
-                const len = prevEl.value.length;
-                prevEl.setSelectionRange(0, len);
-              } catch {}
-            }
-          }
+          setTimeout(() => selectAll(prevEl), 10);
         }
         return;
       }
@@ -178,23 +262,17 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           e.preventDefault();
           const nextEl = focusables[currentIndex + 1];
           nextEl.focus();
-
-          if (nextEl instanceof HTMLInputElement || nextEl instanceof HTMLTextAreaElement) {
-            try {
-              nextEl.select();
-            } catch {
-              try {
-                const len = nextEl.value.length;
-                nextEl.setSelectionRange(len, len);
-              } catch {}
-            }
-          }
+          setTimeout(() => selectAll(nextEl), 10);
         }
       }
     }
 
     window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("focusin", handleFocusIn, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("focusin", handleFocusIn, true);
+    };
   }, []);
 
   return <>{children}</>;

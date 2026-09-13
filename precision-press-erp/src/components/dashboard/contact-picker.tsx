@@ -271,12 +271,21 @@ export function ContactPicker({
           }}
           onFocus={(e) => {
             setOpen(true);
+            const target = e.currentTarget;
             if (selected) {
               setSearch(selected.name);
-              try { e.target.select(); } catch {}
+              setTimeout(() => {
+                try {
+                  target.select();
+                } catch {}
+              }, 20);
             } else if (initialContactName) {
               setSearch(initialContactName);
-              try { e.target.select(); } catch {}
+              setTimeout(() => {
+                try {
+                  target.select();
+                } catch {}
+              }, 20);
             } else {
               setSearch("");
             }
@@ -284,7 +293,31 @@ export function ContactPicker({
             scrollDropdownToIndex(0);
           }}
           onKeyDown={(e) => {
-            if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+            if (e.key === "End") {
+              e.preventDefault();
+              const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+              e.currentTarget.setSelectionRange(len, len);
+              return;
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              e.currentTarget.setSelectionRange(0, 0);
+              return;
+            } else if (e.key === "ArrowRight") {
+              const { selectionStart, selectionEnd, value } = e.currentTarget;
+              if (selectionStart !== selectionEnd) {
+                e.preventDefault();
+                const len = value ? value.length : 0;
+                e.currentTarget.setSelectionRange(len, len);
+                return;
+              }
+            } else if (e.key === "ArrowLeft") {
+              const { selectionStart, selectionEnd } = e.currentTarget;
+              if (selectionStart !== selectionEnd) {
+                e.preventDefault();
+                e.currentTarget.setSelectionRange(0, 0);
+                return;
+              }
+            } else if (e.key === "Backspace" && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
               e.preventDefault();
               return;
             }

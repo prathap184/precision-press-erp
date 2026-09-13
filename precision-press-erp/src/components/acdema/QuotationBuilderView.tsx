@@ -264,7 +264,6 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
       const itemInput = document.getElementById(`row-${rowId}-product-input`);
       if (itemInput) {
         itemInput.focus();
-        try { (itemInput as HTMLInputElement).select(); } catch {}
       }
     }, 50);
   };
@@ -560,16 +559,45 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         }}
                         onFocus={(e) => {
                           setCustomerDropdownOpen(true);
+                          const target = e.currentTarget;
                           if (selectedCustomer) {
                             setCustomerSearch(selectedCustomer.displayName || selectedCustomer.name || '');
-                            e.target.select();
+                            setTimeout(() => {
+                              try {
+                                target.select();
+                              } catch {}
+                            }, 20);
                           } else {
                             setCustomerSearch('');
                           }
                           setHighlightCustomerIndex(0);
                         }}
                         onKeyDown={(e) => {
-                          if (e.key === "ArrowDown") {
+                          if (e.key === "End") {
+                            e.preventDefault();
+                            const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                            e.currentTarget.setSelectionRange(len, len);
+                            return;
+                          } else if (e.key === "Home") {
+                            e.preventDefault();
+                            e.currentTarget.setSelectionRange(0, 0);
+                            return;
+                          } else if (e.key === "ArrowRight") {
+                            const { selectionStart, selectionEnd, value } = e.currentTarget;
+                            if (selectionStart !== selectionEnd) {
+                              e.preventDefault();
+                              const len = value ? value.length : 0;
+                              e.currentTarget.setSelectionRange(len, len);
+                              return;
+                            }
+                          } else if (e.key === "ArrowLeft") {
+                            const { selectionStart, selectionEnd } = e.currentTarget;
+                            if (selectionStart !== selectionEnd) {
+                              e.preventDefault();
+                              e.currentTarget.setSelectionRange(0, 0);
+                              return;
+                            }
+                          } else if (e.key === "ArrowDown") {
                             e.preventDefault();
                             if (!customerDropdownOpen) {
                               setCustomerDropdownOpen(true);
@@ -761,8 +789,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'No';
                         const w = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 0)) || 0;
                         const h = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 0)) || 0;
-                        const wFt = row.widthUnit === 'IN' ? w / 12 : w;
-                        const hFt = row.heightUnit === 'IN' ? h / 12 : h;
+                        const wFt = row.widthUnit === 'IN' ? w / 12 : (row.widthUnit === 'MTR' ? w * 3.28084 : w);
+                        const hFt = row.heightUnit === 'IN' ? h / 12 : (row.heightUnit === 'MTR' ? h * 3.28084 : h);
                         const sqft = hasMultipleSizes ? ((wFt > 0 && hFt > 0) ? (wFt * hFt) : 0) : 0;
                         const pcs = Math.max(1, Number(row.pcsNo || '1'));
                         const totalBilledSqft = sqft * pcs;
@@ -824,16 +852,10 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                              const inputEl = e.currentTarget;
                                              setTimeout(() => {
                                                try {
-                                                 inputEl.select();
+                                                 const len = inputEl.value ? inputEl.value.length : 0;
+                                                 inputEl.setSelectionRange(len, len);
                                                } catch {}
                                              }, 10);
-                                           }}
-                                           onMouseUp={(e) => {
-                                             if (document.activeElement === e.currentTarget && e.currentTarget.selectionStart === e.currentTarget.selectionEnd) {
-                                               try {
-                                                 e.currentTarget.select();
-                                               } catch {}
-                                             }
                                            }}
                                            onKeyDown={(e) => {
                                              if (e.key === "ArrowDown") {
@@ -917,7 +939,6 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                      const custInput = document.getElementById('proxy-customer-search-input') || document.getElementById('order-number-input');
                                                      if (custInput) {
                                                        custInput.focus();
-                                                       try { (custInput as HTMLInputElement).select(); } catch {}
                                                      }
                                                    } else {
                                                      const prevRow = rows[index - 1];
@@ -972,7 +993,6 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                             const prodInput = document.getElementById(`row-${row.id}-product-input`);
                                             if (prodInput) {
                                               prodInput.focus();
-                                              try { (prodInput as HTMLInputElement).select(); } catch {}
                                             }
                                           }
                                         }}
@@ -1015,22 +1035,30 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
                                     }}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
                                         e.preventDefault();
                                         const widthUnitSelect = document.getElementById(`row-${row.id}-width-unit`);
                                         if (widthUnitSelect) widthUnitSelect.focus();
                                         else {
                                           const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
+                                          if (heightInput) {
+                                            heightInput.focus();
+                                          }
                                         }
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         setOpenRowId(row.id);
                                         const itemInput = document.getElementById(`row-${row.id}-product-input`);
                                         if (itemInput) {
                                           itemInput.focus();
-                                          try { (itemInput as HTMLInputElement).select(); } catch {}
                                         }
                                       }
                                     }}
@@ -1045,17 +1073,22 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
                                         const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                        if (heightInput) heightInput.focus();
+                                        if (heightInput) {
+                                          heightInput.focus();
+                                        }
                                       } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                         e.preventDefault();
                                         const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                        if (widthInput) widthInput.focus();
+                                        if (widthInput) {
+                                          widthInput.focus();
+                                        }
                                       }
                                     }}
                                     className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-500 outline-none focus:ring-2 focus:ring-blue-400 rounded px-1"
                                   >
                                     <option value="FT">ft</option>
                                     <option value="IN">in</option>
+                                    <option value="MTR">m</option>
                                   </select>
                                 </div>
                               )}
@@ -1073,24 +1106,37 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
                                     }}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
                                         e.preventDefault();
                                         const heightUnitSelect = document.getElementById(`row-${row.id}-height-unit`);
                                         if (heightUnitSelect) heightUnitSelect.focus();
                                         else if (isModeB) {
                                           const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          if (pcsInput) pcsInput.focus();
+                                          if (pcsInput) {
+                                            pcsInput.focus();
+                                          }
                                         } else {
                                           const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                          if (qtyInput) qtyInput.focus();
+                                          if (qtyInput) {
+                                            qtyInput.focus();
+                                          }
                                         }
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const widthUnitSelect = document.getElementById(`row-${row.id}-width-unit`);
                                         if (widthUnitSelect) widthUnitSelect.focus();
                                         else {
                                           const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                          if (widthInput) widthInput.focus();
+                                          if (widthInput) {
+                                            widthInput.focus();
+                                          }
                                         }
                                       }
                                     }}
@@ -1106,21 +1152,28 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         e.preventDefault();
                                         if (isModeB) {
                                           const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          if (pcsInput) pcsInput.focus();
+                                          if (pcsInput) {
+                                            pcsInput.focus();
+                                          }
                                         } else {
                                           const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                          if (qtyInput) qtyInput.focus();
+                                          if (qtyInput) {
+                                            qtyInput.focus();
+                                          }
                                         }
                                       } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                         e.preventDefault();
                                         const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                        if (heightInput) heightInput.focus();
+                                        if (heightInput) {
+                                          heightInput.focus();
+                                        }
                                       }
                                     }}
                                     className="border-0 bg-transparent p-0 text-[10px] font-black text-slate-500 outline-none focus:ring-2 focus:ring-blue-400 rounded px-1"
                                   >
                                     <option value="FT">ft</option>
                                     <option value="IN">in</option>
+                                    <option value="MTR">m</option>
                                   </select>
                                 </div>
                               )}
@@ -1139,17 +1192,28 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     updateRow(row.id, { pcsNo: val });
                                   }}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
+                                    if (e.key === "End") {
+                                      e.preventDefault();
+                                      const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                      e.currentTarget.setSelectionRange(len, len);
+                                    } else if (e.key === "Home") {
+                                      e.preventDefault();
+                                      e.currentTarget.setSelectionRange(0, 0);
+                                    } else if (e.key === "Enter") {
                                       e.preventDefault();
                                       const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
-                                      if (rateInput) rateInput.focus();
-                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      if (rateInput) {
+                                        rateInput.focus();
+                                      }
+                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                       e.preventDefault();
                                       const heightUnitSelect = document.getElementById(`row-${row.id}-height-unit`);
                                       if (heightUnitSelect) heightUnitSelect.focus();
                                       else {
                                         const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                        if (heightInput) heightInput.focus();
+                                        if (heightInput) {
+                                          heightInput.focus();
+                                        }
                                       }
                                     }
                                   }}
@@ -1175,11 +1239,20 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
                                     }}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
                                         e.preventDefault();
                                         const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
-                                        if (rateInput) rateInput.focus();
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        if (rateInput) {
+                                          rateInput.focus();
+                                        }
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         if (hasMultipleSizes) {
@@ -1187,8 +1260,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                           if (heightUnitSelect) heightUnitSelect.focus();
                                           else {
                                             const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                            if (heightInput) heightInput.focus();
-                                            else {
+                                            if (heightInput) {
+                                              heightInput.focus();
+                                            } else {
                                               setOpenRowId(null);
                                               setActiveDescRowId(row.id);
                                             }
@@ -1198,7 +1272,6 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                           const itemInput = document.getElementById(`row-${row.id}-product-input`);
                                           if (itemInput) {
                                             itemInput.focus();
-                                            try { (itemInput as HTMLInputElement).select(); } catch {}
                                           }
                                         }
                                       }
@@ -1223,26 +1296,35 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                     if (!row.manualRate && baseRate > 0) {
                                       updateRow(row.id, { manualRate: baseRate.toFixed(2) });
                                     }
-                                    e.target.select();
                                   }}
                                   onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
+                                    if (e.key === "End") {
+                                      e.preventDefault();
+                                      const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                      e.currentTarget.setSelectionRange(len, len);
+                                    } else if (e.key === "Home") {
+                                      e.preventDefault();
+                                      e.currentTarget.setSelectionRange(0, 0);
+                                    } else if (e.key === "Enter") {
                                       e.preventDefault();
                                       const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
                                       if (finishSelect) finishSelect.focus();
                                       else {
                                         const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                        if (fileInput) fileInput.focus();
-                                        else {
+                                        if (fileInput) {
+                                          fileInput.focus();
+                                        } else {
                                           const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
                                           if (browseBtn) browseBtn.focus();
                                           else handleRowFinalEnter(index);
                                         }
                                       }
-                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                       e.preventDefault();
                                       const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                      if (qtyInput) qtyInput.focus();
+                                      if (qtyInput) {
+                                        qtyInput.focus();
+                                      }
                                     }
                                   }}
                                   placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
@@ -1274,29 +1356,39 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       if (!row.manualRate && baseRate > 0) {
                                         updateRow(row.id, { manualRate: baseRate.toFixed(2) });
                                       }
-                                      e.target.select();
                                     }}
                                     onKeyDown={(e) => {
-                                      if (e.key === "Enter") {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
                                         e.preventDefault();
                                         const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
                                         if (finishSelect) finishSelect.focus();
                                         else {
                                           const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                          if (fileInput) fileInput.focus();
-                                          else {
+                                          if (fileInput) {
+                                            fileInput.focus();
+                                          } else {
                                             const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
                                             if (browseBtn) browseBtn.focus();
                                             else handleRowFinalEnter(index);
                                           }
                                         }
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                        if (pcsInput) pcsInput.focus();
-                                        else {
+                                        if (pcsInput) {
+                                          pcsInput.focus();
+                                        } else {
                                           const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                          if (qtyInput) qtyInput.focus();
+                                          if (qtyInput) {
+                                            qtyInput.focus();
+                                          }
                                         }
                                       }
                                     }}
@@ -1323,8 +1415,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
                                         const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                        if (fileInput) fileInput.focus();
-                                        else {
+                                        if (fileInput) {
+                                          fileInput.focus();
+                                        } else {
                                           const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
                                           if (browseBtn) browseBtn.focus();
                                           else handleRowFinalEnter(index);
@@ -1333,10 +1426,14 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         e.preventDefault();
                                         if (isSqftModeB) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                          if (rateSqft) rateSqft.focus();
+                                          if (rateSqft) {
+                                            rateSqft.focus();
+                                          }
                                         } else {
                                           const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                          if (rateUnit) rateUnit.focus();
+                                          if (rateUnit) {
+                                            rateUnit.focus();
+                                          }
                                         }
                                       }
                                     }}
@@ -1376,10 +1473,14 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         if (finishSelect) finishSelect.focus();
                                         else if (isSqftModeB) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                          if (rateSqft) rateSqft.focus();
+                                          if (rateSqft) {
+                                            rateSqft.focus();
+                                          }
                                         } else {
                                           const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                          if (rateUnit) rateUnit.focus();
+                                          if (rateUnit) {
+                                            rateUnit.focus();
+                                          }
                                         }
                                       }
                                     }}

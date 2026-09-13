@@ -30,10 +30,13 @@ export function TallyPeriodModal({
       setTempFromDate(initialFromDate);
       setTempToDate(initialToDate);
       const timer = setTimeout(() => {
-        fromInputRef.current?.focus();
-        try {
-          fromInputRef.current?.select();
-        } catch {}
+        if (fromInputRef.current) {
+          fromInputRef.current.focus();
+          try {
+            const len = fromInputRef.current.value ? fromInputRef.current.value.length : 0;
+            fromInputRef.current.setSelectionRange(len, len);
+          } catch {}
+        }
       }, 50);
       return () => clearTimeout(timer);
     }
@@ -102,10 +105,13 @@ export function TallyPeriodModal({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  toInputRef.current?.focus();
-                  try {
-                    toInputRef.current?.select();
-                  } catch {}
+                  if (toInputRef.current) {
+                    toInputRef.current.focus();
+                    try {
+                      const len = toInputRef.current.value ? toInputRef.current.value.length : 0;
+                      toInputRef.current.setSelectionRange(len, len);
+                    } catch {}
+                  }
                 }
               }}
               className="h-10 w-full bg-white text-slate-900 font-bold text-sm px-3 rounded-xl border-2 border-slate-300 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"

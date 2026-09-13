@@ -753,7 +753,10 @@ function InvoiceDrawer({ open, onClose, initialData }: { open: boolean; onClose:
         const el = document.getElementById("invoice-customer-search-input") as HTMLInputElement;
         if (el) {
           el.focus();
-          try { el.select(); } catch {}
+          try {
+            const len = el.value ? el.value.length : 0;
+            el.setSelectionRange(len, len);
+          } catch {}
         }
       }, 120);
     }
@@ -5103,7 +5106,10 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
         const el = document.getElementById("receipt-customer-search-input") as HTMLInputElement;
         if (el) {
           el.focus();
-          try { el.select(); } catch {}
+          try {
+            const len = el.value ? el.value.length : 0;
+            el.setSelectionRange(len, len);
+          } catch {}
         }
       }, 120);
     }
@@ -5249,7 +5255,10 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
                       const amtInput = document.getElementById("drawer-credit-amount") as HTMLElement;
                       if (amtInput) {
                         amtInput.focus();
-                        try { (amtInput as HTMLInputElement).select(); } catch {}
+                        try {
+                          const len = (amtInput as HTMLInputElement).value ? (amtInput as HTMLInputElement).value.length : 0;
+                          (amtInput as HTMLInputElement).setSelectionRange(len, len);
+                        } catch {}
                       }
                     }
                   }}
@@ -5398,7 +5407,10 @@ function CustomerCreditDrawer({ open, onClose, initialData }: { open: boolean; o
                         const amtInput = document.getElementById("drawer-credit-amount");
                         if (amtInput) {
                           amtInput.focus();
-                          try { (amtInput as HTMLInputElement).select(); } catch {}
+                          try {
+                            const len = (amtInput as HTMLInputElement).value ? (amtInput as HTMLInputElement).value.length : 0;
+                            (amtInput as HTMLInputElement).setSelectionRange(len, len);
+                          } catch {}
                         }
                       }
                     }}

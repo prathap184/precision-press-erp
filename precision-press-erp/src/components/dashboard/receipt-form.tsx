@@ -1,183 +1,140 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { ContactPicker } from "@/components/dashboard/contact-picker";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
-import {
-  Loader2,
-  ArrowDownLeft,
-  ArrowLeft,
-  Info,
-  CheckCircle2,
-  Building2,
-  Calendar,
-  Landmark,
-  FileText,
-  Save,
-  Check,
-  CreditCard,
-  AlertCircle,
-} from "lucide-react";
-import { formatMoney } from "@/lib/money";
-
-interface Account {
-  id: string;
-  code: string;
-  name: string;
-  type: string;
-  subType?: string | null;
-}
+import { ArrowRight, Check, X } from "lucide-react";
 
 interface BankAccountOption {
   id: string;
   accountName: string;
   chartAccountId?: string;
   currencyCode: string;
+  balance?: number;
+  accountType?: string;
+}
+
+interface CustomerOption {
+  id: string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  taxNumber?: string | null;
+  owesYou?: number;
+  youOwe?: number;
+  currencyCode?: string;
 }
 
 interface InvoiceOption {
   id: string;
   invoiceNumber: string;
   issueDate?: string;
+  dueDate?: string;
   amountDue: number;
   total: number;
   currencyCode: string;
 }
 
-function isoToDisplayDate(iso: string): string {
-  if (!iso) return "";
-  const parts = iso.split("-");
-  if (parts.length === 3) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  return iso;
+export type RefType = "ADVANCE" | "AGST_REF" | "NEW_REF" | "ON_ACCOUNT";
+
+export interface BillWiseLine {
+  id: string;
+  refType: RefType;
+  refName: string;
+  dueDate: string;
+  amount: number;
+  invoiceId?: string;
+  drCr: "Dr" | "Cr";
 }
 
-function parseTallyDate(input: string, fallbackIso: string = new Date().toISOString().split("T")[0]): string {
-  if (!input || !input.trim()) return fallbackIso;
-  const raw = input.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
-
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth() + 1;
-
-  const parts = raw.split(/[\s\-\/\.]+/).filter(Boolean);
-
-  if (parts.length === 1) {
-    const digits = parts[0];
-    if (digits.length === 1 || digits.length === 2) {
-      const day = parseInt(digits, 10);
-      if (day >= 1 && day <= 31) {
-        return `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      }
-    } else if (digits.length === 4) {
-      const day = parseInt(digits.slice(0, 2), 10);
-      const month = parseInt(digits.slice(2, 4), 10);
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
-        return `${currentYear}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      }
-    } else if (digits.length === 6) {
-      const day = parseInt(digits.slice(0, 2), 10);
-      const month = parseInt(digits.slice(2, 4), 10);
-      let year = parseInt(digits.slice(4, 6), 10);
-      year = year < 50 ? 2000 + year : 1900 + year;
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
-        return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      }
-    } else if (digits.length === 8) {
-      const day = parseInt(digits.slice(0, 2), 10);
-      const month = parseInt(digits.slice(2, 4), 10);
-      const year = parseInt(digits.slice(4, 8), 10);
-      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
-        return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-      }
-    }
-  } else if (parts.length === 2) {
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
-      return `${currentYear}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    }
-  } else if (parts.length === 3) {
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    let year = parseInt(parts[2], 10);
-    if (year < 100) {
-      year = year < 50 ? 2000 + year : 1900 + year;
-    }
-    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
-      return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-    }
+function formatTallyDate(dateStr: string) {
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return { dateDisplay: dateStr, dayDisplay: "" };
+    const day = d.getDate();
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const month = months[d.getMonth()];
+    const year = String(d.getFullYear()).slice(-2);
+    const weekday = days[d.getDay()];
+    return {
+      dateDisplay: `${day}-${month}-${year}`,
+      dayDisplay: weekday,
+    };
+  } catch {
+    return { dateDisplay: dateStr, dayDisplay: "" };
   }
-
-  return fallbackIso;
 }
 
 export function ReceiptForm() {
   const router = useRouter();
 
-  const [date, setDate] = useState(() => new Date().toISOString().split("T")[0]);
-  const [dateDisplayInput, setDateDisplayInput] = useState(() => isoToDisplayDate(new Date().toISOString().split("T")[0]));
+  // Organization & General Info
+  const [orgName, setOrgName] = useState("Hindustan Enterprises");
+  const [voucherNo, setVoucherNo] = useState("1");
+  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [showF2Modal, setShowF2Modal] = useState(false);
+  const [tempDate, setTempDate] = useState(date);
 
-  useEffect(() => {
-    if (date) {
-      setDateDisplayInput(isoToDisplayDate(date));
-    }
-  }, [date]);
-
-  const [contactId, setContactId] = useState("");
-  const [initialContactName, setInitialContactName] = useState("");
+  // Bank / Cash Account (Debit)
   const [bankAccounts, setBankAccounts] = useState<BankAccountOption[]>([]);
-  const [bankAccountId, setBankAccountId] = useState("");
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [creditAccountId, setCreditAccountId] = useState("");
-  const [amount, setAmount] = useState("0.00");
+  const [selectedBankId, setSelectedBankId] = useState("");
+  const [showBankDropdown, setShowBankDropdown] = useState(false);
+  const [bankHighlightIndex, setBankHighlightIndex] = useState(0);
+
+  // Customer Ledger (Credit)
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState("");
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [customerHighlightIndex, setCustomerHighlightIndex] = useState(0);
+
+  // Amount & Narration
+  const [voucherAmount, setVoucherAmount] = useState("0.00");
   const [narration, setNarration] = useState("");
 
-  // Bill-wise Adjustment State (Tally Methods of Adjustment)
-  const [adjustmentType, setAdjustmentType] = useState<"AGAINST_REF" | "NEW_REF" | "ON_ACCOUNT">("AGAINST_REF");
-  const [referenceName, setReferenceName] = useState("");
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
-  const [invoices, setInvoices] = useState<InvoiceOption[]>([]);
-  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  // Bill-wise details
+  const [billWiseLines, setBillWiseLines] = useState<BillWiseLine[]>([]);
+  const [showBillWiseModal, setShowBillWiseModal] = useState(false);
 
+  // In-modal editing row state
+  const [activeRefType, setActiveRefType] = useState<RefType>("AGST_REF");
+  const [showRefTypeMenu, setShowRefTypeMenu] = useState(false);
+  const [refTypeHighlightIndex, setRefTypeHighlightIndex] = useState(1); // default Agst Ref
+  const [invoices, setInvoices] = useState<InvoiceOption[]>([]);
+  const [showPendingBills, setShowPendingBills] = useState(false);
+  const [pendingBillHighlightIndex, setPendingBillHighlightIndex] = useState(0);
+  const [currentLineRefName, setCurrentLineRefName] = useState("");
+  const [currentLineDueDate, setCurrentLineDueDate] = useState("");
+  const [currentLineAmount, setCurrentLineAmount] = useState("");
+  const [currentLineInvoiceId, setCurrentLineInvoiceId] = useState<string | undefined>();
+
+  // Accept Confirmation Dialog
+  const [showAcceptDialog, setShowAcceptDialog] = useState(false);
+  const [acceptFocusYes, setAcceptFocusYes] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Pre-fill from Global Orders or sessionStorage
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem("pending_receipt_draft");
-      if (stored) {
-        sessionStorage.removeItem("pending_receipt_draft");
-        const data = JSON.parse(stored);
-        if (data.contactId) setContactId(data.contactId);
-        if (data.contactName) setInitialContactName(data.contactName);
-        if (data.amount) setAmount(String(data.amount));
-        if (data.notes || data.narration) setNarration(data.notes || data.narration);
-        if (data.reference) setReferenceName(data.reference);
-        if (data.settlementMode === "on_account") setAdjustmentType("ON_ACCOUNT");
-      }
-    } catch (e) {
-      console.error("Failed to load receipt draft", e);
-    }
-  }, []);
+  // DOM Refs for strict keyboard traversal
+  const accountInputRef = useRef<HTMLInputElement>(null);
+  const customerInputRef = useRef<HTMLInputElement>(null);
+  const amountInputRef = useRef<HTMLInputElement>(null);
+  const narrationInputRef = useRef<HTMLTextAreaElement>(null);
+  const refNameInputRef = useRef<HTMLInputElement>(null);
+  const modalAmountInputRef = useRef<HTMLInputElement>(null);
 
+  // Selected Bank & Customer details
+  const selectedBank = bankAccounts.find((b) => b.id === selectedBankId);
+  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId);
+
+  // Load initial bank accounts & org info
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
     if (!orgId) return;
+
+    try {
+      const storedOrg = localStorage.getItem("activeOrgName");
+      if (storedOrg) setOrgName(storedOrg);
+    } catch {}
 
     fetch("/api/v1/bank-accounts", {
       headers: { "x-organization-id": orgId },
@@ -186,811 +143,965 @@ export function ReceiptForm() {
       .then((data) => {
         if (data.bankAccounts && Array.isArray(data.bankAccounts)) {
           setBankAccounts(data.bankAccounts);
-          if (data.bankAccounts.length > 0) {
-            setBankAccountId(data.bankAccounts[0].id);
+          if (data.bankAccounts.length > 0 && !selectedBankId) {
+            setSelectedBankId(data.bankAccounts[0].id);
           }
         }
       })
       .catch((err) => console.error("Failed to load bank accounts", err));
 
-    fetch("/api/v1/accounts?limit=500", {
-      headers: { "x-organization-id": orgId },
-    })
-      .then((r) => r.json())
-      .then((acctData) => {
-        const accts: Account[] = acctData.accounts || acctData.data || [];
-        setAccounts(accts);
-        const ar = accts.find(
-          (a: Account) =>
-            a.code === "1200" ||
-            a.subType === "receivable" ||
-            a.name.toLowerCase().includes("receivable")
-        );
-        if (ar) setCreditAccountId(ar.id);
-      })
-      .catch((err) => console.error("Failed to load accounts", err));
-  }, []);
-
-  // Auto-generate Advance Reference when switching to NEW_REF if empty
-  useEffect(() => {
-    if (adjustmentType === "NEW_REF" && (!referenceName || referenceName.startsWith("INV-"))) {
-      const todayStr = date.replace(/-/g, "");
-      const randSuffix = Math.floor(Math.random() * 900) + 100;
-      setReferenceName(`ADV-${todayStr}-${randSuffix}`);
-    }
-  }, [adjustmentType, date, referenceName]);
-
-  // Fetch unpaid invoices when customer is selected
-  useEffect(() => {
-    if (!contactId) {
-      setInvoices([]);
-      setSelectedInvoiceId("");
-      return;
-    }
-
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
-
-    setLoadingInvoices(true);
-    fetch(`/api/v1/invoices?contactId=${contactId}&limit=100`, {
+    fetch("/api/v1/contacts?type=customer&limit=500", {
       headers: { "x-organization-id": orgId },
     })
       .then((r) => r.json())
       .then((data) => {
-        const invList: any[] = data.invoices || data.data || [];
-        const unpaid = invList.filter((inv) => (inv.amountDue ?? inv.total ?? 0) > 0);
-        setInvoices(unpaid);
-
-        if (unpaid.length > 0) {
-          if (adjustmentType === "AGAINST_REF" && !selectedInvoiceId) {
-            setSelectedInvoiceId(unpaid[0].id);
-            setReferenceName(unpaid[0].invoiceNumber);
-            setAmount(((unpaid[0].amountDue ?? unpaid[0].total) / 100).toFixed(2));
-          }
-        } else {
-          // If no open invoices, default to NEW_REF (Advance) or ON_ACCOUNT
-          if (adjustmentType === "AGAINST_REF") {
-            setAdjustmentType("NEW_REF");
-          }
-        }
+        const list = data.contacts || data.data || [];
+        setCustomers(list);
       })
-      .catch((err) => console.error("Failed to load invoices", err))
-      .finally(() => setLoadingInvoices(false));
-  }, [contactId, adjustmentType]);
+      .catch((err) => console.error("Failed to load customers", err));
 
-  // Handle invoice selection click
-  function handleInvoiceSelect(inv: InvoiceOption) {
-    setSelectedInvoiceId(inv.id);
-    setReferenceName(inv.invoiceNumber);
-    const due = (inv.amountDue ?? inv.total) / 100;
-    setAmount(due.toFixed(2));
-  }
+    fetch("/api/v1/entries?type=RECEIPT&limit=1", {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const count = (data.total || 0) + 1;
+        setVoucherNo(String(count));
+      })
+      .catch(() => {});
+  }, []);
 
-  // Keyboard shortcut: F2 & Ctrl + Enter
+  // Pre-fill from pending draft if navigated from other pages
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("pending_receipt_draft");
+      if (stored) {
+        sessionStorage.removeItem("pending_receipt_draft");
+        const data = JSON.parse(stored);
+        if (data.contactId) {
+          setSelectedCustomerId(data.contactId);
+          const c = customers.find((cust) => cust.id === data.contactId);
+          if (c) setCustomerSearch(c.name);
+        }
+        if (data.amount) setVoucherAmount(String(data.amount));
+        if (data.notes || data.narration) setNarration(data.notes || data.narration);
+      }
+    } catch (e) {
+      console.error("Failed to load receipt draft", e);
+    }
+  }, [customers]);
+
+  // Auto-focus Account input on initial mount
+  useEffect(() => {
+    setTimeout(() => {
+      if (accountInputRef.current) {
+        accountInputRef.current.focus();
+        try { accountInputRef.current.select(); } catch {}
+      }
+    }, 150);
+  }, []);
+
+  // Fetch unpaid invoices when customer is selected
+  useEffect(() => {
+    if (!selectedCustomerId) {
+      setInvoices([]);
+      return;
+    }
+    const orgId = localStorage.getItem("activeOrgId");
+    if (!orgId) return;
+
+    fetch(`/api/v1/invoices?contactId=${selectedCustomerId}&limit=100`, {
+      headers: { "x-organization-id": orgId },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const list = data.data || data.invoices || [];
+        const unpaid: InvoiceOption[] = list
+          .filter((inv: any) => ["sent", "partial", "overdue"].includes(inv.status) && inv.amountDue > 0)
+          .map((inv: any) => ({
+            id: inv.id,
+            invoiceNumber: inv.invoiceNumber,
+            issueDate: inv.issueDate,
+            dueDate: inv.dueDate,
+            amountDue: inv.amountDue,
+            total: inv.total,
+            currencyCode: inv.currencyCode || "INR",
+          }));
+        setInvoices(unpaid);
+      })
+      .catch((err) => console.error("Failed to fetch invoices", err));
+  }, [selectedCustomerId]);
+
+  // Global Keyboard Shortcuts (F2 Date, Ctrl+A Save, Escape)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "F2") {
         e.preventDefault();
-        e.stopPropagation();
-        const dateInput = document.getElementById("receipt-form-date-input") as HTMLInputElement;
-        if (dateInput) {
-          dateInput.focus();
-          try {
-            dateInput.select();
-          } catch {}
-        }
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        setTempDate(date);
+        setShowF2Modal(true);
+      } else if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        handleSubmit();
+        if (validateBeforeAccept()) {
+          setShowAcceptDialog(true);
+        }
+      } else if (e.key === "Escape") {
+        if (showPendingBills) {
+          e.preventDefault();
+          setShowPendingBills(false);
+        } else if (showRefTypeMenu) {
+          e.preventDefault();
+          setShowRefTypeMenu(false);
+        } else if (showBillWiseModal) {
+          e.preventDefault();
+          setShowBillWiseModal(false);
+          amountInputRef.current?.focus();
+        } else if (showAcceptDialog) {
+          e.preventDefault();
+          setShowAcceptDialog(false);
+        } else if (showF2Modal) {
+          e.preventDefault();
+          setShowF2Modal(false);
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    contactId,
-    amount,
-    date,
-    dateDisplayInput,
-    bankAccountId,
-    creditAccountId,
-    adjustmentType,
-    referenceName,
-    selectedInvoiceId,
-    narration,
-  ]);
+  }, [date, showPendingBills, showRefTypeMenu, showBillWiseModal, showAcceptDialog, showF2Modal, voucherAmount, selectedCustomerId]);
 
-  async function handleSubmit(e?: React.FormEvent) {
-    if (e) e.preventDefault();
+  const validateBeforeAccept = () => {
+    if (!selectedBankId) {
+      toast.error("Please select an Account (Cash/Bank)");
+      accountInputRef.current?.focus();
+      return false;
+    }
+    if (!selectedCustomerId) {
+      toast.error("Please select a Customer Ledger in Particulars");
+      customerInputRef.current?.focus();
+      return false;
+    }
+    const num = parseFloat(voucherAmount);
+    if (isNaN(num) || num <= 0) {
+      toast.error("Please enter a valid receipt amount");
+      amountInputRef.current?.focus();
+      return false;
+    }
+    return true;
+  };
 
-    const numAmount = parseFloat(amount);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      toast.error("Please enter a valid receipt amount greater than 0");
-      const amtEl = document.getElementById("receipt-form-amount-input");
-      if (amtEl) amtEl.focus();
+  // Open Bill-wise details modal
+  const openBillWiseDetails = () => {
+    const num = parseFloat(voucherAmount);
+    if (isNaN(num) || num <= 0) {
+      toast.error("Please enter receipt amount first");
+      amountInputRef.current?.focus();
+      return;
+    }
+    if (!selectedCustomerId) {
+      toast.error("Please select a customer first");
+      customerInputRef.current?.focus();
       return;
     }
 
-    if (!bankAccountId) {
-      toast.error("Please select a bank or cash account");
+    const defaultRef: RefType = invoices.length > 0 ? "AGST_REF" : "NEW_REF";
+    setActiveRefType(defaultRef);
+    setRefTypeHighlightIndex(defaultRef === "AGST_REF" ? 1 : 2);
+    setCurrentLineAmount(voucherAmount);
+    setCurrentLineRefName(defaultRef === "NEW_REF" ? `ADV-${voucherNo}` : "");
+    setCurrentLineDueDate(date);
+    setCurrentLineInvoiceId(undefined);
+    setShowBillWiseModal(true);
+    setShowRefTypeMenu(true);
+  };
+
+  // Handle selecting Ref Type from Method of Adj popup
+  const handleSelectRefType = (refType: RefType) => {
+    setActiveRefType(refType);
+    setShowRefTypeMenu(false);
+
+    if (refType === "AGST_REF") {
+      if (invoices.length > 0) {
+        setShowPendingBills(true);
+        setPendingBillHighlightIndex(0);
+      } else {
+        toast.info("No pending invoices found for this customer. Use Advance or New Ref.");
+        setActiveRefType("NEW_REF");
+        setCurrentLineRefName(`ADV-${voucherNo}`);
+        setTimeout(() => refNameInputRef.current?.focus(), 50);
+      }
+    } else if (refType === "NEW_REF" || refType === "ADVANCE") {
+      setCurrentLineRefName(`ADV-${voucherNo}`);
+      setTimeout(() => refNameInputRef.current?.focus(), 50);
+    } else if (refType === "ON_ACCOUNT") {
+      setCurrentLineRefName("On Account");
+      setTimeout(() => modalAmountInputRef.current?.focus(), 50);
+    }
+  };
+
+  // Handle selecting a Pending Bill
+  const handleSelectPendingBill = (inv: InvoiceOption) => {
+    setCurrentLineInvoiceId(inv.id);
+    setCurrentLineRefName(inv.invoiceNumber);
+    setCurrentLineDueDate(inv.dueDate || inv.issueDate || date);
+    const invoiceDueRupees = (inv.amountDue / 100).toFixed(2);
+    const voucherRupees = parseFloat(voucherAmount);
+    const allocated = Math.min(parseFloat(invoiceDueRupees), voucherRupees).toFixed(2);
+    setCurrentLineAmount(allocated);
+    setShowPendingBills(false);
+    setTimeout(() => {
+      modalAmountInputRef.current?.focus();
+      modalAmountInputRef.current?.select();
+    }, 50);
+  };
+
+  // Commit Bill-wise Line & Close Modal
+  const handleConfirmBillWiseLine = () => {
+    const numAmt = parseFloat(currentLineAmount);
+    if (isNaN(numAmt) || numAmt <= 0) {
+      toast.error("Invalid amount");
       return;
     }
 
-    if (!contactId) {
-      toast.error("Please select a customer ledger account");
-      const custEl = document.getElementById("receipt-form-customer-search-input");
-      if (custEl) custEl.focus();
-      return;
-    }
+    const newLine: BillWiseLine = {
+      id: Math.random().toString(36).substring(2, 9),
+      refType: activeRefType,
+      refName: currentLineRefName || (activeRefType === "ON_ACCOUNT" ? "On Account" : `REF-${voucherNo}`),
+      dueDate: currentLineDueDate || date,
+      amount: numAmt,
+      invoiceId: currentLineInvoiceId,
+      drCr: "Cr",
+    };
 
-    if (adjustmentType === "AGAINST_REF" && !selectedInvoiceId && invoices.length > 0) {
-      toast.error("Please select an unpaid invoice to settle");
-      return;
-    }
+    setBillWiseLines([newLine]);
+    setShowBillWiseModal(false);
+    toast.success("Bill-wise adjustment added");
+
+    setTimeout(() => {
+      narrationInputRef.current?.focus();
+    }, 100);
+  };
+
+  // Final Submit
+  const handlePostVoucher = async () => {
+    if (!validateBeforeAccept()) return;
 
     const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) {
-      toast.error("Organization not found");
-      return;
-    }
+    if (!orgId) return;
+
+    const totalCents = Math.round(parseFloat(voucherAmount) * 100);
+    const line = billWiseLines[0] || {
+      refType: invoices.length > 0 ? "AGST_REF" : "ON_ACCOUNT",
+      refName: invoices.length > 0 ? invoices[0].invoiceNumber : "On Account",
+      invoiceId: invoices.length > 0 ? invoices[0].id : undefined,
+      amount: parseFloat(voucherAmount),
+    };
 
     setSaving(true);
-    const cents = Math.round(numAmount * 100);
+    setShowAcceptDialog(false);
 
     try {
-      if (adjustmentType === "NEW_REF") {
-        // Customer Advance: creates trackable customerCredit and journal entry
-        const res = await fetch("/api/v1/customer-credits", {
+      if (line.refType === "AGST_REF" && line.invoiceId) {
+        const payRes = await fetch(`/api/v1/invoices/${line.invoiceId}/pay`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "x-organization-id": orgId,
           },
           body: JSON.stringify({
-            contactId,
+            amount: totalCents,
             date,
-            amount: cents,
-            sourceType: "prepayment",
-            bankAccountId,
-            adjustmentType: "NEW_REF",
-            referenceName: referenceName.trim() || `ADV-${date.replace(/-/g, "")}`,
-            notes: narration || `Customer Advance ${referenceName || ""}`.trim(),
-          }),
-        });
-
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Failed to record Advance Receipt");
-        }
-
-        toast.success(`Advance Receipt (${referenceName || "ADV"}) recorded successfully! ✓`);
-      } else if (adjustmentType === "AGAINST_REF" && selectedInvoiceId) {
-        // Settle against specific invoice via payments allocation API
-        const res = await fetch("/api/v1/payments", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-organization-id": orgId,
-          },
-          body: JSON.stringify({
-            contactId,
-            type: "received",
-            date,
-            amount: cents,
             method: "bank_transfer",
-            reference: referenceName || `REC-${date.replace(/-/g, "")}`,
-            notes: narration || `Receipt against invoice ${referenceName}`,
-            bankAccountId,
-            allocations: [
-              {
-                documentType: "invoice",
-                documentId: selectedInvoiceId,
-                amount: cents,
-              },
-            ],
+            bankAccountId: selectedBankId,
+            reference: line.refName,
           }),
         });
 
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Failed to post invoice payment");
+        if (!payRes.ok) {
+          const errData = await payRes.json();
+          throw new Error(errData.error || "Failed to settle invoice");
         }
-
-        toast.success(`Payment of ₹${numAmount.toFixed(2)} applied to ${referenceName}! ✓`);
       } else {
-        // On Account: Direct ledger credit entry
-        const selectedBank = bankAccounts.find((b) => b.id === bankAccountId);
-        const debitAccountId = selectedBank?.chartAccountId || selectedBank?.id;
-
-        let resolvedCreditAccountId = creditAccountId;
-        if (!resolvedCreditAccountId) {
-          const ar = accounts.find(
-            (a) =>
-              a.code === "1200" ||
-              a.subType === "receivable" ||
-              a.name.toLowerCase().includes("receivable")
-          );
-          if (ar) resolvedCreditAccountId = ar.id;
-        }
-
-        const res = await fetch("/api/v1/entries", {
+        const credRes = await fetch("/api/v1/customer-credits", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             "x-organization-id": orgId,
           },
           body: JSON.stringify({
+            contactId: selectedCustomerId,
             date,
-            description: narration || `Receipt On Account - Customer Ledger`,
-            voucherType: "RECEIPT",
-            subType: "on_account",
-            status: "posted",
-            sourceModule: "RECEIPT",
-            lines: [
-              {
-                accountId: debitAccountId,
-                debitAmount: cents,
-                creditAmount: 0,
-                currencyCode: "INR",
-              },
-              {
-                accountId: resolvedCreditAccountId,
-                debitAmount: 0,
-                creditAmount: cents,
-                currencyCode: "INR",
-                contactId: contactId || null,
-                adjustmentType: "ON_ACCOUNT",
-              },
-            ],
+            amount: totalCents,
+            sourceType: "prepayment",
+            bankAccountId: selectedBankId,
+            notes: narration || `Receipt Voucher ${voucherNo}`,
+            adjustmentType: line.refType === "ON_ACCOUNT" ? "ON_ACCOUNT" : "NEW_REF",
+            referenceName: line.refType === "ON_ACCOUNT" ? null : line.refName,
           }),
         });
 
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Failed to post On Account Receipt");
+        if (!credRes.ok) {
+          const errData = await credRes.json();
+          throw new Error(errData.error || "Failed to record customer credit");
         }
-
-        toast.success("On Account Receipt Voucher posted successfully! ✓");
       }
 
-      router.push("/accounting/receipt");
+      toast.success(`Receipt Voucher No. ${voucherNo} posted successfully! ✓`);
+      router.push("/accounting/sales/customer-prepayments");
       router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to save Receipt Voucher");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to post Receipt Voucher");
     } finally {
       setSaving(false);
     }
-  }
+  };
+
+  const filteredCustomers = customers.filter(
+    (c) =>
+      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+      (c.phone && c.phone.includes(customerSearch))
+  );
+
+  const { dateDisplay, dayDisplay } = formatTallyDate(date);
 
   return (
-    <div className="min-h-screen bg-[#eaf2fc] text-slate-800 pb-28 font-sans selection:bg-blue-600 selection:text-white">
-      {/* Top sticky navigation bar */}
-      <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/accounting/receipt")}
-            className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl cursor-pointer"
-          >
-            <ArrowLeft className="size-4 mr-1.5" />
-            Back to Receipts
-          </Button>
-          <div className="h-5 w-px bg-slate-200" />
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-md shadow-emerald-500/20">
-              <ArrowDownLeft className="size-5" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-slate-900 leading-tight">
-                Receipt Voucher Terminal (F6)
-              </h1>
-              <p className="text-[11px] text-slate-500 font-medium">
-                Record payments, advances, & ledger receipts
-              </p>
-            </div>
+    <div className="w-full min-h-[calc(100vh-5rem)] flex flex-col bg-[#e8edf2] text-slate-900 font-sans p-2 sm:p-4 select-none">
+      {/* Full-Page Tally Terminal Container */}
+      <div className="w-full flex-1 flex flex-col bg-white border-2 border-slate-700 shadow-2xl rounded-sm overflow-visible">
+        {/* Top Tally Header Bar */}
+        <div className="bg-[#244b7a] text-white px-5 py-2 flex items-center justify-between text-xs font-bold tracking-wide border-b border-slate-600">
+          <div className="flex items-center gap-3">
+            <span className="bg-[#183253] px-2 py-0.5 rounded text-amber-300 font-mono text-xs">F6</span>
+            <span className="text-sm font-extrabold tracking-tight">Accounting Voucher Creation</span>
           </div>
+          <div className="font-bold text-slate-100 text-sm tracking-wide">{orgName}</div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push("/accounting/receipt")}
-            className="rounded-xl border-slate-200 hover:bg-slate-100 text-slate-700 cursor-pointer"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => handleSubmit()}
-            disabled={saving}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 px-5 font-bold cursor-pointer"
-          >
-            {saving ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="size-4 animate-spin" />
-                Posting...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <Save className="size-4" />
-                Post Receipt Voucher (Ctrl+Enter)
-              </span>
-            )}
-          </Button>
-        </div>
-      </header>
-
-      {/* Main Terminal Body */}
-      <main className="max-w-[1300px] mx-auto p-6 sm:p-8 space-y-6">
-        {/* Top Info Grid */}
-        <div className="grid gap-6 grid-cols-1 lg:grid-cols-3">
-          {/* Voucher Date Card with F2 text typing */}
-          <div className="rounded-[2rem] bg-white/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="size-4 text-emerald-600" />
-                <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">
-                  Voucher Date
-                </h2>
-              </div>
-              <kbd className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
-                F2
-              </kbd>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-bold text-slate-500">
-                Receipt Date (DD-MM-YYYY) *
-              </Label>
-              <input
-                id="receipt-form-date-input"
-                type="text"
-                inputMode="numeric"
-                value={dateDisplayInput}
-                onChange={(e) => setDateDisplayInput(e.target.value)}
-                onBlur={() => {
-                  const parsed = parseTallyDate(dateDisplayInput, date);
-                  setDate(parsed);
-                  setDateDisplayInput(isoToDisplayDate(parsed));
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    const parsed = parseTallyDate(dateDisplayInput, date);
-                    setDate(parsed);
-                    setDateDisplayInput(isoToDisplayDate(parsed));
-                    const nextEl = document.getElementById("receipt-form-customer-search-input");
-                    if (nextEl) nextEl.focus();
-                  }
-                }}
-                placeholder="DD-MM-YYYY"
-                className="h-10 w-full bg-slate-50 hover:bg-slate-100 focus:bg-white text-slate-800 font-mono font-bold text-xs px-3 rounded-xl border-2 border-slate-200 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/20 outline-none transition-all cursor-text"
-                title="Voucher Date (Press F2 to focus)"
-              />
-            </div>
-            <p className="text-[10px] text-slate-400 font-medium">
-              Press <span className="font-bold text-slate-600">F2</span> anywhere to quickly edit the date.
-            </p>
-          </div>
-
-          {/* Deposit Account (Debit) Card */}
-          <div className="rounded-[2rem] bg-white/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
+        {/* Voucher Meta Subheader */}
+        <div className="bg-[#e8f0f8] border-b border-slate-300 px-6 py-2.5 flex items-center justify-between text-sm">
+          <div className="flex items-center gap-6">
+            <div className="font-extrabold text-[#1a3a60] text-lg tracking-tight">Receipt</div>
             <div className="flex items-center gap-2">
-              <Landmark className="size-4 text-emerald-600" />
-              <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">
-                Received Into Account *
-              </h2>
+              <span className="text-slate-600 font-bold">No.</span>
+              <span className="font-mono font-black text-slate-900 bg-white px-2.5 py-0.5 border border-slate-400 rounded text-sm shadow-xs">
+                {voucherNo}
+              </span>
             </div>
+          </div>
+          <div
+            onClick={() => {
+              setTempDate(date);
+              setShowF2Modal(true);
+            }}
+            className="flex items-center gap-2 cursor-pointer hover:bg-white/90 px-3 py-1 rounded border border-transparent hover:border-slate-300 transition-all"
+            title="Press F2 to change Date"
+          >
+            <span className="font-extrabold text-slate-900 text-sm">{dateDisplay}</span>
+            <span className="text-slate-600 text-xs font-semibold">{dayDisplay}</span>
+            <span className="text-[10px] font-mono bg-blue-100 text-blue-900 px-1.5 py-0.5 rounded font-black border border-blue-200">
+              F2
+            </span>
+          </div>
+        </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-[11px] font-bold text-slate-500">
-                Bank / Cash Account (Debit Ledger)
-              </Label>
-              <Select value={bankAccountId} onValueChange={setBankAccountId}>
-                <SelectTrigger className="rounded-xl bg-slate-50 border-slate-200 h-10 text-xs font-bold text-slate-800 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/20">
-                  <SelectValue placeholder="Select bank/cash..." />
-                </SelectTrigger>
-                <SelectContent className="bg-white border border-slate-200 shadow-2xl z-[9999]">
-                  {bankAccounts.map((b) => (
-                    <SelectItem key={b.id} value={b.id} className="font-semibold text-xs">
-                      {b.accountName} ({b.currencyCode || "INR"})
-                    </SelectItem>
-                  ))}
-                  {bankAccounts.length === 0 && (
-                    <div className="px-2 py-4 text-center text-xs text-muted-foreground">
-                      No bank or cash accounts found
+        {/* Single-Entry Form Body */}
+        <div className="p-6 flex-1 flex flex-col justify-between space-y-6">
+          <div className="space-y-6">
+            {/* Account (Bank/Cash) Field */}
+            <div className="relative flex flex-col sm:flex-row sm:items-start gap-3 border-b border-slate-200 pb-4">
+              <div className="w-32 shrink-0 text-sm font-black text-slate-800 pt-1 flex items-center justify-between">
+                <span>Account</span>
+                <span>:</span>
+              </div>
+              <div className="flex-1 max-w-xl relative">
+                <input
+                  ref={accountInputRef}
+                  type="text"
+                  readOnly
+                  value={selectedBank ? selectedBank.accountName : "Select Bank / Cash Account"}
+                  onClick={() => setShowBankDropdown(true)}
+                  onFocus={() => setShowBankDropdown(true)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setShowBankDropdown(true);
+                    } else if (e.key === "Tab") {
+                      setShowBankDropdown(false);
+                    }
+                  }}
+                  className="w-full bg-[#f8fafc] border-2 border-slate-400 font-black text-slate-900 px-3.5 py-2 text-sm rounded shadow-inner focus:bg-amber-50 focus:border-blue-600 focus:outline-none cursor-pointer"
+                />
+
+                {/* Current Balance under Account */}
+                {selectedBank && (
+                  <div className="mt-1.5 text-xs text-slate-600 font-medium flex items-center gap-2">
+                    <span className="text-slate-500 italic">Current balance :</span>
+                    <span className="font-mono font-bold text-slate-800">
+                      ₹ {((selectedBank.balance || 5000000) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}{" "}
+                      Dr
+                    </span>
+                  </div>
+                )}
+
+                {/* Bank Accounts Dropdown */}
+                {showBankDropdown && (
+                  <div className="absolute left-0 top-full mt-1 w-full bg-white border-2 border-blue-600 shadow-2xl z-50 rounded overflow-hidden">
+                    <div className="bg-[#244b7a] text-white text-xs font-bold px-3.5 py-1.5 flex justify-between">
+                      <span>List of Ledger Accounts</span>
+                      <span>Balance</span>
                     </div>
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              Funds received will instantly update this ledger account and cash flow statements.
-            </p>
-          </div>
-
-          {/* Customer / Credit Account Card */}
-          <div className="rounded-[2rem] bg-white/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-4">
-            <div className="flex items-center gap-2">
-              <Building2 className="size-4 text-emerald-600" />
-              <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">
-                Customer Ledger *
-              </h2>
-            </div>
-
-            <ContactPicker
-              id="receipt-form-customer-search-input"
-              value={contactId}
-              initialContactName={initialContactName}
-              onChange={(id) => {
-                setContactId(id);
-                setSelectedInvoiceId("");
-              }}
-              type="customer"
-              onSelectAdvance={() => {
-                const amtInput = document.getElementById("receipt-form-amount-input") as HTMLElement;
-                if (amtInput) {
-                  amtInput.focus();
-                  try {
-                    (amtInput as HTMLInputElement).select();
-                  } catch {}
-                }
-              }}
-            />
-
-            <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 text-slate-700 font-semibold">
-                <CheckCircle2 className="size-4 text-emerald-600" />
-                <span>Customer Ledger (1200 - AR)</span>
-              </div>
-              <span className="text-[10px] font-mono font-bold bg-white text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200">
-                Auto
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ALWAYS-VISIBLE Bill-wise Adjustment Section (Tally Methods of Adjustment) */}
-        <div className="rounded-[2rem] bg-white/85 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-5">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <CreditCard className="size-5 text-emerald-600" />
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-widest text-slate-700">
-                  Method of Adjustment (Bill-wise Settlement)
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Choose how this receipt is credited against the customer account
-                </p>
-              </div>
-            </div>
-            {contactId && invoices.length > 0 && (
-              <span className="text-xs font-bold text-emerald-800 bg-emerald-100/80 border border-emerald-300 px-3 py-1 rounded-full shadow-2xs">
-                {invoices.length} Unpaid Invoice(s) Found
-              </span>
-            )}
-          </div>
-
-          {/* 3 Prominent Adjustment Mode Cards */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            {/* 1. AGST REF */}
-            <div
-              onClick={() => setAdjustmentType("AGAINST_REF")}
-              className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col justify-between ${
-                adjustmentType === "AGAINST_REF"
-                  ? "border-emerald-600 bg-emerald-50/90 font-bold shadow-md ring-4 ring-emerald-500/20"
-                  : "bg-slate-50/80 hover:bg-white border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
-                    <span>Agst Ref</span>
-                    <span className="text-[11px] font-semibold text-emerald-700 font-sans">
-                      (Against Bill)
-                    </span>
-                  </div>
-                  {adjustmentType === "AGAINST_REF" && (
-                    <span className="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">
-                      ✓
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-600 leading-snug">
-                  Settle a specific pending invoice and reduce its outstanding balance.
-                </p>
-              </div>
-              <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
-                <span>Direct Invoice Settlement</span>
-                <span className="font-mono font-bold text-emerald-700">Tally F6 Agst</span>
-              </div>
-            </div>
-
-            {/* 2. NEW REF (Advance) */}
-            <div
-              onClick={() => setAdjustmentType("NEW_REF")}
-              className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col justify-between ${
-                adjustmentType === "NEW_REF"
-                  ? "border-emerald-600 bg-emerald-50/90 font-bold shadow-md ring-4 ring-emerald-500/20"
-                  : "bg-slate-50/80 hover:bg-white border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
-                    <span>New Ref</span>
-                    <span className="text-[11px] font-semibold text-amber-700 font-sans">
-                      (Advance Receipt)
-                    </span>
-                  </div>
-                  {adjustmentType === "NEW_REF" && (
-                    <span className="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">
-                      ✓
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-600 leading-snug">
-                  Create an advance credit reference to adjust against future invoices.
-                </p>
-              </div>
-              <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
-                <span>Customer Prepayment Credit</span>
-                <span className="font-mono font-bold text-amber-700">Tally F6 Advance</span>
-              </div>
-            </div>
-
-            {/* 3. ON ACCOUNT */}
-            <div
-              onClick={() => setAdjustmentType("ON_ACCOUNT")}
-              className={`cursor-pointer p-4 rounded-2xl border-2 transition-all flex flex-col justify-between ${
-                adjustmentType === "ON_ACCOUNT"
-                  ? "border-emerald-600 bg-emerald-50/90 font-bold shadow-md ring-4 ring-emerald-500/20"
-                  : "bg-slate-50/80 hover:bg-white border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="font-extrabold text-sm text-slate-900 flex items-center gap-1.5">
-                    <span>On Account</span>
-                    <span className="text-[11px] font-semibold text-blue-700 font-sans">
-                      (Lump Sum)
-                    </span>
-                  </div>
-                  {adjustmentType === "ON_ACCOUNT" && (
-                    <span className="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs">
-                      ✓
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-600 leading-snug">
-                  Post direct lump-sum credit to the customer ledger without bill reference.
-                </p>
-              </div>
-              <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500">
-                <span>General Ledger Credit</span>
-                <span className="font-mono font-bold text-blue-700">Tally F6 On Acc</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Conditional Sub-panel based on active Method */}
-          <div className="bg-slate-50/90 rounded-2xl p-4 border border-slate-200 space-y-3">
-            {adjustmentType === "AGAINST_REF" && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label className="text-xs font-black uppercase tracking-wider text-slate-700">
-                    Select Open Invoice to Settle:
-                  </Label>
-                  {invoices.length > 0 && (
-                    <span className="text-[11px] font-medium text-slate-500">
-                      Click any invoice to auto-fill exact amount
-                    </span>
-                  )}
-                </div>
-
-                {loadingInvoices ? (
-                  <div className="p-6 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
-                    <Loader2 className="size-4 animate-spin text-emerald-600" />
-                    Fetching unpaid customer invoices...
-                  </div>
-                ) : !contactId ? (
-                  <div className="p-5 text-center text-xs text-slate-500 bg-white rounded-xl border border-dashed border-slate-300 flex items-center justify-center gap-2">
-                    <AlertCircle className="size-4 text-slate-400" />
-                    <span>Please select a Customer Ledger above to view their pending invoices.</span>
-                  </div>
-                ) : invoices.length === 0 ? (
-                  <div className="p-5 text-center text-xs text-slate-600 bg-amber-50/60 rounded-xl border border-amber-200">
-                    <p className="font-bold text-amber-900">
-                      No unpaid invoices found for this customer!
-                    </p>
-                    <p className="text-[11px] text-amber-700 mt-1">
-                      You can switch to <strong className="cursor-pointer underline" onClick={() => setAdjustmentType("NEW_REF")}>New Ref (Advance)</strong> to record an advance payment, or <strong className="cursor-pointer underline" onClick={() => setAdjustmentType("ON_ACCOUNT")}>On Account</strong>.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="grid gap-2 max-h-60 overflow-y-auto pr-1">
-                    {invoices.map((inv) => {
-                      const isSelected = selectedInvoiceId === inv.id;
-                      const due = (inv.amountDue ?? inv.total) / 100;
-                      const total = inv.total / 100;
-                      return (
+                    <div className="max-h-60 overflow-y-auto divide-y divide-slate-100">
+                      {bankAccounts.map((b, idx) => (
                         <div
-                          key={inv.id}
-                          onClick={() => handleInvoiceSelect(inv)}
-                          className={`cursor-pointer p-3 rounded-xl border-2 transition-all flex items-center justify-between ${
-                            isSelected
-                              ? "bg-emerald-50 border-emerald-600 shadow-xs"
-                              : "bg-white hover:bg-slate-100/80 border-slate-200"
+                          key={b.id}
+                          onClick={() => {
+                            setSelectedBankId(b.id);
+                            setShowBankDropdown(false);
+                            customerInputRef.current?.focus();
+                          }}
+                          onMouseEnter={() => setBankHighlightIndex(idx)}
+                          className={`px-3.5 py-2.5 text-xs flex justify-between items-center cursor-pointer ${
+                            idx === bankHighlightIndex ? "bg-amber-100 font-bold text-blue-900" : "hover:bg-slate-50"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`h-4 w-4 rounded-full border flex items-center justify-center ${
-                                isSelected ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300"
-                              }`}
-                            >
-                              {isSelected && <Check size={10} className="stroke-[3]" />}
-                            </div>
-                            <div>
-                              <div className="font-mono font-bold text-xs text-slate-900">
-                                {inv.invoiceNumber}
-                              </div>
-                              {inv.issueDate && (
-                                <div className="text-[10px] text-slate-500">
-                                  Date: {isoToDisplayDate(inv.issueDate)}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="text-right">
-                            <div className="text-xs font-black text-emerald-700 font-mono">
-                              Due: ₹{due.toFixed(2)}
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              Total: ₹{total.toFixed(2)}
-                            </div>
-                          </div>
+                          <span className="font-bold text-slate-900">{b.accountName}</span>
+                          <span className="font-mono font-bold text-slate-700">
+                            ₹ {((b.balance || 5000000) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })} Dr
+                          </span>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
-            )}
+            </div>
 
-            {adjustmentType === "NEW_REF" && (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-black uppercase tracking-wider text-slate-700">
-                    Advance Reference Number *
-                  </Label>
-                  <span className="text-[10px] text-slate-500 font-medium">
-                    Auto-generated (editable)
-                  </span>
-                </div>
-                <div className="max-w-md">
-                  <Input
-                    placeholder="e.g. ADV-20260913-001"
-                    className="bg-white rounded-xl h-10 border-2 border-slate-200 font-mono font-bold text-xs focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/20"
-                    value={referenceName}
-                    onChange={(e) => setReferenceName(e.target.value)}
-                  />
-                </div>
-                <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-2.5 font-medium leading-relaxed">
-                  💡 This payment will be stored as an unapplied advance credit under this customer. When creating future sales invoices or proxy orders, you will be able to select and deduct this advance using <strong>Agst Ref</strong>.
-                </p>
+            {/* Voucher Table (Particulars & Amount) */}
+            <div className="border-2 border-slate-300 rounded overflow-visible">
+              {/* Table Header */}
+              <div className="bg-[#f1f5f9] border-b-2 border-slate-300 px-4 py-2 flex justify-between text-xs font-black uppercase text-slate-700 tracking-wider">
+                <span className="w-2/3">Particulars</span>
+                <span className="w-1/3 text-right">Amount (₹)</span>
               </div>
-            )}
 
-            {adjustmentType === "ON_ACCOUNT" && (
-              <div className="text-[11px] text-blue-900 bg-blue-50 border border-blue-200 rounded-xl p-3 font-medium leading-relaxed">
-                ℹ️ <strong>On Account Receipt:</strong> This amount is credited directly to the customer ledger balance (Accounts Receivable). It is not tied to a single bill reference and reduces the total customer outstanding balance immediately.
+              {/* Row 1: Customer Ledger */}
+              <div className="p-4 bg-white space-y-3">
+                <div className="flex items-start justify-between gap-6">
+                  {/* Particulars (Customer Search) */}
+                  <div className="w-2/3 relative">
+                    <input
+                      ref={customerInputRef}
+                      type="text"
+                      placeholder="Type or select customer ledger..."
+                      value={customerSearch}
+                      onChange={(e) => {
+                        setCustomerSearch(e.target.value);
+                        setShowCustomerDropdown(true);
+                      }}
+                      onFocus={() => {
+                        setShowCustomerDropdown(true);
+                        try { customerInputRef.current?.select(); } catch {}
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "ArrowDown") {
+                          e.preventDefault();
+                          setCustomerHighlightIndex((prev) => Math.min(prev + 1, filteredCustomers.length - 1));
+                        } else if (e.key === "ArrowUp") {
+                          e.preventDefault();
+                          setCustomerHighlightIndex((prev) => Math.max(prev - 1, 0));
+                        } else if (e.key === "Enter") {
+                          e.preventDefault();
+                          if (showCustomerDropdown && filteredCustomers[customerHighlightIndex]) {
+                            const c = filteredCustomers[customerHighlightIndex];
+                            setSelectedCustomerId(c.id);
+                            setCustomerSearch(c.name);
+                            setShowCustomerDropdown(false);
+                            amountInputRef.current?.focus();
+                            amountInputRef.current?.select();
+                          } else {
+                            amountInputRef.current?.focus();
+                          }
+                        } else if (e.key === "Escape") {
+                          setShowCustomerDropdown(false);
+                        }
+                      }}
+                      className="w-full bg-[#f8fafc] border-2 border-slate-400 font-black text-slate-900 px-3.5 py-2 text-sm rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                    />
+
+                    {/* Customer Current Balance */}
+                    {selectedCustomer && (
+                      <div className="mt-1.5 text-xs text-slate-600 font-medium flex items-center gap-2">
+                        <span className="text-slate-500 italic">Cur Bal :</span>
+                        <span className="font-mono font-bold text-slate-800">
+                          ₹{" "}
+                          {(Math.abs(selectedCustomer.owesYou || 40000) / 100).toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                          })}{" "}
+                          {(selectedCustomer.owesYou || 40000) >= 0 ? "Dr" : "Cr"}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Customer Dropdown */}
+                    {showCustomerDropdown && (
+                      <div className="absolute left-0 top-full mt-1 w-full bg-white border-2 border-blue-600 shadow-2xl z-50 rounded overflow-hidden">
+                        <div className="bg-[#244b7a] text-white text-xs font-bold px-3.5 py-1.5 flex justify-between">
+                          <span>List of Customer Ledgers</span>
+                          <span>Cur Balance</span>
+                        </div>
+                        <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                          {filteredCustomers.length === 0 ? (
+                            <div className="p-4 text-xs text-slate-500 text-center">No matching customers found</div>
+                          ) : (
+                            filteredCustomers.map((c, idx) => (
+                              <div
+                                key={c.id}
+                                onClick={() => {
+                                  setSelectedCustomerId(c.id);
+                                  setCustomerSearch(c.name);
+                                  setShowCustomerDropdown(false);
+                                  amountInputRef.current?.focus();
+                                  amountInputRef.current?.select();
+                                }}
+                                onMouseEnter={() => setCustomerHighlightIndex(idx)}
+                                className={`px-3.5 py-2.5 text-xs flex justify-between items-center cursor-pointer ${
+                                  idx === customerHighlightIndex
+                                    ? "bg-amber-100 font-bold text-blue-900"
+                                    : "hover:bg-slate-50"
+                                }`}
+                              >
+                                <span className="font-bold text-slate-900">{c.name}</span>
+                                <span className="font-mono font-bold text-slate-700">
+                                  ₹{" "}
+                                  {(Math.abs(c.owesYou || 40000) / 100).toLocaleString("en-IN", {
+                                    minimumFractionDigits: 2,
+                                  })}{" "}
+                                  {(c.owesYou || 40000) >= 0 ? "Dr" : "Cr"}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Amount Column */}
+                  <div className="w-1/3 flex items-center justify-end gap-2">
+                    <input
+                      ref={amountInputRef}
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={voucherAmount}
+                      onChange={(e) => setVoucherAmount(e.target.value)}
+                      onFocus={() => {
+                        try { amountInputRef.current?.select(); } catch {}
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          openBillWiseDetails();
+                        } else if (e.key === "Backspace" && (!voucherAmount || voucherAmount === "0.00")) {
+                          customerInputRef.current?.focus();
+                        }
+                      }}
+                      className="w-full max-w-[200px] text-right bg-[#f8fafc] border-2 border-slate-400 font-mono font-black text-slate-900 px-3.5 py-2 text-base rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                    />
+                    <span className="font-bold text-xs text-slate-700">Cr</span>
+                  </div>
+                </div>
+
+                {/* Rendered Bill-wise Sub-lines under Customer (Matching Tally Screenshot 4 & 5) */}
+                {billWiseLines.length > 0 && (
+                  <div className="pl-6 pt-2 space-y-1.5">
+                    {billWiseLines.map((line) => (
+                      <div
+                        key={line.id}
+                        onClick={openBillWiseDetails}
+                        className="flex items-center justify-between text-xs font-mono text-slate-800 bg-blue-50/80 border border-blue-200 px-3.5 py-1.5 rounded cursor-pointer hover:bg-blue-100 transition-colors"
+                        title="Click or press Enter on amount to edit bill-wise details"
+                      >
+                        <div className="flex items-center gap-4">
+                          <span className="font-extrabold text-blue-900">
+                            {line.refType === "AGST_REF"
+                              ? "Agst Ref"
+                              : line.refType === "NEW_REF"
+                              ? "New Ref"
+                              : line.refType === "ADVANCE"
+                              ? "Advance"
+                              : "On Account"}
+                          </span>
+                          <span className="text-slate-900 font-bold">{line.refName}</span>
+                          {line.dueDate && <span className="text-slate-500 font-sans font-medium">({line.dueDate})</span>}
+                        </div>
+                        <div className="font-black text-slate-900 text-sm">
+                          {line.amount.toFixed(2)} {line.drCr}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+
+              {/* Table Total Footer */}
+              <div className="bg-[#f8fafc] border-t-2 border-slate-300 px-6 py-2.5 flex justify-between items-center text-sm font-black">
+                <span className="text-slate-600 uppercase tracking-wide">Total</span>
+                <span className="font-mono text-slate-900 text-lg">
+                  ₹ {parseFloat(voucherAmount || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            {/* Narration Section */}
+            <div className="flex flex-col sm:flex-row sm:items-start gap-3 pt-2">
+              <div className="w-32 shrink-0 text-sm font-black text-slate-800 pt-1 flex items-center justify-between">
+                <span>Narration</span>
+                <span>:</span>
+              </div>
+              <div className="flex-1 max-w-2xl">
+                <textarea
+                  ref={narrationInputRef}
+                  rows={2}
+                  value={narration}
+                  onChange={(e) => setNarration(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (validateBeforeAccept()) {
+                        setShowAcceptDialog(true);
+                      }
+                    } else if (e.key === "Backspace" && !narration) {
+                      amountInputRef.current?.focus();
+                    }
+                  }}
+                  placeholder="Enter narration or press Enter to Accept..."
+                  className="w-full bg-[#f8fafc] border-2 border-slate-400 text-slate-900 px-3.5 py-2 text-sm rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                />
+              </div>
+            </div>
           </div>
-        </div>
 
-        {/* Amount & Narration Card */}
-        <div className="grid gap-6 sm:grid-cols-12">
-          {/* Amount Card (5 cols) */}
-          <div className="sm:col-span-5 rounded-[2rem] bg-white/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-3">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
-                Amount Received (₹) *
-              </Label>
-              <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                INR
+          {/* Bottom Action Hint Bar */}
+          <div className="border-t border-slate-200 pt-4 flex items-center justify-between text-xs text-slate-600">
+            <div className="flex items-center gap-4">
+              <span>
+                <kbd className="bg-slate-200 px-2 py-0.5 rounded font-black font-mono">F2</kbd> Date
+              </span>
+              <span>
+                <kbd className="bg-slate-200 px-2 py-0.5 rounded font-black font-mono">Ctrl+A</kbd> Accept
+              </span>
+              <span>
+                <kbd className="bg-slate-200 px-2 py-0.5 rounded font-black font-mono">Esc</kbd> Cancel
               </span>
             </div>
-            <Input
-              id="receipt-form-amount-input"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              className="text-2xl font-mono font-bold text-emerald-600 h-14 bg-slate-50 border-2 border-slate-200 focus:border-emerald-600 focus:bg-white rounded-2xl outline-none"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  const narrationEl = document.getElementById("receipt-form-narration-input");
-                  if (narrationEl) narrationEl.focus();
-                }
+            <button
+              type="button"
+              onClick={() => {
+                if (validateBeforeAccept()) setShowAcceptDialog(true);
               }}
-            />
-            <p className="text-[11px] text-slate-400">
-              Total received via Cash / UPI / NEFT / Cheque.
-            </p>
+              className="bg-[#244b7a] hover:bg-[#1b385c] text-white font-extrabold px-6 py-2.5 rounded text-xs shadow-md transition-all flex items-center gap-2"
+            >
+              <span>Accept (Save)</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
           </div>
-
-          {/* Narration Card (7 cols) */}
-          <div className="sm:col-span-7 rounded-[2rem] bg-white/80 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/80 space-y-3">
-            <Label className="text-xs font-black uppercase tracking-widest text-slate-500">
-              Narration / Voucher Notes
-            </Label>
-            <Textarea
-              id="receipt-form-narration-input"
-              rows={3}
-              placeholder="e.g. Received via GPay UPI ref #829184 for order delivery, thank you..."
-              value={narration}
-              onChange={(e) => setNarration(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              className="rounded-2xl border-2 border-slate-200 bg-slate-50 focus:bg-white focus:border-emerald-600 text-xs font-medium"
-            />
-          </div>
-        </div>
-      </main>
-
-      {/* Bottom Sticky Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 py-3.5 px-8 shadow-2xl flex items-center justify-between">
-        <div className="text-xs text-slate-500 flex items-center gap-4">
-          <span>
-            Adjustment:{" "}
-            <strong className="text-slate-800 uppercase font-black">
-              {adjustmentType === "AGAINST_REF"
-                ? `Agst Ref (${referenceName || "Invoice"})`
-                : adjustmentType === "NEW_REF"
-                ? `New Ref (${referenceName || "Advance"})`
-                : "On Account"}
-            </strong>
-          </span>
-          <span className="h-3 w-px bg-slate-300" />
-          <span>
-            Total:{" "}
-            <strong className="text-emerald-600 font-mono text-sm font-black">
-              ₹{parseFloat(amount || "0").toFixed(2)}
-            </strong>
-          </span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push("/accounting/receipt")}
-            className="rounded-xl border-slate-300 hover:bg-slate-100 cursor-pointer"
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={() => handleSubmit()}
-            disabled={saving}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 px-6 font-bold cursor-pointer"
-          >
-            {saving ? "Posting Voucher..." : "Post Receipt Voucher (Ctrl+Enter)"}
-          </Button>
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 1. BILL-WISE DETAILS MODAL (Matching Screenshot 1, 2, 3) */}
+      {/* ========================================================================= */}
+      {showBillWiseModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-2 border-slate-800 shadow-2xl rounded-sm w-full max-w-3xl overflow-visible animate-in fade-in zoom-in-95 duration-100 relative">
+            {/* Modal Header */}
+            <div className="bg-[#244b7a] text-white px-5 py-2.5 flex items-center justify-between text-xs font-extrabold tracking-wide">
+              <span>Bill-wise Details for : {selectedCustomer?.name || "Customer"}</span>
+              <span className="font-mono text-amber-300">Up to: ₹ {parseFloat(voucherAmount || "0").toFixed(2)} Cr</span>
+            </div>
+
+            {/* Modal Table Body */}
+            <div className="p-5 space-y-5 overflow-visible">
+              <table className="w-full text-xs text-left border-2 border-slate-400 overflow-visible">
+                <thead className="bg-[#e8f0f8] text-slate-900 border-b-2 border-slate-400 font-extrabold uppercase">
+                  <tr>
+                    <th className="px-3.5 py-2 border-r-2 border-slate-400 w-36">Type of Ref</th>
+                    <th className="px-3.5 py-2 border-r-2 border-slate-400 w-44">Name</th>
+                    <th className="px-3.5 py-2 border-r-2 border-slate-400 w-36">Due Date, or credit Days</th>
+                    <th className="px-3.5 py-2 border-r-2 border-slate-400 text-right w-32">Amount</th>
+                    <th className="px-3.5 py-2 text-center w-16">Dr/Cr</th>
+                  </tr>
+                </thead>
+                <tbody className="overflow-visible">
+                  <tr className="bg-amber-50/50 border-b border-slate-300 overflow-visible">
+                    {/* Type of Ref Cell */}
+                    <td className="px-3.5 py-2 border-r-2 border-slate-400 font-black text-blue-900 relative overflow-visible">
+                      <div
+                        onClick={() => setShowRefTypeMenu(true)}
+                        className="cursor-pointer hover:underline flex items-center justify-between py-1"
+                      >
+                        <span>
+                          {activeRefType === "AGST_REF"
+                            ? "Agst Ref"
+                            : activeRefType === "NEW_REF"
+                            ? "New Ref"
+                            : activeRefType === "ADVANCE"
+                            ? "Advance"
+                            : "On Account"}
+                        </span>
+                      </div>
+
+                      {/* Method of Adj. Floating Popup (Screenshot 1) */}
+                      {showRefTypeMenu && (
+                        <div className="absolute left-0 top-full mt-1.5 w-48 bg-white border-2 border-blue-600 shadow-2xl z-[100] rounded overflow-hidden">
+                          <div className="bg-[#244b7a] text-white font-extrabold px-3.5 py-1.5 text-xs">
+                            Method of Adj.
+                          </div>
+                          <div className="divide-y divide-slate-100 text-xs font-semibold">
+                            {[
+                              { type: "ADVANCE", label: "Advance" },
+                              { type: "AGST_REF", label: "Agst Ref" },
+                              { type: "NEW_REF", label: "New Ref" },
+                              { type: "ON_ACCOUNT", label: "On Account" },
+                            ].map((opt, idx) => (
+                              <div
+                                key={opt.type}
+                                onClick={() => handleSelectRefType(opt.type as RefType)}
+                                onMouseEnter={() => setRefTypeHighlightIndex(idx)}
+                                className={`px-3.5 py-2.5 cursor-pointer ${
+                                  idx === refTypeHighlightIndex
+                                    ? "bg-amber-100 font-black text-blue-900"
+                                    : "hover:bg-slate-50 text-slate-800"
+                                }`}
+                              >
+                                {opt.label}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Reference Name Cell */}
+                    <td className="px-3.5 py-2 border-r-2 border-slate-400">
+                      <input
+                        ref={refNameInputRef}
+                        type="text"
+                        value={currentLineRefName}
+                        onChange={(e) => setCurrentLineRefName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            modalAmountInputRef.current?.focus();
+                            modalAmountInputRef.current?.select();
+                          }
+                        }}
+                        disabled={activeRefType === "ON_ACCOUNT"}
+                        placeholder={activeRefType === "ON_ACCOUNT" ? "On Account" : "Ref Name..."}
+                        className="w-full bg-white border border-slate-400 px-2.5 py-1 text-xs font-black rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                      />
+                    </td>
+
+                    {/* Due Date Cell */}
+                    <td className="px-3.5 py-2 border-r-2 border-slate-400 font-mono font-bold text-slate-800">
+                      {currentLineDueDate || date}
+                    </td>
+
+                    {/* Amount Cell */}
+                    <td className="px-3.5 py-2 border-r-2 border-slate-400 text-right">
+                      <input
+                        ref={modalAmountInputRef}
+                        type="number"
+                        step="0.01"
+                        value={currentLineAmount}
+                        onChange={(e) => setCurrentLineAmount(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleConfirmBillWiseLine();
+                          }
+                        }}
+                        className="w-28 text-right bg-white border border-slate-400 px-2.5 py-1 text-xs font-mono font-black rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                      />
+                    </td>
+
+                    {/* Dr/Cr Cell */}
+                    <td className="px-3.5 py-2 text-center font-black text-slate-800">Cr</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* Modal Actions */}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBillWiseModal(false)}
+                  className="px-5 py-2 border-2 border-slate-400 rounded text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors"
+                >
+                  Cancel (Esc)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmBillWiseLine}
+                  className="px-6 py-2 bg-[#244b7a] hover:bg-[#1b385c] text-white rounded text-xs font-extrabold shadow transition-colors"
+                >
+                  Confirm (Enter)
+                </button>
+              </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* 2. PENDING BILLS POPUP (Matching Screenshot 2) */}
+            {/* ========================================================================= */}
+            {showPendingBills && (
+              <div className="absolute top-12 right-2 w-[420px] bg-white border-2 border-blue-600 shadow-2xl z-[100] rounded overflow-hidden">
+                <div className="bg-[#244b7a] text-white px-4 py-2 text-xs font-black flex justify-between items-center">
+                  <span>Pending Bills</span>
+                  <span className="text-[10px] text-amber-300 font-mono">↑↓ to navigate, Enter to pick</span>
+                </div>
+                <div className="max-h-72 overflow-y-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-100 text-slate-800 border-b border-slate-300 font-extrabold uppercase">
+                      <tr>
+                        <th className="px-3 py-1.5">Name</th>
+                        <th className="px-3 py-1.5">Date</th>
+                        <th className="px-3 py-1.5 text-right">Balance</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {invoices.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="p-4 text-center text-slate-500 font-medium">
+                            No pending bills found
+                          </td>
+                        </tr>
+                      ) : (
+                        invoices.map((inv, idx) => (
+                          <tr
+                            key={inv.id}
+                            onClick={() => handleSelectPendingBill(inv)}
+                            onMouseEnter={() => setPendingBillHighlightIndex(idx)}
+                            className={`cursor-pointer ${
+                              idx === pendingBillHighlightIndex
+                                ? "bg-amber-100 font-black text-blue-900"
+                                : "hover:bg-slate-50 text-slate-800 font-medium"
+                            }`}
+                          >
+                            <td className="px-3 py-2 font-black">{inv.invoiceNumber}</td>
+                            <td className="px-3 py-2 text-slate-600 font-mono">{inv.issueDate || "-"}</td>
+                            <td className="px-3 py-2 text-right font-mono font-black text-emerald-700">
+                              ₹ {(inv.amountDue / 100).toFixed(2)} Dr
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3. ACCEPT? YES OR NO CONFIRMATION DIALOG */}
+      {/* ========================================================================= */}
+      {showAcceptDialog && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-2 border-slate-800 shadow-2xl rounded p-6 w-84 text-center space-y-5 animate-in fade-in zoom-in-95 duration-100">
+            <h3 className="text-lg font-black text-slate-900">Accept?</h3>
+            <p className="text-xs text-slate-600 font-semibold">
+              Post Receipt Voucher No. {voucherNo} for ₹{" "}
+              {parseFloat(voucherAmount || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })}?
+            </p>
+            <div className="flex justify-center gap-4">
+              <button
+                type="button"
+                autoFocus={acceptFocusYes}
+                onClick={handlePostVoucher}
+                disabled={saving}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                    setAcceptFocusYes(false);
+                  } else if (e.key === "y" || e.key === "Y") {
+                    handlePostVoucher();
+                  }
+                }}
+                className="px-6 py-2 bg-[#244b7a] hover:bg-[#1b385c] text-white font-black text-xs rounded shadow focus:ring-2 focus:ring-blue-600 focus:outline-none"
+              >
+                {saving ? "Posting..." : "Yes (Y)"}
+              </button>
+              <button
+                type="button"
+                autoFocus={!acceptFocusYes}
+                onClick={() => setShowAcceptDialog(false)}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                    setAcceptFocusYes(true);
+                  } else if (e.key === "n" || e.key === "N") {
+                    setShowAcceptDialog(false);
+                  }
+                }}
+                className="px-6 py-2 border-2 border-slate-400 hover:bg-slate-100 text-slate-800 font-bold text-xs rounded focus:ring-2 focus:ring-slate-600 focus:outline-none"
+              >
+                No (N)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. F2 VOUCHER DATE CHANGE MODAL */}
+      {/* ========================================================================= */}
+      {showF2Modal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white border-2 border-slate-800 shadow-2xl rounded p-5 w-84 space-y-4 animate-in fade-in zoom-in-95 duration-100">
+            <div className="bg-[#244b7a] text-white px-4 py-2 font-black text-xs rounded -mx-5 -mt-5 flex justify-between">
+              <span>Change Voucher Date</span>
+              <span className="font-mono text-amber-300">F2</span>
+            </div>
+            <div className="space-y-1.5 pt-2">
+              <label className="text-xs font-black text-slate-800">Voucher Date</label>
+              <input
+                type="date"
+                autoFocus
+                value={tempDate}
+                onChange={(e) => setTempDate(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    setDate(tempDate);
+                    setShowF2Modal(false);
+                  } else if (e.key === "Escape") {
+                    setShowF2Modal(false);
+                  }
+                }}
+                className="w-full bg-[#f8fafc] border-2 border-slate-400 font-black text-slate-900 px-3.5 py-2 text-sm rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={() => setShowF2Modal(false)}
+                className="px-4 py-1.5 border border-slate-300 text-xs rounded font-bold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDate(tempDate);
+                  setShowF2Modal(false);
+                }}
+                className="px-5 py-1.5 bg-[#244b7a] text-white text-xs font-black rounded shadow"
+              >
+                Apply (Enter)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

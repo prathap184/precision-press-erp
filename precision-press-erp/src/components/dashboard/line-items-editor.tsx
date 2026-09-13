@@ -26,9 +26,9 @@ export interface LineItem {
   billingMode?: 'A' | 'B';
   pcsNo?: string;
   width?: string;
-  widthUnit?: 'FT' | 'IN';
+  widthUnit?: 'FT' | 'IN' | 'MTR';
   length?: string;
-  lengthUnit?: 'FT' | 'IN';
+  lengthUnit?: 'FT' | 'IN' | 'MTR';
   sqFt?: string;
   finishAmount?: string;
   costCenterId?: string;
@@ -244,27 +244,23 @@ function SearchableProductSelect({
             const inputEl = e.currentTarget;
             setTimeout(() => {
               try {
-                inputEl.select();
+                const len = inputEl.value ? inputEl.value.length : 0;
+                inputEl.setSelectionRange(len, len);
               } catch {}
             }, 10);
           }}
-          onMouseUp={(e) => {
-            if (document.activeElement === e.currentTarget && e.currentTarget.selectionStart === e.currentTarget.selectionEnd) {
-              try {
-                e.currentTarget.select();
-              } catch {}
-            }
-          }}
           onKeyDown={(e) => {
             if (e.key === "Backspace") {
-              const isFullSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === e.currentTarget.value.length;
-              if (!search || !value || isFullSelected) {
-                if ((!search || isFullSelected) && onBackNavigate) {
-                  e.preventDefault();
-                  setIsOpen(false);
-                  onBackNavigate();
-                  return;
-                }
+              const val = e.currentTarget.value ?? "";
+              const start = e.currentTarget.selectionStart ?? 0;
+              const end = e.currentTarget.selectionEnd ?? 0;
+              const isFullSelected = start === 0 && end === val.length && val.length > 0;
+              const isAtBeginning = start === 0 && end === 0;
+              if ((!search || !value || isFullSelected || isAtBeginning) && onBackNavigate) {
+                e.preventDefault();
+                setIsOpen(false);
+                onBackNavigate();
+                return;
               }
             }
 
@@ -607,7 +603,11 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
       const itemInput = document.getElementById(`row-${lineIndex}-product-input`);
       if (itemInput) {
         itemInput.focus();
-        try { (itemInput as HTMLInputElement).select(); } catch {}
+        try {
+          const inp = itemInput as HTMLInputElement;
+          const len = inp.value ? inp.value.length : 0;
+          inp.setSelectionRange(len, len);
+        } catch {}
       }
     }, 50);
   };
@@ -647,8 +647,8 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
     const qty = parseFloat(line.quantity) || 0;
     const widthRaw = parseFloat(line.width || "0");
     const lengthRaw = parseFloat(line.length || "0");
-    const width = (line.widthUnit || 'FT') === 'IN' ? widthRaw / 12 : widthRaw;
-    const length = (line.lengthUnit || 'FT') === 'IN' ? lengthRaw / 12 : lengthRaw;
+    const width = (line.widthUnit || 'FT') === 'IN' ? widthRaw / 12 : ((line.widthUnit || 'FT') === 'MTR' ? widthRaw * 3.28084 : widthRaw);
+    const length = (line.lengthUnit || 'FT') === 'IN' ? lengthRaw / 12 : ((line.lengthUnit || 'FT') === 'MTR' ? lengthRaw * 3.28084 : lengthRaw);
     const rate = parseFloat(line.unitPrice) || 0;
     const finish = parseFloat(line.finishAmount || "0");
     const delivery = parseFloat(line.deliveryAmount || "0");
@@ -770,8 +770,8 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
               // Convert inches to feet for sq.ft calculation
               const widthRaw = parseFloat(line.width || "0");
               const lengthRaw = parseFloat(line.length || "0");
-              const widthFt = (line.widthUnit || 'FT') === 'IN' ? widthRaw / 12 : widthRaw;
-              const lengthFt = (line.lengthUnit || 'FT') === 'IN' ? lengthRaw / 12 : lengthRaw;
+              const widthFt = (line.widthUnit || 'FT') === 'IN' ? widthRaw / 12 : ((line.widthUnit || 'FT') === 'MTR' ? widthRaw * 3.28084 : widthRaw);
+              const lengthFt = (line.lengthUnit || 'FT') === 'IN' ? lengthRaw / 12 : ((line.lengthUnit || 'FT') === 'MTR' ? lengthRaw * 3.28084 : lengthRaw);
               const widthNum = widthFt;
               const lengthNum = lengthFt;
               const pcs = Math.max(1, parseFloat(line.pcsNo || line.quantity || "1") || 1);
@@ -1021,24 +1021,24 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                             } else if (e.key === " " || e.key === "Spacebar") {
                               e.preventDefault();
                               const updated = [...lines];
-                              updated[i] = { ...updated[i], widthUnit: (line.widthUnit === 'FT' ? 'IN' : 'FT') };
+                              updated[i] = { ...updated[i], widthUnit: (line.widthUnit === 'FT' ? 'IN' : line.widthUnit === 'IN' ? 'MTR' : 'FT') };
                               onChange(updated);
                             } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                               e.preventDefault();
                               const updated = [...lines];
-                              updated[i] = { ...updated[i], widthUnit: (line.widthUnit === 'FT' ? 'IN' : 'FT') };
+                              updated[i] = { ...updated[i], widthUnit: (line.widthUnit === 'FT' ? 'IN' : line.widthUnit === 'IN' ? 'MTR' : 'FT') };
                               onChange(updated);
                             }
                           }}
                           onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
                           className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                         >
-                          {(line.widthUnit || 'FT') === 'FT' ? 'ft' : 'in'}
+                          {(line.widthUnit || 'FT') === 'FT' ? 'ft' : (line.widthUnit || 'FT') === 'IN' ? 'in' : 'm'}
                           <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
                         </button>
                         {openUnitPickerId === `${i}-w` && (
                           <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                            {(['FT', 'IN'] as const).map(u => (
+                            {(['FT', 'IN', 'MTR'] as const).map(u => (
                               <button
                                 key={u}
                                 type="button"
@@ -1053,7 +1053,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                                 }}
                                 className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${(line.widthUnit || 'FT') === u ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
                               >
-                                {u.toLowerCase()}
+                                {u === 'MTR' ? 'm' : u.toLowerCase()}
                               </button>
                             ))}
                           </div>
@@ -1109,24 +1109,24 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                             } else if (e.key === " " || e.key === "Spacebar") {
                               e.preventDefault();
                               const updated = [...lines];
-                              updated[i] = { ...updated[i], lengthUnit: (line.lengthUnit === 'FT' ? 'IN' : 'FT') };
+                              updated[i] = { ...updated[i], lengthUnit: (line.lengthUnit === 'FT' ? 'IN' : line.lengthUnit === 'IN' ? 'MTR' : 'FT') };
                               onChange(updated);
                             } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                               e.preventDefault();
                               const updated = [...lines];
-                              updated[i] = { ...updated[i], lengthUnit: (line.lengthUnit === 'FT' ? 'IN' : 'FT') };
+                              updated[i] = { ...updated[i], lengthUnit: (line.lengthUnit === 'FT' ? 'IN' : line.lengthUnit === 'IN' ? 'MTR' : 'FT') };
                               onChange(updated);
                             }
                           }}
                           onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
                           className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                         >
-                          {(line.lengthUnit || 'FT') === 'FT' ? 'ft' : 'in'}
+                          {(line.lengthUnit || 'FT') === 'FT' ? 'ft' : (line.lengthUnit || 'FT') === 'IN' ? 'in' : 'm'}
                           <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
                         </button>
                         {openUnitPickerId === `${i}-l` && (
                           <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
-                            {(['FT', 'IN'] as const).map(u => (
+                            {(['FT', 'IN', 'MTR'] as const).map(u => (
                               <button
                                 key={u}
                                 type="button"
@@ -1144,7 +1144,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                                 }}
                                 className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${(line.lengthUnit || 'FT') === u ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
                               >
-                                {u.toLowerCase()}
+                                {u === 'MTR' ? 'm' : u.toLowerCase()}
                               </button>
                             ))}
                           </div>

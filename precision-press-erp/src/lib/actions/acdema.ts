@@ -26,9 +26,9 @@ export interface ProxyOrderItemInput {
   description?: string;
   notes?: string;
   width: number;
-  widthUnit: 'FT' | 'IN';
+  widthUnit: 'FT' | 'IN' | 'MTR';
   height: number;
-  heightUnit: 'FT' | 'IN';
+  heightUnit: 'FT' | 'IN' | 'MTR';
   quantity: number;
   eyeletType: 'METAL' | 'PLASTIC' | 'NONE';
   eyeletCount: number;

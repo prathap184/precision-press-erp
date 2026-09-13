@@ -73,7 +73,10 @@ export function GlobalOrdersPage() {
       const fromInput = document.getElementById("tally-from-date") as HTMLInputElement;
       if (fromInput) {
         fromInput.focus();
-        try { fromInput.select(); } catch {}
+        try {
+          const len = fromInput.value ? fromInput.value.length : 0;
+          fromInput.setSelectionRange(len, len);
+        } catch {}
       }
     }, 50);
   };
@@ -251,8 +254,8 @@ export function GlobalOrdersPage() {
           const rawHeight = Number(i.specs?.height ?? i.height ?? 0);
           const widthUnit = i.specs?.widthUnit ?? i.widthUnit ?? 'FT';
           const heightUnit = i.specs?.heightUnit ?? i.heightUnit ?? 'FT';
-          const widthFt = widthUnit === 'IN' ? rawWidth / 12 : rawWidth;
-          const heightFt = heightUnit === 'IN' ? rawHeight / 12 : rawHeight;
+          const widthFt = widthUnit === 'IN' ? rawWidth / 12 : (widthUnit === 'MTR' ? rawWidth * 3.28084 : rawWidth);
+          const heightFt = heightUnit === 'IN' ? rawHeight / 12 : (heightUnit === 'MTR' ? rawHeight * 3.28084 : rawHeight);
           const qty = Number(i.specs?.quantity ?? i.quantity ?? 1);
           const pricingSnap = parseJson(i.pricingSnapshot ?? i.pricing_snapshot) || {};
           const eyeletType = pricingSnap.selectedEyeletType ?? i.eyeletType ?? 'NONE';
@@ -975,7 +978,10 @@ export function GlobalOrdersPage() {
                         const toInput = document.getElementById("tally-to-date");
                         if (toInput) {
                           toInput.focus();
-                          try { (toInput as HTMLInputElement).select(); } catch {}
+                          try {
+                            const len = (toInput as HTMLInputElement).value ? (toInput as HTMLInputElement).value.length : 0;
+                            (toInput as HTMLInputElement).setSelectionRange(len, len);
+                          } catch {}
                         }
                       }
                     }}

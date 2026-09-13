@@ -140,7 +140,10 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
       const fromInput = document.getElementById("role-tally-from-date") as HTMLInputElement;
       if (fromInput) {
         fromInput.focus();
-        try { fromInput.select(); } catch {}
+        try {
+          const len = fromInput.value ? fromInput.value.length : 0;
+          fromInput.setSelectionRange(len, len);
+        } catch {}
       }
     }, 50);
   };
@@ -616,7 +619,10 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
                         const toInput = document.getElementById("role-tally-to-date");
                         if (toInput) {
                           toInput.focus();
-                          try { (toInput as HTMLInputElement).select(); } catch {}
+                          try {
+                            const len = (toInput as HTMLInputElement).value ? (toInput as HTMLInputElement).value.length : 0;
+                            (toInput as HTMLInputElement).setSelectionRange(len, len);
+                          } catch {}
                         }
                       }
                     }}
