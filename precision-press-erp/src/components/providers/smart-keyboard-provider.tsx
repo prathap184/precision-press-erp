@@ -54,6 +54,24 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
         }
       }
 
+      // Global Home & End key cursor positioning for all inputs & textareas across all pages
+      if (e.key === "End" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        if (tagName === "input" || tagName === "textarea") {
+          const input = target as HTMLInputElement | HTMLTextAreaElement;
+          const len = typeof input.value === "string" ? input.value.length : 0;
+          try {
+            input.setSelectionRange(len, len);
+          } catch {}
+        }
+      } else if (e.key === "Home" && !e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+        if (tagName === "input" || tagName === "textarea") {
+          const input = target as HTMLInputElement | HTMLTextAreaElement;
+          try {
+            input.setSelectionRange(0, 0);
+          } catch {}
+        }
+      }
+
       // Active container (Modal Dialog, Drawer/Sheet, or entire page)
       const activeModal = document.querySelector<HTMLElement>("[role='dialog']:not([aria-hidden='true'])");
       const container =
