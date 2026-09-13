@@ -714,6 +714,17 @@ export function InvoiceFormView() {
   // Keyboard shortcut: Ctrl + Enter & Alt + C for Create Customer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F2") {
+        e.preventDefault();
+        e.stopPropagation();
+        const dateInput = document.getElementById("invoice-date-input") as HTMLInputElement;
+        if (dateInput) {
+          dateInput.focus();
+          try { dateInput.select(); } catch {}
+          try { (dateInput as any).showPicker?.(); } catch {}
+        }
+        return;
+      }
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         handleSubmit();
@@ -927,15 +938,24 @@ export function InvoiceFormView() {
                   <div className="h-9 w-[1px] bg-slate-200 self-end mb-0.5" />
 
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight">
-                      Issue Date (F2)
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight flex items-center justify-between gap-1">
+                      <span>Issue Date</span>
+                      <kbd className="text-[9px] font-mono font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1 rounded">F2</kbd>
                     </span>
                     <input
                       id="invoice-date-input"
                       type="date"
                       value={issueDate}
                       onChange={(e) => setIssueDate(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const custInput = document.getElementById("invoice-customer-search-input");
+                          if (custInput) custInput.focus();
+                        }
+                      }}
                       className="h-10 bg-slate-50 hover:bg-slate-100 focus:bg-white text-slate-800 font-bold text-xs px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
+                      title="Issue Date (Press F2)"
                     />
                   </div>
                 </div>

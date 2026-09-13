@@ -320,6 +320,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault();
+        e.stopPropagation();
+        const dateInput = document.getElementById('order-date-input') as HTMLInputElement;
+        if (dateInput) {
+          dateInput.focus();
+          try { dateInput.select(); } catch {}
+          try { (dateInput as any).showPicker?.(); } catch {}
+        }
+        return;
+      }
       if (e.key === 'Escape') {
         if (showExitConfirmModal) {
           e.preventDefault();
@@ -733,8 +744,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   <div className="h-9 w-[1px] bg-slate-200 self-end mb-0.5" />
 
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight">
-                      Date
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight flex items-center justify-between gap-1">
+                      <span>Date</span>
+                      <kbd className="text-[9px] font-mono font-bold text-blue-600 bg-blue-50 border border-blue-200 px-1 rounded">F2</kbd>
                     </span>
                     <input
                       id="order-date-input"
@@ -751,7 +763,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         }
                       }}
                       className="h-10 bg-slate-50 hover:bg-slate-100 focus:bg-white text-slate-800 font-bold text-xs px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
-                      title={vm.mode === 'quotation' ? 'Quotation Date' : 'Order Date'}
+                      title={vm.mode === 'quotation' ? 'Quotation Date (Press F2)' : 'Order Date (Press F2)'}
                     />
                   </div>
                 </div>
