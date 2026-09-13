@@ -8,6 +8,115 @@ import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
 import { ItemDescriptionModal } from '@/components/dashboard/ItemDescriptionModal';
 
+function isoToDisplayDate(iso: string): string {
+  if (!iso) return '';
+  const parts = iso.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return iso;
+}
+
+function parseTallyDate(input: string, fallbackIso: string = new Date().toISOString().split('T')[0]): string {
+  if (!input || !input.trim()) return fallbackIso;
+  const raw = input.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  const parts = raw.split(/[\s\-\/\.]+/).filter(Boolean);
+
+  if (parts.length === 1) {
+    const digits = parts[0];
+    if (digits.length === 1 || digits.length === 2) {
+      const day = parseInt(digits, 10);
+      if (day >= 1 && day <= 31) {
+        return `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+    } else if (digits.length === 4) {
+      const day = parseInt(digits.slice(0, 2), 10);
+      const month = parseInt(digits.slice(2, 4), 10);
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+        return `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+    } else if (digits.length === 6) {
+      const day = parseInt(digits.slice(0, 2), 10);
+      const month = parseInt(digits.slice(2, 4), 10);
+      let year = parseInt(digits.slice(4, 6), 10);
+      year = year < 50 ? 2000 + year : 1900 + year;
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+    } else if (digits.length === 8) {
+      const day = parseInt(digits.slice(0, 2), 10);
+      const month = parseInt(digits.slice(2, 4), 10);
+      const year = parseInt(digits.slice(4, 8), 10);
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      }
+    }
+  } else if (parts.length === 2) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+      return `${currentYear}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  } else if (parts.length === 3) {
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    let year = parseInt(parts[2], 10);
+    if (year < 100) {
+      year = year < 50 ? 2000 + year : 1900 + year;
+    }
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1900 && year <= 2100) {
+      return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+  }
+
+  return fallbackIso;
+}
+
+function HighlightMatch({ text, query, isHighlighted }: { text: string; query: string; isHighlighted?: boolean }) {
+  if (!text) return null;
+  const q = (query || '').trim();
+  if (!q) return <>{text}</>;
+
+  const cleanQ = q.replace(/^ct[:\s\-\/]?\s*/i, '').trim();
+  if (!cleanQ) return <>{text}</>;
+
+  const tokens = cleanQ.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return <>{text}</>;
+
+  const escapedTokens = tokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${escapedTokens.join('|')})`, 'gi');
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const isMatch = tokens.some((t) => t.toLowerCase() === part.toLowerCase());
+        if (isMatch) {
+          return (
+            <mark
+              key={i}
+              className={
+                isHighlighted
+                  ? 'bg-black text-amber-300 font-extrabold px-0.5 rounded-xs underline decoration-amber-400'
+                  : 'bg-amber-300/90 text-amber-950 font-extrabold px-0.5 rounded-xs shadow-2xs'
+              }
+            >
+              {part}
+            </mark>
+          );
+        }
+        return <React.Fragment key={i}>{part}</React.Fragment>;
+      })}
+    </>
+  );
+}
+
 export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const {
     bootstrapLoading, profile, roles, customerSearch, setCustomerSearch, customerSearching,
@@ -23,6 +132,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     verifyingGst, handleVerifyGst,
     orderNumber, setOrderNumber, orderDate, setOrderDate
   } = vm;
+
+  const [dateDisplayInput, setDateDisplayInput] = useState(() => isoToDisplayDate(orderDate || new Date().toISOString().split('T')[0]));
+
+  useEffect(() => {
+    if (orderDate) {
+      setDateDisplayInput(isoToDisplayDate(orderDate));
+    }
+  }, [orderDate]);
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -327,7 +444,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         if (dateInput) {
           dateInput.focus();
           try { dateInput.select(); } catch {}
-          try { (dateInput as any).showPicker?.(); } catch {}
         }
         return;
       }
@@ -750,19 +866,30 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     </span>
                     <input
                       id="order-date-input"
-                      type="date"
-                      value={orderDate}
-                      onChange={(e) => setOrderDate(e.target.value)}
+                      type="text"
+                      inputMode="numeric"
+                      value={dateDisplayInput}
+                      onChange={(e) => setDateDisplayInput(e.target.value)}
+                      onFocus={(e) => {
+                        try { e.target.select(); } catch {}
+                      }}
+                      onBlur={() => {
+                        const parsed = parseTallyDate(dateDisplayInput, orderDate);
+                        setOrderDate(parsed);
+                        setDateDisplayInput(isoToDisplayDate(parsed));
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
+                          const parsed = parseTallyDate(dateDisplayInput, orderDate);
+                          setOrderDate(parsed);
+                          setDateDisplayInput(isoToDisplayDate(parsed));
                           const custInput = document.getElementById('proxy-customer-search-input');
                           if (custInput) custInput.focus();
-                        } else if (e.key === "Backspace") {
-                          e.preventDefault();
                         }
                       }}
-                      className="h-10 bg-slate-50 hover:bg-slate-100 focus:bg-white text-slate-800 font-bold text-xs px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all cursor-pointer"
+                      placeholder="DD-MM-YYYY"
+                      className="h-10 w-28 text-center bg-slate-50 hover:bg-slate-100 focus:bg-white text-slate-800 font-bold text-xs px-2 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all tabular-nums"
                       title={vm.mode === 'quotation' ? 'Quotation Date (Press F2)' : 'Order Date (Press F2)'}
                     />
                   </div>
@@ -3278,19 +3405,19 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           >
                             <div className="flex-1 min-w-0 pr-3">
                               <div className="truncate font-bold text-xs leading-tight">
-                                {c.displayName || c.name}
+                                <HighlightMatch text={c.displayName || c.name} query={customerSearch} isHighlighted={isHighlighted} />
                               </div>
                               {c.phone && (
                                 <div className={`text-[10px] ${isHighlighted ? 'text-black/80' : 'text-slate-500'}`}>
-                                  {c.phone}
+                                  <HighlightMatch text={c.phone} query={customerSearch} isHighlighted={isHighlighted} />
                                 </div>
                               )}
                             </div>
                             <div className={`w-48 text-left truncate text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
-                              {c.businessName || c.billing_city || '—'}
+                              <HighlightMatch text={c.businessName || c.billing_city || '—'} query={customerSearch} isHighlighted={isHighlighted} />
                             </div>
                             <div className={`w-44 text-center font-mono text-[11px] truncate shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
-                              {c.gstin || '—'}
+                              <HighlightMatch text={c.gstin || '—'} query={customerSearch} isHighlighted={isHighlighted} />
                             </div>
                             <div className={`w-32 text-right font-bold text-[11px] shrink-0 ${isHighlighted ? 'text-black' : 'text-slate-800'}`}>
                               {c.credit_balance !== undefined ? `₹${Number(c.credit_balance || 0).toLocaleString()}` : '—'}
@@ -3481,7 +3608,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               >
                                 <div className="flex-1 min-w-0 pr-3">
                                   <div className="truncate font-bold leading-tight flex items-center gap-2">
-                                    <span className="truncate text-xs">{p.name}</span>
+                                    <span className="truncate text-xs">
+                                      <HighlightMatch text={p.name} query={searchQuery} isHighlighted={isHighlighted} />
+                                    </span>
                                     {p.category && (
                                       <button
                                         type="button"
@@ -3501,13 +3630,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               : 'bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200'
                                         }`}
                                       >
-                                        {p.category}
+                                        <HighlightMatch text={p.category} query={searchQuery} isHighlighted={isHighlighted} />
                                       </button>
                                     )}
                                   </div>
                                 </div>
                                 <div className={`w-28 text-center font-mono text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
-                                  {hsn}
+                                  <HighlightMatch text={String(hsn)} query={searchQuery} isHighlighted={isHighlighted} />
                                 </div>
                                 <div className={`w-20 text-center font-mono text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
                                   {gst}%
