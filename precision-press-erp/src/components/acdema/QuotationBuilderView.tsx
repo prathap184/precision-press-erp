@@ -2007,7 +2007,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                   <div className="flex justify-between items-center text-slate-600 font-medium">
                     <span>Sub Total</span>
                     <span className="font-bold text-slate-900">
-                      Rs. {summary.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Rs. {(summary.subTotalBeforeGst ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-black text-slate-950">

@@ -2196,7 +2196,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           SUB TOTAL
                         </td>
                         <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900 text-xs">
-                          {summary.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {(summary.subTotalBeforeGst ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </td>
                         <td className="py-1 px-2"></td>
                       </tr>
@@ -2289,7 +2289,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
                       {/* 4. Round Off Ledger row */}
                       {(() => {
-                        const rawTotal = (summary.subtotal || 0) + (summary.gstAmount || 0) + (summary.deliveryCharges || 0) - (summary.voucherGstDiscount || 0);
+                        const rawTotal = (summary.subTotalBeforeGst || 0) + (summary.gstAmount || 0) + (summary.deliveryCharges || 0) - (summary.voucherGstDiscount || 0);
                         const roundOff = Number((Math.round(summary.grandTotal) - summary.grandTotal).toFixed(2));
                         return (
                           <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
@@ -3395,7 +3395,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   <div className="flex justify-between items-center text-slate-600 font-medium">
                     <span>Sub Total</span>
                     <span className="font-bold text-slate-900">
-                      Rs. {summary.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      Rs. {(summary.subTotalBeforeGst ?? 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-sm font-black text-slate-950">
