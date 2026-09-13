@@ -1329,6 +1329,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     <input
                                       id={`error-row-${row.id}-width`}
                                       value={row.width !== undefined ? row.width : (product?.default_width || '1')}
+                                      onFocus={(e) => e.target.select()}
                                       onChange={(e) => {
                                         updateRow(row.id, { width: e.target.value });
                                         setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
@@ -1340,7 +1341,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           if (widthUnitBtn) widthUnitBtn.focus();
                                           else {
                                             const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                            if (heightInput) heightInput.focus();
+                                            if (heightInput) {
+                                              heightInput.focus();
+                                              try { (heightInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           }
                                         } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                           e.preventDefault();
@@ -1366,7 +1370,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             e.preventDefault();
                                             setOpenUnitPickerId(null);
                                             const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                            if (heightInput) heightInput.focus();
+                                            if (heightInput) {
+                                              heightInput.focus();
+                                              try { (heightInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           } else if (e.key === " " || e.key === "Spacebar") {
                                             e.preventDefault();
                                             const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
@@ -1375,7 +1382,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             e.preventDefault();
                                             setOpenUnitPickerId(null);
                                             const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                            if (widthInput) widthInput.focus();
+                                            if (widthInput) {
+                                              widthInput.focus();
+                                              try { (widthInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                                             e.preventDefault();
                                             const nextUnit = row.widthUnit === 'FT' ? 'IN' : 'FT';
@@ -1401,7 +1411,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                 setOpenUnitPickerId(null);
                                                 setTimeout(() => {
                                                   const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                                  if (heightInput) heightInput.focus();
+                                                  if (heightInput) {
+                                                    heightInput.focus();
+                                                    try { (heightInput as HTMLInputElement).select(); } catch {}
+                                                  }
                                                 }, 50);
                                               }}
                                               className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
@@ -1430,6 +1443,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     <input
                                       id={`error-row-${row.id}-height`}
                                       value={row.height !== undefined ? row.height : (product?.default_length || '1')}
+                                      onFocus={(e) => e.target.select()}
                                       onChange={(e) => {
                                         updateRow(row.id, { height: e.target.value });
                                         setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
@@ -1441,10 +1455,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           if (heightUnitBtn) heightUnitBtn.focus();
                                           else if (isModeB) {
                                             const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                            if (pcsInput) pcsInput.focus();
+                                            if (pcsInput) {
+                                              pcsInput.focus();
+                                              try { (pcsInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           } else {
                                             const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                            if (qtyInput) qtyInput.focus();
+                                            if (qtyInput) {
+                                              qtyInput.focus();
+                                              try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           }
                                         } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                           e.preventDefault();
@@ -1452,7 +1472,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           if (widthUnitBtn) widthUnitBtn.focus();
                                           else {
                                             const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                            if (widthInput) widthInput.focus();
+                                            if (widthInput) {
+                                              widthInput.focus();
+                                              try { (widthInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           }
                                         } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                           e.preventDefault();
@@ -1460,7 +1483,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           if (widthUnitBtn) widthUnitBtn.focus();
                                           else {
                                             const widthInput = document.getElementById(`error-row-${row.id}-width`);
-                                            if (widthInput) widthInput.focus();
+                                            if (widthInput) {
+                                              widthInput.focus();
+                                              try { (widthInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           }
                                         }
                                       }}
@@ -1478,10 +1504,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             setOpenUnitPickerId(null);
                                             if (isModeB) {
                                               const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                              if (pcsInput) pcsInput.focus();
+                                              if (pcsInput) {
+                                                pcsInput.focus();
+                                                try { (pcsInput as HTMLInputElement).select(); } catch {}
+                                              }
                                             } else {
                                               const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                              if (qtyInput) qtyInput.focus();
+                                              if (qtyInput) {
+                                                qtyInput.focus();
+                                                try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                              }
                                             }
                                           } else if (e.key === " " || e.key === "Spacebar") {
                                             e.preventDefault();
@@ -1491,7 +1523,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             e.preventDefault();
                                             setOpenUnitPickerId(null);
                                             const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                            if (heightInput) heightInput.focus();
+                                            if (heightInput) {
+                                              heightInput.focus();
+                                              try { (heightInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
                                             e.preventDefault();
                                             const nextUnit = row.heightUnit === 'FT' ? 'IN' : 'FT';
@@ -1518,10 +1553,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                 setTimeout(() => {
                                                   if (isModeB) {
                                                     const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                                    if (pcsInput) pcsInput.focus();
+                                                    if (pcsInput) {
+                                                      pcsInput.focus();
+                                                      try { (pcsInput as HTMLInputElement).select(); } catch {}
+                                                    }
                                                   } else {
                                                     const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                                    if (qtyInput) qtyInput.focus();
+                                                    if (qtyInput) {
+                                                      qtyInput.focus();
+                                                      try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                                    }
                                                   }
                                                 }, 50);
                                               }}
@@ -1554,6 +1595,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <input
                                     id={`error-row-${row.id}-pcs`}
                                     value={row.pcsNo ?? '1'}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       updateRow(row.id, { pcsNo: val });
@@ -1562,14 +1604,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
                                         const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
-                                        if (rateInput) rateInput.focus();
+                                        if (rateInput) {
+                                          rateInput.focus();
+                                          try { (rateInput as HTMLInputElement).select(); } catch {}
+                                        }
                                       } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
                                         if (heightUnitBtn) heightUnitBtn.focus();
                                         else {
                                           const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
+                                          if (heightInput) {
+                                            heightInput.focus();
+                                            try { (heightInput as HTMLInputElement).select(); } catch {}
+                                          }
                                         }
                                       } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
@@ -1577,7 +1625,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         if (heightUnitBtn) heightUnitBtn.focus();
                                         else {
                                           const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                          if (heightInput) heightInput.focus();
+                                          if (heightInput) {
+                                            heightInput.focus();
+                                            try { (heightInput as HTMLInputElement).select(); } catch {}
+                                          }
                                         }
                                       }
                                     }}
@@ -1599,6 +1650,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     <input
                                       id={`error-row-${row.id}-quantity`}
                                       value={row.quantity !== undefined ? row.quantity : '1'}
+                                      onFocus={(e) => e.target.select()}
                                       onChange={(e) => {
                                         const val = e.target.value;
                                         updateRow(row.id, { quantity: val });
@@ -1608,16 +1660,23 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         if (e.key === "Enter") {
                                           e.preventDefault();
                                           const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
-                                          if (rateInput) rateInput.focus();
-                                          else {
+                                          if (rateInput) {
+                                            rateInput.focus();
+                                            try { (rateInput as HTMLInputElement).select(); } catch {}
+                                          } else {
                                             const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                            if (rateUnit) rateUnit.focus();
-                                            else {
+                                            if (rateUnit) {
+                                              rateUnit.focus();
+                                              try { (rateUnit as HTMLInputElement).select(); } catch {}
+                                            } else {
                                               const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
                                               if (finishSelect) finishSelect.focus();
                                               else {
                                                 const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                                if (fileInput) fileInput.focus();
+                                                if (fileInput) {
+                                                  fileInput.focus();
+                                                  try { (fileInput as HTMLInputElement).select(); } catch {}
+                                                }
                                               }
                                             }
                                           }
@@ -1629,7 +1688,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             if (heightUnitBtn) heightUnitBtn.focus();
                                             else {
                                               const heightInput = document.getElementById(`error-row-${row.id}-height`);
-                                              if (heightInput) heightInput.focus();
+                                              if (heightInput) {
+                                                heightInput.focus();
+                                                try { (heightInput as HTMLInputElement).select(); } catch {}
+                                              }
                                             }
                                           } else {
                                             setOpenRowId(row.id);
@@ -1672,8 +1734,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         if (finishSelect) finishSelect.focus();
                                         else {
                                           const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                          if (fileInput) fileInput.focus();
-                                          else {
+                                          if (fileInput) {
+                                            fileInput.focus();
+                                            try { (fileInput as HTMLInputElement).select(); } catch {}
+                                          } else {
                                             const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
                                             if (browseBtn) browseBtn.focus();
                                             else handleRowFinalEnter(index);
@@ -1682,11 +1746,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                        if (qtyInput) qtyInput.focus();
+                                        if (qtyInput) {
+                                          qtyInput.focus();
+                                          try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                        }
                                       } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                        if (qtyInput) qtyInput.focus();
+                                        if (qtyInput) {
+                                          qtyInput.focus();
+                                          try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                        }
                                       }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
@@ -1727,8 +1797,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           if (finishSelect) finishSelect.focus();
                                           else {
                                             const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                            if (fileInput) fileInput.focus();
-                                            else {
+                                            if (fileInput) {
+                                              fileInput.focus();
+                                              try { (fileInput as HTMLInputElement).select(); } catch {}
+                                            } else {
                                               const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
                                               if (browseBtn) browseBtn.focus();
                                               else handleRowFinalEnter(index);
@@ -1737,18 +1809,28 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                           e.preventDefault();
                                           const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          if (pcsInput) pcsInput.focus();
-                                          else {
+                                          if (pcsInput) {
+                                            pcsInput.focus();
+                                            try { (pcsInput as HTMLInputElement).select(); } catch {}
+                                          } else {
                                             const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                            if (qtyInput) qtyInput.focus();
+                                            if (qtyInput) {
+                                              qtyInput.focus();
+                                              try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           }
                                         } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
                                           e.preventDefault();
                                           const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          if (pcsInput) pcsInput.focus();
-                                          else {
+                                          if (pcsInput) {
+                                            pcsInput.focus();
+                                            try { (pcsInput as HTMLInputElement).select(); } catch {}
+                                          } else {
                                             const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                            if (qtyInput) qtyInput.focus();
+                                            if (qtyInput) {
+                                              qtyInput.focus();
+                                              try { (qtyInput as HTMLInputElement).select(); } catch {}
+                                            }
                                           }
                                         }
                                       }}
@@ -1778,8 +1860,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         if (e.key === "Enter") {
                                           e.preventDefault();
                                           const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                          if (fileInput) fileInput.focus();
-                                          else {
+                                          if (fileInput) {
+                                            fileInput.focus();
+                                            try { (fileInput as HTMLInputElement).select(); } catch {}
+                                          } else {
                                             const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
                                             if (browseBtn) browseBtn.focus();
                                             else handleRowFinalEnter(index);
@@ -1788,10 +1872,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           e.preventDefault();
                                           if (isSqftModeB) {
                                             const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                            if (rateSqft) rateSqft.focus();
+                                            if (rateSqft) {
+                                              rateSqft.focus();
+                                              try { (rateSqft as HTMLInputElement).select(); } catch {}
+                                            }
                                           } else {
                                             const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                            if (rateUnit) rateUnit.focus();
+                                            if (rateUnit) {
+                                              rateUnit.focus();
+                                              try { (rateUnit as HTMLInputElement).select(); } catch {}
+                                            }
                                           }
                                         }
                                       }}
@@ -1812,6 +1902,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <input
                                     id={`error-row-${row.id}-file`}
                                     value={row.fileName || row.tiffPath || ''}
+                                    onFocus={(e) => e.target.select()}
                                     onChange={(e) => {
                                       const cleaned = sanitizeTiffPath(e.target.value);
                                       updateRow(row.id, { tiffPath: cleaned, fileName: '' });

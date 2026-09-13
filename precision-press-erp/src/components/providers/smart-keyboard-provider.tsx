@@ -60,6 +60,7 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           const input = target as HTMLInputElement | HTMLTextAreaElement;
           const len = typeof input.value === "string" ? input.value.length : 0;
           try {
+            e.preventDefault();
             input.setSelectionRange(len, len);
           } catch {}
         }
@@ -67,6 +68,7 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
         if (tagName === "input" || tagName === "textarea") {
           const input = target as HTMLInputElement | HTMLTextAreaElement;
           try {
+            e.preventDefault();
             input.setSelectionRange(0, 0);
           } catch {}
         }
