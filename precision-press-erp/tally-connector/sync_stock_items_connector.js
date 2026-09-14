@@ -179,11 +179,15 @@ async function runStockSync() {
   // Refresh category map
   const { data: allCategories } = await supabase
     .from('inventory_category')
-    .select('id, name')
+    .select('id, name, treat_sales_as_manufactured')
     .eq('organization_id', DEFAULT_ORG_ID);
 
-  (allCategories || []).forEach(c => categoryMap.set(c.name.toLowerCase(), c.id));
-  console.log(`✅ ${categoryMap.size} Stock Categories verified in ERP database.\n`);
+  const mfgCategorySet = new Set();
+  (allCategories || []).forEach(c => {
+    categoryMap.set(c.name.toLowerCase(), c.id);
+    if (c.treat_sales_as_manufactured) mfgCategorySet.add(c.name.toLowerCase());
+  });
+  console.log(`✅ ${categoryMap.size} Stock Categories verified in ERP database (${mfgCategorySet.size} manufacturing/plotter groups).\n`);
 
   // ── Step 2: Fetch GL Accounts for Account Linkage ────────────────────────────
   const { data: glAccounts } = await supabase
@@ -258,11 +262,12 @@ async function runStockSync() {
     const tagVal = mUdf ? mUdf[1].trim().toUpperCase() : '';
     const billingMode = tagVal === 'A' ? 'A' : 'B';
 
-    // Check "Set Multiple Size Details": strictly from Tally field ISITEMSIZEDETAILSMANDATORY OR custom printing groups (PrintX, UVR)
+    // Check "Set Multiple Size Details": strictly from Tally field ISITEMSIZEDETAILSMANDATORY OR groups where TreatSalesAsManufactured = Yes
+    const isMfgGroup = mfgCategorySet.has(parentGroup.toLowerCase());
     const isPrintGroup = ['printx', 'uvr', 'other print', 'tapex'].includes(parentGroup.toLowerCase());
     const sizeMandatoryM = body.match(/<(?:UDF:)?ISITEMSIZEDETAILSMANDATORY[^>]*>([^<]+)<\/(?:UDF:)?ISITEMSIZEDETAILSMANDATORY>/i);
     const isMandatory = sizeMandatoryM ? clean(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
-    const hasMultipleSizes = isMandatory || isPrintGroup;
+    const hasMultipleSizes = isMandatory || isMfgGroup || isPrintGroup;
 
     const widthM = body.match(/<(?:UDF:)?ITEMWIDTHUDF[^>]*>\s*([\d.]+)\s*<\/(?:UDF:)?ITEMWIDTHUDF>/i);
     const lengthM = body.match(/<(?:UDF:)?ITEMLENGTHUDF[^>]*>\s*([\d.]+)\s*<\/(?:UDF:)?ITEMLENGTHUDF>/i);

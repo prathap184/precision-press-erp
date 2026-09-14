@@ -295,9 +295,11 @@ export async function loadTallyStockItems(): Promise<any[]> {
     throw new Error(`Tally Port 9000 responded, but no stock items were found for ${TARGET_COMPANY}.`);
   }
 
-  const itemRegex = /<STOCKITEM\s+NAME="([^"]+)"[^>]*>([\s\S]*?)<\/STOCKITEM>/gi;
-  const items: any[] = [];
-  let m;
+  const { data: mfgCategories } = await supabaseServer
+    .from('inventory_category')
+    .select('name')
+    .eq('treat_sales_as_manufactured', true);
+  const mfgSet = new Set((mfgCategories || []).map(c => (c.name || '').toLowerCase()));
 
   while ((m = itemRegex.exec(xml)) !== null) {
     const name = cleanStr(m[1]);
@@ -315,11 +317,12 @@ export async function loadTallyStockItems(): Promise<any[]> {
     const billingMode = tagVal === 'A' ? 'A' : 'B';
 
     const group = parentM ? cleanStr(parentM[1]) : 'General';
+    const isMfgGroup = mfgSet.has(group.toLowerCase());
     const isPrintGroup = ['printx', 'uvr', 'other print', 'tapex'].includes(group.toLowerCase());
 
     const sizeMandatoryM = body.match(/<(?:UDF:)?ISITEMSIZEDETAILSMANDATORY[^>]*>([^<]+)<\/(?:UDF:)?ISITEMSIZEDETAILSMANDATORY>/i);
     const isMandatory = sizeMandatoryM ? cleanStr(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
-    const hasMultipleSizes = isMandatory || isPrintGroup;
+    const hasMultipleSizes = isMandatory || isMfgGroup || isPrintGroup;
 
     const rawUom = uomM ? cleanStr(uomM[1]) : 'N';
     const normalizedUom = rawUom;
