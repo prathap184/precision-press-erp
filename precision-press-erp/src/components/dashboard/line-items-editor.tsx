@@ -578,13 +578,11 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
     const rawUom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || (itemObj as any)?.tally_uom || itemObj?.metadata?.unit || '').trim().toLowerCase();
     const cleanUom = rawUom.replace(/[\s\._-]/g, '');
     const hasMultipleSizes = Boolean(
-      (itemObj?.hasMultipleSizes ??
+      itemObj?.hasMultipleSizes ??
       itemObj?.has_multiple_sizes ??
       itemObj?.metadata?.hasMultipleSizes ??
-      itemObj?.metadata?.has_multiple_sizes) ||
-      cleanUom === 'sqft' ||
-      cleanUom === 'sqf' ||
-      (parseFloat(line?.width || '0') > 0 && parseFloat(line?.length || '0') > 0)
+      itemObj?.metadata?.has_multiple_sizes ??
+      (cleanUom === 'sqft' || cleanUom === 'sqf' || (parseFloat(line?.width || '0') > 0 && parseFloat(line?.length || '0') > 0))
     );
     setTimeout(() => {
       if (hasMultipleSizes) {
@@ -657,13 +655,11 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
     const rawUom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || (itemObj as any)?.tally_uom || itemObj?.metadata?.unit || '').trim().toLowerCase();
     const cleanUom = rawUom.replace(/[\s\._-]/g, '');
     const hasMultipleSizes = Boolean(
-      (itemObj?.hasMultipleSizes ??
+      itemObj?.hasMultipleSizes ??
       itemObj?.has_multiple_sizes ??
       itemObj?.metadata?.hasMultipleSizes ??
-      itemObj?.metadata?.has_multiple_sizes) ||
-      cleanUom === 'sqft' ||
-      cleanUom === 'sqf' ||
-      (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0)
+      itemObj?.metadata?.has_multiple_sizes ??
+      (cleanUom === 'sqft' || cleanUom === 'sqf' || (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0))
     );
 
     const isModeA = (line.billingMode || (itemObj as any)?.tallyBillingMode || (itemObj as any)?.tally_billing_mode || itemObj?.metadata?.tallyBillingMode || itemObj?.metadata?.tally_billing_mode) === 'A';
@@ -754,13 +750,11 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
               const rawUom = String(itemObj?.unitOfMeasure || (itemObj as any)?.tallyUom || (itemObj as any)?.tally_uom || itemObj?.metadata?.unit || '').trim().toLowerCase();
               const cleanUom = rawUom.replace(/[\s\._-]/g, '');
               const hasMultipleSizes = Boolean(
-                (itemObj?.hasMultipleSizes ??
+                itemObj?.hasMultipleSizes ??
                 itemObj?.has_multiple_sizes ??
                 itemObj?.metadata?.hasMultipleSizes ??
-                itemObj?.metadata?.has_multiple_sizes) ||
-                cleanUom === 'sqft' ||
-                cleanUom === 'sqf' ||
-                (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0)
+                itemObj?.metadata?.has_multiple_sizes ??
+                (cleanUom === 'sqft' || cleanUom === 'sqf' || (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0))
               );
               const defaultMode = (itemObj as any)?.tallyBillingMode || (itemObj as any)?.tally_billing_mode || itemObj?.metadata?.tallyBillingMode || itemObj?.metadata?.tally_billing_mode || 'B';
               const currentMode = line.billingMode || defaultMode;
@@ -853,12 +847,11 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                         const itemRawUom = String(item.unitOfMeasure || (item as any).tallyUom || (item as any).tally_uom || item.metadata?.unit || '').trim().toLowerCase();
                         const itemCleanUom = itemRawUom.replace(/[\s\._-]/g, '');
                         const itemHasSizes = Boolean(
-                          (item.hasMultipleSizes ??
+                          item.hasMultipleSizes ??
                           item.has_multiple_sizes ??
                           item.metadata?.hasMultipleSizes ??
-                          item.metadata?.has_multiple_sizes) ||
-                          itemCleanUom === 'sqft' ||
-                          itemCleanUom === 'sqf'
+                          item.metadata?.has_multiple_sizes ??
+                          (itemCleanUom === 'sqft' || itemCleanUom === 'sqf')
                         );
                         const itemDefaultMode = (item as any).tallyBillingMode || (item as any).tally_billing_mode || item.metadata?.tallyBillingMode || item.metadata?.tally_billing_mode || 'B';
                         const effectiveRate = !itemHasSizes

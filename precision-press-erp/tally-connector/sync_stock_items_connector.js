@@ -248,38 +248,36 @@ async function runStockSync() {
     const parentGroup = parentM ? clean(parentM[1]) : 'General';
     const guid        = guidM ? clean(guidM[1]) : null;
     const alterId     = alterM ? parseInt(alterM[1].trim(), 10) || null : null;
-    const uom         = uomM ? clean(uomM[1]) : 'sqft';
+    const uom         = uomM ? clean(uomM[1]) : 'N';
     const rawAltUom   = altUomM ? clean(altUomM[1]) : '';
     const altUom      = (rawAltUom && !rawAltUom.includes('Not Applicable')) ? rawAltUom : null;
     const description = descM ? clean(descM[1]) : null;
 
     // Extract exact billing mode from Tally UDF tag if present
-    const mUdf = body.match(/<UDF:STKITEMSIZESBILLINGTYPE[^>]*>([^<]+)<\/UDF:STKITEMSIZESBILLINGTYPE>/i);
-    const mDirect = body.match(/<STKITEMSIZESBILLINGTYPE>([^<]+)<\/STKITEMSIZESBILLINGTYPE>/i);
-    const tagVal = (mUdf ? mUdf[1] : (mDirect ? mDirect[1] : '')).trim().toUpperCase();
+    const mUdf = body.match(/<(?:UDF:)?STKITEMSIZESBILLINGTYPE[^>]*>([^<]+)<\/(?:UDF:)?STKITEMSIZESBILLINGTYPE>/i);
+    const tagVal = mUdf ? mUdf[1].trim().toUpperCase() : '';
+    const billingMode = tagVal === 'A' ? 'A' : 'B';
 
-    // Check "Set Multiple Size Details" from Tally UDF
-    const hasMultipleSizes = body.includes('<UDF:ITEMMULTIPLESIZE.LIST') || body.includes('ItemMultipleSize');
-    const widthM = body.match(/<UDF:ITEMWIDTHUDF[^>]*>\s*([\d.]+)\s*<\/UDF:ITEMWIDTHUDF>/i);
-    const lengthM = body.match(/<UDF:ITEMLENGTHUDF[^>]*>\s*([\d.]+)\s*<\/UDF:ITEMLENGTHUDF>/i);
-    const widthUnitM = body.match(/<UDF:ITEMWIDTHUNITUDF[^>]*>([^<]+)<\/UDF:ITEMWIDTHUNITUDF>/i);
-    const lengthUnitM = body.match(/<UDF:ITEMLENGTHUNITUDF[^>]*>([^<]+)<\/UDF:ITEMLENGTHUNITUDF>/i);
-    const sizeNameM = body.match(/<UDF:ITEMSIZENAMEUDF[^>]*>([^<]+)<\/UDF:ITEMSIZENAMEUDF>/i) || body.match(/<UDF:ITEMNEWSIZENAMEUDF[^>]*>([^<]+)<\/UDF:ITEMNEWSIZENAMEUDF>/i);
+    // Check "Set Multiple Size Details" strictly from Tally field ISITEMSIZEDETAILSMANDATORY
+    const sizeMandatoryM = body.match(/<(?:UDF:)?ISITEMSIZEDETAILSMANDATORY[^>]*>([^<]+)<\/(?:UDF:)?ISITEMSIZEDETAILSMANDATORY>/i);
+    const hasMultipleSizes = sizeMandatoryM ? clean(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
 
-    const defaultWidth = widthM ? parseFloat(widthM[1]) : (hasMultipleSizes ? 1 : null);
-    const defaultLength = lengthM ? parseFloat(lengthM[1]) : (hasMultipleSizes ? 1 : null);
+    const widthM = body.match(/<(?:UDF:)?ITEMWIDTHUDF[^>]*>\s*([\d.]+)\s*<\/(?:UDF:)?ITEMWIDTHUDF>/i);
+    const lengthM = body.match(/<(?:UDF:)?ITEMLENGTHUDF[^>]*>\s*([\d.]+)\s*<\/(?:UDF:)?ITEMLENGTHUDF>/i);
+    const widthUnitM = body.match(/<(?:UDF:)?ITEMWIDTHUNITUDF[^>]*>([^<]+)<\/UDF:ITEMWIDTHUNITUDF>/i);
+    const lengthUnitM = body.match(/<(?:UDF:)?ITEMLENGTHUNITUDF[^>]*>([^<]+)<\/UDF:ITEMLENGTHUNITUDF>/i);
+    const sizeNameM = body.match(/<(?:UDF:)?ITEMSIZENAMEUDF[^>]*>([^<]+)<\/UDF:ITEMSIZENAMEUDF>/i) || body.match(/<(?:UDF:)?ITEMNEWSIZENAMEUDF[^>]*>([^<]+)<\/UDF:ITEMNEWSIZENAMEUDF>/i);
+
+    const defaultWidth = hasMultipleSizes ? (widthM ? parseFloat(widthM[1]) : 1) : null;
+    const defaultLength = hasMultipleSizes ? (lengthM ? parseFloat(lengthM[1]) : 1) : null;
     const defaultWidthUnit = widthUnitM ? clean(widthUnitM[1]).toUpperCase() : 'FT';
     const defaultLengthUnit = lengthUnitM ? clean(lengthUnitM[1]).toUpperCase() : 'FT';
     const defaultSizeName = sizeNameM ? clean(sizeNameM[1]) : (hasMultipleSizes ? '1 F x 1 F' : '');
 
-    const hasSqftInUnit = /sqft|sq\.ft|sqf/i.test(uom) || /sqft|sq\.ft|sqf/i.test(rawAltUom);
-    const hasSqftInBal = (openBalM && /sqft|sq\.ft|sqf/i.test(openBalM[1])) || (openRateM && /sqft|sq\.ft|sqf/i.test(openRateM[1]));
-    const isSqft = hasMultipleSizes || hasSqftInUnit || hasSqftInBal;
-    const normalizedUom = isSqft ? 'sqft' : (uom && !uom.includes('Not Applicable') ? uom : 'No');
+    // Display unit must ALWAYS be its actual unit from Tally (e.g., N, Sh, Pkt, sqft) - NEVER forced to sqft
+    const normalizedUom = (uom && !uom.includes('Not Applicable')) ? uom : 'N';
+    const isSqft = normalizedUom.toLowerCase() === 'sqft' || normalizedUom.toLowerCase() === 'sq.ft' || normalizedUom.toLowerCase() === 'sqf';
     const isPieceItem = !isSqft;
-    // In Tally Prime, ONLY items explicitly tagged with Mode A (<UDF:STKITEMSIZESBILLINGTYPE>A</UDF:STKITEMSIZESBILLINGTYPE>) are Mode A.
-    // All other items default to Mode B in Tally voucher entry.
-    const billingMode = tagVal === 'A' ? 'A' : 'B';
 
     // Extract LATEST active HSN code
     const hsnMatches = [...body.matchAll(/<HSNCODE>([^<]+)<\/HSNCODE>/gi)];

@@ -12,56 +12,59 @@ function parseProduct(row: any): Product {
   // In Tally Prime, only items explicitly tagged Mode A are Mode A. All other items default to Mode B.
   const defaultMode: 'A' | 'B' = (row.tally_billing_mode === 'A' || meta.billingMode === 'A') ? 'A' : 'B';
 
-  return {
-    ...row,
-    id: row.sku || row.code || row.id, // Fallback to id if sku/code empty
-    internal_db_id: row.id,
-    code: row.code,
-    sku: row.sku,
-    name: row.name,
-    category: row.category,
-    baseRate: meta.baseRate != null ? Number(meta.baseRate) : ((row.sale_price != null) ? (Number(row.sale_price) / 100) : (row.base_rate || 0)),
-    current_stock: row.quantity_on_hand != null ? Number(row.quantity_on_hand) : undefined,
-    printerCategory: meta.printerCategory || row.printer_category,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    hsn_code: row.hsn_code,
-    gst_rate: row.gst_rate,
-    media: {
-      images: meta.media?.images || row.media_images || [],
-      video: meta.media?.video?.url || row.media_video_url ? { url: meta.media?.video?.url || row.media_video_url } : undefined
-    },
-    specs: {
-      maxWidth: meta.specs?.maxWidth || row.specs_max_width,
-      gsm: meta.specs?.gsm || row.specs_gsm,
-      description: meta.specs?.description || row.specs_description
-    },
-    eyeletPricing: {
-      metal: meta.eyeletPricing?.metal || row.eyelet_metal || 0,
-      plastic: meta.eyeletPricing?.plastic || row.eyelet_plastic || 0,
-      none: 0
-    },
-    deliveryPricing: {
-      selfPickup: 0,
-      door: meta.deliveryPricing?.door || row.delivery_door || 0,
-      courier: meta.deliveryPricing?.courier || row.delivery_courier || 0,
-      transport: meta.deliveryPricing?.transport || row.delivery_transport || 0
-    },
-    workflowSteps: row.workflow_steps || [],
-    status: row.is_active ? 'ACTIVE' : 'INACTIVE',
-    unit_of_measure: uom,
-    tally_billing_mode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
-    tallyBillingMode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
-    tally_uom: uom,
-    tally_alt_uom: row.tally_alt_uom,
-    has_multiple_sizes: row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined ? Boolean(row.has_multiple_sizes) : (meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : isSqftOrFt)),
-    hasMultipleSizes: row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined ? Boolean(row.has_multiple_sizes) : (meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : isSqftOrFt)),
-    default_width: row.default_width != null ? Number(row.default_width) : (meta.defaultWidth ?? meta.default_width ?? ((row.has_multiple_sizes || meta.hasMultipleSizes || isSqftOrFt) ? 1 : undefined)),
-    default_length: row.default_length != null ? Number(row.default_length) : (meta.defaultLength ?? meta.default_length ?? ((row.has_multiple_sizes || meta.hasMultipleSizes || isSqftOrFt) ? 1 : undefined)),
-    default_width_unit: row.default_width_unit || meta.defaultWidthUnit || meta.default_width_unit || 'FT',
-    default_length_unit: row.default_length_unit || meta.defaultLengthUnit || meta.default_length_unit || 'FT',
-    default_size_name: row.default_size_name || meta.defaultSizeName || meta.default_size_name || ((row.has_multiple_sizes || meta.hasMultipleSizes || isSqftOrFt) ? '1 F x 1 F' : ''),
-  };
+    const isMultiSize = row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined 
+      ? Boolean(row.has_multiple_sizes) 
+      : (meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : false));
+    return {
+      ...row,
+      id: row.sku || row.code || row.id, // Fallback to id if sku/code empty
+      internal_db_id: row.id,
+      code: row.code,
+      sku: row.sku,
+      name: row.name,
+      category: row.category,
+      baseRate: meta.baseRate != null ? Number(meta.baseRate) : ((row.sale_price != null) ? (Number(row.sale_price) / 100) : (row.base_rate || 0)),
+      current_stock: row.quantity_on_hand != null ? Number(row.quantity_on_hand) : undefined,
+      printerCategory: meta.printerCategory || row.printer_category,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      hsn_code: row.hsn_code,
+      gst_rate: row.gst_rate,
+      media: {
+        images: meta.media?.images || row.media_images || [],
+        video: meta.media?.video?.url || row.media_video_url ? { url: meta.media?.video?.url || row.media_video_url } : undefined
+      },
+      specs: {
+        maxWidth: meta.specs?.maxWidth || row.specs_max_width,
+        gsm: meta.specs?.gsm || row.specs_gsm,
+        description: meta.specs?.description || row.specs_description
+      },
+      eyeletPricing: {
+        metal: meta.eyeletPricing?.metal || row.eyelet_metal || 0,
+        plastic: meta.eyeletPricing?.plastic || row.eyelet_plastic || 0,
+        none: 0
+      },
+      deliveryPricing: {
+        selfPickup: 0,
+        door: meta.deliveryPricing?.door || row.delivery_door || 0,
+        courier: meta.deliveryPricing?.courier || row.delivery_courier || 0,
+        transport: meta.deliveryPricing?.transport || row.delivery_transport || 0
+      },
+      workflowSteps: row.workflow_steps || [],
+      status: row.is_active ? 'ACTIVE' : 'INACTIVE',
+      unit_of_measure: uom,
+      tally_billing_mode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
+      tallyBillingMode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
+      tally_uom: uom,
+      tally_alt_uom: row.tally_alt_uom,
+      has_multiple_sizes: isMultiSize,
+      hasMultipleSizes: isMultiSize,
+      default_width: row.default_width != null ? Number(row.default_width) : (meta.defaultWidth ?? meta.default_width ?? (isMultiSize ? 1 : undefined)),
+      default_length: row.default_length != null ? Number(row.default_length) : (meta.defaultLength ?? meta.default_length ?? (isMultiSize ? 1 : undefined)),
+      default_width_unit: row.default_width_unit || meta.defaultWidthUnit || meta.default_width_unit || 'FT',
+      default_length_unit: row.default_length_unit || meta.defaultLengthUnit || meta.default_length_unit || 'FT',
+      default_size_name: row.default_size_name || meta.defaultSizeName || meta.default_size_name || (isMultiSize ? '1 F x 1 F' : ''),
+    };
 }
 
 export async function getProducts() {

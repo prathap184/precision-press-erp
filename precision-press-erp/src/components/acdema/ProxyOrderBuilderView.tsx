@@ -370,7 +370,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     const p = products.find((prod: any) => prod.id === rowObj?.productId);
     const rawUom = String((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'sqft').trim().toLowerCase();
     const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-    const hasMultipleSizes = Boolean((p as any)?.has_multiple_sizes || (p as any)?.hasMultipleSizes || cleanUom === 'sqft' || cleanUom === 'sqf');
+    const hasMultipleSizes = Boolean((p as any)?.has_multiple_sizes ?? (p as any)?.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf'));
     
     setTimeout(() => {
       if (hasMultipleSizes) {

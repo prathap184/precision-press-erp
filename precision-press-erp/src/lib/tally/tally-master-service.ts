@@ -74,7 +74,7 @@ async function fetchLiveTally(type: MasterType): Promise<string> {
     collectionName = 'StockItemCollection';
     tdlXml = `<COLLECTION NAME="StockItemCollection" ISMODIFY="No">
       <TYPE>StockItem</TYPE>
-      <FETCH>Name,Parent,Guid,AlterId,BaseUnits,GstHsnName,HsnCode,OpeningRate,OpeningValue,ClosingRate,ClosingValue,OpeningBalance,ClosingBalance</FETCH>
+      <FETCH>Name,Parent,Guid,AlterId,BaseUnits,GstHsnName,HsnCode,OpeningRate,OpeningValue,ClosingRate,ClosingValue,OpeningBalance,ClosingBalance,IsItemSizeDetailsMandatory,StkItemSizesBillingType</FETCH>
      </COLLECTION>`;
   } else if ((type as string) === 'groups') {
     collectionName = 'GroupCollection';
@@ -310,15 +310,16 @@ export async function loadTallyStockItems(): Promise<any[]> {
     const valM = body.match(/<OPENINGVALUE[^>]*>([^<]*)<\/OPENINGVALUE>/i) || body.match(/<CLOSINGVALUE[^>]*>([^<]*)<\/CLOSINGVALUE>/i);
     const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i) || body.match(/<CLOSINGBALANCE[^>]*>([^<]*)<\/CLOSINGBALANCE>/i);
     const guidM = body.match(/<GUID[^>]*>([^<]*)<\/GUID>/i);
-    const modeTagM = body.match(/<UDF:STKITEMSIZESBILLINGTYPE[^>]*>([^<]+)<\/UDF:STKITEMSIZESBILLINGTYPE>/i);
+    const modeTagM = body.match(/<(?:UDF:)?STKITEMSIZESBILLINGTYPE[^>]*>([^<]+)<\/(?:UDF:)?STKITEMSIZESBILLINGTYPE>/i);
     const tagVal = modeTagM ? cleanStr(modeTagM[1]).toUpperCase() : '';
-    // In Tally Prime, only items explicitly tagged with Mode A are Mode A; all other items default to Mode B
     const billingMode = tagVal === 'A' ? 'A' : 'B';
+
+    const sizeMandatoryM = body.match(/<(?:UDF:)?ISITEMSIZEDETAILSMANDATORY[^>]*>([^<]+)<\/(?:UDF:)?ISITEMSIZEDETAILSMANDATORY>/i);
+    const hasMultipleSizes = sizeMandatoryM ? cleanStr(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
 
     const group = parentM ? cleanStr(parentM[1]) : 'General';
     const rawUom = uomM ? cleanStr(uomM[1]) : 'N';
-    const isSqft = rawUom.toLowerCase() === 'sqft' || rawUom.toLowerCase() === 'sq.ft' || rawUom.toLowerCase() === 'sqf';
-    const normalizedUom = isSqft ? 'sqft' : rawUom;
+    const normalizedUom = rawUom;
     const hsn = hsnM ? cleanStr(hsnM[1]) : '';
     const guid = guidM ? cleanStr(guidM[1]) : null;
 
@@ -343,6 +344,8 @@ export async function loadTallyStockItems(): Promise<any[]> {
       rate = Math.round((totalVal / qty) * 100) / 100;
     }
 
+    const isSqft = normalizedUom.toLowerCase() === 'sqft' || normalizedUom.toLowerCase() === 'sq.ft' || normalizedUom.toLowerCase() === 'sqf';
+
     items.push({
       name,
       tallyItemName: name,
@@ -350,6 +353,7 @@ export async function loadTallyStockItems(): Promise<any[]> {
       uom: normalizedUom,
       rawUom: rawUom,
       isSqft,
+      hasMultipleSizes,
       billingMode: billingMode,
       hsnCode: hsn || '32141000',
       rate,
@@ -671,7 +675,8 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
       targetItems = nonExisting.length > 0 ? [nonExisting[0]] : [tallyItems[0]];
     }
 
-    for (const item of targetItems) {
+    for (let idx = 0; idx < targetItems.length; idx++) {
+      const item = targetItems[idx];
       const lookupName = cleanStr(item.name).toLowerCase();
       const existing = (item.tallyGuid && erpMapByGuid.get(item.tallyGuid)) || erpMapByName.get(lookupName);
 
@@ -697,11 +702,13 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
 
       const rateVal = item.rate || 0;
       const paiseVal = Math.round(rateVal * 100);
-      const skuVal = existing?.sku || `SKU-${Date.now().toString().slice(-6)}`;
+      const prefix = (item.group || 'ITM').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase() || 'ITM';
+      const skuVal = existing?.sku || `${prefix}-${String(idx + 1).padStart(5, '0')}`;
 
       const isSqft = item.isSqft ?? (item.uom?.toLowerCase() === 'sqft' || item.uom?.toLowerCase() === 'sq.ft' || item.uom?.toLowerCase() === 'sqf');
       const billingMode = item.billingMode || 'B';
       const normalizedUom = item.rawUom || item.uom || 'N';
+      const hasMultipleSizes = Boolean(item.hasMultipleSizes);
 
       const payload: any = {
         organization_id: DEFAULT_ORG_ID,
@@ -716,6 +723,9 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         tally_uom: item.rawUom || item.uom || 'N',
         unit_of_measure: normalizedUom,
         tally_billing_mode: billingMode,
+        has_multiple_sizes: hasMultipleSizes,
+        default_width: hasMultipleSizes ? (existing?.default_width || 1) : null,
+        default_length: hasMultipleSizes ? (existing?.default_length || 1) : null,
         hsn_code: item.hsnCode || existing?.hsn_code || null,
         purchase_price: paiseVal,
         sale_price: Math.round(paiseVal * 1.25),
@@ -734,6 +744,8 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
           baseRate: rateVal,
           calcType: isSqft ? 'SQFT' : 'QTY',
           billingMode: billingMode,
+          hasMultipleSizes: hasMultipleSizes,
+          has_multiple_sizes: hasMultipleSizes,
         },
         tally_guid: item.tallyGuid || existing?.tally_guid || null,
       };

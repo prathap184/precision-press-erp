@@ -675,7 +675,7 @@ export function InvoiceFormView() {
     setActiveDescRowId(null);
     setTimeout(() => {
       const prod = products.find((p) => p.id === rows.find((r) => r.id === rowId)?.productId);
-      const isSqft = prod ? prod.has_multiple_sizes : true;
+      const isSqft = prod ? Boolean(prod.has_multiple_sizes) : false;
       if (isSqft) {
         const el = document.getElementById(`row-${rowId}-width`);
         if (el) {
@@ -759,7 +759,7 @@ export function InvoiceFormView() {
   const calculatedRows = useMemo(() => {
     return rows.map((row) => {
       const prod = products.find((p) => p.id === row.productId || p.code === row.productId);
-      const isSqft = prod ? prod.has_multiple_sizes : true;
+      const isSqft = prod ? Boolean(prod.has_multiple_sizes) : false;
       const isModeA = row.billingMode === "A";
       const isModeB = !isModeA;
 
@@ -1280,7 +1280,7 @@ export function InvoiceFormView() {
                   <tbody className="divide-y divide-slate-100">
                     {calculatedRows.map((row, index) => {
                       const prod = products.find((p) => p.id === row.productId || p.code === row.productId);
-                      const isSqft = prod ? prod.has_multiple_sizes : true;
+                      const isSqft = prod ? Boolean(prod.has_multiple_sizes) : false;
                       const isModeA = row.billingMode === "A";
                       const isModeB = !isModeA;
                       const isOpen = openRowId === row.id && !activeDescRowId;
