@@ -701,7 +701,7 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
 
       const isSqft = item.isSqft ?? (item.uom?.toLowerCase() === 'sqft' || item.uom?.toLowerCase() === 'sq.ft' || item.uom?.toLowerCase() === 'sqf');
       const billingMode = item.billingMode || 'B';
-      const normalizedUom = isSqft ? 'sqft' : (item.uom || 'N');
+      const normalizedUom = item.rawUom || item.uom || 'N';
 
       const payload: any = {
         organization_id: DEFAULT_ORG_ID,

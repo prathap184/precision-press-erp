@@ -287,7 +287,7 @@ export default function ProductManagement() {
                   <td className="px-3 py-1.5 font-mono font-semibold text-slate-700 border-r border-slate-100 tabular-nums">{product.id}</td>
                   <td className="px-3 py-1.5 font-medium text-slate-900 border-r border-slate-100 tabular-nums">{product.name}</td>
                   <td className="px-3 py-1.5 text-slate-600 text-[10px] uppercase font-bold border-r border-slate-100 tabular-nums">{product.category}</td>
-                  <td className="px-3 py-1.5 font-semibold border-r border-slate-100 tabular-nums">₹{product.baseRate}<span className="text-[10px] text-slate-400 font-normal">/sqft</span></td>
+                  <td className="px-3 py-1.5 font-semibold border-r border-slate-100 tabular-nums">₹{product.baseRate}<span className="text-[10px] text-slate-400 font-normal">/{((product as any)?.tally_uom || (product as any)?.unit_of_measure || 'N')}</span></td>
                   <td className="px-3 py-1.5 border-r border-slate-100 tabular-nums">
                     <span className={`px-1.5 py-0.5 w-max rounded text-[9px] font-bold tracking-wider ${
                       (product.current_stock ?? 0) <= 0 ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-blue-50 text-blue-700 border border-blue-200'

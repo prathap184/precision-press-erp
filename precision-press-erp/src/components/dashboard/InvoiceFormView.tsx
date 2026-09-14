@@ -2626,10 +2626,7 @@ export function InvoiceFormView() {
                         const currentIndex = runningIdx++;
                         const isHighlighted = currentIndex === highlightProductIndex;
                         const isSelected = p.id === activeRow?.productId;
-                        const uom =
-                          ((p as any)?.unit_of_measure || (p as any)?.tally_uom || "sqft").toLowerCase() === "sqft"
-                            ? "sq.ft"
-                            : (p as any)?.unit_of_measure || (p as any)?.tally_uom || "No";
+                        const uom = (p as any)?.tally_uom || (p as any)?.unit_of_measure || "N";
                         const hsn = p.hsn || p.hsn_code || (p as any)?.hsnCode || "—";
                         const gst = p.gst_rate !== undefined ? p.gst_rate : 18;
                         const stockQty =

@@ -811,7 +811,7 @@ ${parts.join(', ')}`;
             height,
             heightUnit: row.heightUnit,
             quantity: isModeA ? qtyNum : (isSqft ? totalBilledSqft : (Number(row.quantity) || pcs)),
-            unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
+            unit: (product as any)?.tally_uom || (product as any)?.unit_of_measure || 'N',
             eyeletType: row.eyeletType,
             eyeletCount: row.eyeletType === 'NONE' ? 0 : (isModeA ? qtyNum : pcs),
             rate: effectiveRate,
@@ -821,7 +821,7 @@ ${parts.join(', ')}`;
             pricingSnapshot: {
               productId: row.productId,
               productName: row.productName || product?.name || 'Item',
-              unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
+              unit: (product as any)?.tally_uom || (product as any)?.unit_of_measure || 'N',
               baseRate: (effectiveRate > 0 ? effectiveRate : (product?.baseRate || 0)),
               manualRate: row.manualRate !== undefined ? effectiveRate : undefined,
               eyeletPricing: product?.eyeletPricing,

@@ -609,7 +609,7 @@ export function QuotationBuilder() {
           height,
           heightUnit: row.heightUnit,
           quantity: isModeA ? qtyNum : (isSqft ? totalBilledSqft : (Number(row.quantity) || pcs)),
-          unit: (product as any)?.unit_of_measure || (product as any)?.tally_uom || 'N',
+          unit: (product as any)?.tally_uom || (product as any)?.unit_of_measure || 'N',
           rate: effectiveRate,
           eyeletType: row.eyeletType,
           eyeletCount: row.eyeletType === 'NONE' ? 0 : (isModeA ? qtyNum : pcs),

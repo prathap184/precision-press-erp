@@ -1125,7 +1125,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const isModeA = currentMode === 'A';
                         const isModeB = currentMode === 'B';
                         const isSqftModeB = hasMultipleSizes && isModeB;
-                        const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'No';
+                        const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'N';
                         const w = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 0)) || 0;
                         const h = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 0)) || 0;
                         const wFt = row.widthUnit === 'IN' ? w / 12 : (row.widthUnit === 'MTR' ? w * 3.28084 : w);
@@ -3810,7 +3810,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             const currentIndex = runningIdx++;
                             const isHighlighted = currentIndex === highlightProductIndex;
                             const isSelected = p.id === activeRow?.productId;
-                            const uom = ((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'sqft').toLowerCase() === 'sqft' ? 'sq.ft' : ((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'No');
+                            const uom = (p as any)?.tally_uom || (p as any)?.unit_of_measure || 'N';
                             const hsn = p.hsn || p.hsn_code || (p as any)?.hsnCode || '—';
                             const gst = p.gst_rate !== undefined ? p.gst_rate : 18;
                             const stockQty = p.current_stock !== undefined ? `${p.current_stock.toLocaleString()} ${uom}` : '—';
