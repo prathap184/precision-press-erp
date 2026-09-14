@@ -314,10 +314,13 @@ export async function loadTallyStockItems(): Promise<any[]> {
     const tagVal = modeTagM ? cleanStr(modeTagM[1]).toUpperCase() : '';
     const billingMode = tagVal === 'A' ? 'A' : 'B';
 
-    const sizeMandatoryM = body.match(/<(?:UDF:)?ISITEMSIZEDETAILSMANDATORY[^>]*>([^<]+)<\/(?:UDF:)?ISITEMSIZEDETAILSMANDATORY>/i);
-    const hasMultipleSizes = sizeMandatoryM ? cleanStr(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
-
     const group = parentM ? cleanStr(parentM[1]) : 'General';
+    const isPrintGroup = ['printx', 'uvr', 'other print', 'tapex'].includes(group.toLowerCase());
+
+    const sizeMandatoryM = body.match(/<(?:UDF:)?ISITEMSIZEDETAILSMANDATORY[^>]*>([^<]+)<\/(?:UDF:)?ISITEMSIZEDETAILSMANDATORY>/i);
+    const isMandatory = sizeMandatoryM ? cleanStr(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
+    const hasMultipleSizes = isMandatory || isPrintGroup;
+
     const rawUom = uomM ? cleanStr(uomM[1]) : 'N';
     const normalizedUom = rawUom;
     const hsn = hsnM ? cleanStr(hsnM[1]) : '';

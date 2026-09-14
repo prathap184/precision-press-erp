@@ -258,9 +258,11 @@ async function runStockSync() {
     const tagVal = mUdf ? mUdf[1].trim().toUpperCase() : '';
     const billingMode = tagVal === 'A' ? 'A' : 'B';
 
-    // Check "Set Multiple Size Details" strictly from Tally field ISITEMSIZEDETAILSMANDATORY
+    // Check "Set Multiple Size Details": strictly from Tally field ISITEMSIZEDETAILSMANDATORY OR custom printing groups (PrintX, UVR)
+    const isPrintGroup = ['printx', 'uvr', 'other print', 'tapex'].includes(parentGroup.toLowerCase());
     const sizeMandatoryM = body.match(/<(?:UDF:)?ISITEMSIZEDETAILSMANDATORY[^>]*>([^<]+)<\/(?:UDF:)?ISITEMSIZEDETAILSMANDATORY>/i);
-    const hasMultipleSizes = sizeMandatoryM ? clean(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
+    const isMandatory = sizeMandatoryM ? clean(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
+    const hasMultipleSizes = isMandatory || isPrintGroup;
 
     const widthM = body.match(/<(?:UDF:)?ITEMWIDTHUDF[^>]*>\s*([\d.]+)\s*<\/(?:UDF:)?ITEMWIDTHUDF>/i);
     const lengthM = body.match(/<(?:UDF:)?ITEMLENGTHUDF[^>]*>\s*([\d.]+)\s*<\/(?:UDF:)?ITEMLENGTHUDF>/i);
