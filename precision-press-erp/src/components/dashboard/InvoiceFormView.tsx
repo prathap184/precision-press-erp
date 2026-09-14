@@ -555,12 +555,22 @@ export function InvoiceFormView() {
     const qTokens = qTrim.split(/\s+/).filter(Boolean);
     return catFiltered
       .filter((p: any) => {
-        const target = `${p.name || ""} ${p.id || ""} ${p.code || ""} ${p.sku || ""} ${p.category || ""}`.toLowerCase();
+        const aliases = Array.isArray(p.metadata?.aliases) ? p.metadata.aliases.join(" ") : "";
+        const target = `${p.name || ""} ${p.id || ""} ${p.code || ""} ${p.sku || ""} ${p.category || ""} ${aliases}`.toLowerCase();
         return qTokens.every((tok) => target.includes(tok));
       })
       .sort((a: any, b: any) => {
         const aName = (a.name || "").toLowerCase();
         const bName = (b.name || "").toLowerCase();
+        const aAliases: string[] = Array.isArray(a.metadata?.aliases) ? a.metadata.aliases.map((al: string) => al.toLowerCase()) : [];
+        const bAliases: string[] = Array.isArray(b.metadata?.aliases) ? b.metadata.aliases.map((al: string) => al.toLowerCase()) : [];
+
+        // 0. Exact alias match gets top priority (e.g. typing "A2")
+        const aAliasExact = aAliases.includes(qTrim);
+        const bAliasExact = bAliases.includes(qTrim);
+        if (aAliasExact && !bAliasExact) return -1;
+        if (bAliasExact && !aAliasExact) return 1;
+
         if (aName === qTrim && bName !== qTrim) return -1;
         if (bName === qTrim && aName !== qTrim) return 1;
         const aStarts = aName.startsWith(qTrim);
