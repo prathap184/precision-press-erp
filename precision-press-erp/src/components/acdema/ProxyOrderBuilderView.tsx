@@ -1937,7 +1937,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               <div className="h-10 flex items-center justify-center">
                                 {hasMultipleSizes && isModeA ? (
                                   <input
-                                    id={`error-row-${row.id}-rate`}
+                                    id={`row-${row.id}-rate-sqft`}
                                     value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
                                     onChange={(e) => {
                                       const val = e.target.value;
@@ -1966,8 +1966,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       } else if (e.key === "Enter") {
                                         e.preventDefault();
                                         const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
-                                        if (finishSelect) finishSelect.focus();
-                                        else {
+                                        if (finishSelect && !isDirect) {
+                                          finishSelect.focus();
+                                        } else {
                                           const fileInput = document.getElementById(`error-row-${row.id}-file`);
                                           if (fileInput) {
                                             fileInput.focus();
@@ -1976,9 +1977,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               (fileInput as HTMLInputElement).setSelectionRange(len, len);
                                             } catch {}
                                           } else {
-                                            const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
-                                            if (browseBtn) browseBtn.focus();
-                                            else handleRowFinalEnter(index);
+                                            handleRowFinalEnter(index);
                                           }
                                         }
                                       } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
@@ -2017,7 +2016,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 ) : (
                                   <div className="inline-flex items-center justify-center gap-1">
                                     <input
-                                      id={`error-row-${row.id}-rate`}
+                                      id={`row-${row.id}-rate-unit`}
                                       value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
                                       onChange={(e) => {
                                         const val = e.target.value;
@@ -2046,8 +2045,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         } else if (e.key === "Enter") {
                                           e.preventDefault();
                                           const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
-                                          if (finishSelect) finishSelect.focus();
-                                          else {
+                                          if (finishSelect && !isDirect) {
+                                            finishSelect.focus();
+                                          } else {
                                             const fileInput = document.getElementById(`error-row-${row.id}-file`);
                                             if (fileInput) {
                                               fileInput.focus();
@@ -2056,29 +2056,32 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                 (fileInput as HTMLInputElement).setSelectionRange(len, len);
                                               } catch {}
                                             } else {
-                                              const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
-                                              if (browseBtn) browseBtn.focus();
-                                              else handleRowFinalEnter(index);
+                                              handleRowFinalEnter(index);
                                             }
                                           }
                                         } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                           e.preventDefault();
-                                          const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
-                                          if (pcsInput) {
-                                            pcsInput.focus();
+                                          if (hasMultipleSizes && isModeB) {
+                                            const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
+                                            if (pcsInput) {
+                                              pcsInput.focus();
+                                              try {
+                                                const len = (pcsInput as HTMLInputElement).value ? (pcsInput as HTMLInputElement).value.length : 0;
+                                                (pcsInput as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
+                                              return;
+                                            }
+                                          }
+                                          const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                          if (qtyInput) {
+                                            qtyInput.focus();
                                             try {
-                                              const len = (pcsInput as HTMLInputElement).value ? (pcsInput as HTMLInputElement).value.length : 0;
-                                              (pcsInput as HTMLInputElement).setSelectionRange(len, len);
+                                              const len = (qtyInput as HTMLInputElement).value ? (qtyInput as HTMLInputElement).value.length : 0;
+                                              (qtyInput as HTMLInputElement).setSelectionRange(len, len);
                                             } catch {}
                                           } else {
-                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                            if (qtyInput) {
-                                              qtyInput.focus();
-                                              try {
-                                                const len = (qtyInput as HTMLInputElement).value ? (qtyInput as HTMLInputElement).value.length : 0;
-                                                (qtyInput as HTMLInputElement).setSelectionRange(len, len);
-                                              } catch {}
-                                            }
+                                            const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                            if (itemInput) itemInput.focus();
                                           }
                                         }
                                       }}
@@ -2125,24 +2128,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           }
                                         } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                           e.preventDefault();
-                                          if (isSqftModeB) {
-                                            const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                            if (rateSqft) {
-                                              rateSqft.focus();
-                                              try {
-                                                const len = (rateSqft as HTMLInputElement).value ? (rateSqft as HTMLInputElement).value.length : 0;
-                                                (rateSqft as HTMLInputElement).setSelectionRange(len, len);
-                                              } catch {}
-                                            }
-                                          } else {
-                                            const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                            if (rateUnit) {
-                                              rateUnit.focus();
-                                              try {
-                                                const len = (rateUnit as HTMLInputElement).value ? (rateUnit as HTMLInputElement).value.length : 0;
-                                                (rateUnit as HTMLInputElement).setSelectionRange(len, len);
-                                              } catch {}
-                                            }
+                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                          const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                          if (rateSqft && hasMultipleSizes && isModeA) {
+                                            rateSqft.focus();
+                                            try {
+                                              const len = (rateSqft as HTMLInputElement).value ? (rateSqft as HTMLInputElement).value.length : 0;
+                                              (rateSqft as HTMLInputElement).setSelectionRange(len, len);
+                                            } catch {}
+                                          } else if (rateUnit) {
+                                            rateUnit.focus();
+                                            try {
+                                              const len = (rateUnit as HTMLInputElement).value ? (rateUnit as HTMLInputElement).value.length : 0;
+                                              (rateUnit as HTMLInputElement).setSelectionRange(len, len);
+                                            } catch {}
                                           }
                                         }
                                       }}
@@ -2177,34 +2176,31 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
-                                        if (browseBtn) browseBtn.focus();
-                                        else {
-                                          const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
-                                          if (delBtn) delBtn.focus();
-                                          else handleRowFinalEnter(index);
-                                        }
-                                      } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
+                                        handleRowFinalEnter(index);
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
-                                        if (finishSelect && !isDirect) finishSelect.focus();
-                                        else if (isSqftModeB) {
-                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                          if (rateSqft) rateSqft.focus();
+                                        if (finishSelect && !isDirect) {
+                                          finishSelect.focus();
                                         } else {
-                                          const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                          if (rateUnit) rateUnit.focus();
-                                        }
-                                      } else if (e.key === "ArrowLeft" && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
-                                        if (finishSelect && !isDirect) finishSelect.focus();
-                                        else if (isSqftModeB) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                          if (rateSqft) rateSqft.focus();
-                                        } else {
                                           const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                          if (rateUnit) rateUnit.focus();
+                                          if (rateSqft && hasMultipleSizes && isModeA) {
+                                            rateSqft.focus();
+                                            try {
+                                              const len = (rateSqft as HTMLInputElement).value ? (rateSqft as HTMLInputElement).value.length : 0;
+                                              (rateSqft as HTMLInputElement).setSelectionRange(len, len);
+                                            } catch {}
+                                          } else if (rateUnit) {
+                                            rateUnit.focus();
+                                            try {
+                                              const len = (rateUnit as HTMLInputElement).value ? (rateUnit as HTMLInputElement).value.length : 0;
+                                              (rateUnit as HTMLInputElement).setSelectionRange(len, len);
+                                            } catch {}
+                                          } else {
+                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                            if (qtyInput) qtyInput.focus();
+                                          }
                                         }
                                       }
                                     }}
