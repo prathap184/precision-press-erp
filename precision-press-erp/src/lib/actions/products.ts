@@ -5,66 +5,82 @@ import { Product } from "@/types/models";
 import { revalidatePath } from "next/cache";
 import { invalidateProduct, invalidateProductsList } from "@/lib/cache/products";
 
-function parseProduct(row: any): Product {
+function parseProduct(row: any, catMap?: Map<string, boolean>): Product {
   const meta = row.metadata || {};
   const uom = (row.unit_of_measure || row.tally_uom || 'N').trim();
   const isSqftOrFt = uom.toLowerCase() === 'sqft' || uom.toLowerCase() === 'ft';
   // In Tally Prime, only items explicitly tagged Mode A are Mode A. All other items default to Mode B.
   const defaultMode: 'A' | 'B' = (row.tally_billing_mode === 'A' || meta.billingMode === 'A') ? 'A' : 'B';
 
-    const isMultiSize = row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined 
-      ? Boolean(row.has_multiple_sizes) 
-      : (meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : false));
-    return {
-      ...row,
-      id: row.sku || row.code || row.id, // Fallback to id if sku/code empty
-      internal_db_id: row.id,
-      code: row.code,
-      sku: row.sku,
-      name: row.name,
-      category: row.category,
-      baseRate: meta.baseRate != null ? Number(meta.baseRate) : ((row.sale_price != null) ? (Number(row.sale_price) / 100) : (row.base_rate || 0)),
-      current_stock: row.quantity_on_hand != null ? Number(row.quantity_on_hand) : undefined,
-      printerCategory: meta.printerCategory || row.printer_category,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      hsn_code: row.hsn_code,
-      gst_rate: row.gst_rate,
-      media: {
-        images: meta.media?.images || row.media_images || [],
-        video: meta.media?.video?.url || row.media_video_url ? { url: meta.media?.video?.url || row.media_video_url } : undefined
-      },
-      specs: {
-        maxWidth: meta.specs?.maxWidth || row.specs_max_width,
-        gsm: meta.specs?.gsm || row.specs_gsm,
-        description: meta.specs?.description || row.specs_description
-      },
-      eyeletPricing: {
-        metal: meta.eyeletPricing?.metal || row.eyelet_metal || 0,
-        plastic: meta.eyeletPricing?.plastic || row.eyelet_plastic || 0,
-        none: 0
-      },
-      deliveryPricing: {
-        selfPickup: 0,
-        door: meta.deliveryPricing?.door || row.delivery_door || 0,
-        courier: meta.deliveryPricing?.courier || row.delivery_courier || 0,
-        transport: meta.deliveryPricing?.transport || row.delivery_transport || 0
-      },
-      workflowSteps: row.workflow_steps || [],
-      status: row.is_active ? 'ACTIVE' : 'INACTIVE',
-      unit_of_measure: uom,
-      tally_billing_mode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
-      tallyBillingMode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
-      tally_uom: uom,
-      tally_alt_uom: row.tally_alt_uom,
-      has_multiple_sizes: isMultiSize,
-      hasMultipleSizes: isMultiSize,
-      default_width: row.default_width != null ? Number(row.default_width) : (meta.defaultWidth ?? meta.default_width ?? (isMultiSize ? 1 : undefined)),
-      default_length: row.default_length != null ? Number(row.default_length) : (meta.defaultLength ?? meta.default_length ?? (isMultiSize ? 1 : undefined)),
-      default_width_unit: row.default_width_unit || meta.defaultWidthUnit || meta.default_width_unit || 'FT',
-      default_length_unit: row.default_length_unit || meta.defaultLengthUnit || meta.default_length_unit || 'FT',
-      default_size_name: row.default_size_name || meta.defaultSizeName || meta.default_size_name || (isMultiSize ? '1 F x 1 F' : ''),
-    };
+  // Strict Item Master setting from Tally
+  const isMultiSize = row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined 
+    ? Boolean(row.has_multiple_sizes) 
+    : (meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : false));
+
+  // Category Rule from inventory_category (TreatSalesAsManufactured = Yes)
+  const categoryAllowsSize = Boolean(
+    (row.category_id && catMap?.get(row.category_id)) ||
+    (row.category && catMap?.get(row.category.toLowerCase().trim())) ||
+    (row.tally_stock_group && catMap?.get(row.tally_stock_group.toLowerCase().trim())) ||
+    row.inventory_category?.treat_sales_as_manufactured
+  );
+
+  // Combined unified rule: Item's own setting OR Category's TreatSalesAsManufactured setting!
+  const allowCustomSize = isMultiSize || categoryAllowsSize;
+
+  return {
+    ...row,
+    id: row.sku || row.code || row.id, // Fallback to id if sku/code empty
+    internal_db_id: row.id,
+    code: row.code,
+    sku: row.sku,
+    name: row.name,
+    category: row.category,
+    baseRate: meta.baseRate != null ? Number(meta.baseRate) : ((row.sale_price != null) ? (Number(row.sale_price) / 100) : (row.base_rate || 0)),
+    current_stock: row.quantity_on_hand != null ? Number(row.quantity_on_hand) : undefined,
+    printerCategory: meta.printerCategory || row.printer_category,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    hsn_code: row.hsn_code,
+    gst_rate: row.gst_rate,
+    media: {
+      images: meta.media?.images || row.media_images || [],
+      video: meta.media?.video?.url || row.media_video_url ? { url: meta.media?.video?.url || row.media_video_url } : undefined
+    },
+    specs: {
+      maxWidth: meta.specs?.maxWidth || row.specs_max_width,
+      gsm: meta.specs?.gsm || row.specs_gsm,
+      description: meta.specs?.description || row.specs_description
+    },
+    eyeletPricing: {
+      metal: meta.eyeletPricing?.metal || row.eyelet_metal || 0,
+      plastic: meta.eyeletPricing?.plastic || row.eyelet_plastic || 0,
+      none: 0
+    },
+    deliveryPricing: {
+      selfPickup: 0,
+      door: meta.deliveryPricing?.door || row.delivery_door || 0,
+      courier: meta.deliveryPricing?.courier || row.delivery_courier || 0,
+      transport: meta.deliveryPricing?.transport || row.delivery_transport || 0
+    },
+    workflowSteps: row.workflow_steps || [],
+    status: row.is_active ? 'ACTIVE' : 'INACTIVE',
+    unit_of_measure: uom,
+    tally_billing_mode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
+    tallyBillingMode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
+    tally_uom: uom,
+    tally_alt_uom: row.tally_alt_uom,
+    category_allows_size: categoryAllowsSize,
+    categoryAllowsSize: categoryAllowsSize,
+    item_has_multiple_sizes: isMultiSize,
+    has_multiple_sizes: allowCustomSize,
+    hasMultipleSizes: allowCustomSize,
+    default_width: row.default_width != null ? Number(row.default_width) : (meta.defaultWidth ?? meta.default_width ?? (allowCustomSize ? 1 : undefined)),
+    default_length: row.default_length != null ? Number(row.default_length) : (meta.defaultLength ?? meta.default_length ?? (allowCustomSize ? 1 : undefined)),
+    default_width_unit: row.default_width_unit || meta.defaultWidthUnit || meta.default_width_unit || 'FT',
+    default_length_unit: row.default_length_unit || meta.defaultLengthUnit || meta.default_length_unit || 'FT',
+    default_size_name: row.default_size_name || meta.defaultSizeName || meta.default_size_name || (allowCustomSize ? '1 F x 1 F' : ''),
+  };
 }
 
 export async function getProducts() {
@@ -72,6 +88,19 @@ export async function getProducts() {
   const pageSize = 1000;
   let from = 0;
   let hasMore = true;
+
+  // Load category manufacturing flags once
+  const { data: categories } = await supabase
+    .from('inventory_category')
+    .select('id, name, tally_stock_group, treat_sales_as_manufactured');
+
+  const catMap = new Map<string, boolean>();
+  (categories || []).forEach((c: any) => {
+    const isMfg = Boolean(c.treat_sales_as_manufactured);
+    if (c.id) catMap.set(c.id, isMfg);
+    if (c.name) catMap.set(c.name.toLowerCase().trim(), isMfg);
+    if (c.tally_stock_group) catMap.set(c.tally_stock_group.toLowerCase().trim(), isMfg);
+  });
 
   while (hasMore) {
     const { data, error } = await supabase
@@ -94,7 +123,7 @@ export async function getProducts() {
     }
   }
 
-  return allRows.map(parseProduct);
+  return allRows.map(row => parseProduct(row, catMap));
 }
 
 export async function getProductsByCategory(category: string) {

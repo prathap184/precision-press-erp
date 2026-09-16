@@ -426,6 +426,9 @@ export interface Product {
   /** Tally Item Size Details (Set Multiple Size Details) */
   has_multiple_sizes?: boolean;
   hasMultipleSizes?: boolean;
+  category_allows_size?: boolean;
+  categoryAllowsSize?: boolean;
+  item_has_multiple_sizes?: boolean;
   default_width?: number;
   default_length?: number;
   default_width_unit?: string;

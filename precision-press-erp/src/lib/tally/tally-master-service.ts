@@ -264,6 +264,13 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
     const geo = resolveSmartCity(name, fullAddr || '', state);
     const category = resolvePrinterCategory(parentGroup);
 
+    // If pincode wasn't in <PINCODE> tag, try to extract from address text (e.g. "Mysore-570016")
+    let resolvedPincode = pincode || null;
+    if (!resolvedPincode && fullAddr) {
+      const pincodeInAddr = fullAddr.match(/\b(\d{6})\b/);
+      if (pincodeInAddr) resolvedPincode = pincodeInAddr[1];
+    }
+
     items.push({
       tallyName: name,
       tallyGroup: parentGroup,
@@ -274,7 +281,7 @@ export async function loadTallyCustomersOrSuppliers(type: 'customers' | 'supplie
       phone: mobile || null,
       city: geo.city,
       state: geo.state,
-      pincode: pincode || null,
+      pincode: resolvedPincode,
       address: fullAddr,
       openingBalance: balNum,
       openingBalanceType: opBalType,
@@ -317,12 +324,9 @@ export async function loadTallyStockItems(): Promise<any[]> {
     const billingMode = tagVal === 'A' ? 'A' : 'B';
 
     const group = parentM ? cleanStr(parentM[1]) : 'General';
-    const isMfgGroup = mfgSet.has(group.toLowerCase());
-    const isPrintGroup = ['printx', 'uvr', 'other print', 'tapex'].includes(group.toLowerCase());
-
     const sizeMandatoryM = body.match(/<(?:UDF:)?ISITEMSIZEDETAILSMANDATORY[^>]*>([^<]+)<\/(?:UDF:)?ISITEMSIZEDETAILSMANDATORY>/i);
     const isMandatory = sizeMandatoryM ? cleanStr(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
-    const hasMultipleSizes = isMandatory || isMfgGroup || isPrintGroup;
+    const hasMultipleSizes = isMandatory; // Strictly follow Tally item master setting!
 
     const rawUom = uomM ? cleanStr(uomM[1]) : 'N';
     const normalizedUom = rawUom;
