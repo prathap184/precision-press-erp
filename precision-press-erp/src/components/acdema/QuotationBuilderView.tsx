@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Loader2, Plus, Trash2, Search, Upload, Printer, ChevronDown, Image as ImageIcon, Star, AlertTriangle, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
 import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
@@ -467,6 +467,75 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
       window.removeEventListener('keydown', handleConfirmKeyDown, true);
     };
   }, [showConfirmQuotationModal, vm]);
+
+  const lastFocusedElementIdRef = useRef<string | null>(null);
+
+  // Keep track of the last focused input/select/button on the page
+  useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target.id) {
+        if (!target.closest('[role="dialog"]') && !target.id.startsWith('modal-')) {
+          lastFocusedElementIdRef.current = target.id;
+        }
+      }
+    };
+    document.addEventListener('focusin', handleFocusIn);
+    return () => document.removeEventListener('focusin', handleFocusIn);
+  }, []);
+
+  // Smart Focus Recovery: If user clicks outside and focus lands on background / body,
+  // pressing Enter, Backspace, Arrow keys, or typing instantly restores focus to their last active box!
+  useEffect(() => {
+    const handleGlobalFocusRestore = (e: KeyboardEvent) => {
+      if (
+        showConfirmQuotationModal ||
+        showAddressModal ||
+        showCreateCustomer ||
+        activeDescRowId
+      ) {
+        return;
+      }
+
+      const activeEl = document.activeElement;
+      const isBodyOrBg = !activeEl || activeEl === document.body || activeEl.tagName === 'BODY' || activeEl.tagName === 'HTML' || activeEl.id === '__next' || (activeEl.tagName === 'DIV' && !activeEl.getAttribute('tabindex'));
+
+      if (isBodyOrBg) {
+        if (['Control', 'Alt', 'Shift', 'Meta', 'F12', 'F5'].includes(e.key)) return;
+
+        const targetId = lastFocusedElementIdRef.current;
+        let targetEl = targetId ? document.getElementById(targetId) : null;
+
+        if (!targetEl) {
+          if (rows && rows.length > 0) {
+            targetEl = document.getElementById(`row-${rows[0].id}-product-input`);
+          }
+          if (!targetEl) {
+            targetEl = document.getElementById('proxy-customer-search-input');
+          }
+        }
+
+        if (targetEl) {
+          targetEl.focus();
+          if (targetEl instanceof HTMLInputElement || targetEl instanceof HTMLTextAreaElement) {
+            try {
+              const len = targetEl.value ? targetEl.value.length : 0;
+              targetEl.setSelectionRange(len, len);
+            } catch {}
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalFocusRestore);
+    return () => window.removeEventListener('keydown', handleGlobalFocusRestore);
+  }, [
+    showConfirmQuotationModal,
+    showAddressModal,
+    showCreateCustomer,
+    activeDescRowId,
+    rows
+  ]);
 
   const [addressForm, setAddressForm] = useState({
     fullName: '', phone: '', pincode: '', state: '', stateCode: '', district: '', city: '', houseNo: '', roadName: '', area: '', addressType: 'Home'
