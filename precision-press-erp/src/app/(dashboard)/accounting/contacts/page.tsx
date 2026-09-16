@@ -367,8 +367,9 @@ export default function ContactsPage() {
 
   // Reset and fetch page 1 when filters change
   useEffect(() => {
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
 
     let cancelled = false;
     const isRefetch = !loading;
@@ -387,9 +388,7 @@ export default function ContactsPage() {
     params.set("page", "1");
     params.set("limit", "50");
 
-    fetch(`/api/v1/contacts?${params}`, {
-      headers: { "x-organization-id": orgId },
-    })
+    fetch(`/api/v1/contacts?${params}`, { headers })
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
@@ -409,8 +408,9 @@ export default function ContactsPage() {
   // Load next page
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
-    const orgId = localStorage.getItem("activeOrgId");
-    if (!orgId) return;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
 
     const nextPage = page + 1;
     setLoadingMore(true);
@@ -425,9 +425,7 @@ export default function ContactsPage() {
     params.set("page", String(nextPage));
     params.set("limit", "50");
 
-    fetch(`/api/v1/contacts?${params}`, {
-      headers: { "x-organization-id": orgId },
-    })
+    fetch(`/api/v1/contacts?${params}`, { headers })
       .then((r) => r.json())
       .then((data) => {
         if (data.data) setContacts((prev) => [...prev, ...data.data]);
@@ -501,7 +499,7 @@ export default function ContactsPage() {
   const hasFilters = dateFrom || dateTo;
   const pendingSearch = search !== debouncedSearch;
 
-  if (contacts.length === 0 && !search && typeFilter === "all" && !refetching && !pendingSearch && !hasFilters) {
+  if (!loading && contacts.length === 0 && !search && typeFilter === "all" && !refetching && !pendingSearch && !hasFilters) {
     return (
       <ContentReveal>
         <div className="relative flex min-h-[calc(100vh-8rem)] flex-col">
@@ -864,13 +862,28 @@ export default function ContactsPage() {
           )}
         </div>
 
-        {/* Table */}
+        {/* Table Skeleton / Loader */}
         {loading || refetching || pendingSearch ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="brand-loader" aria-label="Loading">
-              <div className="brand-loader-circle brand-loader-circle-1" />
-              <div className="brand-loader-circle brand-loader-circle-2" />
+          <div className="rounded-xl border border-slate-200/80 bg-white/80 backdrop-blur-md overflow-hidden shadow-xs divide-y divide-slate-100">
+            <div className="h-10 bg-slate-50/80 px-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="h-3 w-28 bg-slate-200/70 rounded animate-pulse" />
+                <div className="h-3 w-16 bg-slate-200/70 rounded animate-pulse" />
+                <div className="h-3 w-24 bg-slate-200/70 rounded animate-pulse hidden sm:block" />
+              </div>
+              <div className="h-3 w-20 bg-slate-200/70 rounded animate-pulse" />
             </div>
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-14 px-4 flex items-center justify-between gap-4 animate-pulse">
+                <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className={`h-3.5 bg-slate-200/80 rounded ${i % 2 === 0 ? "w-48" : "w-36"}`} />
+                  <div className="h-2.5 bg-slate-100 rounded w-28" />
+                </div>
+                <div className="h-5 w-20 bg-blue-100/60 rounded-full shrink-0 hidden sm:block" />
+                <div className="h-3.5 w-28 bg-slate-200/50 rounded shrink-0 hidden md:block" />
+                <div className="h-3.5 w-20 bg-slate-200/60 rounded shrink-0" />
+              </div>
+            ))}
           </div>
         ) : (
           <MotionConfig reducedMotion="never">

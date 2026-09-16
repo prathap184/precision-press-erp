@@ -77,17 +77,18 @@ export async function GET(request: Request) {
     const sortCol = SORT_COLUMNS[sortBy] || contact.createdAt;
     const orderFn = sortOrder === "asc" ? asc : desc;
 
-    const contacts = await db.query.contact.findMany({
-      where: and(...conditions),
-      orderBy: orderFn(sortCol),
-      limit,
-      offset,
-    });
-
-    const [countResult] = await db
-      .select({ count: sql<number>`count(*)`.mapWith(Number) })
-      .from(contact)
-      .where(and(...conditions));
+    const [contacts, [countResult]] = await Promise.all([
+      db.query.contact.findMany({
+        where: and(...conditions),
+        orderBy: orderFn(sortCol),
+        limit,
+        offset,
+      }),
+      db
+        .select({ count: sql<number>`count(*)`.mapWith(Number) })
+        .from(contact)
+        .where(and(...conditions)),
+    ]);
 
     // Outstanding balance + overdue per contact (for the current page only, org-scoped).
     // Customer balance = unpaid invoices ("Owes you"); supplier balance = unpaid bills ("You owe").
@@ -96,38 +97,57 @@ export async function GET(request: Request) {
     const owedToSupplier = new Map<string, { outstanding: number; overdue: number }>();
 
     if (contactIds.length > 0) {
-      // Invoices the org has issued -> what customers owe the org.
-      const invoiceRows = await db
-        .select({
-          contactId: invoice.contactId,
-          outstanding: sql<number>`coalesce(sum(${invoice.amountDue}), 0)::int`,
-          overdue: sql<number>`coalesce(sum(case when ${invoice.dueDate} < current_date then ${invoice.amountDue} else 0 end), 0)::int`,
-        })
-        .from(invoice)
-        .where(
-          and(
-            eq(invoice.organizationId, ctx.organizationId),
-            notDeleted(invoice.deletedAt),
-            inArray(invoice.contactId, contactIds),
-            inArray(invoice.status, ["sent", "partial", "overdue"]),
+      const [invoiceRows, creditRows, billRows] = await Promise.all([
+        // Invoices the org has issued -> what customers owe the org.
+        db
+          .select({
+            contactId: invoice.contactId,
+            outstanding: sql<number>`coalesce(sum(${invoice.amountDue}), 0)::int`,
+            overdue: sql<number>`coalesce(sum(case when ${invoice.dueDate} < current_date then ${invoice.amountDue} else 0 end), 0)::int`,
+          })
+          .from(invoice)
+          .where(
+            and(
+              eq(invoice.organizationId, ctx.organizationId),
+              notDeleted(invoice.deletedAt),
+              inArray(invoice.contactId, contactIds),
+              inArray(invoice.status, ["sent", "partial", "overdue"]),
+            )
           )
-        )
-        .groupBy(invoice.contactId);
-      // Customer credits (advance payments / unapplied credits) -> reduces what customers owe
-      const creditRows = await db
-        .select({
-          contactId: customerCredit.contactId,
-          creditRemaining: sql<number>`coalesce(sum(${customerCredit.amountRemaining}), 0)::int`,
-        })
-        .from(customerCredit)
-        .where(
-          and(
-            eq(customerCredit.organizationId, ctx.organizationId),
-            inArray(customerCredit.contactId, contactIds),
-            eq(customerCredit.status, "open"),
+          .groupBy(invoice.contactId),
+        // Customer credits (advance payments / unapplied credits) -> reduces what customers owe
+        db
+          .select({
+            contactId: customerCredit.contactId,
+            creditRemaining: sql<number>`coalesce(sum(${customerCredit.amountRemaining}), 0)::int`,
+          })
+          .from(customerCredit)
+          .where(
+            and(
+              eq(customerCredit.organizationId, ctx.organizationId),
+              inArray(customerCredit.contactId, contactIds),
+              eq(customerCredit.status, "open"),
+            )
           )
-        )
-        .groupBy(customerCredit.contactId);
+          .groupBy(customerCredit.contactId),
+        // Bills the org has received -> what the org owes suppliers.
+        db
+          .select({
+            contactId: bill.contactId,
+            outstanding: sql<number>`coalesce(sum(${bill.amountDue}), 0)::int`,
+            overdue: sql<number>`coalesce(sum(case when ${bill.dueDate} < current_date then ${bill.amountDue} else 0 end), 0)::int`,
+          })
+          .from(bill)
+          .where(
+            and(
+              eq(bill.organizationId, ctx.organizationId),
+              notDeleted(bill.deletedAt),
+              inArray(bill.contactId, contactIds),
+              inArray(bill.status, ["received", "partial", "overdue"]),
+            )
+          )
+          .groupBy(bill.contactId),
+      ]);
 
       const creditByCustomer = new Map<string, number>();
       for (const row of creditRows) {
@@ -144,23 +164,6 @@ export async function GET(request: Request) {
         owedByCustomer.set(contactId, { outstanding: -credit, overdue: 0 });
       }
 
-      // Bills the org has received -> what the org owes suppliers.
-      const billRows = await db
-        .select({
-          contactId: bill.contactId,
-          outstanding: sql<number>`coalesce(sum(${bill.amountDue}), 0)::int`,
-          overdue: sql<number>`coalesce(sum(case when ${bill.dueDate} < current_date then ${bill.amountDue} else 0 end), 0)::int`,
-        })
-        .from(bill)
-        .where(
-          and(
-            eq(bill.organizationId, ctx.organizationId),
-            notDeleted(bill.deletedAt),
-            inArray(bill.contactId, contactIds),
-            inArray(bill.status, ["received", "partial", "overdue"]),
-          )
-        )
-        .groupBy(bill.contactId);
       for (const row of billRows) {
         owedToSupplier.set(row.contactId, { outstanding: row.outstanding, overdue: row.overdue });
       }
