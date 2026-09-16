@@ -825,8 +825,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         const sqft = hasMultipleSizes ? ((wFt > 0 && hFt > 0) ? (wFt * hFt) : 0) : 0;
                         const pcs = Math.max(1, Number(row.pcsNo || '1'));
                         const totalBilledSqft = sqft * pcs;
-                        const productBaseRate = Number(product?.baseRate) || 0;
-                        const baseRate = row.manualRate !== undefined && row.manualRate !== '' ? Number(row.manualRate) || 0 : productBaseRate;
+                        const baseRate = row.manualRate !== undefined && row.manualRate !== '' ? Number(row.manualRate) || 0 : 0;
                         const eyeletRate = (row.eyeletType === 'METAL' ? product?.eyeletPricing?.metal || 0 : row.eyeletType === 'PLASTIC' ? product?.eyeletPricing?.plastic || 0 : 0);
                         
                         // If not multiple size (isDirect): Standard Quantity * Rate per
@@ -1319,14 +1318,15 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                               {hasMultipleSizes && isModeA ? (
                                 <input
                                   id={`row-${row.id}-rate-sqft`}
-                                  value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
+                                  value={row.manualRate !== undefined ? row.manualRate : ''}
                                   onChange={(e) => {
                                     updateRow(row.id, { manualRate: e.target.value });
                                   }}
                                   onFocus={(e) => {
-                                    if (!row.manualRate && baseRate > 0) {
-                                      updateRow(row.id, { manualRate: baseRate.toFixed(2) });
-                                    }
+                                    try {
+                                      const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                      e.currentTarget.setSelectionRange(len, len);
+                                    } catch {}
                                   }}
                                   onKeyDown={(e) => {
                                     if (e.key === "End") {
@@ -1358,7 +1358,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                       }
                                     }
                                   }}
-                                  placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
+                                  placeholder="0.00"
                                   className="h-10 w-20 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
                                   title="Rate per sq.ft in Mode A — editable (like Tally)"
                                 />
@@ -1379,14 +1379,15 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                 <div className="h-10 inline-flex items-center justify-center gap-1">
                                   <input
                                     id={`row-${row.id}-rate-unit`}
-                                    value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
+                                    value={row.manualRate !== undefined ? row.manualRate : ''}
                                     onChange={(e) => {
                                       updateRow(row.id, { manualRate: e.target.value });
                                     }}
                                     onFocus={(e) => {
-                                      if (!row.manualRate && baseRate > 0) {
-                                        updateRow(row.id, { manualRate: baseRate.toFixed(2) });
-                                      }
+                                      try {
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } catch {}
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "End") {
@@ -1423,7 +1424,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         }
                                       }
                                     }}
-                                    placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
+                                    placeholder="0.00"
                                     className="h-10 w-20 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
                                     title="Rate per unit — editable (like Tally)"
                                   />

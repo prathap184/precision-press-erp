@@ -357,7 +357,7 @@ export function QuotationBuilder() {
       const sqft = hasMultipleSizes ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 1) : 1;
       const pcs = Math.max(1, Number(row.pcsNo || '1'));
       const totalBilledSqft = sqft * pcs;
-      const baseRate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : (product?.baseRate || 0);
+      const baseRate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : 0;
       const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isDirect ? 1 : (isModeB ? totalBilledSqft : 1))) || 1;
       const eyeletRate = (row.eyeletType === 'METAL'
         ? product?.eyeletPricing?.metal || 0
@@ -581,7 +581,7 @@ export function QuotationBuilder() {
         const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isDirect ? 1 : (isModeB ? totalBilledSqft : 1))) || 1;
         const effectiveRate = (row.manualRate !== undefined && row.manualRate !== '') 
           ? Number(row.manualRate) || 0 
-          : (product?.baseRate || 0);
+          : 0;
         const eyeletRate = (row.eyeletType === 'METAL'
           ? product?.eyeletPricing?.metal || 0
           : row.eyeletType === 'PLASTIC'
