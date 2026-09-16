@@ -7,6 +7,7 @@ import { INDIAN_STATES } from '@/lib/constants';
 import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
 import { ItemDescriptionModal } from '@/components/dashboard/ItemDescriptionModal';
+import { searchProducts } from '@/lib/actions/products';
 
 function isoToDisplayDate(iso: string): string {
   if (!iso) return '';
@@ -121,7 +122,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const {
     bootstrapLoading, profile, roles, customerSearch, setCustomerSearch, customerSearching,
     selectedCustomerId, setSelectedCustomerId, filteredCustomers,
-    selectedCustomer, rows, addRow, updateRow, removeRow, products,
+    selectedCustomer, rows, addRow, updateRow, removeRow, products, setProducts,
     calculateRowSubtotal, paymentMode, setPaymentMode, deliveryType,
     setDeliveryType, shippingAddress, setShippingAddress, upiUploading,
     upiPreview, upiProofUrl, handleUpload, showCreateCustomer,
@@ -143,6 +144,50 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [productSearching, setProductSearching] = useState(false);
+
+  // Debounced live server search for products across entire catalog
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (!term) {
+      setProductSearching(false);
+      return;
+    }
+
+    const activeRow = rows.find((r: any) => r.id === openRowId);
+    const selProd = activeRow ? products.find((p: any) => p.id === activeRow.productId) : null;
+    if (selProd && term.toLowerCase() === (selProd.name || '').toLowerCase()) {
+      setProductSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setProductSearching(true);
+      try {
+        const cleanTerm = term.replace(/^ct[:\s\-\/]?\s*/i, '').trim();
+        if (!cleanTerm) return;
+        const results = await searchProducts(cleanTerm, 50);
+        if (results && results.length > 0 && !cancelled && setProducts) {
+          setProducts((prev: any[]) => {
+            const map = new Map();
+            prev.forEach((p: any) => map.set(p.id, p));
+            results.forEach((p: any) => map.set(p.id, p));
+            return Array.from(map.values());
+          });
+        }
+      } catch (err) {
+        console.error('Server product search failed:', err);
+      } finally {
+        if (!cancelled) setProductSearching(false);
+      }
+    }, 150);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery, openRowId, rows, products, setProducts]);
   const [highlightProductIndex, setHighlightProductIndex] = useState<number>(0);
   const [highlightCustomerIndex, setHighlightCustomerIndex] = useState<number>(0);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);

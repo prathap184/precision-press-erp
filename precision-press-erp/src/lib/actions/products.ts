@@ -83,12 +83,7 @@ function parseProduct(row: any, catMap?: Map<string, boolean>): Product {
   };
 }
 
-export async function getProducts() {
-  const allRows: any[] = [];
-  const pageSize = 1000;
-  let from = 0;
-  let hasMore = true;
-
+export async function getProducts(limit = 100, search?: string) {
   // Load category manufacturing flags once
   const { data: categories } = await supabase
     .from('inventory_category')
@@ -102,13 +97,42 @@ export async function getProducts() {
     if (c.tally_stock_group) catMap.set(c.tally_stock_group.toLowerCase().trim(), isMfg);
   });
 
+  if (limit && limit > 0) {
+    let query = supabase
+      .from('inventory_item')
+      .select('*')
+      .eq('is_active', true)
+      .order('name', { ascending: true });
+
+    if (search && search.trim()) {
+      const s = search.trim();
+      query = query.or(`name.ilike.%${s}%,code.ilike.%${s}%,sku.ilike.%${s}%`);
+    }
+
+    const { data, error } = await query.limit(limit);
+    if (error) throw error;
+    return (data || []).map(row => parseProduct(row, catMap));
+  }
+
+  const allRows: any[] = [];
+  const pageSize = 1000;
+  let from = 0;
+  let hasMore = true;
+
   while (hasMore) {
-    const { data, error } = await supabase
+    let query = supabase
       .from('inventory_item')
       .select('*')
       .eq('is_active', true)
       .order('name', { ascending: true })
       .range(from, from + pageSize - 1);
+
+    if (search && search.trim()) {
+      const s = search.trim();
+      query = query.or(`name.ilike.%${s}%,code.ilike.%${s}%,sku.ilike.%${s}%`);
+    }
+
+    const { data, error } = await query;
 
     if (error) throw error;
     if (data && data.length > 0) {
@@ -125,6 +149,11 @@ export async function getProducts() {
 
   return allRows.map(row => parseProduct(row, catMap));
 }
+
+export async function searchProducts(search: string, limit = 50): Promise<Product[]> {
+  return getProducts(limit, search);
+}
+
 
 export async function getProductsByCategory(category: string) {
   const dbCategory = category.toUpperCase().replace('-', '_');

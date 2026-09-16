@@ -285,8 +285,8 @@ export function InvoiceFormView() {
     async function bootstrap() {
       try {
         const [prodRes, custRes] = await Promise.all([
-          fetch("/api/v1/inventory?limit=2500", { headers }),
-          fetch("/api/v1/contacts?type=customer&limit=2500", { headers }),
+          fetch("/api/v1/inventory?status=active&limit=100&sortBy=name&sortOrder=asc", { headers }),
+          fetch("/api/v1/contacts?type=customer&limit=100&sortBy=name&sortOrder=asc", { headers }),
         ]);
 
         if (prodRes.ok) {
@@ -599,6 +599,161 @@ export function InvoiceFormView() {
       })
       .sort((a, b) => tallyNaturalCompare(a.displayName || a.name, b.displayName || b.name));
   }, [customers, customerSearch]);
+
+  // Ensure selected contact by ID is loaded if not in initial list
+  useEffect(() => {
+    if (!selectedCustomerId) return;
+    const exists = customers.some((c: any) => c.id === selectedCustomerId || c.uid === selectedCustomerId);
+    if (exists) return;
+
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
+
+    fetch(`/api/v1/contacts/${selectedCustomerId}`, { headers })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && (data.id || data.data?.id)) {
+          const contactObj = data.id ? data : data.data;
+          setCustomers((prev) => {
+            if (prev.some((c: any) => c.id === contactObj.id)) return prev;
+            return [contactObj, ...prev];
+          });
+        }
+      })
+      .catch(() => {});
+  }, [selectedCustomerId, customers]);
+
+  // Live server customer search when typing in customerSearch
+  useEffect(() => {
+    const term = customerSearch.trim();
+    if (!term) return;
+
+    if (
+      selectedCustomer &&
+      (term.toLowerCase() === (selectedCustomer.name || "").toLowerCase() ||
+        term.toLowerCase() === (selectedCustomer.displayName || "").toLowerCase())
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/v1/contacts?type=customer&limit=50&search=${encodeURIComponent(term)}&sortBy=name&sortOrder=asc`,
+          { headers }
+        );
+        if (res.ok) {
+          const cd = await res.json();
+          if (cd.data && Array.isArray(cd.data) && !cancelled) {
+            setCustomers((prev) => {
+              const map = new Map();
+              prev.forEach((c: any) => map.set(c.id, c));
+              cd.data.forEach((c: any) => map.set(c.id, c));
+              return Array.from(map.values());
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Server customer search failed in invoice:", err);
+      }
+    }, 150);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [customerSearch, selectedCustomer]);
+
+  // Live server product search when typing in searchQuery
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (!term) return;
+
+    const activeRow = rows.find((r) => r.id === openRowId);
+    const selProd = activeRow ? products.find((p) => p.id === activeRow.productId) : null;
+    if (selProd && term.toLowerCase() === (selProd.name || "").toLowerCase()) {
+      return;
+    }
+
+    let cancelled = false;
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
+
+    const timer = setTimeout(async () => {
+      try {
+        const cleanTerm = term.replace(/^ct[:\s\-\/]?\s*/i, "").trim();
+        if (!cleanTerm) return;
+        const res = await fetch(
+          `/api/v1/inventory?status=active&limit=50&search=${encodeURIComponent(cleanTerm)}&sortBy=name&sortOrder=asc`,
+          { headers }
+        );
+        if (res.ok) {
+          const pd = await res.json();
+          if (pd.data && Array.isArray(pd.data) && !cancelled) {
+            const mapped = (pd.data || []).map((row: any) => {
+              const meta = row.metadata || {};
+              const uom = (row.unit_of_measure || row.unitOfMeasure || row.tally_uom || row.tallyUom || "sqft").trim().toLowerCase();
+              const cleanUom = uom.replace(/[\s\._-]/g, "");
+              const hasMultipleSizes =
+                row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
+                  ? Boolean(row.has_multiple_sizes)
+                  : row.hasMultipleSizes !== undefined
+                  ? Boolean(row.hasMultipleSizes)
+                  : meta.hasMultipleSizes !== undefined
+                  ? Boolean(meta.hasMultipleSizes)
+                  : cleanUom === "sqft" || cleanUom === "sqf" || cleanUom === "ft";
+              const defaultMode: "A" | "B" =
+                row.tally_billing_mode === "A" || row.tallyBillingMode === "A" || meta.billingMode === "A" ? "A" : "B";
+
+              return {
+                ...row,
+                id: row.id || row.code || row.sku,
+                internal_db_id: row.id,
+                name: row.name,
+                category: row.category || "General",
+                baseRate:
+                  meta.baseRate != null
+                    ? Number(meta.baseRate)
+                    : row.sale_price != null
+                    ? Number(row.sale_price) / 100
+                    : row.salePrice != null
+                    ? Number(row.salePrice) / 100
+                    : row.base_rate || 0,
+                hsn_code: row.hsn_code || row.hsnCode || "",
+                gst_rate: row.gst_rate || row.gstRate || 18,
+                unit_of_measure: uom,
+                tally_billing_mode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
+                has_multiple_sizes: hasMultipleSizes,
+                default_width: row.default_width != null ? Number(row.default_width) : (row.defaultWidth != null ? Number(row.defaultWidth) : 1),
+                default_length: row.default_length != null ? Number(row.default_length) : (row.defaultLength != null ? Number(row.defaultLength) : 1),
+              };
+            });
+
+            setProducts((prev) => {
+              const map = new Map();
+              prev.forEach((p) => map.set(p.id, p));
+              mapped.forEach((p: any) => map.set(p.id, p));
+              return Array.from(map.values());
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Server product search failed in invoice:", err);
+      }
+    }, 150);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery, openRowId, rows, products]);
 
   // Windowing Limits
   useEffect(() => {

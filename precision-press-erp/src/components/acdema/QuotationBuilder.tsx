@@ -156,8 +156,8 @@ export function QuotationBuilder() {
     const bootstrap = async () => {
       try {
         const [productData, customerData, nextQuoteId] = await Promise.all([
-          getProducts(),
-          getCustomers(),
+          getProducts(100),
+          getCustomers(100),
           getNextQuotationIdAction().catch(() => 'QU-0001')
         ]);
         if (!active) return;
@@ -188,7 +188,7 @@ export function QuotationBuilder() {
   // Live server customer search from contacts table
   useEffect(() => {
     const term = customerSearch.trim();
-    if (!term || term.length < 2) return;
+    if (!term) return;
 
     let cancelled = false;
     const timer = setTimeout(async () => {
@@ -689,6 +689,7 @@ export function QuotationBuilder() {
     updateRow,
     removeRow,
     products,
+    setProducts,
     calculateRowSubtotal,
     paymentMode,
     setPaymentMode,

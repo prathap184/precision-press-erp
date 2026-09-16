@@ -169,19 +169,63 @@ export async function createCustomer(data: {
   }
 }
 
-export async function getCustomers() {
+export async function getCustomers(limit = 100, search?: string) {
   try {
+    const serializeRow = (row: any) => {
+      const data = serializeFirestoreData(row);
+      const customerData = {
+        id: data.id,
+        name: data.name || 'Unknown',
+        displayName: data.displayName || data.name || 'Unknown',
+        businessName: data.business_name || data.businessName || data.name || 'Unknown',
+        email: data.email || '',
+        phone: data.phone || '',
+        role: 'CUSTOMER',
+        ...data,
+        customerType: data.customer_type || data.customerType || (data.payment_terms_days && data.payment_terms_days > 0 ? 'CREDIT' : 'CASH'),
+        creditLimit: Number(data.credit_limit ?? data.creditLimit ?? 0),
+        usedCredit: Number(data.used_credit ?? data.usedCredit ?? 0),
+      };
+      customerData.uid = data.uid || data.id;
+      return customerData as UserProfile;
+    };
+
+    if (limit && limit > 0) {
+      let query = supabaseServer
+        .from('contact')
+        .select('*')
+        .or('type.in.(customer,both),type.is.null')
+        .order('name', { ascending: true });
+
+      if (search && search.trim()) {
+        const s = search.trim();
+        query = query.or(`name.ilike.%${s}%,phone.ilike.%${s}%,email.ilike.%${s}%,business_name.ilike.%${s}%`);
+      }
+
+      const { data, error } = await query.limit(limit);
+      if (error) throw error;
+      return (data || []).map(serializeRow);
+    }
+
     const allRows: any[] = [];
     const pageSize = 1000;
     let from = 0;
     let hasMore = true;
 
     while (hasMore) {
-      const { data, error } = await supabaseServer
+      let query = supabaseServer
         .from('contact')
         .select('*')
+        .or('type.in.(customer,both),type.is.null')
         .order('name', { ascending: true })
         .range(from, from + pageSize - 1);
+
+      if (search && search.trim()) {
+        const s = search.trim();
+        query = query.or(`name.ilike.%${s}%,phone.ilike.%${s}%,email.ilike.%${s}%,business_name.ilike.%${s}%`);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       if (data && data.length > 0) {
@@ -196,31 +240,17 @@ export async function getCustomers() {
       }
     }
 
-    return allRows
-      .map((row: any) => {
-        const data = serializeFirestoreData(row);
-        const customerData = {
-          id: data.id,
-          name: data.name || 'Unknown',
-          displayName: data.displayName || data.name || 'Unknown',
-          businessName: data.business_name || data.businessName || data.name || 'Unknown',
-          email: data.email || '',
-          phone: data.phone || '',
-          role: 'CUSTOMER',
-          ...data,
-          customerType: data.customer_type || data.customerType || (data.payment_terms_days && data.payment_terms_days > 0 ? 'CREDIT' : 'CASH'),
-          creditLimit: Number(data.credit_limit ?? data.creditLimit ?? 0),
-          usedCredit: Number(data.used_credit ?? data.usedCredit ?? 0),
-        };
-        customerData.uid = data.uid || data.id;
-        return customerData as UserProfile;
-      })
-      .filter((c: any) => c.type === 'customer' || c.type === 'both' || !c.type);
+    return allRows.map(serializeRow);
   } catch (error: any) {
     console.error('getCustomers error:', error);
     return [];
   }
 }
+
+export async function searchCustomers(search: string, limit = 50): Promise<UserProfile[]> {
+  return getCustomers(limit, search);
+}
+
 
 
 export async function updateCustomerStatus(uid: string, status: 'ACTIVE' | 'BLOCKED') {

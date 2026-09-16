@@ -164,8 +164,8 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
     const bootstrap = async () => {
       try {
         const [productData, customerData, bankData, nextOrderNo] = await Promise.all([
-          getProducts(), 
-          getCustomers(),
+          getProducts(100), 
+          getCustomers(100),
           supabase.from('bankAccounts').select('label'),
           getNextOrderIdAction().catch(() => 'ORD-0001')
         ]);
@@ -270,7 +270,7 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
   // Live server customer search from contacts table
   useEffect(() => {
     const term = customerSearch.trim();
-    if (!term || term.length < 2) {
+    if (!term) {
       setCustomerSearching(false);
       return;
     }
@@ -921,6 +921,7 @@ ${parts.join(', ')}`;
     updateRow,
     removeRow,
     products,
+    setProducts,
     calculateRowSubtotal,
     paymentMode,
     setPaymentMode,
