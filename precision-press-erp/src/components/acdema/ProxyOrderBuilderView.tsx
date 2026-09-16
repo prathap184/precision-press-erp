@@ -594,8 +594,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         showAddressModal ||
         showCreditModal ||
         showCreateCustomer ||
-        activeDescRowId ||
-        showCustomerMasterModal
+        activeDescRowId
       ) {
         return;
       }
@@ -639,7 +638,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     showCreditModal,
     showCreateCustomer,
     activeDescRowId,
-    showCustomerMasterModal,
     rows
   ]);
 
