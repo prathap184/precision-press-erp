@@ -603,6 +603,35 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     }
   }, [selectedCustomerId, hasAvailableCredit, setPaymentMode]);
 
+  // Clear validation errors automatically when fields become valid
+  useEffect(() => {
+    if (selectedCustomerId) {
+      setValidationErrors((prev) => {
+        if (!prev['customer']) return prev;
+        const next = { ...prev };
+        delete next['customer'];
+        return next;
+      });
+    }
+  }, [selectedCustomerId]);
+
+  useEffect(() => {
+    if (deliveryType === 'selfPickup' || (shippingAddress && shippingAddress.trim() && shippingAddress !== 'Self Pickup')) {
+      setValidationErrors((prev) => {
+        if (!prev['shippingAddress']) return prev;
+        const next = { ...prev };
+        delete next['shippingAddress'];
+        return next;
+      });
+    }
+  }, [shippingAddress, deliveryType]);
+
+  useEffect(() => {
+    if (selectedCustomerId && !hasAvailableCredit && paymentMode === 'CREDIT') {
+      setPaymentMode('CASH');
+    }
+  }, [selectedCustomerId, hasAvailableCredit, setPaymentMode]);
+
   // Auto-focus Customer Selection box when Proxy Order page mounts
   useEffect(() => {
     const t = setTimeout(() => {
@@ -702,64 +731,106 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
   const validateAndSubmit = () => {
     const errors: Record<string, string> = {};
+
+    // 1. Customer
     if (!selectedCustomerId) {
       errors['customer'] = 'Customer is required';
     }
+
+    // 2. Order Items
+    if (!rows || rows.length === 0) {
+      errors['rows'] = 'At least one item is required';
+    } else {
+      // Clean up empty trailing rows if there are valid rows
+      const hasAnyProduct = rows.some((r: any) => r.productId);
+      if (hasAnyProduct && rows.some((r: any) => !r.productId)) {
+        rows.filter((r: any) => !r.productId).forEach((r: any) => removeRow(r.id));
+      }
+
+      rows.forEach((row: any, idx: number) => {
+        if (!row.productId) {
+          errors[`row-${row.id}-product`] = `Item #${idx + 1}: Please select a product`;
+          return;
+        }
+
+        const product = products.find((p: any) => p.id === row.productId);
+        const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
+        const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+        const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
+        const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
+        const isModeB = currentMode === 'B';
+
+        // Size fields
+        if (hasMultipleSizes) {
+          if (!row.width || Number(row.width) <= 0) {
+            errors[`row-${row.id}-width`] = `Item #${idx + 1}: Width is required`;
+          }
+          if (!row.height || Number(row.height) <= 0) {
+            errors[`row-${row.id}-height`] = `Item #${idx + 1}: Length is required`;
+          }
+          if (isModeB) {
+            if (row.pcsNo !== undefined && (!row.pcsNo || Number(row.pcsNo) <= 0)) {
+              errors[`row-${row.id}-pcs`] = `Item #${idx + 1}: Pcs/No must be at least 1`;
+            }
+          }
+        } else {
+          if (!row.quantity || Number(row.quantity) <= 0) {
+            errors[`row-${row.id}-quantity`] = `Item #${idx + 1}: Quantity must be at least 1`;
+          }
+        }
+
+        // Rate
+        const baseRate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : (product?.baseRate || 0);
+        if (baseRate <= 0 && (!row.manualRate || Number(row.manualRate) <= 0)) {
+          errors[`row-${row.id}-rate`] = `Item #${idx + 1}: Rate is required`;
+        }
+      });
+    }
+
+    // 3. Delivery / Shipping address
     if (vm.mode !== 'quotation' && deliveryType !== 'selfPickup' && (!shippingAddress || shippingAddress === 'Self Pickup' || !shippingAddress.trim())) {
       errors['shippingAddress'] = 'Delivery address is required';
     }
-    const validRows = rows.filter((r: any) => r.productId);
-    if (validRows.length === 0) {
-      errors['rows'] = 'At least one item is required';
-    }
-    // Clean up empty trailing rows if there are valid rows
-    if (validRows.length > 0 && validRows.length !== rows.length) {
-      rows.filter((r: any) => !r.productId).forEach((r: any) => removeRow(r.id));
-    }
-    validRows.forEach((row: any, idx: number) => {
-      const product = products.find((p: any) => p.id === row.productId);
-      const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
-      const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-      const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
-      const isSqft = hasMultipleSizes;
-      const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
-      const isModeA = currentMode === 'A';
-      const isModeB = currentMode === 'B';
-
-      if (!row.productId) {
-        errors[`row-${row.id}-product`] = `Item #${idx + 1}: Please select a product`;
-      }
-      if (isModeB && hasMultipleSizes) {
-        if (!row.width || Number(row.width) <= 0) {
-          errors[`row-${row.id}-width`] = `Item #${idx + 1}: Width is required`;
-        }
-        if (!row.height || Number(row.height) <= 0) {
-          errors[`row-${row.id}-height`] = `Item #${idx + 1}: Length is required`;
-        }
-      }
-      if (isModeA || !hasMultipleSizes) {
-        if (!row.quantity || Number(row.quantity) <= 0) {
-          errors[`row-${row.id}-quantity`] = `Item #${idx + 1}: Quantity must be at least 1`;
-        }
-      }
-    });
 
     setValidationErrors(errors);
 
     if (Object.keys(errors).length > 0) {
       const firstErrorKey = Object.keys(errors)[0];
-      const element = document.getElementById(`error-${firstErrorKey}`) || document.getElementById(firstErrorKey);
+      let element: HTMLElement | null = null;
+
+      if (firstErrorKey === 'customer') {
+        element = document.getElementById('proxy-customer-search-input') || document.getElementById('error-customer');
+      } else if (firstErrorKey === 'rows') {
+        element = document.getElementById(`row-${rows[0]?.id}-product-input`) || document.getElementById(`error-row-${rows[0]?.id}-product`);
+      } else if (firstErrorKey.endsWith('-product')) {
+        const rowId = firstErrorKey.replace('row-', '').replace('-product', '');
+        element = document.getElementById(`row-${rowId}-product-input`) || document.getElementById(`error-${firstErrorKey}`);
+      } else if (firstErrorKey.endsWith('-rate')) {
+        const rowId = firstErrorKey.replace('row-', '').replace('-rate', '');
+        element = document.getElementById(`error-row-${rowId}-rate`) || document.getElementById(`row-${rowId}-rate-unit`) || document.getElementById(`row-${rowId}-rate-sqft`);
+      } else if (firstErrorKey === 'shippingAddress') {
+        element = document.getElementById('error-shippingAddress') || document.getElementById('add-address-btn');
+      } else {
+        element = document.getElementById(`error-${firstErrorKey}`) || document.getElementById(firstErrorKey);
+      }
+
       if (element) {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         setTimeout(() => {
-          const focusable = (element.tagName === 'INPUT' || element.tagName === 'SELECT' || element.tagName === 'BUTTON' || element.tagName === 'TEXTAREA')
-            ? element
-            : element.querySelector('input:not([type="hidden"]), select, textarea, button') as HTMLElement;
+          const focusable = (element!.tagName === 'INPUT' || element!.tagName === 'SELECT' || element!.tagName === 'BUTTON' || element!.tagName === 'TEXTAREA')
+            ? element!
+            : element!.querySelector('input:not([type="hidden"]), select, textarea, button') as HTMLElement;
           if (focusable) {
             focusable.focus();
+            if (focusable instanceof HTMLInputElement) {
+              try {
+                focusable.select();
+              } catch {}
+            }
           }
         }, 200);
       }
+
       const firstMsg = Object.values(errors)[0];
       toast.error(firstMsg || 'Please fill the missing fields highlighted in red.');
       return;
@@ -842,18 +913,29 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
   return (
     <RoleGuard allowedRoles={['ACDEMA', 'ADMIN', 'SUPER_ADMIN']}>
-      <div className="font-sans text-slate-800 p-3 md:p-4 pt-2 md:pt-3 relative z-10 min-h-[calc(100vh-4rem)] rounded-none">
+      <div className="font-sans text-slate-800 p-3 md:p-4 pt-2 md:pt-3 relative z-10 min-h-screen rounded-none">
         <div className="w-full">
           
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-[#e2ecf8]">
-            {/* Grid Pattern */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-overlay"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(#bfdbfe_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+          {/* Moving Animated Light Pink & Light Blue Ambient Background */}
+          <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#f1f6fd]">
+            {/* Soft grid & noise texture */}
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(#93c5fd_1.2px,transparent_1.2px)] [background-size:28px_28px] opacity-25"></div>
             
-            {/* Pure Soft Light Blue Ambient Orbs */}
-            <div className="absolute -top-[15%] -right-[10%] w-[55vw] h-[55vw] rounded-full bg-sky-200/50 blur-[130px] pointer-events-none"></div>
-            <div className="absolute -bottom-[15%] -left-[10%] w-[55vw] h-[55vw] rounded-full bg-blue-200/40 blur-[130px] pointer-events-none"></div>
-            <div className="absolute top-[35%] left-[25%] w-[45vw] h-[45vw] rounded-full bg-sky-100/60 blur-[120px] pointer-events-none"></div>
+            {/* 1. Light Pink Orb - Top Left floating into center */}
+            <div className="animate-ambient-1 absolute -top-[10%] left-[5%] w-[65vw] h-[65vw] max-w-[900px] max-h-[900px] rounded-full bg-gradient-to-br from-pink-300/70 via-rose-200/60 to-pink-100/40 blur-[100px] pointer-events-none"></div>
+
+            {/* 2. Light Blue Orb - Top Right floating */}
+            <div className="animate-ambient-2 absolute -top-[15%] -right-[10%] w-[70vw] h-[70vw] max-w-[950px] max-h-[950px] rounded-full bg-gradient-to-bl from-sky-300/75 via-blue-200/65 to-cyan-100/50 blur-[100px] pointer-events-none"></div>
+
+            {/* 3. Light Blue / Cyan Orb - Bottom Left floating */}
+            <div className="animate-ambient-3 absolute -bottom-[15%] -left-[10%] w-[68vw] h-[68vw] max-w-[920px] max-h-[920px] rounded-full bg-gradient-to-tr from-cyan-300/65 via-blue-300/60 to-sky-100/50 blur-[110px] pointer-events-none"></div>
+
+            {/* 4. Light Pink / Magenta Rose Orb - Bottom Right floating */}
+            <div className="animate-ambient-4 absolute -bottom-[12%] right-[8%] w-[65vw] h-[65vw] max-w-[880px] max-h-[880px] rounded-full bg-gradient-to-tl from-pink-300/75 via-rose-300/60 to-fuchsia-200/45 blur-[105px] pointer-events-none"></div>
+
+            {/* 5. Center glowing blend between pink and blue */}
+            <div className="animate-ambient-1 absolute top-[25%] left-[25%] w-[55vw] h-[55vw] max-w-[780px] max-h-[780px] rounded-full bg-gradient-to-r from-pink-200/60 via-purple-100/40 to-sky-200/65 blur-[120px] pointer-events-none"></div>
           </div>
 
           <div className="flex flex-col gap-4 pb-2">
@@ -938,7 +1020,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                 </div>
                 
                 <div className="relative">
-                  <div id="error-customer" className={`flex h-10 w-full items-center rounded-xl px-3 transition-all duration-150 ${validationErrors['customer'] ? 'border-2 border-red-500 bg-red-50/50' : customerDropdownOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-md' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                  <div id="error-customer" className={`flex h-10 w-full items-center rounded-xl px-3 transition-all duration-150 ${validationErrors['customer'] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : customerDropdownOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-md' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                       {customerSearching ? (
                         <Loader2 size={16} className="mr-2 animate-spin text-blue-600 shrink-0" />
                       ) : (
@@ -954,6 +1036,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           setCustomerDropdownOpen(true);
                           setCustomerSearch(e.target.value);
                           setHighlightCustomerIndex(0);
+                          if (e.target.value.trim()) {
+                            setValidationErrors((prev) => {
+                              if (!prev['customer']) return prev;
+                              const next = { ...prev };
+                              delete next['customer'];
+                              return next;
+                            });
+                          }
                         }}
                         onFocus={(e) => {
                           setCustomerDropdownOpen(true);
@@ -1388,8 +1478,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       id={`error-row-${row.id}-width`}
                                       value={row.width !== undefined ? row.width : (product?.default_width || '1')}
                                       onChange={(e) => {
-                                        updateRow(row.id, { width: e.target.value });
-                                        setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
+                                        const val = e.target.value;
+                                        updateRow(row.id, { width: val });
+                                        if (Number(val) > 0) {
+                                          setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-width`]; return n; });
+                                        }
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === "Enter") {
@@ -1496,8 +1589,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       id={`error-row-${row.id}-height`}
                                       value={row.height !== undefined ? row.height : (product?.default_length || '1')}
                                       onChange={(e) => {
-                                        updateRow(row.id, { height: e.target.value });
-                                        setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
+                                        const val = e.target.value;
+                                        updateRow(row.id, { height: val });
+                                        if (Number(val) > 0) {
+                                          setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-height`]; return n; });
+                                        }
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === "End") {
@@ -1649,6 +1745,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                     onChange={(e) => {
                                       const val = e.target.value;
                                       updateRow(row.id, { pcsNo: val });
+                                      if (Number(val) > 0) {
+                                        setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-pcs`]; return n; });
+                                      }
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "End") {
@@ -1676,7 +1775,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       }
                                     }}
-                                    className="h-10 w-14 rounded-lg border-2 text-center text-xs font-bold border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all"
+                                    className={`h-10 w-14 rounded-lg border-2 text-center text-xs font-bold outline-none transition-all ${
+                                      validationErrors[`row-${row.id}-pcs`]
+                                        ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                                        : 'border-slate-200 bg-slate-50 text-slate-800 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'
+                                    }`}
                                     placeholder="Pcs"
                                   />
                                 ) : (
@@ -1703,7 +1806,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       onChange={(e) => {
                                         const val = e.target.value;
                                         updateRow(row.id, { quantity: val });
-                                        setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
+                                        if (Number(val) > 0) {
+                                          setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-quantity`]; return n; });
+                                        }
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === "End") {
@@ -1787,10 +1892,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               <div className="h-10 flex items-center justify-center">
                                 {hasMultipleSizes && isModeA ? (
                                   <input
-                                    id={`row-${row.id}-rate-sqft`}
+                                    id={`error-row-${row.id}-rate`}
                                     value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
                                     onChange={(e) => {
-                                      updateRow(row.id, { manualRate: e.target.value });
+                                      const val = e.target.value;
+                                      updateRow(row.id, { manualRate: val });
+                                      if (Number(val) > 0) {
+                                        setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-rate`]; return n; });
+                                      }
                                     }}
                                     onFocus={(e) => {
                                       if (!row.manualRate && baseRate > 0) {
@@ -1840,7 +1949,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       }
                                     }}
                                     placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
-                                    className="h-10 w-18 rounded-lg border-2 border-blue-300 bg-blue-50 text-center text-xs font-bold text-blue-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/30 focus:bg-white transition-all tabular-nums"
+                                    className={`h-10 w-18 rounded-lg border-2 text-center text-xs font-bold outline-none transition-all tabular-nums ${
+                                      validationErrors[`row-${row.id}-rate`]
+                                        ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                                        : 'border-blue-300 bg-blue-50 text-blue-800 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/30 focus:bg-white'
+                                    }`}
                                     title="Rate per sq.ft in Mode A — editable (like Tally)"
                                   />
                                 ) : (
@@ -1859,10 +1972,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                 ) : (
                                   <div className="inline-flex items-center justify-center gap-1">
                                     <input
-                                      id={`row-${row.id}-rate-unit`}
+                                      id={`error-row-${row.id}-rate`}
                                       value={row.manualRate !== undefined ? row.manualRate : (baseRate > 0 ? baseRate.toFixed(2) : '')}
                                       onChange={(e) => {
-                                        updateRow(row.id, { manualRate: e.target.value });
+                                        const val = e.target.value;
+                                        updateRow(row.id, { manualRate: val });
+                                        if (Number(val) > 0) {
+                                          setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-rate`]; return n; });
+                                        }
                                       }}
                                       onFocus={(e) => {
                                         if (!row.manualRate && baseRate > 0) {
@@ -1921,7 +2038,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       }}
                                       placeholder={baseRate > 0 ? baseRate.toFixed(2) : '0.00'}
-                                      className="h-10 w-18 rounded-lg border-2 border-emerald-300 bg-emerald-50 text-center text-xs font-bold text-emerald-800 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/30 focus:bg-white transition-all tabular-nums"
+                                      className={`h-10 w-18 rounded-lg border-2 text-center text-xs font-bold outline-none transition-all tabular-nums ${
+                                        validationErrors[`row-${row.id}-rate`]
+                                          ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                                          : 'border-emerald-300 bg-emerald-50 text-emerald-800 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/30 focus:bg-white'
+                                      }`}
                                       title="Rate per unit in Mode B — editable (like Tally)"
                                     />
                                     <span className="text-[10px] text-slate-500 font-bold">{displayUnit}</span>

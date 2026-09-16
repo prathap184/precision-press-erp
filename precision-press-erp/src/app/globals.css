@@ -236,3 +236,90 @@ td {
 .tracking-\[0\.4em\] {
   -webkit-font-smoothing: antialiased;
 }
+
+/* ─── Ambient Floating Moving Orbs (Pink & Blue) ────────────────────────────── */
+@keyframes ambient-float-1 {
+  0% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translate(80px, -70px) scale(1.15) rotate(15deg);
+  }
+  50% {
+    transform: translate(-60px, 90px) scale(0.9) rotate(-10deg);
+  }
+  75% {
+    transform: translate(90px, 50px) scale(1.1) rotate(20deg);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes ambient-float-2 {
+  0% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translate(-90px, 80px) scale(1.2) rotate(-20deg);
+  }
+  50% {
+    transform: translate(70px, -80px) scale(0.88) rotate(15deg);
+  }
+  75% {
+    transform: translate(-70px, -50px) scale(1.12) rotate(-10deg);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes ambient-float-3 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  30% {
+    transform: translate(90px, 70px) scale(1.18);
+  }
+  60% {
+    transform: translate(-80px, -70px) scale(0.92);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes ambient-float-4 {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(-80px, -80px) scale(1.22);
+  }
+  66% {
+    transform: translate(70px, 60px) scale(0.88);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-ambient-1 {
+  animation: ambient-float-1 12s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-ambient-2 {
+  animation: ambient-float-2 15s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-ambient-3 {
+  animation: ambient-float-3 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-ambient-4 {
+  animation: ambient-float-4 14s ease-in-out infinite;
+  will-change: transform;
+}
