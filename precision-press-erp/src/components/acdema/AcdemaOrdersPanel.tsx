@@ -209,23 +209,41 @@ export function AcdemaOrdersPanel({ initialMode = 'global' }: { initialMode?: 'g
       let contactId: string | undefined = order.customerId || order.customerSnapshot?.uid || order.customerSnapshot?.id;
 
       if (contactName && contactName !== 'Guest') {
-        const sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=10`, { headers });
+        let sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=10`, { headers });
+        let list: any[] = [];
         if (sr.ok) {
           const sd = await sr.json();
-          const list = sd.data || (Array.isArray(sd) ? sd : []);
-          const match = list.find((c: any) => c.name?.toLowerCase() === contactName.toLowerCase() || (contactId && (c.id === contactId || c.uid === contactId)));
-          if (match) {
-            contactId = match.id;
-          } else if (list.length > 0) {
-            contactId = list[0].id;
+          list = sd.contacts || sd.data || (Array.isArray(sd) ? sd : []);
+        }
+        if (list.length === 0 && contactName.includes('-')) {
+          const prefix = contactName.split('-')[0].trim();
+          if (prefix.length >= 2) {
+            sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(prefix)}&limit=10`, { headers });
+            if (sr.ok) {
+              const sd = await sr.json();
+              list = sd.contacts || sd.data || (Array.isArray(sd) ? sd : []);
+            }
           }
+        }
+        const match = list.find((c: any) => c.name?.toLowerCase() === contactName.toLowerCase() || (contactId && (c.id === contactId || c.uid === contactId)) || (c.name && (c.name.toLowerCase().includes(contactName.toLowerCase()) || contactName.toLowerCase().includes(c.name.toLowerCase()))));
+        if (match) {
+          contactId = match.id;
+        } else if (list.length > 0 && !contactId) {
+          contactId = list[0].id;
         }
         if (!contactId) {
           const cr = await fetch('/api/v1/contacts', { method: 'POST', headers, body: JSON.stringify({ name: contactName, phone: order.customerSnapshot?.phone || null, type: 'customer' }) });
           if (cr.ok) { const cd = await cr.json(); if (cd.contact) contactId = cd.contact.id; }
         }
       }
-      openDrawer('customerCredit', { contactId, contactName });
+      const amount = order.amounts?.grandTotal ?? (order as any).grandTotal ?? (order as any).grand_total_snapshot ?? 0;
+      openDrawer('customerCredit', {
+        contactId,
+        contactName,
+        amount: amount.toString(),
+        notes: `Receipt for Order #${order.id.replace('ORD-', '')}`,
+        reference: order.id,
+      });
     } catch (err) {
       console.error('Failed to open receipt', err);
       openDrawer('customerCredit', {});

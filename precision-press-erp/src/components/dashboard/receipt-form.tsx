@@ -160,13 +160,20 @@ export function ReceiptForm() {
       })
       .catch((err) => console.error("Failed to load bank accounts", err));
 
-    fetch("/api/v1/contacts?type=customer&limit=500", {
+    fetch("/api/v1/contacts?type=customer&limit=2500&sortBy=name&sortOrder=asc", {
       headers: { "x-organization-id": orgId },
     })
       .then((r) => r.json())
       .then((data) => {
         const list = data.contacts || data.data || [];
-        setCustomers(list);
+        setCustomers((prev) => {
+          const map = new Map<string, CustomerOption>();
+          for (const c of prev) map.set(c.id, c);
+          for (const c of list) {
+            if (!map.has(c.id)) map.set(c.id, c);
+          }
+          return Array.from(map.values());
+        });
       })
       .catch((err) => console.error("Failed to load customers", err));
 
@@ -184,22 +191,150 @@ export function ReceiptForm() {
   // Pre-fill from pending draft if navigated from other pages
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem("pending_receipt_draft");
+      const stored = sessionStorage.getItem("pending_receipt_draft") || localStorage.getItem("pending_receipt_draft");
       if (stored) {
         sessionStorage.removeItem("pending_receipt_draft");
+        localStorage.removeItem("pending_receipt_draft");
         const data = JSON.parse(stored);
-        if (data.contactId) {
-          setSelectedCustomerId(data.contactId);
-          const c = customers.find((cust) => cust.id === data.contactId);
-          if (c) setCustomerSearch(c.name);
+
+        const targetId = data.contactId || data.customerId;
+        const targetName = data.contactName || data.customerName;
+
+        if (targetName) {
+          setCustomerSearch(targetName);
         }
-        if (data.amount) setVoucherAmount(String(data.amount));
-        if (data.notes || data.narration) setNarration(data.notes || data.narration);
+        if (targetId) {
+          setSelectedCustomerId(targetId);
+        }
+        if (data.amount) {
+          setVoucherAmount(String(data.amount));
+        }
+        if (data.notes || data.narration) {
+          setNarration(data.notes || data.narration);
+        }
+
+        const orgId = localStorage.getItem("activeOrgId");
+        const headers: Record<string, string> = {};
+        if (orgId) headers["x-organization-id"] = orgId;
+
+        const resolveCustomer = async () => {
+          let found: CustomerOption | null = null;
+
+          if (targetId) {
+            try {
+              const res = await fetch(`/api/v1/contacts/${targetId}`, { headers });
+              if (res.ok) {
+                const json = await res.json();
+                const c = json.contact;
+                if (c) {
+                  found = {
+                    id: c.id,
+                    name: c.name,
+                    phone: c.phone || "",
+                    owesYou: c.openingBalance ? Math.round(parseFloat(c.openingBalance) * 100) : 0,
+                  };
+                }
+              }
+            } catch (e) {
+              console.warn("Could not fetch contact by id", e);
+            }
+          }
+
+          if (!found && targetName && targetName !== "Guest") {
+            try {
+              let res = await fetch(`/api/v1/contacts?search=${encodeURIComponent(targetName)}&limit=10`, { headers });
+              let list: any[] = [];
+              if (res.ok) {
+                const json = await res.json();
+                list = json.contacts || json.data || [];
+              }
+              if (list.length === 0 && targetName.includes("-")) {
+                const prefix = targetName.split("-")[0].trim();
+                if (prefix.length >= 2) {
+                  res = await fetch(`/api/v1/contacts?search=${encodeURIComponent(prefix)}&limit=10`, { headers });
+                  if (res.ok) {
+                    const json = await res.json();
+                    list = json.contacts || json.data || [];
+                  }
+                }
+              }
+
+              if (list.length > 0) {
+                const best =
+                  list.find(
+                    (c: any) =>
+                      c.name?.toLowerCase() === targetName.toLowerCase() ||
+                      c.name?.toLowerCase().includes(targetName.toLowerCase()) ||
+                      targetName.toLowerCase().includes(c.name?.toLowerCase())
+                  ) || list[0];
+
+                found = {
+                  id: best.id,
+                  name: best.name,
+                  phone: best.phone || "",
+                  owesYou: best.openingBalance ? Math.round(parseFloat(best.openingBalance) * 100) : 0,
+                };
+              }
+            } catch (e) {
+              console.warn("Could not search contact by name", e);
+            }
+          }
+
+          if (found) {
+            setSelectedCustomerId(found.id);
+            setCustomerSearch(found.name);
+            setCustomers((prev) => {
+              const exists = prev.some((c) => c.id === found!.id);
+              return exists ? prev.map((c) => (c.id === found!.id ? found! : c)) : [found!, ...prev];
+            });
+          }
+        };
+
+        resolveCustomer();
       }
     } catch (e) {
       console.error("Failed to load receipt draft", e);
     }
-  }, [customers]);
+  }, []);
+
+  // Debounced server search for customer ledger dropdown if typing names not yet loaded
+  useEffect(() => {
+    if (!customerSearch || customerSearch.trim().length < 2) return;
+    const term = customerSearch.trim();
+
+    const timer = setTimeout(async () => {
+      const orgId = localStorage.getItem("activeOrgId");
+      const headers: Record<string, string> = {};
+      if (orgId) headers["x-organization-id"] = orgId;
+      try {
+        const res = await fetch(`/api/v1/contacts?search=${encodeURIComponent(term)}&type=customer&limit=30`, { headers });
+        if (res.ok) {
+          const data = await res.json();
+          const list = data.contacts || data.data || [];
+          if (list.length > 0) {
+            setCustomers((prev) => {
+              const map = new Map(prev.map((c) => [c.id, c]));
+              for (const item of list) {
+                if (!map.has(item.id)) {
+                  map.set(item.id, {
+                    id: item.id,
+                    name: item.name,
+                    phone: item.phone || "",
+                    owesYou: item.openingBalance ? Math.round(parseFloat(item.openingBalance) * 100) : 0,
+                  });
+                }
+              }
+              return Array.from(map.values());
+            });
+          }
+        }
+      } catch (err) {
+        // ignore search error
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [customerSearch]);
 
   // Auto-focus Account input on initial mount
   useEffect(() => {

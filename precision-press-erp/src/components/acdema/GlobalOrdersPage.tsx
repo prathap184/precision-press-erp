@@ -394,10 +394,50 @@ export function GlobalOrdersPage() {
   const handleReceipt = async (order: any) => {
     try {
       setProcessingOrderId(order.id);
-      const contactName = order.customerSnapshot?.name || 'Guest';
+      const orgId = typeof window !== 'undefined' ? localStorage.getItem('activeOrgId') : null;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (orgId) headers['x-organization-id'] = orgId;
+
+      const contactName = order.customerSnapshot?.displayName || order.customerSnapshot?.name || order.customerSnapshot?.businessName || order.customerSnapshot?.companyName || order.customerName || 'Guest';
+      let contactId: string | undefined = order.customerId || order.customerSnapshot?.uid || order.customerSnapshot?.id;
+
+      if (contactName && contactName !== 'Guest') {
+        try {
+          let sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(contactName)}&limit=10`, { headers });
+          let list: any[] = [];
+          if (sr.ok) {
+            const sd = await sr.json();
+            list = sd.contacts || sd.data || (Array.isArray(sd) ? sd : []);
+          }
+          if (list.length === 0 && contactName.includes('-')) {
+            const prefix = contactName.split('-')[0].trim();
+            if (prefix.length >= 2) {
+              sr = await fetch(`/api/v1/contacts?search=${encodeURIComponent(prefix)}&limit=10`, { headers });
+              if (sr.ok) {
+                const sd = await sr.json();
+                list = sd.contacts || sd.data || (Array.isArray(sd) ? sd : []);
+              }
+            }
+          }
+          const match = list.find((c: any) => 
+            c.name?.toLowerCase() === contactName.toLowerCase() || 
+            (contactId && (c.id === contactId || c.uid === contactId)) ||
+            (c.name && (c.name.toLowerCase().includes(contactName.toLowerCase()) || contactName.toLowerCase().includes(c.name.toLowerCase())))
+          );
+          if (match) {
+            contactId = match.id;
+          } else if (list.length > 0 && !contactId) {
+            contactId = list[0].id;
+          }
+        } catch (e) {
+          console.error('Error searching contact for receipt:', e);
+        }
+      }
+
       const amount = order.amounts?.grandTotal ?? (order as any).grandTotal ?? (order as any).grand_total_snapshot ?? 0;
       
       openDrawer('customerCredit', {
+        contactId,
         contactName,
         amount: amount.toString(),
         notes: `Receipt for Order #${order.id.replace('ORD-', '')}`,
