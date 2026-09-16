@@ -922,20 +922,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
             <div className="absolute inset-0 bg-[radial-gradient(#93c5fd_1.2px,transparent_1.2px)] [background-size:28px_28px] opacity-25"></div>
             
-            {/* 1. Light Pink Orb - Top Left floating into center */}
-            <div className="animate-ambient-1 absolute -top-[10%] left-[5%] w-[65vw] h-[65vw] max-w-[900px] max-h-[900px] rounded-full bg-gradient-to-br from-pink-300/70 via-rose-200/60 to-pink-100/40 blur-[100px] pointer-events-none"></div>
+            {/* 1. Ultra Light Pink Orb - Moving from Left to Right Side */}
+            <div className="animate-ambient-lr-1 absolute -top-[12%] -left-[10%] w-[70vw] h-[70vw] max-w-[950px] max-h-[950px] rounded-full bg-gradient-to-r from-pink-200/40 via-rose-100/30 to-pink-50/15 blur-[120px] pointer-events-none"></div>
 
-            {/* 2. Light Blue Orb - Top Right floating */}
-            <div className="animate-ambient-2 absolute -top-[15%] -right-[10%] w-[70vw] h-[70vw] max-w-[950px] max-h-[950px] rounded-full bg-gradient-to-bl from-sky-300/75 via-blue-200/65 to-cyan-100/50 blur-[100px] pointer-events-none"></div>
+            {/* 2. Light Blue Orb - Counter drift */}
+            <div className="animate-ambient-rl-1 absolute -top-[15%] -right-[15%] w-[70vw] h-[70vw] max-w-[950px] max-h-[950px] rounded-full bg-gradient-to-l from-sky-200/45 via-blue-100/35 to-cyan-50/20 blur-[120px] pointer-events-none"></div>
 
             {/* 3. Light Blue / Cyan Orb - Bottom Left floating */}
-            <div className="animate-ambient-3 absolute -bottom-[15%] -left-[10%] w-[68vw] h-[68vw] max-w-[920px] max-h-[920px] rounded-full bg-gradient-to-tr from-cyan-300/65 via-blue-300/60 to-sky-100/50 blur-[110px] pointer-events-none"></div>
+            <div className="animate-ambient-rl-2 absolute -bottom-[15%] -left-[15%] w-[68vw] h-[68vw] max-w-[920px] max-h-[920px] rounded-full bg-gradient-to-tr from-cyan-200/40 via-blue-100/30 to-sky-50/20 blur-[120px] pointer-events-none"></div>
 
-            {/* 4. Light Pink / Magenta Rose Orb - Bottom Right floating */}
-            <div className="animate-ambient-4 absolute -bottom-[12%] right-[8%] w-[65vw] h-[65vw] max-w-[880px] max-h-[880px] rounded-full bg-gradient-to-tl from-pink-300/75 via-rose-300/60 to-fuchsia-200/45 blur-[105px] pointer-events-none"></div>
+            {/* 4. Ultra Light Pink / Rose Orb - Bottom gliding Left to Right */}
+            <div className="animate-ambient-lr-2 absolute -bottom-[12%] left-[10%] w-[65vw] h-[65vw] max-w-[880px] max-h-[880px] rounded-full bg-gradient-to-r from-pink-200/35 via-rose-100/25 to-transparent blur-[120px] pointer-events-none"></div>
 
-            {/* 5. Center glowing blend between pink and blue */}
-            <div className="animate-ambient-1 absolute top-[25%] left-[25%] w-[55vw] h-[55vw] max-w-[780px] max-h-[780px] rounded-full bg-gradient-to-r from-pink-200/60 via-purple-100/40 to-sky-200/65 blur-[120px] pointer-events-none"></div>
+            {/* 5. Center soft ambient aura drifting Left to Right */}
+            <div className="animate-ambient-lr-1 absolute top-[20%] left-[15%] w-[60vw] h-[60vw] max-w-[820px] max-h-[820px] rounded-full bg-gradient-to-r from-pink-100/30 via-indigo-50/20 to-sky-100/35 blur-[140px] pointer-events-none"></div>
           </div>
 
           <div className="flex flex-col gap-4 pb-2">
