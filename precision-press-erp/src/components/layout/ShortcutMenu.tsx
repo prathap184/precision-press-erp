@@ -105,6 +105,33 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [menuState, currentItems, selectedIndex]);
 
+  // Keypress listener for S, R, B when ALL_SHORTCUTS window is open
+  React.useEffect(() => {
+    if (menuState !== 'ALL_SHORTCUTS') return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+
+      const key = e.key.toLowerCase();
+      if (key === 's') {
+        e.preventDefault();
+        router.push('/accounting/sales');
+        closeMenu();
+      } else if (key === 'r') {
+        e.preventDefault();
+        router.push('/accounting/sales/customer-prepayments');
+        closeMenu();
+      } else if (key === 'b') {
+        e.preventDefault();
+        router.push('/accounting/banking');
+        closeMenu();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [menuState, router, closeMenu]);
+
   if (!profile || !allowedRoles.includes(profile.role)) {
     return null;
   }
@@ -156,14 +183,17 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 <button
                   type="button"
                   onClick={() => { router.push('/accounting/sales'); closeMenu(); }}
-                  className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/60 hover:border-emerald-300 transition-all text-left group shadow-2xs"
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/60 hover:border-emerald-300 transition-all text-left group shadow-2xs cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 font-bold shrink-0">
                       <FileText size={18} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900 group-hover:text-emerald-700">Sales Register</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900 group-hover:text-emerald-700">Sales Register</p>
+                        <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-emerald-100 text-emerald-800 border border-emerald-300 rounded shadow-2xs">S</kbd>
+                      </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">Invoices & sales status</p>
                     </div>
                   </div>
@@ -173,14 +203,17 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 <button
                   type="button"
                   onClick={() => { router.push('/accounting/sales/customer-prepayments'); closeMenu(); }}
-                  className="flex items-center justify-between p-3.5 rounded-xl border border-blue-200 bg-blue-50/50 hover:bg-blue-100/60 hover:border-blue-300 transition-all text-left group shadow-2xs"
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-blue-200 bg-blue-50/50 hover:bg-blue-100/60 hover:border-blue-300 transition-all text-left group shadow-2xs cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex size-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 font-bold shrink-0">
                       <Receipt size={18} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900 group-hover:text-blue-700">Receipt Register</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900 group-hover:text-blue-700">Receipt Register</p>
+                        <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-blue-100 text-blue-800 border border-blue-300 rounded shadow-2xs">R</kbd>
+                      </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">Customer prepayments</p>
                     </div>
                   </div>
@@ -190,14 +223,17 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 <button
                   type="button"
                   onClick={() => { router.push('/accounting/banking'); closeMenu(); }}
-                  className="flex items-center justify-between p-3.5 rounded-xl border border-purple-200 bg-purple-50/50 hover:bg-purple-100/60 hover:border-purple-300 transition-all text-left group shadow-2xs"
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-purple-200 bg-purple-50/50 hover:bg-purple-100/60 hover:border-purple-300 transition-all text-left group shadow-2xs cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex size-9 items-center justify-center rounded-lg bg-purple-100 text-purple-700 font-bold shrink-0">
                       <Landmark size={18} />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900 group-hover:text-purple-700">Bank Accounts</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900 group-hover:text-purple-700">Bank Accounts</p>
+                        <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-purple-100 text-purple-800 border border-purple-300 rounded shadow-2xs">B</kbd>
+                      </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">Bank ledgers & transfers</p>
                     </div>
                   </div>
