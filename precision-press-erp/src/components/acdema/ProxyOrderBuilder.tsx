@@ -488,10 +488,10 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
         name: product?.name || 'Unknown Item',
         width: isDirect ? 1 : widthInFt,
         height: isDirect ? 1 : heightInFt,
-        quantity: isDirect ? qtyNum : pcs,
+        quantity: isDirect ? qtyNum : (isModeA ? qtyNum : pcs),
         rate: baseRate,
         isDirectSelling: isDirect,
-        eyeletCount: row.eyeletType === 'NONE' ? 0 : pcs,
+        eyeletCount: row.eyeletType === 'NONE' ? 0 : (isModeA ? qtyNum : pcs),
         eyeletRate,
         gstRate: (product?.gst_rate || 18) / 100,
       };
