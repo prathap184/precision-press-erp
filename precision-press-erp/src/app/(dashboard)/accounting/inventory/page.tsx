@@ -133,7 +133,47 @@ export default function InventoryPage() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const pageRef = useRef(1);
+  const hasAutoScrolledRef = useRef(false);
   useDocumentTitle("Inventory · Products");
+
+  // One-time auto-scroll to search bar toolbar position & auto-focus search bar on arrival
+  useEffect(() => {
+    if (!loading && items.length > 0 && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
+
+      const focusSearch = () => {
+        const input = searchRef.current || (document.getElementById("inventory-search-input") as HTMLInputElement | null);
+        if (input) {
+          try {
+            input.focus({ preventScroll: true });
+          } catch {
+            input.focus();
+          }
+        }
+      };
+
+      const doScrollAndFocus = () => {
+        const toolbarEl = document.getElementById("inventory-table-toolbar");
+        if (toolbarEl) {
+          const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+          window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+        } else {
+          window.scrollTo({ top: 380, behavior: "smooth" });
+        }
+        focusSearch();
+      };
+
+      const t1 = setTimeout(doScrollAndFocus, 100);
+      const t2 = setTimeout(doScrollAndFocus, 350);
+      const t3 = setTimeout(focusSearch, 600);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
+  }, [loading, items]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -514,7 +554,7 @@ export default function InventoryPage() {
       )}
 
       {/* Toolbar - top row swaps between tabs and select actions, search/filters always visible */}
-      <div className="flex flex-col gap-3">
+      <div id="inventory-table-toolbar" className="flex flex-col gap-3">
         {/* Top row: tabs+buttons or select actions */}
         <AnimatePresence initial={false} mode="popLayout">
           {selectMode ? (
@@ -618,15 +658,17 @@ export default function InventoryPage() {
         </AnimatePresence>
 
         {/* Search, filters, sort - always visible */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center flex-wrap">
           <div className="relative flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
+              id="inventory-search-input"
               ref={searchRef}
+              autoFocus
               placeholder="Search by name, code, or SKU..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-8 h-8 text-sm"
+              className="pl-9 pr-8 h-8 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
             />
             {search && (
               <button

@@ -3,7 +3,7 @@
 import React from 'react';
 import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
 import { useAuth } from '@/lib/auth-context';
-import { X, ChevronRight, FileText, Activity, BookOpen, Layers, Sparkles, Landmark, Receipt } from 'lucide-react';
+import { X, ChevronRight, FileText, Activity, BookOpen, Layers, Sparkles, Landmark, Receipt, Package } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCreateDrawer } from '@/components/dashboard/create-drawer';
 
@@ -34,7 +34,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
         '/purchase', '/accountant/day-book', '/accountant/ledger', 
         '/accountant/bank-ledger', '/accountant/cash-ledger',
         '/accounting/contacts', '/accounting/sales', '/accounting/sales/customer-prepayments',
-        '/accounting/banking'
+        '/accounting/banking', '/accounting/inventory'
       ];
       routesToPrefetch.forEach(route => router.prefetch(route));
     }
@@ -105,7 +105,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [menuState, currentItems, selectedIndex]);
 
-  // Keypress listener for S, R, B when ALL_SHORTCUTS window is open
+  // Keypress listener for S, R, B, I when ALL_SHORTCUTS window is open
   React.useEffect(() => {
     if (menuState !== 'ALL_SHORTCUTS') return;
 
@@ -124,6 +124,10 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
       } else if (key === 'b') {
         e.preventDefault();
         router.push('/accounting/banking');
+        closeMenu();
+      } else if (key === 'i') {
+        e.preventDefault();
+        router.push('/accounting/inventory');
         closeMenu();
       }
     };
@@ -179,7 +183,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 <BookOpen className="size-4 text-emerald-600" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Quick Registers & Direct Links</h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <button
                   type="button"
                   onClick={() => { router.push('/accounting/sales'); closeMenu(); }}
@@ -238,6 +242,26 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                     </div>
                   </div>
                   <ChevronRight className="size-4 text-purple-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { router.push('/accounting/inventory'); closeMenu(); }}
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-100/60 hover:border-amber-300 transition-all text-left group shadow-2xs cursor-pointer"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-amber-100 text-amber-700 font-bold shrink-0">
+                      <Package size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-slate-900 group-hover:text-amber-700">Inventory Stock</p>
+                        <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-amber-100 text-amber-800 border border-amber-300 rounded shadow-2xs">I</kbd>
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Stock items & catalogue</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="size-4 text-amber-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
                 </button>
               </div>
             </div>

@@ -392,15 +392,15 @@ export default function InventoryItemDetailsPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border bg-blue-50/60 dark:bg-blue-950/30 p-3.5 flex items-start gap-3">
+            <div className="rounded-lg border border-blue-300 bg-blue-50/80 dark:border-blue-900 dark:bg-blue-950/40 p-3.5 flex items-start gap-3">
               <Package className="size-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-              <div className="text-xs space-y-0.5 text-slate-700 dark:text-slate-300">
+              <div className="text-xs space-y-0.5 text-slate-800 dark:text-slate-200">
                 <p className="font-semibold text-slate-900 dark:text-slate-100">
                   {unitOfMeasure.toLowerCase() === "sqft"
                     ? "Area-Based Physical Tracking (SQFT)"
                     : `Direct Unit Tracking (${unitOfMeasure})`}
                 </p>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                <p className="text-[11px] text-slate-700 dark:text-slate-300">
                   {unitOfMeasure.toLowerCase() === "sqft"
                     ? `Physical inventory is relieved as Length × Width × Quantity = Total SQFT consumed. Invoice prints in ${tallyBillingMode === 'A' ? 'Mode A (Piece count on bill)' : 'Mode B (Total SQFT on bill)'}.`
                     : `Physical inventory is relieved directly as piece count (${unitOfMeasure}). Invoicing is fixed to Mode A.`}
@@ -420,7 +420,7 @@ export default function InventoryItemDetailsPage() {
                 <Input
                   readOnly
                   value={item.tallyGuid || "Not Synced"}
-                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                  className="font-mono text-xs bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 font-medium"
                 />
               </div>
               <div className="space-y-1.5">
@@ -428,12 +428,12 @@ export default function InventoryItemDetailsPage() {
                 <Input
                   readOnly
                   value={item.alterId ? String(item.alterId) : "—"}
-                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                  className="font-mono text-xs bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 font-medium"
                 />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Set Multiple Size Details (Tally)</Label>
-                <div className="flex h-9 w-full items-center rounded-md border border-input bg-background px-3 text-xs font-semibold">
+                <div className="flex h-9 w-full items-center rounded-md border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 text-xs font-semibold">
                   {item.hasMultipleSizes ? (
                     <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-purple-500 animate-pulse" />
@@ -445,7 +445,7 @@ export default function InventoryItemDetailsPage() {
                       NO (Single Default Size Configured)
                     </span>
                   ) : (
-                    <span className="text-slate-500 flex items-center gap-1.5">
+                    <span className="text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
                       <span className="size-2 rounded-full bg-slate-400" />
                       NO (Fixed Size / Standard Item)
                     </span>
@@ -460,7 +460,7 @@ export default function InventoryItemDetailsPage() {
                 <Input
                   readOnly
                   value={item.defaultSizeName || (item.defaultWidth && item.defaultLength ? `${item.defaultWidth} F x ${item.defaultLength} F` : "None")}
-                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-semibold text-amber-700 dark:text-amber-300"
+                  className="font-mono text-xs bg-slate-100 text-amber-700 dark:bg-slate-800 dark:text-amber-300 border-slate-300 dark:border-slate-700 font-bold"
                 />
               </div>
               <div className="space-y-1.5">
@@ -468,7 +468,7 @@ export default function InventoryItemDetailsPage() {
                 <Input
                   readOnly
                   value={item.defaultWidth ? `${item.defaultWidth} ${item.defaultWidthUnit || "FT"}` : "—"}
-                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                  className="font-mono text-xs bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 font-medium"
                 />
               </div>
               <div className="space-y-1.5">
@@ -476,18 +476,18 @@ export default function InventoryItemDetailsPage() {
                 <Input
                   readOnly
                   value={item.defaultLength ? `${item.defaultLength} ${item.defaultLengthUnit || "FT"}` : "—"}
-                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                  className="font-mono text-xs bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100 border-slate-300 dark:border-slate-700 font-medium"
                 />
               </div>
             </div>
 
-            <div className="rounded-lg border bg-amber-50/60 dark:bg-amber-950/30 p-3.5 flex items-start gap-3">
+            <div className="rounded-lg border border-amber-300 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/40 p-3.5 flex items-start gap-3">
               <Scale className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div className="text-xs space-y-0.5 text-slate-700 dark:text-slate-300">
+              <div className="text-xs space-y-0.5 text-slate-800 dark:text-slate-200">
                 <p className="font-semibold text-slate-900 dark:text-slate-100">
                   Form Behavioral Activation Rule
                 </p>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                <p className="text-[11px] text-slate-700 dark:text-slate-300">
                   {item.hasMultipleSizes
                     ? "Rule 1: Set Multiple Size Details = YES. Width & Length inputs are ACTIVE & EDITABLE on Proxy Order, Quotation, and Invoice forms with size dropdown enabled."
                     : item.defaultWidth && item.defaultLength
