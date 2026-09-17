@@ -19,7 +19,9 @@ import {
   EyeOff,
   ExternalLink,
   ArrowLeftRight,
+  Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { Button } from "@/components/ui/button";
@@ -93,6 +95,7 @@ export default function BankingPage() {
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [showBalances, setShowBalances] = useState(true);
+  const [search, setSearch] = useState("");
 
   useDocumentTitle("Accounting \u00B7 Bank Accounts");
 
@@ -114,6 +117,17 @@ export default function BankingPage() {
     window.addEventListener("bank-accounts-changed", handler);
     return () => window.removeEventListener("bank-accounts-changed", handler);
   }, []);
+
+  const filteredAccounts = useMemo(() => {
+    if (!search.trim()) return accounts;
+    const q = search.toLowerCase().trim();
+    return accounts.filter((a) =>
+      a.accountName.toLowerCase().includes(q) ||
+      (a.bankName || "").toLowerCase().includes(q) ||
+      (a.accountNumber || "").toLowerCase().includes(q) ||
+      (ACCOUNT_TYPE_LABELS[a.accountType] || "").toLowerCase().includes(q)
+    );
+  }, [accounts, search]);
 
   const totals = useMemo(() => {
     const active = accounts.filter((a) => a.isActive).length;
@@ -221,8 +235,8 @@ export default function BankingPage() {
   const currencies = [...new Set(accounts.map((a) => a.currencyCode))];
   const maxBalance = Math.max(...accounts.map((a) => Math.abs(a.balance)), 1);
 
-  // Group accounts by type
-  const groupedAccounts = accounts.reduce<Record<string, BankAccount[]>>((groups, account) => {
+  // Group filtered accounts by type
+  const groupedAccounts = filteredAccounts.reduce<Record<string, BankAccount[]>>((groups, account) => {
     const key = account.accountType;
     if (!groups[key]) groups[key] = [];
     groups[key].push(account);
@@ -292,7 +306,16 @@ export default function BankingPage() {
             Manage accounts, balances, and statement imports
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search bank accounts..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 w-56 pl-8 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
+            />
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -355,7 +378,7 @@ export default function BankingPage() {
                     <button
                       key={account.id}
                       type="button"
-                      onClick={() => router.push(`/accounting/banking/${account.id}`)}
+                      onClick={() => router.push(`/accounting/banking/${account.id}/ledger`)}
                       className="group relative flex w-full items-center gap-3 sm:gap-4 px-4 py-3.5 text-left transition-colors hover:bg-muted/40"
                     >
                       {/* Icon with accent */}
@@ -439,9 +462,9 @@ export default function BankingPage() {
                             </div>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/accounting/banking/${account.id}`); }}>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/accounting/banking/${account.id}/ledger`); }}>
                               <ExternalLink className="size-3.5 mr-2" />
-                              View Details
+                              View Ledger
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/accounting/banking/${account.id}/transactions`); }}>
                               <ArrowUpRight className="size-3.5 mr-2" />
