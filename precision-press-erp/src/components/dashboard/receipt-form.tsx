@@ -127,6 +127,7 @@ export function ReceiptForm() {
   const amountInputRef = useRef<HTMLInputElement>(null);
   const narrationInputRef = useRef<HTMLTextAreaElement>(null);
   const refNameInputRef = useRef<HTMLInputElement>(null);
+  const dueDateInputRef = useRef<HTMLInputElement>(null);
   const modalAmountInputRef = useRef<HTMLInputElement>(null);
   const refTypeCellRef = useRef<HTMLDivElement>(null);
   const bankDropdownRef = useRef<HTMLDivElement>(null);
@@ -377,7 +378,7 @@ export function ReceiptForm() {
       .then((data) => {
         const list = data.data || data.invoices || [];
         const unpaid: InvoiceOption[] = list
-          .filter((inv: any) => ["sent", "partial", "overdue"].includes(inv.status) && inv.amountDue > 0)
+          .filter((inv: any) => inv.status !== "paid" && inv.status !== "void" && inv.status !== "cancelled" && inv.amountDue > 0)
           .map((inv: any) => ({
             id: inv.id,
             invoiceNumber: inv.invoiceNumber,
@@ -475,6 +476,35 @@ export function ReceiptForm() {
 
       // 2. Bill-wise Details Modal Popups Navigation (Method of Adj & Pending Bills)
       if (showBillWiseModal) {
+        if (showPendingBills) {
+          if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setPendingBillHighlightIndex((prev) => Math.min(prev + 1, invoices.length - 1));
+            return;
+          }
+          if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setPendingBillHighlightIndex((prev) => Math.max(prev - 1, 0));
+            return;
+          }
+          if (e.key === "Enter" || e.key === "Tab") {
+            e.preventDefault();
+            if (invoices[pendingBillHighlightIndex]) {
+              handleSelectPendingBill(invoices[pendingBillHighlightIndex]);
+            }
+            return;
+          }
+          if (e.key === "Escape" || e.key === "Backspace") {
+            e.preventDefault();
+            setShowPendingBills(false);
+            setShowRefTypeMenu(true);
+            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === "AGST_REF"));
+            setTimeout(() => refTypeCellRef.current?.focus(), 20);
+            return;
+          }
+          return;
+        }
+
         if (showRefTypeMenu) {
           if (e.key === "ArrowDown") {
             e.preventDefault();
@@ -508,39 +538,7 @@ export function ReceiptForm() {
             amountInputRef.current?.select();
             return;
           }
-        }
-
-        if (showPendingBills) {
-          if (e.key === "ArrowDown") {
-            e.preventDefault();
-            setPendingBillHighlightIndex((prev) => Math.min(prev + 1, invoices.length - 1));
-            return;
-          }
-          if (e.key === "ArrowUp") {
-            e.preventDefault();
-            setPendingBillHighlightIndex((prev) => Math.max(prev - 1, 0));
-            return;
-          }
-          if (e.key === "Enter") {
-            e.preventDefault();
-            if (invoices[pendingBillHighlightIndex]) {
-              handleSelectPendingBill(invoices[pendingBillHighlightIndex]);
-            }
-            return;
-          }
-          if (e.key === "Escape") {
-            e.preventDefault();
-            setShowPendingBills(false);
-            return;
-          }
-          if (e.key === "Backspace") {
-            e.preventDefault();
-            setShowPendingBills(false);
-            setShowRefTypeMenu(true);
-            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === "AGST_REF"));
-            refTypeCellRef.current?.focus();
-            return;
-          }
+          return;
         }
       }
 
@@ -672,6 +670,7 @@ export function ReceiptForm() {
     setCurrentLineDueDate(date);
     setCurrentLineInvoiceId(undefined);
     setShowBillWiseModal(true);
+    setShowPendingBills(false);
     setShowRefTypeMenu(true);
     setTimeout(() => refTypeCellRef.current?.focus(), 30);
   };
@@ -689,30 +688,45 @@ export function ReceiptForm() {
         toast.info("No pending invoices found for this customer. Use Advance or New Ref.");
         setActiveRefType("NEW_REF");
         setCurrentLineRefName(`ADV-${voucherNo}`);
-        setTimeout(() => refNameInputRef.current?.focus(), 50);
+        setCurrentLineDueDate(date);
+        setTimeout(() => {
+          refNameInputRef.current?.focus();
+          refNameInputRef.current?.select();
+        }, 50);
       }
     } else if (refType === "NEW_REF" || refType === "ADVANCE") {
-      setCurrentLineRefName(`ADV-${voucherNo}`);
-      setTimeout(() => refNameInputRef.current?.focus(), 50);
+      setShowPendingBills(false);
+      setCurrentLineRefName(refType === "ADVANCE" ? `ADV-${voucherNo}` : `REF-${voucherNo}`);
+      setCurrentLineDueDate(date);
+      setTimeout(() => {
+        refNameInputRef.current?.focus();
+        refNameInputRef.current?.select();
+      }, 50);
     } else if (refType === "ON_ACCOUNT") {
+      setShowPendingBills(false);
       setCurrentLineRefName("On Account");
-      setTimeout(() => modalAmountInputRef.current?.focus(), 50);
+      setCurrentLineDueDate(date);
+      setTimeout(() => {
+        refNameInputRef.current?.focus();
+        refNameInputRef.current?.select();
+      }, 50);
     }
   };
 
-  // Handle selecting a Pending Bill
+  // Handle selecting a Pending Bill -> compulsorily moves to NAME first!
   const handleSelectPendingBill = (inv: InvoiceOption) => {
     setCurrentLineInvoiceId(inv.id);
     setCurrentLineRefName(inv.invoiceNumber);
     setCurrentLineDueDate(inv.dueDate || inv.issueDate || date);
     const invoiceDueRupees = (inv.amountDue / 100).toFixed(2);
-    const voucherRupees = parseFloat(voucherAmount);
+    const voucherRupees = parseFloat(voucherAmount || "0");
     const allocated = Math.min(parseFloat(invoiceDueRupees), voucherRupees).toFixed(2);
     setCurrentLineAmount(allocated);
     setShowPendingBills(false);
+    setShowRefTypeMenu(false);
     setTimeout(() => {
-      modalAmountInputRef.current?.focus();
-      modalAmountInputRef.current?.select();
+      refNameInputRef.current?.focus();
+      refNameInputRef.current?.select();
     }, 50);
   };
 
@@ -1122,7 +1136,7 @@ export function ReceiptForm() {
                           )}
                         </div>
                         <span className="font-bold text-slate-900">
-                          ₹ {parseFloat(line.amount || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })} Cr
+                          ₹ {Number(line.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })} Cr
                         </span>
                       </div>
                     ))}
@@ -1227,18 +1241,50 @@ export function ReceiptForm() {
                       <div
                         ref={refTypeCellRef}
                         tabIndex={0}
-                        onClick={() => { setShowRefTypeMenu(true); setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType)); }}
-                        onFocus={() => { setShowRefTypeMenu(true); setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType)); }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
-                            e.preventDefault();
+                        onClick={() => {
+                          setShowPendingBills(false);
+                          setShowRefTypeMenu(true);
+                          setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === activeRefType));
+                        }}
+                        onFocus={() => {
+                          if (!showPendingBills) {
                             setShowRefTypeMenu(true);
-                            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType));
+                            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === activeRefType));
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            if (showRefTypeMenu) {
+                              const selected = REF_TYPE_OPTIONS[refTypeHighlightIndex];
+                              if (selected) {
+                                handleSelectRefType(selected.type as RefType);
+                              }
+                            } else {
+                              setShowPendingBills(false);
+                              setShowRefTypeMenu(true);
+                              setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === activeRefType));
+                            }
+                          } else if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            if (!showRefTypeMenu) {
+                              setShowRefTypeMenu(true);
+                            } else {
+                              setRefTypeHighlightIndex((prev) => (prev + 1) % REF_TYPE_OPTIONS.length);
+                            }
+                          } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            if (!showRefTypeMenu) {
+                              setShowRefTypeMenu(true);
+                            } else {
+                              setRefTypeHighlightIndex((prev) => (prev - 1 + REF_TYPE_OPTIONS.length) % REF_TYPE_OPTIONS.length);
+                            }
                           } else if (e.key === "Escape") {
                             setShowRefTypeMenu(false);
                           } else if (e.key === "Backspace") {
                             e.preventDefault();
                             setShowRefTypeMenu(false);
+                            setShowPendingBills(false);
                             setShowBillWiseModal(false);
                             amountInputRef.current?.focus();
                             amountInputRef.current?.select();
@@ -1289,58 +1335,97 @@ export function ReceiptForm() {
                     {/* Reference Name Cell */}
                     <td className="px-3.5 py-2 border-r-2 border-slate-400">
                       <input
+                        id="modal-ref-name-input"
                         ref={refNameInputRef}
                         type="text"
                         value={currentLineRefName}
                         onChange={(e) => setCurrentLineRefName(e.target.value)}
+                        onFocus={() => {
+                          setShowRefTypeMenu(false);
+                          setShowPendingBills(false);
+                          try {
+                            refNameInputRef.current?.select();
+                          } catch {}
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            modalAmountInputRef.current?.focus();
-                            modalAmountInputRef.current?.select();
+                            dueDateInputRef.current?.focus();
+                            dueDateInputRef.current?.select();
                           } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !currentLineRefName)) {
                             e.preventDefault();
+                            setShowPendingBills(false);
                             setShowRefTypeMenu(true);
-                            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType));
-                            refTypeCellRef.current?.focus();
+                            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === activeRefType));
+                            setTimeout(() => refTypeCellRef.current?.focus(), 20);
                           }
                         }}
-                        disabled={activeRefType === "ON_ACCOUNT"}
                         placeholder={activeRefType === "ON_ACCOUNT" ? "On Account" : "Ref Name..."}
                         className="w-full bg-white border border-slate-400 px-2.5 py-1 text-xs font-black rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
                       />
                     </td>
 
-                    {/* Due Date Cell */}
-                    <td className="px-3.5 py-2 border-r-2 border-slate-400 font-mono font-bold text-slate-800">
-                      {currentLineDueDate || date}
+                    {/* Due Date Cell (Interactive input for strict keyboard traversal) */}
+                    <td className="px-3.5 py-2 border-r-2 border-slate-400">
+                      <input
+                        id="modal-due-date-input"
+                        ref={dueDateInputRef}
+                        type="text"
+                        value={currentLineDueDate}
+                        onChange={(e) => setCurrentLineDueDate(e.target.value)}
+                        onFocus={() => {
+                          setShowRefTypeMenu(false);
+                          setShowPendingBills(false);
+                          try {
+                            dueDateInputRef.current?.select();
+                          } catch {}
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            modalAmountInputRef.current?.focus();
+                            modalAmountInputRef.current?.select();
+                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !currentLineDueDate)) {
+                            e.preventDefault();
+                            refNameInputRef.current?.focus();
+                            try {
+                              const len = refNameInputRef.current?.value.length || 0;
+                              refNameInputRef.current?.setSelectionRange(len, len);
+                            } catch {}
+                          }
+                        }}
+                        placeholder="Due date / days"
+                        className="w-full bg-white border border-slate-400 px-2.5 py-1 text-xs font-mono font-bold text-slate-800 rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                      />
                     </td>
 
                     {/* Amount Cell */}
                     <td className="px-3.5 py-2 border-r-2 border-slate-400 text-right">
                       <input
+                        id="modal-amount-input"
                         ref={modalAmountInputRef}
                         type="number"
                         step="0.01"
                         value={currentLineAmount}
                         onChange={(e) => setCurrentLineAmount(e.target.value)}
+                        onFocus={() => {
+                          setShowRefTypeMenu(false);
+                          setShowPendingBills(false);
+                          try {
+                            modalAmountInputRef.current?.select();
+                          } catch {}
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
                             handleConfirmBillWiseLine();
                           } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !currentLineAmount)) {
                             e.preventDefault();
-                            if (activeRefType === "ON_ACCOUNT") {
-                              setShowRefTypeMenu(true);
-                              setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType));
-                              refTypeCellRef.current?.focus();
-                            } else {
-                              refNameInputRef.current?.focus();
-                              try {
-                                const len = refNameInputRef.current?.value.length || 0;
-                                refNameInputRef.current?.setSelectionRange(len, len);
-                              } catch {}
-                            }
+                            dueDateInputRef.current?.focus();
+                            try {
+                              const len = dueDateInputRef.current?.value.length || 0;
+                              dueDateInputRef.current?.setSelectionRange(len, len);
+                            } catch {}
                           }
                         }}
                         className="w-28 text-right bg-white border border-slate-400 px-2.5 py-1 text-xs font-mono font-black rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
