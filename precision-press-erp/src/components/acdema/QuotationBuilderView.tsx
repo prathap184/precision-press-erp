@@ -1286,7 +1286,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Pcs/No Column */}
                             <td className="py-2 px-2 tabular-nums text-center align-top">
-                              {hasMultipleSizes && isModeB ? (
+                              {isSqftModeB ? (
                                 <input
                                   id={`error-row-${row.id}-pcs`}
                                   value={row.pcsNo ?? '1'}
@@ -1329,7 +1329,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Quantity Column */}
                             <td className="py-2 px-2 text-center text-xs font-bold tabular-nums align-top">
-                              {hasMultipleSizes && isModeB ? (
+                              {isSqftModeB ? (
                                 <div className="h-10 flex items-center justify-center text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</div>
                               ) : (
                                 <div className="inline-flex items-center justify-center">

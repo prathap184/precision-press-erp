@@ -765,13 +765,22 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 itemObj?.hasMultipleSizes ??
                 itemObj?.has_multiple_sizes ??
                 itemObj?.metadata?.hasMultipleSizes ??
-                itemObj?.metadata?.has_multiple_sizes ??
-                (cleanUom === 'sqft' || cleanUom === 'sqf' || (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0))
+                itemObj?.metadata?.has_multiple_sizes
               );
+              const hasSingleDefaultSize = Boolean(
+                (itemObj as any)?.has_single_default_size ??
+                (itemObj as any)?.hasSingleDefaultSize ??
+                itemObj?.metadata?.has_single_default_size ??
+                itemObj?.metadata?.hasSingleDefaultSize ??
+                ((Number((itemObj as any)?.default_width) > 0 && Number((itemObj as any)?.default_length) > 0) ||
+                (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0))
+              );
+              const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
               const defaultMode = (itemObj as any)?.tallyBillingMode || (itemObj as any)?.tally_billing_mode || itemObj?.metadata?.tallyBillingMode || itemObj?.metadata?.tally_billing_mode || 'B';
               const currentMode = line.billingMode || defaultMode;
               const isModeA = currentMode === 'A';
               const isModeB = currentMode === 'B';
+              const isSqftModeB = isSizeInputActive && isModeB;
 
               // Convert inches to feet for sq.ft calculation
               const widthRaw = parseFloat(line.width || "0");
@@ -1166,7 +1175,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Pcs/No Column — Only in Mode B with Multiple Sizes */}
                 <div className="text-center">
-                  {hasMultipleSizes && isModeB ? (
+                  {isSqftModeB ? (
                     <Input
                       id={`row-${i}-pcs`}
                       className="h-9 text-center text-xs font-black font-mono bg-slate-50 border-slate-200 rounded-xl focus:bg-white"
@@ -1199,7 +1208,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Quantity Column */}
                 <div className="text-center text-xs font-bold tabular-nums">
-                  {!hasMultipleSizes ? (
+                  {!isSizeInputActive ? (
                     <div className="inline-flex items-center justify-center">
                       <Input
                         id={`row-${i}-quantity`}
@@ -1227,7 +1236,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                       />
                       <span className="ml-1 text-[10px] font-black text-slate-500">{rawUom ? rawUom.toUpperCase() : 'N'}</span>
                     </div>
-                  ) : isModeB ? (
+                  ) : isSqftModeB ? (
                     <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
                   ) : (
                     <div className="inline-flex items-center justify-center">
@@ -1302,7 +1311,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                       {calculatedRatePerUnit.toFixed(2)}
                       <span className="text-[10px] text-blue-500 font-bold">N</span>
                     </span>
-                  ) : hasMultipleSizes && isModeB ? (
+                  ) : isSqftModeB ? (
                     <div className="inline-flex items-center gap-1">
                       <input
                         id={`row-${i}-unitPrice`}

@@ -1859,7 +1859,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             {/* Pcs/No Column */}
                             <td className="py-1 px-1 tabular-nums text-center align-top">
                               <div className="h-10 flex items-center justify-center">
-                                {hasMultipleSizes && isModeB ? (
+                                {isSqftModeB ? (
                                   <input
                                     id={`error-row-${row.id}-pcs`}
                                     value={row.pcsNo ?? '1'}
@@ -1911,7 +1911,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             {/* Quantity Column */}
                             <td className="py-1 px-1 text-center tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center text-xs font-bold">
-                                {hasMultipleSizes && isModeB ? (
+                                {isSqftModeB ? (
                                   <span className="text-slate-800 font-bold">{totalBilledSqft > 0 ? `${totalBilledSqft.toFixed(3)} sqft` : '—'}</span>
                                 ) : (
                                   <div className="inline-flex items-center justify-center gap-1">
@@ -2131,7 +2131,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           }
                                         } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                           e.preventDefault();
-                                          if (hasMultipleSizes && isModeB) {
+                                          if (isSqftModeB) {
                                             const pcsInput = document.getElementById(`error-row-${row.id}-pcs`);
                                             if (pcsInput) {
                                               pcsInput.focus();
