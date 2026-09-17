@@ -1358,7 +1358,9 @@ export default function InvoiceDetailPage() {
             <div className="divide-y">
               {payments.map((p) => {
                 const isAdvance = p.creditId != null || p.notes?.includes("Advance") || p.reference?.startsWith("ADV") || p.method === "other";
-                const targetUrl = p.creditId
+                const targetUrl = p.creditJournalEntryId
+                  ? `/accounting/${p.creditJournalEntryId}`
+                  : p.creditId
                   ? `/accounting/sales/customer-prepayments/${p.creditId}`
                   : `/accounting/sales/payments/${p.id}`;
 
