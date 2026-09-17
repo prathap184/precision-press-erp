@@ -193,13 +193,23 @@ export function ReceiptForm() {
       })
       .catch((err) => console.error("Failed to load customers", err));
 
-    fetch("/api/v1/entries?type=RECEIPT&limit=1", {
+    fetch("/api/v1/customer-credits?limit=500", {
       headers: { "x-organization-id": orgId },
     })
       .then((r) => r.json())
       .then((data) => {
-        const count = (data.total || 0) + 1;
-        setVoucherNo(String(count));
+        const list = data.data || data.credits || [];
+        let maxRef = 0;
+        list.forEach((c: any) => {
+          const refStr = c.journalEntry?.reference || c.notes || "";
+          const match = refStr.match(/REF-?(\d+)/i);
+          if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxRef) maxRef = num;
+          }
+        });
+        const nextNo = Math.max(maxRef + 1, list.length + 1, 1);
+        setVoucherNo(String(nextNo));
       })
       .catch(() => {});
   }, []);
