@@ -1109,6 +1109,7 @@ export function InvoiceFormView() {
   ]);
 
   const handleSubmit = async () => {
+    if (saving) return;
     const contactId = selectedCustomerId || selectedCustomer?.id || selectedCustomer?.uid;
     if (!contactId) {
       toast.error("Please select a customer");

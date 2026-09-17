@@ -546,6 +546,7 @@ export function QuotationBuilder() {
   };
 
   const submitQuotation = async () => {
+    if (loading) return;
     if (!selectedCustomerId) {
       toast.error('Please choose a customer.');
       return;

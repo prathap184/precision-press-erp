@@ -777,6 +777,7 @@ export function ReceiptForm() {
 
   // Final Submit
   const handlePostVoucher = async () => {
+    if (saving) return;
     if (!validateBeforeAccept()) return;
 
     const orgId = localStorage.getItem("activeOrgId");

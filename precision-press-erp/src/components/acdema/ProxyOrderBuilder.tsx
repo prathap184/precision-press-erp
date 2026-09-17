@@ -709,6 +709,7 @@ ${parts.join(', ')}`;
   };
 
   const submitProxyOrder = async () => {
+    if (loading) return;
     setTiffError('');
 
     if (!selectedCustomer) {
