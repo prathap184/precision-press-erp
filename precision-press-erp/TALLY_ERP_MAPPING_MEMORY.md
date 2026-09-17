@@ -1118,4 +1118,37 @@ When an operator selects a customer for a proxy order or quotation, the address 
    - Prevents blank address errors on order submission and invoice generation.
 
 ---
-*Memory Updated & Persisted on: 2026-09-07 (End-to-End Verified & Production-Ready)*
+
+## 📏 42. Tally Prime Item-Level Size Synchronization & Rule-Based Field Activation
+
+> **Context**: Previously, the ERP relied on a Stock Group level override (`treat_sales_as_manufactured = true`) which forcibly unlocked Width & Length input fields for all items belonging to certain groups (like Kinetic or Stationery), even if individual items within those groups had no size parameters configured in Tally. This override was completely removed to ensure 100% strict item-level parity with Tally Prime's `<UDF:ITEMMULTIPLESIZE.LIST>` XML configuration.
+
+### A. Removal of Stock Group Override (`treat_sales_as_manufactured`)
+- **Action Taken**: Removed group-level forced size activation (`treat_sales_as_manufactured`) across:
+  1. Proxy Order Page (`src/components/acdema/ProxyOrderBuilderView.tsx`)
+  2. Quotation Builder Page (`src/components/acdema/QuotationBuilderView.tsx`)
+  3. Invoice Creation Page (`src/components/dashboard/InvoiceFormView.tsx`)
+- **Result**: Item size input field availability (Width & Length) is now governed strictly by each item's individual Tally XML configuration stored in PostgreSQL `inventory_item`.
+
+### B. 100% Full Resync of 1,801 Inventory Items from Live Tally Port 9000
+All 1,801 stock items were queried directly from live Tally Prime Port 9000 and updated in PostgreSQL database `inventory_item`:
+- **163 Multi-Size Items** (`has_multiple_sizes = true`, `has_single_default_size = false`):
+  - Items configured in Tally with `Set Multiple Size Details ? YES` and multiple size options inside `<UDF:ITEMMULTIPLESIZE.LIST>`.
+- **356 Single Default Size Items** (`has_multiple_sizes = false`, `has_single_default_size = true`):
+  - Items configured in Tally with `Set Multiple Size Details ? NO`, but containing a single default size configuration inside Tally's `<UDF:ITEMMULTIPLESIZE.LIST>` XML tag (e.g. `4 F x 8 F`, `3 F x 6 F`, `10.50 F x 70 m`).
+  - Extracted and populated `default_width`, `default_length`, and `default_size_name`.
+- **1,282 Fixed Items** (`has_multiple_sizes = false`, `has_single_default_size = false`):
+  - Fixed items with no size list or default size configured in Tally (e.g. *AMS Aluminium Name Plate*, *Cutting Plotter V60*, pens, tools).
+  - Reset `default_width = null` and `default_length = null`.
+
+### C. Master Item-Level UI Size Rules (Rules 1, 2, 3)
+
+| Rule | Tally XML Condition | Database Flags | UI Behavior in ERP (Proxy Order / Quote / Invoice) |
+| :--- | :--- | :--- | :--- |
+| **Rule 1** | `Set Multiple Size Details = YES` in Tally (`ITEMMULTIPLESIZE.LIST > 1`) | `has_multiple_sizes = true`<br>`has_single_default_size = false` | • **Width & Length fields ACTIVE & EDITABLE**<br>• Size dropdown list enabled for preset selection |
+| **Rule 2** | `Set Multiple Size Details = NO`, BUT item has a single default size in Tally (`default_width > 0` & `default_length > 0`) | `has_multiple_sizes = false`<br>`has_single_default_size = true` | • **Width & Length fields ACTIVE & EDITABLE**<br>• Pre-fills Width & Length with Tally default values (e.g., 4 & 8)<br>• Auto-calculates SqFt ($4 \times 8 = 32\text{ SqFt}$) upon selection |
+| **Rule 3** | `Set Multiple Size Details = NO` AND no size details in Tally | `has_multiple_sizes = false`<br>`has_single_default_size = false` | • **Width & Length fields DISABLED & BLANK (`—`)**<br>• Cursor skips directly to Quantity input |
+
+---
+*Memory Updated & Persisted on: 2026-09-17 (Item-Level Tally Size Sync 100% Completed)*
+
