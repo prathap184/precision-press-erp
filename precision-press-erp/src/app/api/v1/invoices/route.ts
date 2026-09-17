@@ -525,7 +525,7 @@ export async function POST(request: Request) {
                 reference: advRefName,
                 notes: `Settled against Advance Receipt ${advRefName}`,
                 currencyCode: created.currencyCode,
-                journalEntryId: entryId,
+                journalEntryId: null,
                 createdBy: ctx.userId,
               })
               .returning();
