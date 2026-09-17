@@ -43,6 +43,18 @@ export interface InventoryItemDetail {
   gstRate?: number | null;
   unitOfMeasure?: string | null;
   metadata?: any;
+  tallyItemName?: string | null;
+  tallyGuid?: string | null;
+  alterId?: number | null;
+  tallyStockGroup?: string | null;
+  tallyUom?: string | null;
+  tallyBillingMode?: string | null;
+  hasMultipleSizes?: boolean | null;
+  defaultWidth?: string | number | null;
+  defaultLength?: string | number | null;
+  defaultWidthUnit?: string | null;
+  defaultLengthUnit?: string | null;
+  defaultSizeName?: string | null;
 }
 
 interface InventoryItemContextValue {
@@ -285,6 +297,29 @@ export default function InventoryItemLayout({ children }: { children: React.Reac
                 {(item.unitOfMeasure || item.metadata?.unit) && (
                   <span className="rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 px-2 py-0.5 text-xs font-semibold uppercase">
                     UOM: {item.unitOfMeasure || item.metadata?.unit}
+                  </span>
+                )}
+                {item.hasMultipleSizes ? (
+                  <span className="rounded-md bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 px-2 py-0.5 text-xs font-bold">
+                    Multi-Size: YES
+                  </span>
+                ) : item.defaultWidth && item.defaultLength ? (
+                  <span className="rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 px-2 py-0.5 text-xs font-bold">
+                    Multi-Size: NO (Single Default)
+                  </span>
+                ) : (
+                  <span className="rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 px-2 py-0.5 text-xs font-medium">
+                    Multi-Size: NO
+                  </span>
+                )}
+                {(item.defaultSizeName || (item.defaultWidth && item.defaultLength)) && (
+                  <span className="rounded-md bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 px-2 py-0.5 text-xs font-semibold font-mono">
+                    Default Size: {item.defaultSizeName || `${item.defaultWidth} F x ${item.defaultLength} F`}
+                  </span>
+                )}
+                {item.tallyGuid && (
+                  <span className="rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-2 py-0.5 text-xs font-mono" title={`Tally GUID: ${item.tallyGuid}`}>
+                    GUID: {item.tallyGuid}
                   </span>
                 )}
               </div>

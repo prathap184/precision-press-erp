@@ -412,6 +412,95 @@ export default function InventoryItemDetailsPage() {
 
         <div className="h-px bg-border" />
 
+        <Section title="Tally Prime Master & Size Configuration" description="Live Tally GUID, Set Multiple Size Details status, and default dimensions.">
+          <div className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tally GUID</Label>
+                <Input
+                  readOnly
+                  value={item.tallyGuid || "Not Synced"}
+                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tally Alter ID</Label>
+                <Input
+                  readOnly
+                  value={item.alterId ? String(item.alterId) : "—"}
+                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Set Multiple Size Details (Tally)</Label>
+                <div className="flex h-9 w-full items-center rounded-md border border-input bg-background px-3 text-xs font-semibold">
+                  {item.hasMultipleSizes ? (
+                    <span className="text-purple-600 dark:text-purple-400 flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-purple-500 animate-pulse" />
+                      YES (Multiple Size List Configured)
+                    </span>
+                  ) : item.defaultWidth && item.defaultLength ? (
+                    <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-amber-500" />
+                      NO (Single Default Size Configured)
+                    </span>
+                  ) : (
+                    <span className="text-slate-500 flex items-center gap-1.5">
+                      <span className="size-2 rounded-full bg-slate-400" />
+                      NO (Fixed Size / Standard Item)
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tally Default Size Name</Label>
+                <Input
+                  readOnly
+                  value={item.defaultSizeName || (item.defaultWidth && item.defaultLength ? `${item.defaultWidth} F x ${item.defaultLength} F` : "None")}
+                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 font-semibold text-amber-700 dark:text-amber-300"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Default Width</Label>
+                <Input
+                  readOnly
+                  value={item.defaultWidth ? `${item.defaultWidth} ${item.defaultWidthUnit || "FT"}` : "—"}
+                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Default Length / Height</Label>
+                <Input
+                  readOnly
+                  value={item.defaultLength ? `${item.defaultLength} ${item.defaultLengthUnit || "FT"}` : "—"}
+                  className="font-mono text-xs bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                />
+              </div>
+            </div>
+
+            <div className="rounded-lg border bg-amber-50/60 dark:bg-amber-950/30 p-3.5 flex items-start gap-3">
+              <Scale className="size-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="text-xs space-y-0.5 text-slate-700 dark:text-slate-300">
+                <p className="font-semibold text-slate-900 dark:text-slate-100">
+                  Form Behavioral Activation Rule
+                </p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">
+                  {item.hasMultipleSizes
+                    ? "Rule 1: Set Multiple Size Details = YES. Width & Length inputs are ACTIVE & EDITABLE on Proxy Order, Quotation, and Invoice forms with size dropdown enabled."
+                    : item.defaultWidth && item.defaultLength
+                    ? `Rule 2: Set Multiple Size Details = NO, but has a single default size (${item.defaultSizeName || `${item.defaultWidth} F x ${item.defaultLength} F`}). Width & Length inputs are ACTIVE & EDITABLE and pre-fill to ${item.defaultWidth} × ${item.defaultLength} (${Number(item.defaultWidth) * Number(item.defaultLength)} SqFt) upon selection.`
+                    : "Rule 3: Set Multiple Size Details = NO with no size details. Width & Length inputs remain DISABLED & BLANK, and cursor skips directly to Quantity."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </Section>
+
+        <div className="h-px bg-border" />
+
         <Section title="Default Rate (Tally Style)" description="Pre-filled on invoices — operator can override per order.">
           <div className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
