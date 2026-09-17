@@ -1390,7 +1390,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Rate/SqFt Column — EDITABLE only in Mode A with Multiple Sizes */}
                             <td className="py-2 px-2 text-center tabular-nums align-top">
-                              {hasMultipleSizes && isModeA ? (
+                              {isSizeInputActive && isModeA ? (
                                 <input
                                   id={`row-${row.id}-rate-sqft`}
                                   value={row.manualRate !== undefined ? row.manualRate : ''}
@@ -1443,7 +1443,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* Rate per (unit) Column — In Mode A: Shows Sq.Ft * Rate/SqFt. In Mode B & Direct: Editable */}
                             <td className="py-2 px-2 text-center tabular-nums align-top">
-                              {hasMultipleSizes && isModeA ? (
+                              {isSizeInputActive && isModeA ? (
                                 <div className="h-10 flex items-center justify-center">
                                   <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 shadow-2xs">
                                     {calculatedRatePerUnit.toFixed(2)}

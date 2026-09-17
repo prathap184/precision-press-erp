@@ -992,7 +992,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Width */}
                 <div>
-                  {!hasMultipleSizes ? (
+                  {!isSizeInputActive ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
                     <div className="flex h-9 items-center rounded-xl border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white px-1 overflow-visible transition-all">
@@ -1079,7 +1079,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Length */}
                 <div>
-                  {!hasMultipleSizes ? (
+                  {!isSizeInputActive ? (
                     <div className="h-9 flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-xl font-bold">—</div>
                   ) : (
                     <div className="flex h-9 items-center rounded-xl border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white px-1 overflow-visible transition-all">
@@ -1271,7 +1271,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Rate/SqFt Column — EDITABLE in Mode A with Multiple Sizes; BLANK in Mode B */}
                 <div className="text-center text-xs font-bold text-slate-700 tabular-nums">
-                  {hasMultipleSizes && isModeA ? (
+                  {isSizeInputActive && isModeA ? (
                     <CurrencyInput
                       id={`row-${i}-unitPrice`}
                       size="sm"
@@ -1306,7 +1306,12 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
 
                 {/* Rate per Column — Shows calculated (Sq.Ft * Rate/SqFt) in Mode A; EDITABLE in Mode B & Direct */}
                 <div className="text-center text-xs font-bold tabular-nums">
-                  {hasMultipleSizes && isModeA ? (
+                  {isSizeInputActive && isModeA ? (
+                    <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-200">
+                      {calculatedRatePerUnit.toFixed(2)}
+                      <span className="text-[10px] text-blue-500 font-bold">N</span>
+                    </span>
+                  ) : isSqftModeB ? (
                     <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2 py-1 rounded-md border border-blue-200">
                       {calculatedRatePerUnit.toFixed(2)}
                       <span className="text-[10px] text-blue-500 font-bold">N</span>

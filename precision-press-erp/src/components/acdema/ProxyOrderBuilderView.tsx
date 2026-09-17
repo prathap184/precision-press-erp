@@ -1974,7 +1974,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                           e.preventDefault();
                                           e.stopPropagation();
-                                          if (hasMultipleSizes) {
+                                          if (isSizeInputActive) {
                                             const heightUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
                                             if (heightUnitBtn) heightUnitBtn.focus();
                                             else {
@@ -2011,7 +2011,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             {/* Rate/SqFt Column — EDITABLE only in Mode A with Multiple Sizes */}
                             <td className="py-1 px-1 text-center tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center">
-                                {hasMultipleSizes && isModeA ? (
+                                {isSizeInputActive && isModeA ? (
                                   <input
                                     id={`row-${row.id}-rate-sqft`}
                                     value={row.manualRate !== undefined ? row.manualRate : ''}
@@ -2081,7 +2081,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             {/* Rate per (unit) Column — In Mode A: Shows Sq.Ft * Rate/SqFt. In Mode B & Direct: Editable */}
                             <td className="py-1 px-1 text-center tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center">
-                                {hasMultipleSizes && isModeA ? (
+                                {isSizeInputActive && isModeA ? (
                                   <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 shadow-2xs">
                                     {calculatedRatePerUnit.toFixed(2)}
                                     <span className="text-[10px] text-blue-500 font-bold">{displayUnit}</span>
