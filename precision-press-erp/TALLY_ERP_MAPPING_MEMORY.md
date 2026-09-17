@@ -810,7 +810,78 @@ The ERP classifies products into two operational workflows based on **Tally Unit
 
 ---
 ---
-*Memory Updated & Persisted on: 2026-09-04 (End-to-End Verified & Production-Ready)*
+---
+*Memory Updated & Persisted on: 2026-09-07*
+
+---
+
+## 🛠️ 38. Sales Invoice AGST REF Settlement Payment Allocation Fix & Backfill
+
+> **Context**: Settling invoices against advance customer credits at creation time (AGST REF) updated invoice balance numbers correctly, but failed to show the payment in Payment History on invoice detail pages.
+
+### A. Root Cause Analysis
+- In `src/app/api/v1/invoices/route.ts`, when `parsed.referenceType === "AGST_REF"` and `parsed.advanceCreditId` was present:
+  - The database correctly updated `customer_credit.amount_remaining` to `0` and `invoice.amount_paid` / `invoice.amount_due`.
+  - However, line 528 attempted to pass `journalEntryId: entryId`, where `entryId` was an undefined variable.
+  - This caused the carrier `payment` creation block to throw an unhandled reference error which was silently caught by `try/catch`. As a result, zero `payment_allocation` rows were created.
+
+### B. Solution & Pipeline Fix
+1. **API Fix (`src/app/api/v1/invoices/route.ts`)**:
+   - Fixed `journalEntryId: null` on carrier payment creation for AGST REF settlements.
+   - Now, every future AGST REF invoice creation automatically inserts carrier `payment` and dual `payment_allocation` rows (`documentType: 'invoice'` and `documentType: 'prepayment'`).
+2. **Backfill Execution (`scripts/backfill_inv66_allocation.js`)**:
+   - Backfilled missing `payment_allocation` records for existing invoice `INV-00066` (`99b263a6-72be-4249-aede-0df2b3c315cf`) and payment `REF-1` (`270fe0e4-da21-4ab7-813a-271b029aecab`).
+3. **Payment History Routing (`src/app/(dashboard)/accounting/sales/[id]/page.tsx`)**:
+   - Updated link target priority: if `creditJournalEntryId` exists, routes to `/accounting/${creditJournalEntryId}` (the complete receipt detail page with journal entry, customer, settlement timeline, and Agst Ref tag).
+
+---
+
+## 📜 39. Sales & Receipt Registers Auto-Scroll, Focus & Status Filter Enhancements
+
+> **Purpose**: Streamline navigation and filtering on Sales Invoices (`/accounting/sales`) and Customer Receipts (`/accounting/sales/customer-prepayments`).
+
+### A. Sales Register (`/accounting/sales`)
+- **Auto-Scroll & Focus**: Automatically scrolls to `#sales-table-toolbar` with sticky header offset on arrival and auto-focuses `#sales-search-input` with glowing blue focus ring.
+- **Status Dropdown**: Placed `All`, `Draft`, `Sent`, `Partial`, `Paid`, `Overdue` dropdown directly next to the search input.
+
+### B. Customer Receipts Register (`/accounting/sales/customer-prepayments`)
+- **Auto-Scroll & Focus**: Automatically scrolls to `#prepayments-table-toolbar` on arrival and auto-focuses `#prepayments-search-input`.
+- **Status Dropdown**: Placed `All`, `Available` (`open`), `Used` (`applied`), `Cancelled` (`void`) status dropdown directly next to the search input.
+
+---
+
+## ⌨️ 40. Global `Alt + S` Keyboard Shortcuts Cheat-Sheet Modal & Direct Hotkey Navigation
+
+> **Purpose**: Provide a fast, keyboard-accessible cheat sheet window listing all ERP shortcuts and quick registers.
+
+### A. Modal Window (`Alt + S`)
+- Pressing **`Alt + S`** anywhere on the website opens a spacious 3-column modal (`src/components/layout/ShortcutMenu.tsx`).
+- Categorized into:
+  1. **Quick Registers & Direct Links**: Sales Register, Receipt Register, Bank Accounts.
+  2. **Global Navigation Hotkeys**: `G` (Orders), `N` (Proxy Order), `Z` (Accounting), `V` (Vouchers), `D` (Reports), `F2` / `F` (Period Modal).
+  3. **Voucher Hotkeys**: `F8` (Invoice), `F10` (Quote), `F6` (Receipt), `F5` (Payment), `F4` (Contra), `F7` (Journal).
+
+### B. Modal Hotkey Navigation (`S`, `R`, `B`)
+- While the `Alt + S` window is open, pressing single hotkeys executes instant navigation:
+  - **`S`** $\rightarrow$ Sales Register (`/accounting/sales`)
+  - **`R`** $\rightarrow$ Receipt Register (`/accounting/sales/customer-prepayments`)
+  - **`B`** $\rightarrow$ Bank Accounts (`/accounting/banking`)
+
+---
+
+## 🏦 41. Bank Accounts Search & Default Ledger Tab Navigation
+
+> **Purpose**: Instant bank account filtering and direct access to full accounting ledgers.
+
+### A. Bank Account Search Bar (`/accounting/banking`)
+- Integrated a **`Search bank accounts...`** search bar into the top header of `/accounting/banking`.
+- Dynamically filters bank & cash accounts across account name, bank name, account number, and account type.
+
+### B. Default Ledger Tab Route
+- Clicking any bank account row on `/accounting/banking` (or selecting *View Ledger* from the row menu) opens the account directly on the **Ledger tab** (`/accounting/banking/${account.id}/ledger`) instead of the generic overview.
+
+---
+*Memory Updated & Persisted on: 2026-09-17 (End-to-End Verified & Production-Ready)*
 
 ---
 
