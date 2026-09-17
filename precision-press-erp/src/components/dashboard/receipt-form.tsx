@@ -500,6 +500,14 @@ export function ReceiptForm() {
             setTimeout(() => refTypeCellRef.current?.focus(), 20);
             return;
           }
+          if (e.key === "Backspace") {
+            e.preventDefault();
+            setShowRefTypeMenu(false);
+            setShowBillWiseModal(false);
+            amountInputRef.current?.focus();
+            amountInputRef.current?.select();
+            return;
+          }
         }
 
         if (showPendingBills) {
@@ -523,6 +531,14 @@ export function ReceiptForm() {
           if (e.key === "Escape") {
             e.preventDefault();
             setShowPendingBills(false);
+            return;
+          }
+          if (e.key === "Backspace") {
+            e.preventDefault();
+            setShowPendingBills(false);
+            setShowRefTypeMenu(true);
+            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === "AGST_REF"));
+            refTypeCellRef.current?.focus();
             return;
           }
         }
@@ -1220,6 +1236,12 @@ export function ReceiptForm() {
                             setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType));
                           } else if (e.key === "Escape") {
                             setShowRefTypeMenu(false);
+                          } else if (e.key === "Backspace") {
+                            e.preventDefault();
+                            setShowRefTypeMenu(false);
+                            setShowBillWiseModal(false);
+                            amountInputRef.current?.focus();
+                            amountInputRef.current?.select();
                           }
                         }}
                         className="cursor-pointer hover:underline flex items-center justify-between py-1 gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-amber-50 rounded px-1"
@@ -1276,6 +1298,11 @@ export function ReceiptForm() {
                             e.preventDefault();
                             modalAmountInputRef.current?.focus();
                             modalAmountInputRef.current?.select();
+                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !currentLineRefName)) {
+                            e.preventDefault();
+                            setShowRefTypeMenu(true);
+                            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType));
+                            refTypeCellRef.current?.focus();
                           }
                         }}
                         disabled={activeRefType === "ON_ACCOUNT"}
@@ -1301,6 +1328,19 @@ export function ReceiptForm() {
                           if (e.key === "Enter") {
                             e.preventDefault();
                             handleConfirmBillWiseLine();
+                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !currentLineAmount)) {
+                            e.preventDefault();
+                            if (activeRefType === "ON_ACCOUNT") {
+                              setShowRefTypeMenu(true);
+                              setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex(o => o.type === activeRefType));
+                              refTypeCellRef.current?.focus();
+                            } else {
+                              refNameInputRef.current?.focus();
+                              try {
+                                const len = refNameInputRef.current?.value.length || 0;
+                                refNameInputRef.current?.setSelectionRange(len, len);
+                              } catch {}
+                            }
                           }
                         }}
                         className="w-28 text-right bg-white border border-slate-400 px-2.5 py-1 text-xs font-mono font-black rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
