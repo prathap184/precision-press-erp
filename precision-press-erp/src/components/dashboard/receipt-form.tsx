@@ -204,31 +204,49 @@ export function ReceiptForm() {
       .catch(() => {});
   }, []);
 
-  // Pre-fill from pending draft if navigated from other pages
+  // Pre-fill from URL params or pending draft if navigated from other pages
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem("pending_receipt_draft") || localStorage.getItem("pending_receipt_draft");
-      if (stored) {
-        sessionStorage.removeItem("pending_receipt_draft");
-        localStorage.removeItem("pending_receipt_draft");
-        const data = JSON.parse(stored);
+      let targetId = "";
+      let targetName = "";
+      let targetAmount = "";
+      let targetNotes = "";
 
-        const targetId = data.contactId || data.customerId;
-        const targetName = data.contactName || data.customerName;
+      if (typeof window !== "undefined") {
+        const searchParams = new URLSearchParams(window.location.search);
+        targetId = searchParams.get("customerId") || searchParams.get("contactId") || "";
+        targetName = searchParams.get("customerName") || searchParams.get("contactName") || "";
+        targetAmount = searchParams.get("amount") || "";
+        targetNotes = searchParams.get("notes") || searchParams.get("narration") || "";
+      }
 
-        if (targetName) {
-          setCustomerSearch(targetName);
+      if (!targetId && !targetName && !targetAmount) {
+        const stored = sessionStorage.getItem("pending_receipt_draft") || localStorage.getItem("pending_receipt_draft");
+        if (stored) {
+          sessionStorage.removeItem("pending_receipt_draft");
+          localStorage.removeItem("pending_receipt_draft");
+          const data = JSON.parse(stored);
+          targetId = data.contactId || data.customerId || "";
+          targetName = data.contactName || data.customerName || "";
+          targetAmount = data.amount ? String(data.amount) : "";
+          targetNotes = data.notes || data.narration || "";
         }
-        if (targetId) {
-          setSelectedCustomerId(targetId);
-        }
-        if (data.amount) {
-          setVoucherAmount(String(data.amount));
-        }
-        if (data.notes || data.narration) {
-          setNarration(data.notes || data.narration);
-        }
+      }
 
+      if (targetName) {
+        setCustomerSearch(targetName);
+      }
+      if (targetId) {
+        setSelectedCustomerId(targetId);
+      }
+      if (targetAmount) {
+        setVoucherAmount(targetAmount);
+      }
+      if (targetNotes) {
+        setNarration(targetNotes);
+      }
+
+      if (targetId || targetName) {
         const orgId = localStorage.getItem("activeOrgId");
         const headers: Record<string, string> = {};
         if (orgId) headers["x-organization-id"] = orgId;

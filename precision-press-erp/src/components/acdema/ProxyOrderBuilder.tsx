@@ -887,10 +887,11 @@ ${parts.join(', ')}`;
         toast.success(`Proxy orders created successfully.`);
         
         if (paymentMode !== 'COD' && paymentMode !== 'CREDIT') {
-          const custId = selectedCustomer.uid || (selectedCustomer as any).id || '';
-          const custName = selectedCustomer.displayName || selectedCustomer.name || '';
+          const custId = selectedCustomer?.uid || (selectedCustomer as any)?.id || '';
+          const custName = selectedCustomer?.displayName || selectedCustomer?.name || '';
           const gTotal = summary.grandTotal.toFixed(2);
-          const receiptUrl = `/accounting/sales/customer-prepayments?openReceipt=1&customerId=${encodeURIComponent(custId)}&customerName=${encodeURIComponent(custName)}&amount=${encodeURIComponent(gTotal)}&currency=INR`;
+          const orderNum = result.orderId || (result.orderIds?.length ? result.orderIds.join(', ') : '');
+          const receiptUrl = `/accounting/receipt/new?customerId=${encodeURIComponent(custId)}&customerName=${encodeURIComponent(custName)}&amount=${encodeURIComponent(gTotal)}&notes=${encodeURIComponent(`Receipt for Order ${orderNum}`)}`;
           router.push(receiptUrl);
         } else {
           const highlightIds = result.orderIds?.length ? result.orderIds.join(',') : result.orderId;
