@@ -1174,13 +1174,16 @@ export function InvoiceFormView() {
         throw new Error(errData.error || "Failed to create invoice");
       }
 
-      const inv = await res.json();
+      const data = await res.json();
+      const inv = data.invoice || data;
       toast.success(
         forApproval
-          ? `Invoice ${inv.invoiceNumber || ""} submitted for approval`
-          : `Invoice ${inv.invoiceNumber || ""} created successfully!`
+          ? `Invoice ${inv?.invoiceNumber || ""} submitted for approval`
+          : `Invoice ${inv?.invoiceNumber || ""} created successfully!`
       );
-      router.push(`/accounting/sales/${inv.id}`);
+      if (inv?.id) {
+        router.push(`/accounting/sales/${inv.id}`);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create invoice");
     } finally {

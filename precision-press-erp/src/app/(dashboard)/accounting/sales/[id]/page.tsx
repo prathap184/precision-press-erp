@@ -646,11 +646,12 @@ export default function InvoiceDetailPage() {
           })),
         }),
       });
-      if (res.ok) {
         const data = await res.json();
+        const inv = data.invoice || data;
         toast.success("Invoice duplicated");
-        router.push(`/sales/${data.invoice.id}`);
-      }
+        if (inv?.id) {
+          router.push(`/accounting/sales/${inv.id}`);
+        }
     } catch {
       toast.error("Failed to duplicate invoice");
     } finally {
