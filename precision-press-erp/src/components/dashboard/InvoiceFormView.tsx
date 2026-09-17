@@ -295,12 +295,19 @@ export function InvoiceFormView() {
             const meta = row.metadata || {};
             const uom = (row.unit_of_measure || row.tally_uom || "sqft").trim().toLowerCase();
             const cleanUom = uom.replace(/[\s\._-]/g, "");
-            const hasMultipleSizes =
-              row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
+            const hasSingleDefaultSize = Boolean(
+              row.has_single_default_size ??
+              meta.has_single_default_size ??
+              (Number(row.default_width || row.defaultWidth) > 0 && Number(row.default_length || row.defaultLength) > 0)
+            );
+            const hasMultipleSizes = Boolean(
+              (row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
                 ? Boolean(row.has_multiple_sizes)
                 : meta.hasMultipleSizes !== undefined
                 ? Boolean(meta.hasMultipleSizes)
-                : cleanUom === "sqft" || cleanUom === "sqf" || cleanUom === "ft";
+                : cleanUom === "sqft" || cleanUom === "sqf") ||
+              hasSingleDefaultSize
+            );
             const defaultMode: "A" | "B" =
               row.tally_billing_mode === "A" || meta.billingMode === "A" ? "A" : "B";
 
@@ -701,14 +708,21 @@ export function InvoiceFormView() {
               const meta = row.metadata || {};
               const uom = (row.unit_of_measure || row.unitOfMeasure || row.tally_uom || row.tallyUom || "sqft").trim().toLowerCase();
               const cleanUom = uom.replace(/[\s\._-]/g, "");
-              const hasMultipleSizes =
-                row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
+              const hasSingleDefaultSize = Boolean(
+                row.has_single_default_size ??
+                meta.has_single_default_size ??
+                (Number(row.default_width || row.defaultWidth) > 0 && Number(row.default_length || row.defaultLength) > 0)
+              );
+              const hasMultipleSizes = Boolean(
+                (row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
                   ? Boolean(row.has_multiple_sizes)
                   : row.hasMultipleSizes !== undefined
                   ? Boolean(row.hasMultipleSizes)
                   : meta.hasMultipleSizes !== undefined
                   ? Boolean(meta.hasMultipleSizes)
-                  : cleanUom === "sqft" || cleanUom === "sqf" || cleanUom === "ft";
+                  : cleanUom === "sqft" || cleanUom === "sqf") ||
+                hasSingleDefaultSize
+              );
               const defaultMode: "A" | "B" =
                 row.tally_billing_mode === "A" || row.tallyBillingMode === "A" || meta.billingMode === "A" ? "A" : "B";
 

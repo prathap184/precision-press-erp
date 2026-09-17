@@ -1336,19 +1336,21 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
                         const cleanUom = rawUom.replace(/[\s\._-]/g, '');
                         // If product has multiple size details explicitly set in Tally (or UOM is sqft)
-                        const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
-                        const isSqft = hasMultipleSizes;
+                        const hasMultipleSizes = Boolean((product as any)?.has_multiple_sizes ?? (product as any)?.hasMultipleSizes);
+                        const hasSingleDefaultSize = Boolean((product as any)?.has_single_default_size ?? (product as any)?.metadata?.has_single_default_size ?? (Number((product as any)?.default_width) > 0 && Number((product as any)?.default_length) > 0));
+                        const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
+                        const isSqft = isSizeInputActive;
                         const isDirect = !isSqft;
                         const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
                         const isModeA = currentMode === 'A';
                         const isModeB = currentMode === 'B';
-                        const isSqftModeB = hasMultipleSizes && isModeB;
+                        const isSqftModeB = isSizeInputActive && isModeB;
                         const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'N';
-                        const w = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 0)) || 0;
-                        const h = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 0)) || 0;
+                        const w = Number(row.width !== undefined && row.width !== '' ? row.width : (isSizeInputActive ? (product?.default_width || 1) : 0)) || 0;
+                        const h = Number(row.height !== undefined && row.height !== '' ? row.height : (isSizeInputActive ? (product?.default_length || 1) : 0)) || 0;
                         const wFt = row.widthUnit === 'IN' ? w / 12 : (row.widthUnit === 'MTR' ? w * 3.28084 : w);
                         const hFt = row.heightUnit === 'IN' ? h / 12 : (row.heightUnit === 'MTR' ? h * 3.28084 : h);
-                        const sqft = hasMultipleSizes ? ((wFt > 0 && hFt > 0) ? (wFt * hFt) : 0) : 0;
+                        const sqft = isSizeInputActive ? ((wFt > 0 && hFt > 0) ? (wFt * hFt) : 0) : 0;
                         const pcs = Math.max(1, Number(row.pcsNo || '1'));
                         const totalBilledSqft = sqft * pcs;
                         const baseRate = row.manualRate !== undefined && row.manualRate !== '' ? Number(row.manualRate) || 0 : 0;
@@ -1587,7 +1589,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             {/* Width Column */}
                             <td className="py-1 px-1 tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center">
-                                {!hasMultipleSizes ? (
+                                {!isSizeInputActive ? (
                                   <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
                                 ) : (
                                   <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
@@ -1698,7 +1700,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             {/* Length Column */}
                             <td className="py-1 px-1 tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center">
-                                {!hasMultipleSizes ? (
+                                {!isSizeInputActive ? (
                                   <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
                                 ) : (
                                   <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
