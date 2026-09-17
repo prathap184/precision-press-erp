@@ -322,37 +322,35 @@ export default function ContactsPage() {
     }
   }, []);
 
-  // Auto-focus search bar ONLY ONCE on initial landing without jumping user's scroll
-  const hasAutoFocusedRef = useRef(false);
+  // Auto-scroll and auto-focus search bar on initial landing
+  const hasAutoScrolledRef = useRef(false);
   useEffect(() => {
-    if (hasAutoFocusedRef.current) return;
-    const focusParam = searchParams.get("focus");
-    const isCustomerView = searchParams.get("type") === "customer" || focusParam === "search" || focusParam === "1";
-    if (!isCustomerView) return;
+    if (!loading && contacts.length > 0 && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
 
-    let attempts = 0;
-    const maxAttempts = 15;
+      const focusSearch = () => {
+        const input = searchInputRef.current || (document.getElementById("contacts-search-input") as HTMLInputElement | null);
+        if (input) {
+          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+        }
+      };
 
-    const intervalId = setInterval(() => {
-      attempts++;
-      const el = searchInputRef.current || document.getElementById("contacts-search-input") as HTMLInputElement;
-      if (el) {
-        // Use preventScroll so it doesn't yank the page to the top
-        el.focus({ preventScroll: true });
-        try {
-          const len = el.value ? el.value.length : 0;
-          el.setSelectionRange(len, len);
-        } catch {}
-        setDropdownOpen(true);
-        hasAutoFocusedRef.current = true;
-        clearInterval(intervalId);
-      } else if (attempts >= maxAttempts) {
-        clearInterval(intervalId);
-      }
-    }, 80);
+      const doScrollAndFocus = () => {
+        const toolbarEl = document.getElementById("contacts-table-toolbar");
+        if (toolbarEl) {
+          const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+          window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+        }
+        focusSearch();
+      };
 
-    return () => clearInterval(intervalId);
-  }, [searchParams]);
+      const t1 = setTimeout(doScrollAndFocus, 100);
+      const t2 = setTimeout(doScrollAndFocus, 350);
+      const t3 = setTimeout(focusSearch, 600);
+
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [loading, contacts]);
 
   // If user scrolls the page, dismiss the dropdown and ensure autofocus is marked done
   // so the scroll position remains completely stable when loading more items
@@ -664,14 +662,16 @@ export default function ContactsPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative w-full sm:max-w-md">
+        <div id="contacts-table-toolbar" className="flex flex-wrap items-center gap-2">
+          <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground z-10" />
             <Input
               id="contacts-search-input"
               ref={searchInputRef}
+              autoFocus
               placeholder="Search contacts (use ↑ ↓ arrows to select)..."
               value={search}
+              className="h-8 pl-9 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
               onFocus={() => {
                 setDropdownOpen(true);
                 setHighlightIndex(0);
@@ -808,6 +808,16 @@ export default function ContactsPage() {
               </div>
             )}
           </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="h-8 w-40 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="customer">Customers</SelectItem>
+              <SelectItem value="supplier">Suppliers</SelectItem>
+            </SelectContent>
+          </Select>
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground shrink-0">From</span>
             <DatePicker

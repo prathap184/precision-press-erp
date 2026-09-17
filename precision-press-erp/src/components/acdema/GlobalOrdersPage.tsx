@@ -65,6 +65,37 @@ export function GlobalOrdersPage() {
   const [modalProcessing, setModalProcessing] = useState(false);
   const [invoicesList, setInvoicesList] = useState<any[]>([]);
 
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const hasAutoScrolledRef = React.useRef(false);
+
+  useEffect(() => {
+    if (!loading && orders.length > 0 && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
+
+      const focusSearch = () => {
+        const input = searchInputRef.current || (document.getElementById("orders-search-input") as HTMLInputElement | null);
+        if (input) {
+          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+        }
+      };
+
+      const doScrollAndFocus = () => {
+        const toolbarEl = document.getElementById("orders-table-toolbar");
+        if (toolbarEl) {
+          const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+          window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+        }
+        focusSearch();
+      };
+
+      const t1 = setTimeout(doScrollAndFocus, 100);
+      const t2 = setTimeout(doScrollAndFocus, 350);
+      const t3 = setTimeout(focusSearch, 600);
+
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [loading, orders]);
+
   const openDateModal = () => {
     setTempFromDate(dateRange.start ? dateRange.start.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
     setTempToDate(dateRange.end ? dateRange.end.toISOString().split('T')[0] : '');
@@ -873,15 +904,18 @@ export function GlobalOrdersPage() {
             </div>
           </section>
 
-        <div className="relative z-40 rounded-2xl bg-white/20 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.02)] backdrop-blur-2xl border border-white/30 mb-3 flex gap-2.5 items-center">
+        <div id="orders-table-toolbar" className="relative z-40 rounded-2xl bg-white/20 px-3.5 py-1.5 shadow-[0_4px_20px_rgb(0,0,0,0.02)] backdrop-blur-2xl border border-white/30 mb-3 flex gap-2.5 items-center">
           <div className="flex-1 relative group">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
             <input
+              id="orders-search-input"
+              ref={searchInputRef}
+              autoFocus
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search manifest by ID, Customer, Phone..."
-              className="w-full h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg pl-9 pr-3 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-indigo-600 focus:bg-white/40 transition-all shadow-2xs"
+              className="w-full h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg pl-9 pr-3 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-indigo-600 focus:bg-white/40 focus:ring-2 focus:ring-indigo-500 transition-all shadow-2xs"
             />
           </div>
 

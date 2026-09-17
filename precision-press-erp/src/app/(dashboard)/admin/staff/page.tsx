@@ -373,6 +373,37 @@ export default function StaffManagementPage() {
   const [filterRole, setFilterRole] = useState<StaffRole | 'ALL'>('ALL');
   const [filterStatus, setFilterStatus] = useState<StaffStatus | 'ALL'>('ALL');
 
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const hasAutoScrolledRef = React.useRef(false);
+
+  useEffect(() => {
+    if (!loading && staffList.length > 0 && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
+
+      const focusSearch = () => {
+        const input = searchInputRef.current || (document.getElementById("staff-search-input") as HTMLInputElement | null);
+        if (input) {
+          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+        }
+      };
+
+      const doScrollAndFocus = () => {
+        const toolbarEl = document.getElementById("staff-table-toolbar");
+        if (toolbarEl) {
+          const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+          window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+        }
+        focusSearch();
+      };
+
+      const t1 = setTimeout(doScrollAndFocus, 100);
+      const t2 = setTimeout(doScrollAndFocus, 350);
+      const t3 = setTimeout(focusSearch, 600);
+
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [loading, staffList]);
+
   const loadStaff = useCallback(async () => {
     setLoading(true);
     const list = await getStaffList();
@@ -437,21 +468,24 @@ export default function StaffManagementPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-3">
+        <div id="staff-table-toolbar" className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
+              id="staff-search-input"
+              ref={searchInputRef}
+              autoFocus
               type="text"
               placeholder="Search staff..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-300 bg-white"
+              className="w-full pl-9 pr-4 h-9 text-xs bg-white border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
             />
           </div>
           <select
             value={filterRole}
             onChange={e => setFilterRole(e.target.value as any)}
-            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white font-semibold text-slate-700"
+            className="h-9 px-3 text-xs border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500 bg-white font-semibold text-slate-700 shadow-xs"
           >
             <option value="ALL">All Roles</option>
             {ALL_STAFF_ROLES.map(r => <option key={r} value={r}>{ROLE_META[r].label}</option>)}
@@ -459,7 +493,7 @@ export default function StaffManagementPage() {
           <select
             value={filterStatus}
             onChange={e => setFilterStatus(e.target.value as any)}
-            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-100 bg-white font-semibold text-slate-700"
+            className="h-9 px-3 text-xs border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500 bg-white font-semibold text-slate-700 shadow-xs"
           >
             <option value="ALL">All Statuses</option>
             <option value="ACTIVE">Active</option>

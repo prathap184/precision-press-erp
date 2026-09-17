@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronRight, Lock, Plus, Search, X } from "lucide-react";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
@@ -49,7 +49,38 @@ export default function AccountsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [sort, setSort] = useState("code:asc");
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const hasAutoScrolledRef = useRef(false);
+
   useDocumentTitle("Accounting \u00B7 Chart of Accounts");
+
+  useEffect(() => {
+    if (!loading && accounts.length > 0 && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
+
+      const focusSearch = () => {
+        const input = searchInputRef.current || (document.getElementById("accounts-search-input") as HTMLInputElement | null);
+        if (input) {
+          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+        }
+      };
+
+      const doScrollAndFocus = () => {
+        const toolbarEl = document.getElementById("accounts-table-toolbar");
+        if (toolbarEl) {
+          const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+          window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+        }
+        focusSearch();
+      };
+
+      const t1 = setTimeout(doScrollAndFocus, 100);
+      const t2 = setTimeout(doScrollAndFocus, 350);
+      const t3 = setTimeout(focusSearch, 600);
+
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [loading, accounts]);
 
   function fetchAccounts() {
     const orgId = localStorage.getItem("activeOrgId");
@@ -235,7 +266,7 @@ export default function AccountsPage() {
       </div>
 
       {/* Filters */}
-      <div className="space-y-3">
+      <div id="accounts-table-toolbar" className="space-y-3">
         <Tabs value={typeFilter} onValueChange={setTypeFilter}>
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
@@ -251,14 +282,30 @@ export default function AccountsPage() {
           <div className="relative w-full sm:max-w-xs">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
+              id="accounts-search-input"
+              ref={searchInputRef}
+              autoFocus
               placeholder="Search by name or code..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="h-8 pl-9 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
             />
           </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="h-8 w-36 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="asset">Asset</SelectItem>
+              <SelectItem value="liability">Liability</SelectItem>
+              <SelectItem value="equity">Equity</SelectItem>
+              <SelectItem value="revenue">Revenue</SelectItem>
+              <SelectItem value="expense">Expense</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger className="h-9 w-44 text-xs">
+            <SelectTrigger className="h-8 w-44 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs">
               <SelectValue placeholder="Sort by..." />
             </SelectTrigger>
             <SelectContent>

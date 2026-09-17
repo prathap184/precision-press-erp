@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -26,6 +26,13 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -96,8 +103,40 @@ export default function BankingPage() {
   const [loading, setLoading] = useState(true);
   const [showBalances, setShowBalances] = useState(true);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const hasAutoScrolledRef = useRef(false);
 
   useDocumentTitle("Accounting \u00B7 Bank Accounts");
+
+  useEffect(() => {
+    if (!loading && accounts.length > 0 && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
+
+      const focusSearch = () => {
+        const input = searchInputRef.current || (document.getElementById("banking-search-input") as HTMLInputElement | null);
+        if (input) {
+          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+        }
+      };
+
+      const doScrollAndFocus = () => {
+        const toolbarEl = document.getElementById("banking-table-toolbar");
+        if (toolbarEl) {
+          const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+          window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+        }
+        focusSearch();
+      };
+
+      const t1 = setTimeout(doScrollAndFocus, 100);
+      const t2 = setTimeout(doScrollAndFocus, 350);
+      const t3 = setTimeout(focusSearch, 600);
+
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [loading, accounts]);
 
   function fetchAccounts() {
     const orgId = localStorage.getItem("activeOrgId");
@@ -119,15 +158,21 @@ export default function BankingPage() {
   }, []);
 
   const filteredAccounts = useMemo(() => {
-    if (!search.trim()) return accounts;
-    const q = search.toLowerCase().trim();
-    return accounts.filter((a) =>
-      a.accountName.toLowerCase().includes(q) ||
-      (a.bankName || "").toLowerCase().includes(q) ||
-      (a.accountNumber || "").toLowerCase().includes(q) ||
-      (ACCOUNT_TYPE_LABELS[a.accountType] || "").toLowerCase().includes(q)
-    );
-  }, [accounts, search]);
+    let result = accounts;
+    if (typeFilter !== "all") {
+      result = result.filter((a) => a.accountType === typeFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter((a) =>
+        a.accountName.toLowerCase().includes(q) ||
+        (a.bankName || "").toLowerCase().includes(q) ||
+        (a.accountNumber || "").toLowerCase().includes(q) ||
+        (ACCOUNT_TYPE_LABELS[a.accountType] || "").toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [accounts, search, typeFilter]);
 
   const totals = useMemo(() => {
     const active = accounts.filter((a) => a.isActive).length;
@@ -299,7 +344,7 @@ export default function BankingPage() {
       <div className="h-px bg-border" />
 
       {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div id="banking-table-toolbar" className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-sm font-semibold">Bank Accounts</h2>
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -310,12 +355,30 @@ export default function BankingPage() {
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
             <Input
+              id="banking-search-input"
+              ref={searchInputRef}
+              autoFocus
               placeholder="Search bank accounts..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="h-8 w-56 pl-8 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
             />
           </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="h-8 w-40 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs">
+              <SelectValue placeholder="All Types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="checking">Checking</SelectItem>
+              <SelectItem value="savings">Savings</SelectItem>
+              <SelectItem value="credit_card">Credit Cards</SelectItem>
+              <SelectItem value="cash">Cash Accounts</SelectItem>
+              <SelectItem value="loan">Loans</SelectItem>
+              <SelectItem value="investment">Investments</SelectItem>
+              <SelectItem value="other">Other</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             variant="ghost"
             size="sm"

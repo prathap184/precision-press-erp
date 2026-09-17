@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { useRouter } from "next/navigation";
 import {
@@ -123,7 +123,38 @@ export default function TransactionsPage() {
   const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState("date:desc");
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const hasAutoScrolledRef = useRef(false);
+
   useDocumentTitle("Accounting \u00B7 Manual entries");
+
+  useEffect(() => {
+    if (!loading && entries.length > 0 && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
+
+      const focusSearch = () => {
+        const input = searchInputRef.current || (document.getElementById("entries-search-input") as HTMLInputElement | null);
+        if (input) {
+          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+        }
+      };
+
+      const doScrollAndFocus = () => {
+        const toolbarEl = document.getElementById("entries-table-toolbar");
+        if (toolbarEl) {
+          const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+          window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+        }
+        focusSearch();
+      };
+
+      const t1 = setTimeout(doScrollAndFocus, 100);
+      const t2 = setTimeout(doScrollAndFocus, 350);
+      const t3 = setTimeout(focusSearch, 600);
+
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [loading, entries]);
 
   useEffect(() => {
     const orgId = localStorage.getItem("activeOrgId");
@@ -419,17 +450,31 @@ export default function TransactionsPage() {
             </Tabs>
           </div>
 
-          {/* Filter bar: search, date range, sort */}
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Filter bar: search, status filter, date range, sort */}
+          <div id="entries-table-toolbar" className="flex flex-wrap items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
               <Input
+                id="entries-search-input"
+                ref={searchInputRef}
+                autoFocus
                 placeholder="Search entries..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-8 w-56 pl-8 text-xs"
+                className="h-8 w-56 pl-8 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
               />
             </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-40 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="posted">In your books</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="void">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted-foreground shrink-0">
                 From

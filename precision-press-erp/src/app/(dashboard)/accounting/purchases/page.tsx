@@ -193,8 +193,38 @@ export default function BillsPage() {
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const hasAutoScrolledRef = useRef(false);
 
   useDocumentTitle("Purchases · Bills");
+
+  useEffect(() => {
+    if (!loading && (bills.length > 0 || allBills.length > 0) && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
+
+      const focusSearch = () => {
+        const input = searchInputRef.current || (document.getElementById("purchases-search-input") as HTMLInputElement | null);
+        if (input) {
+          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+        }
+      };
+
+      const doScrollAndFocus = () => {
+        const toolbarEl = document.getElementById("purchases-table-toolbar");
+        if (toolbarEl) {
+          const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+          window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+        }
+        focusSearch();
+      };
+
+      const t1 = setTimeout(doScrollAndFocus, 100);
+      const t2 = setTimeout(doScrollAndFocus, 350);
+      const t3 = setTimeout(focusSearch, 600);
+
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [loading, bills, allBills]);
 
   const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
   const columns = useMemo(() => buildColumns(), []);
@@ -638,16 +668,32 @@ export default function BillsPage() {
             </Button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div id="purchases-table-toolbar" className="flex flex-wrap items-center gap-2">
             <div className="relative w-full sm:max-w-xs">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
+                id="purchases-search-input"
+                ref={searchInputRef}
+                autoFocus
                 placeholder="Search bills..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
+                className="h-8 pl-9 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
               />
             </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-40 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="received">In your books</SelectItem>
+                <SelectItem value="partial">Part paid</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex items-center gap-1.5">
               <span className="text-xs text-muted-foreground shrink-0">From</span>
               <DatePicker
