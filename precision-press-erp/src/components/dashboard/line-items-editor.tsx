@@ -581,13 +581,25 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
       itemObj?.hasMultipleSizes ??
       itemObj?.has_multiple_sizes ??
       itemObj?.metadata?.hasMultipleSizes ??
-      itemObj?.metadata?.has_multiple_sizes ??
-      (cleanUom === 'sqft' || cleanUom === 'sqf' || (parseFloat(line?.width || '0') > 0 && parseFloat(line?.length || '0') > 0))
+      itemObj?.metadata?.has_multiple_sizes
     );
+    const hasSingleDefaultSize = Boolean(
+      (itemObj as any)?.has_single_default_size ??
+      (itemObj as any)?.hasSingleDefaultSize ??
+      itemObj?.metadata?.has_single_default_size ??
+      itemObj?.metadata?.hasSingleDefaultSize ??
+      ((Number((itemObj as any)?.default_width) > 0 && Number((itemObj as any)?.default_length) > 0) ||
+      (parseFloat(line?.width || '0') > 0 && parseFloat(line?.length || '0') > 0))
+    );
+    const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
     setTimeout(() => {
-      if (hasMultipleSizes) {
+      if (isSizeInputActive) {
         const wInput = document.getElementById(`row-${lineIndex}-width`);
         if (wInput) wInput.focus();
+        else {
+          const qInput = document.getElementById(`row-${lineIndex}-quantity`);
+          if (qInput) qInput.focus();
+        }
       } else {
         const qInput = document.getElementById(`row-${lineIndex}-quantity`);
         if (qInput) qInput.focus();

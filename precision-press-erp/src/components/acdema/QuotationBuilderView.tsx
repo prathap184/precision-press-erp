@@ -250,10 +250,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     const product = products.find((p: any) => p?.id === row?.productId);
     const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row?.unit || '').trim().toLowerCase();
     const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-    const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
+    const hasMultipleSizes = Boolean((product as any)?.has_multiple_sizes ?? (product as any)?.hasMultipleSizes);
+    const hasSingleDefaultSize = Boolean((product as any)?.has_single_default_size ?? (product as any)?.metadata?.has_single_default_size ?? (Number((product as any)?.default_width) > 0 && Number((product as any)?.default_length) > 0));
+    const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
 
     setTimeout(() => {
-      if (hasMultipleSizes) {
+      if (isSizeInputActive) {
         const widthInput = document.getElementById(`error-row-${rowId}-width`);
         if (widthInput) widthInput.focus();
         else {

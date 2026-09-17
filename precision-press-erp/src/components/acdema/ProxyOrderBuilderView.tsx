@@ -425,10 +425,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     const p = products.find((prod: any) => prod.id === rowObj?.productId);
     const rawUom = String((p as any)?.unit_of_measure || (p as any)?.tally_uom || 'sqft').trim().toLowerCase();
     const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-    const hasMultipleSizes = Boolean((p as any)?.has_multiple_sizes ?? (p as any)?.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf'));
+    const hasMultipleSizes = Boolean((p as any)?.has_multiple_sizes ?? (p as any)?.hasMultipleSizes);
+    const hasSingleDefaultSize = Boolean((p as any)?.has_single_default_size ?? (p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0));
+    const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
     
     setTimeout(() => {
-      if (hasMultipleSizes) {
+      if (isSizeInputActive) {
         const widthInput = document.getElementById(`error-row-${rowId}-width`);
         if (widthInput) {
           widthInput.focus();

@@ -854,8 +854,12 @@ export function InvoiceFormView() {
     setActiveDescRowId(null);
     setTimeout(() => {
       const prod = products.find((p) => p.id === rows.find((r) => r.id === rowId)?.productId);
-      const isSqft = prod ? Boolean(prod.has_multiple_sizes) : false;
-      if (isSqft) {
+      const rawUom = String((prod as any)?.unit_of_measure || (prod as any)?.tally_uom || 'sqft').trim().toLowerCase();
+      const cleanUom = rawUom.replace(/[\s\._-]/g, '');
+      const hasMultipleSizes = Boolean((prod as any)?.has_multiple_sizes ?? (prod as any)?.hasMultipleSizes);
+      const hasSingleDefaultSize = Boolean((prod as any)?.has_single_default_size ?? (prod as any)?.metadata?.has_single_default_size ?? (Number((prod as any)?.default_width) > 0 && Number((prod as any)?.default_length) > 0));
+      const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
+      if (isSizeInputActive) {
         const el = document.getElementById(`row-${rowId}-width`);
         if (el) {
           el.focus();
