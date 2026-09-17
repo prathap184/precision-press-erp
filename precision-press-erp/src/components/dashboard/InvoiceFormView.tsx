@@ -939,7 +939,7 @@ export function InvoiceFormView() {
       const baseRate =
         row.manualRate !== undefined && row.manualRate !== ""
           ? Number(row.manualRate) || 0
-          : prod?.baseRate || 0;
+          : 0;
       const finish = Number(row.finishAmount || "0") || 0;
 
       const qtyNum =
@@ -989,6 +989,22 @@ export function InvoiceFormView() {
     };
   }, [calculatedRows]);
 
+  const lastFocusedElementIdRef = useRef<string | null>(null);
+
+  // Keep track of the last active input/select/button on the page
+  useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target.id) {
+        if (!target.closest('[role="dialog"]') && !target.id.startsWith("modal-")) {
+          lastFocusedElementIdRef.current = target.id;
+        }
+      }
+    };
+    document.addEventListener("focusin", handleFocusIn);
+    return () => document.removeEventListener("focusin", handleFocusIn);
+  }, []);
+
   // Keyboard shortcut: Ctrl + Enter & Alt + C for Create Customer
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1011,6 +1027,44 @@ export function InvoiceFormView() {
         if (customerDropdownOpen) setCustomerDropdownOpen(false);
         if (openRowId) setOpenRowId(null);
         if (logisticsDropdownOpen) setLogisticsDropdownOpen(false);
+        return;
+      }
+
+      // Smart Focus Recovery: If user clicks outside and focus lands on body / background,
+      // pressing Enter, Backspace, Arrow keys, or typing instantly restores focus to their last active box!
+      const activeEl = document.activeElement;
+      const isBodyOrBg =
+        !activeEl ||
+        activeEl === document.body ||
+        activeEl.tagName === "BODY" ||
+        activeEl.tagName === "HTML" ||
+        activeEl.id === "__next" ||
+        (activeEl.tagName === "DIV" && !activeEl.getAttribute("tabindex"));
+
+      if (isBodyOrBg) {
+        if (["Control", "Alt", "Shift", "Meta", "F12", "F5"].includes(e.key)) return;
+
+        const targetId = lastFocusedElementIdRef.current;
+        let targetEl = targetId ? document.getElementById(targetId) : null;
+
+        if (!targetEl) {
+          if (rows && rows.length > 0) {
+            targetEl = document.getElementById(`row-${rows[0].id}-product-input`);
+          }
+          if (!targetEl) {
+            targetEl = document.getElementById("invoice-customer-search-input");
+          }
+        }
+
+        if (targetEl) {
+          targetEl.focus();
+          if (targetEl instanceof HTMLInputElement || targetEl instanceof HTMLTextAreaElement) {
+            try {
+              const len = targetEl.value ? targetEl.value.length : 0;
+              targetEl.setSelectionRange(len, len);
+            } catch {}
+          }
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -1021,6 +1075,7 @@ export function InvoiceFormView() {
     refType,
     selectedCreditId,
     calculatedRows,
+    rows,
     issueDate,
     dueDate,
     reference,
@@ -1045,6 +1100,14 @@ export function InvoiceFormView() {
     const validRows = calculatedRows.filter((r) => r.productId || r.productName);
     if (validRows.length === 0) {
       toast.error("Please add at least one item to invoice");
+      return;
+    }
+
+    const invalidRateRow = validRows.find((r) => !r.manualRate || Number(r.manualRate) <= 0);
+    if (invalidRateRow) {
+      toast.error("All items must have a rate greater than 0");
+      const rateEl = document.getElementById(`row-${invalidRateRow.id}-rate`);
+      if (rateEl) rateEl.focus();
       return;
     }
 
@@ -1529,7 +1592,7 @@ export function InvoiceFormView() {
                                               hsnCode: p.hsn_code || "",
                                               billingMode: p.tally_billing_mode || "B",
                                               gstRate: p.gst_rate || 18,
-                                              manualRate: String(p.baseRate || ""),
+                                              manualRate: "",
                                             });
                                             setOpenRowId(null);
                                             setSearchQuery("");
@@ -1889,9 +1952,15 @@ export function InvoiceFormView() {
                               <input
                                 id={`row-${row.id}-rate`}
                                 inputMode="decimal"
-                                value={row.manualRate !== undefined && row.manualRate !== "" ? row.manualRate : row.baseRate || ""}
-                                placeholder={String(row.baseRate || "0.00")}
+                                value={row.manualRate !== undefined ? row.manualRate : ""}
+                                placeholder="0.00"
                                 onChange={(e) => updateRow(row.id, { manualRate: e.target.value })}
+                                onFocus={(e) => {
+                                  try {
+                                    const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                    e.currentTarget.setSelectionRange(len, len);
+                                  } catch {}
+                                }}
                                 onKeyDown={(e) => {
                                   if (e.key === "End") {
                                     e.preventDefault();
@@ -1936,7 +2005,7 @@ export function InvoiceFormView() {
                           {/* Rate Per Unit */}
                           <td className="py-1 px-1 align-top text-center">
                             <div className="h-10 flex items-center justify-center font-mono text-xs text-slate-500 font-bold">
-                              ₹{row.baseRate.toFixed(2)}
+                              ₹{row.baseRate > 0 ? row.baseRate.toFixed(2) : "0.00"}
                             </div>
                           </td>
 
@@ -2811,7 +2880,7 @@ export function InvoiceFormView() {
                                 hsnCode: p.hsn_code || "",
                                 billingMode: prodMode,
                                 gstRate: p.gst_rate || 18,
-                                manualRate: String(p.baseRate || ""),
+                                manualRate: "",
                               });
                               setOpenRowId(null);
                               setSearchQuery("");

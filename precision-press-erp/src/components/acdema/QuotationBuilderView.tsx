@@ -511,7 +511,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
             targetEl = document.getElementById(`row-${rows[0].id}-product-input`);
           }
           if (!targetEl) {
-            targetEl = document.getElementById('proxy-customer-search-input');
+            targetEl = document.getElementById('quotation-customer-search-input') || document.getElementById('proxy-customer-search-input');
           }
         }
 
@@ -1035,7 +1035,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                    e.preventDefault();
                                                    setOpenRowId(null);
                                                    if (index === 0) {
-                                                     const custInput = document.getElementById('proxy-customer-search-input') || document.getElementById('order-number-input');
+                                                     const custInput = document.getElementById('quotation-customer-search-input') || document.getElementById('proxy-customer-search-input') || document.getElementById('order-number-input');
                                                      if (custInput) {
                                                        custInput.focus();
                                                      }
@@ -1347,7 +1347,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         e.currentTarget.setSelectionRange(0, 0);
                                       } else if (e.key === "Enter") {
                                         e.preventDefault();
-                                        const rateInput = document.getElementById(`row-${row.id}-rate-sqft`);
+                                        const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                        const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                        const rateInput = rateSqft || rateUnit;
                                         if (rateInput) {
                                           rateInput.focus();
                                         }
@@ -1525,7 +1527,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         }
                                       } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                         e.preventDefault();
-                                        if (isSqftModeB) {
+                                        if (isModeA) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
                                           if (rateSqft) {
                                             rateSqft.focus();
@@ -1572,7 +1574,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                         e.preventDefault();
                                         const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
                                         if (finishSelect) finishSelect.focus();
-                                        else if (isSqftModeB) {
+                                        else if (isModeA) {
                                           const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
                                           if (rateSqft) {
                                             rateSqft.focus();

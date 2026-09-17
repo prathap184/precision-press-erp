@@ -97,7 +97,7 @@ export function ReceiptForm() {
   const [customerHighlightIndex, setCustomerHighlightIndex] = useState(0);
 
   // Amount & Narration
-  const [voucherAmount, setVoucherAmount] = useState("0.00");
+  const [voucherAmount, setVoucherAmount] = useState("");
   const [narration, setNarration] = useState("");
 
   // Bill-wise details
@@ -131,6 +131,21 @@ export function ReceiptForm() {
   const refTypeCellRef = useRef<HTMLDivElement>(null);
   const bankDropdownRef = useRef<HTMLDivElement>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
+  const lastFocusedElementIdRef = useRef<string | null>(null);
+
+  // Keep track of the last focused input/select/button on the page
+  useEffect(() => {
+    const handleFocusIn = (e: FocusEvent) => {
+      const target = e.target as HTMLElement;
+      if (target && target.id) {
+        if (!target.closest('[role="dialog"]') && !target.id.startsWith("modal-")) {
+          lastFocusedElementIdRef.current = target.id;
+        }
+      }
+    };
+    document.addEventListener("focusin", handleFocusIn);
+    return () => document.removeEventListener("focusin", handleFocusIn);
+  }, []);
 
   // Selected Bank & Customer details
   const selectedBank = bankAccounts.find((b) => b.id === selectedBankId);
@@ -541,6 +556,45 @@ export function ReceiptForm() {
           e.preventDefault();
           setShowF2Modal(false);
         }
+        return;
+      }
+
+      // Smart Focus Recovery: If user clicks outside and focus lands on body / background,
+      // pressing Enter, Backspace, Arrow keys, or typing instantly restores focus to their last active box!
+      const activeEl = document.activeElement;
+      const isBodyOrBg =
+        !activeEl ||
+        activeEl === document.body ||
+        activeEl.tagName === "BODY" ||
+        activeEl.tagName === "HTML" ||
+        activeEl.id === "__next" ||
+        (activeEl.tagName === "DIV" && !activeEl.getAttribute("tabindex"));
+
+      if (isBodyOrBg && !showBillWiseModal && !showAcceptDialog && !showF2Modal) {
+        if (["Control", "Alt", "Shift", "Meta", "F12", "F5"].includes(e.key)) return;
+
+        const targetId = lastFocusedElementIdRef.current;
+        let targetEl = targetId ? document.getElementById(targetId) : null;
+
+        if (!targetEl) {
+          if (!selectedCustomerId) {
+            targetEl = document.getElementById("receipt-customer-input");
+          } else if (!voucherAmount) {
+            targetEl = document.getElementById("receipt-amount-input");
+          } else {
+            targetEl = document.getElementById("receipt-customer-input");
+          }
+        }
+
+        if (targetEl) {
+          targetEl.focus();
+          if (targetEl instanceof HTMLInputElement || targetEl instanceof HTMLTextAreaElement) {
+            try {
+              const len = targetEl.value ? targetEl.value.length : 0;
+              targetEl.setSelectionRange(len, len);
+            } catch {}
+          }
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -806,6 +860,7 @@ export function ReceiptForm() {
               </div>
               <div className="flex-1 max-w-xl relative">
                 <input
+                  id="receipt-account-input"
                   ref={accountInputRef}
                   type="text"
                   readOnly
@@ -896,17 +951,22 @@ export function ReceiptForm() {
                   {/* Particulars (Customer Search) */}
                   <div className="w-2/3 relative">
                     <input
+                      id="receipt-customer-input"
                       ref={customerInputRef}
                       type="text"
-                      placeholder="Type or select customer ledger..."
+                      placeholder="Type or select Customer Name..."
                       value={customerSearch}
                       onChange={(e) => {
                         setCustomerSearch(e.target.value);
                         setShowCustomerDropdown(true);
+                        setCustomerHighlightIndex(0);
                       }}
+                      onClick={() => setShowCustomerDropdown(true)}
                       onFocus={() => {
                         setShowCustomerDropdown(true);
-                        try { customerInputRef.current?.select(); } catch {}
+                        try {
+                          customerInputRef.current?.select();
+                        } catch {}
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "ArrowDown") {
@@ -996,6 +1056,7 @@ export function ReceiptForm() {
                   {/* Amount Column */}
                   <div className="w-1/3 flex items-center justify-end gap-2">
                     <input
+                      id="receipt-amount-input"
                       ref={amountInputRef}
                       type="number"
                       step="0.01"
@@ -1039,12 +1100,14 @@ export function ReceiptForm() {
                               ? "Advance"
                               : "On Account"}
                           </span>
-                          <span className="text-slate-900 font-bold">{line.refName}</span>
-                          {line.dueDate && <span className="text-slate-500 font-sans font-medium">({line.dueDate})</span>}
+                          <span className="text-slate-700">{line.refName}</span>
+                          {line.dueDate && (
+                            <span className="text-slate-500 text-[10px]">Due: {line.dueDate}</span>
+                          )}
                         </div>
-                        <div className="font-black text-slate-900 text-sm">
-                          {line.amount.toFixed(2)} {line.drCr}
-                        </div>
+                        <span className="font-bold text-slate-900">
+                          ₹ {parseFloat(line.amount || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })} Cr
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1061,13 +1124,14 @@ export function ReceiptForm() {
             </div>
 
             {/* Narration Section */}
-            <div className="flex flex-col sm:flex-row sm:items-start gap-3 pt-2">
+            <div className="flex items-start gap-3 border-t border-slate-200 pt-4">
               <div className="w-32 shrink-0 text-sm font-black text-slate-800 pt-1 flex items-center justify-between">
                 <span>Narration</span>
                 <span>:</span>
               </div>
-              <div className="flex-1 max-w-2xl">
+              <div className="flex-1 max-w-xl">
                 <textarea
+                  id="receipt-narration-input"
                   ref={narrationInputRef}
                   rows={2}
                   value={narration}
