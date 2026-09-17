@@ -580,17 +580,31 @@ export function QuotationBuilder() {
         const product = products.find((item) => item.id === row.productId);
         const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || (row as any).unit || '').trim().toLowerCase();
         const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-        const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
-        const isSqft = hasMultipleSizes;
+        const hasMultipleSizes = Boolean(
+          (product as any)?.has_multiple_sizes ??
+          (product as any)?.hasMultipleSizes ??
+          (product as any)?.metadata?.has_multiple_sizes ??
+          (product as any)?.metadata?.hasMultipleSizes
+        );
+        const hasSingleDefaultSize = Boolean(
+          (product as any)?.has_single_default_size ??
+          (product as any)?.hasSingleDefaultSize ??
+          (product as any)?.metadata?.has_single_default_size ??
+          (product as any)?.metadata?.hasSingleDefaultSize ??
+          ((Number((product as any)?.default_width) > 0 || Number((product as any)?.default_size_width) > 0) &&
+           (Number((product as any)?.default_length) > 0 || Number((product as any)?.default_size_length) > 0))
+        );
+        const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
+        const isSqft = isSizeInputActive;
         const isDirect = !isSqft;
         const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
         const isModeA = currentMode === 'A';
         const isModeB = currentMode === 'B';
-        const width = Number(row.width !== undefined && row.width !== '' ? row.width : (hasMultipleSizes ? (product?.default_width || 1) : 0)) || 0;
-        const height = Number(row.height !== undefined && row.height !== '' ? row.height : (hasMultipleSizes ? (product?.default_length || 1) : 0)) || 0;
+        const width = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? (product?.default_width || 1) : 0)) || 0;
+        const height = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? (product?.default_length || 1) : 0)) || 0;
         const widthInFt = row.widthUnit === 'IN' ? width / 12 : (row.widthUnit === 'MTR' ? width * 3.28084 : width);
         const heightInFt = row.heightUnit === 'IN' ? height / 12 : (row.heightUnit === 'MTR' ? height * 3.28084 : height);
-        const sqft = hasMultipleSizes ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 1) : 1;
+        const sqft = isSqft ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 1) : 1;
         const pcs = Math.max(1, Number(row.pcsNo || '1'));
         const totalBilledSqft = sqft * pcs;
         const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isDirect ? 1 : (isModeB ? totalBilledSqft : 1))) || 1;
