@@ -3,16 +3,11 @@
 import React from 'react';
 import { useGlobalShortcuts } from '@/hooks/useGlobalShortcuts';
 import { useAuth } from '@/lib/auth-context';
-import { X, ChevronRight, FileText, Activity, BookOpen, Layers } from 'lucide-react';
-import Link from 'next/link';
-
-interface ShortcutMenuProps {
-  // Can be used to pass user role if needed, though role is checked before rendering this component
-}
-
+import { X, ChevronRight, FileText, Activity, BookOpen, Layers, Sparkles, Landmark, Receipt } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-
 import { useCreateDrawer } from '@/components/dashboard/create-drawer';
+
+interface ShortcutMenuProps {}
 
 interface ShortcutItemDef {
   hotkey: string;
@@ -30,7 +25,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
 
   const allowedRoles = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'];
 
-  // Prefetch routes in the background so they load instantly when a shortcut is pressed
+  // Prefetch routes in the background
   React.useEffect(() => {
     if (menuState !== null && profile && allowedRoles.includes(profile.role)) {
       const routesToPrefetch = [
@@ -38,13 +33,14 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
         '/payment-entry', '/admin/treasury', '/admin/journal-transfers', 
         '/purchase', '/accountant/day-book', '/accountant/ledger', 
         '/accountant/bank-ledger', '/accountant/cash-ledger',
-        '/accounting/contacts'
+        '/accounting/contacts', '/accounting/sales', '/accounting/sales/customer-prepayments',
+        '/accounting/banking'
       ];
       routesToPrefetch.forEach(route => router.prefetch(route));
     }
   }, [menuState, profile, router]);
 
-  // Derive menu items for current menuState
+  // Derive menu items for current menuState (standard submenus)
   const currentItems: ShortcutItemDef[] = React.useMemo(() => {
     if (menuState === 'VOUCHERS') {
       return [
@@ -85,9 +81,9 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
     setSelectedIndex(0);
   }, [menuState]);
 
-  // Keyboard navigation for ArrowUp, ArrowDown, and Enter
+  // Keyboard navigation for standard submenus
   React.useEffect(() => {
-    if (menuState === null || currentItems.length === 0) return;
+    if (menuState === null || menuState === 'ALL_SHORTCUTS' || currentItems.length === 0) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
@@ -117,13 +113,22 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
     return null;
   }
 
+  const isAllShortcuts = menuState === 'ALL_SHORTCUTS';
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm transition-all p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md transition-all p-4">
+      <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 ${isAllShortcuts ? 'max-w-4xl' : 'max-w-lg'}`}>
         
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-slate-50 border-b border-slate-100">
           <div className="flex items-center gap-2 text-slate-800 font-bold">
+            {menuState === 'ALL_SHORTCUTS' && (
+              <>
+                <Sparkles size={20} className="text-blue-600 animate-pulse" />
+                <span className="text-base">Keyboard Shortcuts & Quick Registers</span>
+                <span className="ml-2 text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">Alt + S</span>
+              </>
+            )}
             {menuState === 'VOUCHERS' && <><FileText size={20} className="text-blue-600" /> <span>Vouchers Menu</span></>}
             {menuState === 'DISPLAY_REPORTS' && <><Activity size={20} className="text-blue-600" /> <span>Display Reports</span></>}
             {menuState === 'DAY_REPORT' && <><BookOpen size={20} className="text-blue-600" /> <span>Day Report</span></>}
@@ -139,28 +144,163 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
         </div>
 
         {/* Body */}
-        <div className="p-4 bg-white min-h-[300px]">
-          <div className="grid grid-cols-1 gap-2">
-            {currentItems.map((item, idx) => (
-              <ShortcutItem
-                key={`${item.hotkey}-${item.label}`}
-                hotkey={item.hotkey}
-                label={item.label}
-                hasChildren={item.hasChildren}
-                isSelected={idx === selectedIndex}
-                onMouseEnter={() => setSelectedIndex(idx)}
-                onClick={item.onClick}
-              />
-            ))}
+        {isAllShortcuts ? (
+          <div className="p-6 bg-white space-y-6 max-h-[78vh] overflow-y-auto">
+            {/* Section 1: Main Registers & Direct Links */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <BookOpen className="size-4 text-emerald-600" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Quick Registers & Direct Links</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => { router.push('/accounting/sales'); closeMenu(); }}
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 hover:bg-emerald-100/60 hover:border-emerald-300 transition-all text-left group shadow-2xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 font-bold shrink-0">
+                      <FileText size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900 group-hover:text-emerald-700">Sales Register</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Invoices & sales status</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="size-4 text-emerald-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { router.push('/accounting/sales/customer-prepayments'); closeMenu(); }}
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-blue-200 bg-blue-50/50 hover:bg-blue-100/60 hover:border-blue-300 transition-all text-left group shadow-2xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-blue-100 text-blue-700 font-bold shrink-0">
+                      <Receipt size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900 group-hover:text-blue-700">Receipt Register</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Customer prepayments</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="size-4 text-blue-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { router.push('/accounting/banking'); closeMenu(); }}
+                  className="flex items-center justify-between p-3.5 rounded-xl border border-purple-200 bg-purple-50/50 hover:bg-purple-100/60 hover:border-purple-300 transition-all text-left group shadow-2xs"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 items-center justify-center rounded-lg bg-purple-100 text-purple-700 font-bold shrink-0">
+                      <Landmark size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900 group-hover:text-purple-700">Bank Accounts</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Bank ledgers & transfers</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="size-4 text-purple-600 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </button>
+              </div>
+            </div>
+
+            {/* Section 2: Global Navigation Hotkeys */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Activity className="size-4 text-blue-600" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Global Navigation Hotkeys</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div onClick={() => { router.push('/admin/orders'); closeMenu(); }} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-800">Global Orders / Command Center</span>
+                  <kbd className="px-2 py-1 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded-md shadow-2xs text-slate-700">G</kbd>
+                </div>
+                <div onClick={() => { router.push('/proxy-order'); closeMenu(); }} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-800">Proxy Order Builder</span>
+                  <kbd className="px-2 py-1 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded-md shadow-2xs text-slate-700">N</kbd>
+                </div>
+                <div onClick={() => { router.push('/accounting'); closeMenu(); }} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-800">Accounting Command Center</span>
+                  <kbd className="px-2 py-1 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded-md shadow-2xs text-slate-700">Z</kbd>
+                </div>
+                <div onClick={() => { setMenuState('VOUCHERS'); }} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-800">Vouchers Quick Menu</span>
+                  <kbd className="px-2 py-1 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded-md shadow-2xs text-slate-700">V</kbd>
+                </div>
+                <div onClick={() => { setMenuState('DISPLAY_REPORTS'); }} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-800">Display Reports</span>
+                  <kbd className="px-2 py-1 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded-md shadow-2xs text-slate-700">D</kbd>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors">
+                  <span className="text-xs font-semibold text-slate-800">Period / Date Filter Modal</span>
+                  <div className="flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 text-xs font-bold font-mono bg-amber-100 border border-amber-300 rounded text-amber-900">F2</kbd>
+                    <span className="text-xs text-slate-400">or</span>
+                    <kbd className="px-1.5 py-0.5 text-xs font-bold font-mono bg-amber-100 border border-amber-300 rounded text-amber-900">F</kbd>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Voucher Action Shortcuts */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="size-4 text-indigo-600" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Voucher Creation Hotkeys</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div onClick={() => { router.push('/accounting/sales/new'); closeMenu(); }} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-700">Invoice</span>
+                  <kbd className="px-1.5 py-0.5 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded">F8</kbd>
+                </div>
+                <div onClick={() => { router.push('/quotation-builder'); closeMenu(); }} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-700">Quote / Estimate</span>
+                  <kbd className="px-1.5 py-0.5 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded">F10</kbd>
+                </div>
+                <div onClick={() => { router.push('/accounting/receipt/new'); closeMenu(); }} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-700">Receipt</span>
+                  <kbd className="px-1.5 py-0.5 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded">F6</kbd>
+                </div>
+                <div onClick={() => { router.push('/purchases'); closeMenu(); }} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-700">Payment / Purchase</span>
+                  <kbd className="px-1.5 py-0.5 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded">F5</kbd>
+                </div>
+                <div onClick={() => { router.push('/accounting/contra'); closeMenu(); }} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-700">Contra</span>
+                  <kbd className="px-1.5 py-0.5 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded">F4</kbd>
+                </div>
+                <div onClick={() => { router.push('/accounting/journal'); closeMenu(); }} className="flex items-center justify-between p-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                  <span className="text-xs font-semibold text-slate-700">Journal</span>
+                  <kbd className="px-1.5 py-0.5 text-xs font-bold font-mono bg-slate-100 border border-slate-300 rounded">F7</kbd>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="p-4 bg-white min-h-[300px]">
+            <div className="grid grid-cols-1 gap-2">
+              {currentItems.map((item, idx) => (
+                <ShortcutItem
+                  key={`${item.hotkey}-${item.label}`}
+                  hotkey={item.hotkey}
+                  label={item.label}
+                  hasChildren={item.hasChildren}
+                  isSelected={idx === selectedIndex}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                  onClick={item.onClick}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Footer info */}
         <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 text-xs font-medium text-slate-400 flex justify-between">
           <span className="flex items-center gap-1.5">
-            <span>Navigate <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-500">↑</kbd><kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-500">↓</kbd></span>
-            <span>Select <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-500">Enter</kbd></span>
-            <span>or press key</span>
+            <span>Press <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-600 font-bold">Alt + S</kbd> anytime to toggle</span>
+            <span>· Press <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-600 font-bold">Esc</kbd> to close</span>
           </span>
           {(menuState === 'ACCOUNT_BOOKS' || menuState === 'LEDGERS') && (
             <button 
@@ -168,7 +308,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                 if (menuState === 'ACCOUNT_BOOKS') setMenuState('DISPLAY_REPORTS');
                 if (menuState === 'LEDGERS') setMenuState('ACCOUNT_BOOKS');
               }}
-              className="text-blue-500 hover:text-blue-700"
+              className="text-blue-500 hover:text-blue-700 font-semibold"
             >
               &larr; Go Back
             </button>

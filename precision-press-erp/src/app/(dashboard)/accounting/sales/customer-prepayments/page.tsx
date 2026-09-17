@@ -552,6 +552,18 @@ export default function CustomerPrepaymentsPage() {
               className="h-8 w-56 pl-8 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
             />
           </div>
+          {/* Status Dropdown placed right after search bar */}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 w-32 text-xs font-semibold bg-white border-slate-300">
+              <SelectValue placeholder="All" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="open">Available</SelectItem>
+              <SelectItem value="applied">Used</SelectItem>
+              <SelectItem value="void">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             type="button"
             variant="outline"

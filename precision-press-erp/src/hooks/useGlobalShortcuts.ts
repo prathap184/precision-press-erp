@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 
-export type MenuState = null | 'VOUCHERS' | 'DISPLAY_REPORTS' | 'DAY_REPORT' | 'ACCOUNT_BOOKS' | 'LEDGERS';
+export type MenuState = null | 'VOUCHERS' | 'DISPLAY_REPORTS' | 'DAY_REPORT' | 'ACCOUNT_BOOKS' | 'LEDGERS' | 'ALL_SHORTCUTS';
 
 const PARENT_ROUTE_MAP: Record<string, string> = {
   '/dashboard': '/admin/orders',
@@ -83,6 +83,13 @@ export function useGlobalShortcuts() {
         ) {
           return;
         }
+      }
+
+      // Toggle All Shortcuts modal on Alt + S
+      if ((e.altKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        setMenuState((prev) => (prev === 'ALL_SHORTCUTS' ? null : 'ALL_SHORTCUTS'));
+        return;
       }
 
       // Ignore shortcut handling when modifier keys (Ctrl, Cmd, Alt) are pressed
