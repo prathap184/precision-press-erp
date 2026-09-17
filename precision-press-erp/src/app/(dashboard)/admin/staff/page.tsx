@@ -500,6 +500,30 @@ export default function StaffManagementPage() {
             <option value="SUSPENDED">Suspended</option>
             <option value="DISABLED">Disabled</option>
           </select>
+          {(search !== '' || filterRole !== 'ALL' || filterStatus !== 'ALL') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setFilterRole('ALL');
+                setFilterStatus('ALL');
+                const toolbarEl = document.getElementById("staff-table-toolbar");
+                if (toolbarEl) {
+                  const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+                  window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+                }
+                setTimeout(() => {
+                  const input = searchInputRef.current || (document.getElementById("staff-search-input") as HTMLInputElement | null);
+                  if (input) {
+                    try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+                  }
+                }, 50);
+              }}
+              className="h-9 px-3 text-xs border border-slate-300 rounded-xl bg-white font-semibold text-slate-600 hover:bg-slate-50 transition shadow-xs flex items-center gap-1"
+            >
+              <X size={12} /> Clear filters
+            </button>
+          )}
         </div>
 
         {/* Staff List */}

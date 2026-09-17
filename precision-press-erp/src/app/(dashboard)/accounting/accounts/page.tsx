@@ -213,7 +213,23 @@ export default function AccountsPage() {
     );
   }
 
-  const hasFilters = search || typeFilter !== "all";
+  const hasFilters = search !== "" || typeFilter !== "all";
+
+  const handleClearFilters = () => {
+    setSearch("");
+    setTypeFilter("all");
+    const toolbarEl = document.getElementById("accounts-table-toolbar");
+    if (toolbarEl) {
+      const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+      window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+    }
+    setTimeout(() => {
+      const input = searchInputRef.current || (document.getElementById("accounts-search-input") as HTMLInputElement | null);
+      if (input) {
+        try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+      }
+    }, 50);
+  };
 
   return (
     <ContentReveal className="space-y-6">
@@ -322,10 +338,7 @@ export default function AccountsPage() {
               variant="ghost"
               size="sm"
               className="h-8 text-xs text-muted-foreground"
-              onClick={() => {
-                setSearch("");
-                setTypeFilter("all");
-              }}
+              onClick={handleClearFilters}
             >
               <X className="mr-1 size-3" />
               Clear filters
@@ -342,10 +355,7 @@ export default function AccountsPage() {
             variant="ghost"
             size="sm"
             className="mt-2 text-xs"
-            onClick={() => {
-              setSearch("");
-              setTypeFilter("all");
-            }}
+            onClick={handleClearFilters}
           >
             Clear filters
           </Button>

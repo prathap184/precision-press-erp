@@ -494,7 +494,7 @@ export default function ContactsPage() {
   const taxExemptCount = contacts.filter((c) => c.isTaxExempt).length;
 
   /* ---------- Empty state ---------- */
-  const hasFilters = dateFrom || dateTo;
+  const hasFilters = Boolean(dateFrom || dateTo || search || typeFilter !== "all");
   const pendingSearch = search !== debouncedSearch;
 
   if (!loading && contacts.length === 0 && !search && typeFilter === "all" && !refetching && !pendingSearch && !hasFilters) {
@@ -862,12 +862,25 @@ export default function ContactsPage() {
               size="sm"
               className="h-8 text-xs text-muted-foreground"
               onClick={() => {
+                setSearch("");
+                setTypeFilter("all");
                 setDateFrom("");
                 setDateTo("");
+                const toolbarEl = document.getElementById("contacts-table-toolbar");
+                if (toolbarEl) {
+                  const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+                  window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+                }
+                setTimeout(() => {
+                  const input = searchInputRef.current || (document.getElementById("contacts-search-input") as HTMLInputElement | null);
+                  if (input) {
+                    try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+                  }
+                }, 50);
               }}
             >
               <X className="mr-1 size-3" />
-              Clear dates
+              Clear filters
             </Button>
           )}
         </div>

@@ -776,7 +776,23 @@ export default function InvoicesPage() {
               variant="ghost"
               size="sm"
               className="h-8 text-xs text-muted-foreground"
-              onClick={() => { setSearch(""); setDateFrom(""); setDateTo(""); }}
+              onClick={() => {
+                setSearch("");
+                setDateFrom("");
+                setDateTo("");
+                setStatusFilter("all");
+                const toolbarEl = document.getElementById("sales-table-toolbar");
+                if (toolbarEl) {
+                  const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+                  window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+                }
+                setTimeout(() => {
+                  const input = searchInputRef.current || (document.getElementById("sales-search-input") as HTMLInputElement | null);
+                  if (input) {
+                    try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+                  }
+                }, 50);
+              }}
             >
               <X className="mr-1 size-3" />
               Clear filters

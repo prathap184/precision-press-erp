@@ -517,6 +517,18 @@ export default function TransactionsPage() {
                   setSearch("");
                   setDateFrom("");
                   setDateTo("");
+                  setStatusFilter("all");
+                  const toolbarEl = document.getElementById("entries-table-toolbar");
+                  if (toolbarEl) {
+                    const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+                    window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+                  }
+                  setTimeout(() => {
+                    const input = searchInputRef.current || (document.getElementById("entries-search-input") as HTMLInputElement | null);
+                    if (input) {
+                      try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+                    }
+                  }, 50);
                 }}
               >
                 <X className="mr-1 size-3" />

@@ -1008,6 +1008,32 @@ export function GlobalOrdersPage() {
                     : 'Time Range (F2)'}
             </button>
           </div>
+
+          {(search !== "" || selectedRoleFilter !== null || dateRange.start !== null || dateRange.end !== null) && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                setSelectedRoleFilter(null);
+                setDateRange({ start: null, end: null });
+                const toolbarEl = document.getElementById("orders-table-toolbar");
+                if (toolbarEl) {
+                  const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+                  window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+                }
+                setTimeout(() => {
+                  const input = searchInputRef.current || (document.getElementById("orders-search-input") as HTMLInputElement | null);
+                  if (input) {
+                    try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+                  }
+                }, 50);
+              }}
+              className="h-8 flex items-center gap-1 rounded-lg border border-white/30 bg-white/20 backdrop-blur-md px-2.5 text-xs font-semibold text-slate-700 hover:bg-white/40 transition-all flex-shrink-0"
+            >
+              <X size={12} />
+              Clear filters
+            </button>
+          )}
         </div>
 
         {/* Tally-Style Small Period Modal Window */}

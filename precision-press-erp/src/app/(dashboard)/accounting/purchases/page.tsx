@@ -406,7 +406,7 @@ export default function BillsPage() {
   }, [allBills]);
 
   const pendingSearch = search !== debouncedSearch;
-  const hasFilters = dateFrom || dateTo;
+  const hasFilters = Boolean(dateFrom || dateTo || search || statusFilter !== "all");
   const statusCounts = useMemo(() => {
     if (!countsData) return {} as Record<string, number>;
     const c: Record<string, number> = {};
@@ -741,12 +741,25 @@ export default function BillsPage() {
                 size="sm"
                 className="h-8 text-xs text-muted-foreground"
                 onClick={() => {
+                  setSearch("");
+                  setStatusFilter("all");
                   setDateFrom("");
                   setDateTo("");
+                  const toolbarEl = document.getElementById("purchases-table-toolbar");
+                  if (toolbarEl) {
+                    const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+                    window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+                  }
+                  setTimeout(() => {
+                    const input = searchInputRef.current || (document.getElementById("purchases-search-input") as HTMLInputElement | null);
+                    if (input) {
+                      try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+                    }
+                  }, 50);
                 }}
               >
                 <X className="mr-1 size-3" />
-                Clear dates
+                Clear filters
               </Button>
             )}
           </div>

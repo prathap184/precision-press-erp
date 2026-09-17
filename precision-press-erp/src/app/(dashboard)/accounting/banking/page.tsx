@@ -379,6 +379,31 @@ export default function BankingPage() {
               <SelectItem value="other">Other</SelectItem>
             </SelectContent>
           </Select>
+          {(search !== "" || typeFilter !== "all") && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs text-muted-foreground"
+              onClick={() => {
+                setSearch("");
+                setTypeFilter("all");
+                const toolbarEl = document.getElementById("banking-table-toolbar");
+                if (toolbarEl) {
+                  const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+                  window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+                }
+                setTimeout(() => {
+                  const input = searchInputRef.current || (document.getElementById("banking-search-input") as HTMLInputElement | null);
+                  if (input) {
+                    try { input.focus({ preventScroll: true }); } catch { input.focus(); }
+                  }
+                }, 50);
+              }}
+            >
+              <X className="mr-1 size-3" />
+              Clear filters
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
