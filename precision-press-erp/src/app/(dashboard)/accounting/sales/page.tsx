@@ -219,6 +219,49 @@ export default function InvoicesPage() {
   const [dateTo, setDateTo] = useState("");
   const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const hasAutoScrolledRef = useRef(false);
+
+  // One-time auto-scroll to search bar toolbar position (matching screenshot) & auto-focus search bar on arrival
+  useEffect(() => {
+    if (!initialLoad && !hasAutoScrolledRef.current) {
+      hasAutoScrolledRef.current = true;
+
+      const focusSearch = () => {
+        const input = searchInputRef.current || (document.getElementById("sales-search-input") as HTMLInputElement | null);
+        if (input) {
+          try {
+            input.focus({ preventScroll: true });
+          } catch {
+            input.focus();
+          }
+        }
+      };
+
+      const doScrollAndFocus = () => {
+        const toolbarEl = document.getElementById("sales-table-toolbar");
+        if (toolbarEl) {
+          const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
+          window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
+        } else {
+          window.scrollTo({ top: 380, behavior: "smooth" });
+        }
+        focusSearch();
+      };
+
+      // 1. Initial scroll & focus
+      const t1 = setTimeout(doScrollAndFocus, 100);
+      // 2. Settle scroll & ensure search input is actively focused
+      const t2 = setTimeout(doScrollAndFocus, 350);
+      const t3 = setTimeout(focusSearch, 600);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+      };
+    }
+  }, [initialLoad]);
 
   // Global F2 / f shortcut listener
   useEffect(() => {
@@ -569,7 +612,7 @@ export default function InvoicesPage() {
       </div>
 
       {/* Aging + Recent Payments side by side */}
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div id="sales-aging-section" className="grid gap-4 lg:grid-cols-2">
         {/* Aging Breakdown */}
         {agingTotal > 0 && (
           <div className="rounded-lg border p-4 space-y-3">
@@ -643,38 +686,34 @@ export default function InvoicesPage() {
 
       {/* Invoice table */}
       <div className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <Tabs value={statusFilter} onValueChange={setStatusFilter}>
-            <TabsList className="overflow-x-auto">
-              <TabsTrigger value="all" className="whitespace-nowrap">All</TabsTrigger>
-              <TabsTrigger value="draft" className="whitespace-nowrap">Draft</TabsTrigger>
-              <TabsTrigger value="sent" className="whitespace-nowrap">Sent</TabsTrigger>
-              <TabsTrigger value="partial" className="whitespace-nowrap">Partial</TabsTrigger>
-              <TabsTrigger value="paid" className="whitespace-nowrap">Paid</TabsTrigger>
-              <TabsTrigger value="overdue" className="whitespace-nowrap">Overdue</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          <Button
-            onClick={() => router.push("/accounting/sales/new")}
-            size="sm"
-            className="bg-emerald-600 hover:bg-emerald-700"
-          >
-            <Plus className="mr-2 size-4" />
-            New Invoice
-          </Button>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Search invoices..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 w-56 pl-8 text-xs"
-            />
-          </div>
+        <div id="sales-table-toolbar" className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+              <Input
+                id="sales-search-input"
+                ref={searchInputRef}
+                autoFocus
+                placeholder="Search invoices..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-8 w-56 pl-8 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
+              />
+            </div>
+            {/* Status Dropdown placed right after the search bar (All, Draft, Sent, Partial, Paid, Overdue) */}
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 w-28 text-xs font-semibold bg-white border-slate-300">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="sent">Sent</SelectItem>
+                <SelectItem value="partial">Partial</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="overdue">Overdue</SelectItem>
+              </SelectContent>
+            </Select>
           <Button
             type="button"
             variant="outline"
@@ -744,6 +783,16 @@ export default function InvoicesPage() {
             </Button>
           )}
         </div>
+
+        <Button
+          onClick={() => router.push("/accounting/sales/new")}
+          size="sm"
+          className="bg-emerald-600 hover:bg-emerald-700 ml-auto font-bold shadow-xs"
+        >
+          <Plus className="mr-2 size-4" />
+          New Invoice
+        </Button>
+      </div>
 
         {/* Bulk-actions toolbar — appears once one or more rows are ticked. */}
         {!refetching && !pendingSearch && selectedIds.size > 0 && (
