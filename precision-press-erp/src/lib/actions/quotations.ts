@@ -163,9 +163,9 @@ export async function createStandaloneQuotation(payload: any) {
       logistics_details: {
         deliveryChoice: payload.deliveryType || payload.deliveryChoice,
         shippingAddress: payload.shippingAddress,
-        transportCharges: payload.deliveryCharge || payload.transportCharges || 0
+        transportCharges: payload.deliveryCharge || payload.transportCharges || 0,
+        notes: payload.notes || null,
       },
-      notes: payload.notes || null,
       quotation_date: quotationDate,
       status: 'PENDING',
       created_by: user.id
@@ -195,7 +195,10 @@ export async function getQuotationById(id: string) {
     .single();
 
   if (error) throw new Error(error.message);
-  return quotation;
+  return {
+    ...quotation,
+    notes: quotation.logistics_details?.notes || (quotation as any).notes || '',
+  };
 }
 
 export async function updateQuotationStatus(id: string, status: 'ACCEPTED' | 'REJECTED') {
