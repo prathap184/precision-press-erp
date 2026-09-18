@@ -316,10 +316,27 @@ export async function loadTallyStockItems(): Promise<any[]> {
 
     const parentM = body.match(/<PARENT[^>]*>([^<]*)<\/PARENT>/i);
     const uomM = body.match(/<BASEUNITS[^>]*>([^<]*)<\/BASEUNITS>/i);
-    const hsnM = body.match(/<HSNCODE[^>]*>([^<]+)<\/HSNCODE>/i) ||
-                 body.match(/<GSTHSNNAME[^>]*>([^<]+)<\/GSTHSNNAME>/i) ||
-                 body.match(/<HSN[^>]*>([^<]+)<\/HSN>/i) ||
-                 body.match(/<TARIFFCODE[^>]*>([^<]+)<\/TARIFFCODE>/i);
+    const hsnLists = [...body.matchAll(/<HSNDETAILS\.LIST[\s\S]*?<\/HSNDETAILS\.LIST>/gi)];
+    let hsn = '';
+    if (hsnLists.length > 0) {
+      for (let i = hsnLists.length - 1; i >= 0; i--) {
+        const c = hsnLists[i][0].match(/<HSNCODE[^>]*>([^<]+)<\/HSNCODE>/i) ||
+                  hsnLists[i][0].match(/<GSTHSNNAME[^>]*>([^<]+)<\/GSTHSNNAME>/i) ||
+                  hsnLists[i][0].match(/<HSN[^>]*>([^<]+)<\/HSN>/i) ||
+                  hsnLists[i][0].match(/<TARIFFCODE[^>]*>([^<]+)<\/TARIFFCODE>/i);
+        if (c && cleanStr(c[1])) {
+          hsn = cleanStr(c[1]);
+          break;
+        }
+      }
+    }
+    if (!hsn) {
+      const hsnM = body.match(/<HSNCODE[^>]*>([^<]+)<\/HSNCODE>/i) ||
+                   body.match(/<GSTHSNNAME[^>]*>([^<]+)<\/GSTHSNNAME>/i) ||
+                   body.match(/<HSN[^>]*>([^<]+)<\/HSN>/i) ||
+                   body.match(/<TARIFFCODE[^>]*>([^<]+)<\/TARIFFCODE>/i);
+      hsn = hsnM ? cleanStr(hsnM[1]) : '';
+    }
     const rateM = body.match(/<OPENINGRATE[^>]*>([^<]*)<\/OPENINGRATE>/i) || body.match(/<CLOSINGRATE[^>]*>([^<]*)<\/CLOSINGRATE>/i) || body.match(/<RATE[^>]*>([^<]*)<\/RATE>/i);
     const valM = body.match(/<OPENINGVALUE[^>]*>([^<]*)<\/OPENINGVALUE>/i) || body.match(/<CLOSINGVALUE[^>]*>([^<]*)<\/CLOSINGVALUE>/i);
     const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i) || body.match(/<CLOSINGBALANCE[^>]*>([^<]*)<\/CLOSINGBALANCE>/i);
