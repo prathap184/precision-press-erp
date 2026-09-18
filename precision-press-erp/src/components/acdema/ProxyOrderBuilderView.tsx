@@ -146,6 +146,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [productSearching, setProductSearching] = useState(false);
 
+  const rowBlurTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const unitBlurTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const customerBlurTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoFocusTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Debounced live server search for products across entire catalog
   useEffect(() => {
     const term = searchQuery.trim();
@@ -769,15 +774,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     if (pendingFocusNewRow && rows.length > 0) {
       const latestRow = rows[rows.length - 1];
       setPendingFocusNewRow(false);
-      setTimeout(() => {
+      if (autoFocusTimerRef.current) clearTimeout(autoFocusTimerRef.current);
+      autoFocusTimerRef.current = setTimeout(() => {
         const el = document.getElementById(`row-${latestRow.id}-product-input`);
         if (el) {
+          if (rowBlurTimerRef.current) {
+            clearTimeout(rowBlurTimerRef.current);
+            rowBlurTimerRef.current = null;
+          }
           el.focus();
           setOpenRowId(latestRow.id);
           setSearchQuery('');
           setHighlightProductIndex(-1);
         }
-      }, 60);
+      }, 50);
     }
   }, [rows.length, pendingFocusNewRow]);
 
@@ -995,31 +1005,26 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     }
   }, [bootstrapLoading]);
 
-  const productImages = useMemo(() => {
-    return rows
-      .flatMap(r => {
+  const currentImage = useMemo(() => {
+    // 1. If a row is currently open/focused, prioritize that row's image
+    if (openRowId) {
+      const activeRow = rows.find(r => r.id === openRowId);
+      if (activeRow?.productId) {
+        const p = products.find(prod => prod.id === activeRow.productId);
+        if (p?.media?.images?.length) return p.media.images[0];
+        if ((p as any)?.image) return (p as any).image;
+      }
+    }
+    // 2. Otherwise show the first available product image in rows
+    for (const r of rows) {
+      if (r.productId) {
         const p = products.find(prod => prod.id === r.productId);
-        if (!p) return [];
-        if (p.media?.images?.length) return p.media.images;
-        if ((p as any).image) return [(p as any).image];
-        return [];
-      })
-      .filter(Boolean) as string[];
-  }, [rows, products]);
-
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  useEffect(() => {
-    setCurrentImageIndex(0);
-  }, [productImages.length]);
-
-  useEffect(() => {
-    if (productImages.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % productImages.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [productImages.length]);
+        if (p?.media?.images?.length) return p.media.images[0];
+        if ((p as any)?.image) return (p as any).image;
+      }
+    }
+    return null;
+  }, [openRowId, rows, products]);
 
   if (bootstrapLoading) {
     return (
@@ -1166,7 +1171,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           }
                         }}
                         onFocus={(e) => {
-                          setCustomerDropdownOpen(true);
+    if (customerBlurTimerRef.current) {
+      clearTimeout(customerBlurTimerRef.current);
+      customerBlurTimerRef.current = null;
+    }
+    setCustomerDropdownOpen(true);
                           const target = e.currentTarget;
                           if (selectedCustomer) {
                             setCustomerSearch(selectedCustomer.displayName || selectedCustomer.name || '');
@@ -1273,11 +1282,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           }
                         }}
                         onBlur={() => {
-                          setTimeout(() => {
-                            setCustomerDropdownOpen(false);
-                            setCustomerSearch('');
-                          }, 200);
-                        }}
+    if (customerBlurTimerRef.current) clearTimeout(customerBlurTimerRef.current);
+    customerBlurTimerRef.current = setTimeout(() => {
+      setCustomerDropdownOpen(false);
+      setCustomerSearch('');
+    }, 200);
+  }}
                         className="h-full w-full border-0 focus:ring-0 p-0 bg-transparent text-sm font-bold text-slate-800 outline-none placeholder-slate-400"
                       />
                       <ChevronDown size={16} className={`ml-2 transition-colors shrink-0 ${customerDropdownOpen ? 'text-blue-600' : 'text-slate-400'}`} />
@@ -1397,132 +1407,146 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                              setSearchQuery(e.target.value);
                                              setHighlightProductIndex(0);
                                            }}
-                                           onFocus={(e) => {
-                                             setOpenRowId(row.id);
-                                             const currentName = selProd?.name || '';
-                                             setSearchQuery(currentName);
-                                             
-                                             // Find index in displayed grouped list
-                                             const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                             setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
+                                            onFocus={(e) => {
+                                              if (rowBlurTimerRef.current) {
+                                                clearTimeout(rowBlurTimerRef.current);
+                                                rowBlurTimerRef.current = null;
+                                              }
+                                              setOpenRowId(row.id);
+                                              const currentName = selProd?.name || '';
+                                              setSearchQuery(currentName);
+                                              
+                                              // Find index in displayed grouped list
+                                              const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
+                                              setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
 
-                                             const inputEl = e.currentTarget;
-                                             setTimeout(() => {
-                                               try {
-                                                 const len = inputEl.value ? inputEl.value.length : 0;
-                                                 inputEl.setSelectionRange(len, len);
-                                               } catch {}
-                                             }, 10);
-                                           }}
-                                           onKeyDown={(e) => {
-                                             if (e.key === "ArrowDown") {
-                                               e.preventDefault();
-                                               if (!isOpen) {
-                                                 setOpenRowId(row.id);
-                                                 const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                                 setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
-                                                 return;
-                                               }
-                                               setHighlightProductIndex((prev) => (prev === -1 ? 0 : Math.min(prev + 1, displayedItems.length - 1)));
-                                             } else if (e.key === "ArrowUp") {
-                                               e.preventDefault();
-                                               setHighlightProductIndex((prev) => {
-                                                 if (prev <= 0 && !searchQuery.trim()) return -1;
-                                                 return Math.max(prev - 1, 0);
-                                               });
-                                             } else if (e.key === " " && !searchQuery.trim() && isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
-                                               // Spacebar selection like Tally
-                                               e.preventDefault();
-                                               const p = displayedItems[highlightProductIndex];
-                                               if (p) {
-                                                 const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
-                                                 updateRow(row.id, { productId: p.id, billingMode: prodMode });
-                                                 setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
-                                                 setOpenRowId(null);
-                                                 setSearchQuery('');
-                                                 setHighlightProductIndex(0);
-                                                 setTimeout(() => {
-                                                   setActiveDescRowId(row.id);
-                                                 }, 60);
-                                               }
-                                             } else if (e.key === "Enter") {
-                                               e.preventDefault();
-                                               // 1. End of List if explicitly highlighting "End of List" (-1)
-                                               if (highlightProductIndex === -1) {
-                                                 handleEndOfList(row.id);
-                                                 return;
-                                               }
-                                               // 2. If dropdown is open and an item is selected/highlighted
-                                               if (isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
-                                                 const p = displayedItems[highlightProductIndex];
-                                                 if (p) {
-                                                   const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
-                                                   updateRow(row.id, { productId: p.id, billingMode: prodMode });
-                                                   setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
-                                                   setOpenRowId(null);
-                                                   setSearchQuery('');
-                                                   setHighlightProductIndex(0);
-                                                   setTimeout(() => {
-                                                     setActiveDescRowId(row.id);
-                                                   }, 60);
-                                                   return;
-                                                 }
-                                               }
-                                               // 3. If item is already selected on this row, keep it and advance to description modal
-                                               if (row.productId) {
-                                                 setOpenRowId(null);
-                                                 setTimeout(() => {
-                                                   setActiveDescRowId(row.id);
-                                                 }, 60);
-                                                 return;
-                                               }
-                                               // 4. If search matches any product, select first product and advance
-                                               if (displayedItems.length > 0) {
-                                                 const p = displayedItems[0];
-                                                 const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
-                                                 updateRow(row.id, { productId: p.id, billingMode: prodMode });
-                                                 setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
-                                                 setOpenRowId(null);
-                                                 setSearchQuery('');
-                                                 setHighlightProductIndex(0);
-                                                 setTimeout(() => {
-                                                   setActiveDescRowId(row.id);
-                                                 }, 60);
-                                                 return;
-                                               }
-                                               // 5. Fallback
-                                               handleEndOfList(row.id);
-                                             } else if (e.key === "Backspace") {
-                                               const isFullSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === e.currentTarget.value.length;
-                                               if (!searchQuery.trim() || !row.productId || isFullSelected) {
-                                                 if (!searchQuery.trim() || isFullSelected) {
-                                                   e.preventDefault();
-                                                   setOpenRowId(null);
-                                                   if (index === 0) {
-                                                     const custInput = document.getElementById('proxy-customer-search-input') || document.getElementById('order-number-input');
-                                                     if (custInput) {
-                                                       custInput.focus();
-                                                       try {
-                                                         const len = (custInput as HTMLInputElement).value ? (custInput as HTMLInputElement).value.length : 0;
-                                                         (custInput as HTMLInputElement).setSelectionRange(len, len);
-                                                       } catch {}
-                                                     }
-                                                   } else {
-                                                     const prevRow = rows[index - 1];
-                                                     if (prevRow) {
-                                                       const prevTarget = document.getElementById(`row-${prevRow.id}-delete-btn`)
-                                                         || document.getElementById(`row-${prevRow.id}-browse-btn`)
-                                                         || document.getElementById(`error-row-${prevRow.id}-file`);
-                                                       if (prevTarget) prevTarget.focus();
-                                                     }
-                                                   }
-                                                 }
-                                               }
-                                             } else if (e.key === "Escape") {
-                                               setOpenRowId(null);
-                                             }
-                                           }}
-                                           onBlur={() => setTimeout(() => { setOpenRowId(null); setSearchQuery(''); }, 200)}
+                                              const inputEl = e.currentTarget;
+                                              setTimeout(() => {
+                                                try {
+                                                  const len = inputEl.value ? inputEl.value.length : 0;
+                                                  inputEl.setSelectionRange(len, len);
+                                                } catch {}
+                                              }, 10);
+                                            }}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "ArrowDown") {
+                                                e.preventDefault();
+                                                if (!isOpen) {
+                                                  if (rowBlurTimerRef.current) {
+                                                    clearTimeout(rowBlurTimerRef.current);
+                                                    rowBlurTimerRef.current = null;
+                                                  }
+                                                  setOpenRowId(row.id);
+                                                  const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
+                                                  setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                                  return;
+                                                }
+                                                setHighlightProductIndex((prev) => (prev === -1 ? 0 : Math.min(prev + 1, displayedItems.length - 1)));
+                                              } else if (e.key === "ArrowUp") {
+                                                e.preventDefault();
+                                                setHighlightProductIndex((prev) => {
+                                                  if (prev <= 0 && !searchQuery.trim()) return -1;
+                                                  return Math.max(prev - 1, 0);
+                                                });
+                                              } else if (e.key === " " && !searchQuery.trim() && isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
+                                                // Spacebar selection like Tally
+                                                e.preventDefault();
+                                                const p = displayedItems[highlightProductIndex];
+                                                if (p) {
+                                                  const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
+                                                  updateRow(row.id, { productId: p.id, billingMode: prodMode });
+                                                  setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                  setOpenRowId(null);
+                                                  setSearchQuery('');
+                                                  setHighlightProductIndex(0);
+                                                  setTimeout(() => {
+                                                    setActiveDescRowId(row.id);
+                                                  }, 60);
+                                                }
+                                              } else if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                // 1. End of List if explicitly highlighting "End of List" (-1)
+                                                if (highlightProductIndex === -1) {
+                                                  handleEndOfList(row.id);
+                                                  return;
+                                                }
+                                                // 2. If dropdown is open and an item is selected/highlighted
+                                                if (isOpen && displayedItems.length > 0 && highlightProductIndex >= 0) {
+                                                  const p = displayedItems[highlightProductIndex];
+                                                  if (p) {
+                                                    const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
+                                                    updateRow(row.id, { productId: p.id, billingMode: prodMode });
+                                                    setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                    setOpenRowId(null);
+                                                    setSearchQuery('');
+                                                    setHighlightProductIndex(0);
+                                                    setTimeout(() => {
+                                                      setActiveDescRowId(row.id);
+                                                    }, 60);
+                                                    return;
+                                                  }
+                                                }
+                                                // 3. If item is already selected on this row, keep it and advance to description modal
+                                                if (row.productId) {
+                                                  setOpenRowId(null);
+                                                  setTimeout(() => {
+                                                    setActiveDescRowId(row.id);
+                                                  }, 60);
+                                                  return;
+                                                }
+                                                // 4. If search matches any product, select first product and advance
+                                                if (displayedItems.length > 0) {
+                                                  const p = displayedItems[0];
+                                                  const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || 'B';
+                                                  updateRow(row.id, { productId: p.id, billingMode: prodMode });
+                                                  setValidationErrors((prev: any) => { const n = { ...prev }; delete n[`row-${row.id}-product`]; return n; });
+                                                  setOpenRowId(null);
+                                                  setSearchQuery('');
+                                                  setHighlightProductIndex(0);
+                                                  setTimeout(() => {
+                                                    setActiveDescRowId(row.id);
+                                                  }, 60);
+                                                  return;
+                                                }
+                                                // 5. Fallback
+                                                handleEndOfList(row.id);
+                                              } else if (e.key === "Backspace") {
+                                                const isFullSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === e.currentTarget.value.length;
+                                                if (!searchQuery.trim() || !row.productId || isFullSelected) {
+                                                  if (!searchQuery.trim() || isFullSelected) {
+                                                    e.preventDefault();
+                                                    setOpenRowId(null);
+                                                    if (index === 0) {
+                                                      const custInput = document.getElementById('proxy-customer-search-input') || document.getElementById('order-number-input');
+                                                      if (custInput) {
+                                                        custInput.focus();
+                                                        try {
+                                                          const len = (custInput as HTMLInputElement).value ? (custInput as HTMLInputElement).value.length : 0;
+                                                          (custInput as HTMLInputElement).setSelectionRange(len, len);
+                                                        } catch {}
+                                                      }
+                                                    } else {
+                                                      const prevRow = rows[index - 1];
+                                                      if (prevRow) {
+                                                        const prevTarget = document.getElementById(`row-${prevRow.id}-delete-btn`)
+                                                          || document.getElementById(`row-${prevRow.id}-browse-btn`)
+                                                          || document.getElementById(`error-row-${prevRow.id}-file`);
+                                                        if (prevTarget) prevTarget.focus();
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              } else if (e.key === "Escape") {
+                                                setOpenRowId(null);
+                                              }
+                                            }}
+                                            onBlur={() => {
+                                              if (rowBlurTimerRef.current) clearTimeout(rowBlurTimerRef.current);
+                                              rowBlurTimerRef.current = setTimeout(() => {
+                                                setOpenRowId((curr) => (curr === row.id ? null : curr));
+                                                setSearchQuery('');
+                                              }, 200);
+                                            }}
                                            className="w-full border-0 bg-transparent p-0 text-xs font-bold text-slate-800 outline-none focus:ring-0"
                                          />
                                          <ChevronDown
@@ -1659,7 +1683,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             updateRow(row.id, { widthUnit: nextUnit });
                                           }
                                         }}
-                                        onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                        onFocus={() => {
+                                          if (unitBlurTimerRef.current) {
+                                            clearTimeout(unitBlurTimerRef.current);
+                                            unitBlurTimerRef.current = null;
+                                          }
+                                        }}
+                                        onBlur={() => {
+                                          if (unitBlurTimerRef.current) clearTimeout(unitBlurTimerRef.current);
+                                          unitBlurTimerRef.current = setTimeout(() => {
+                                            setOpenUnitPickerId((curr) => (curr === `${row.id}-w` ? null : curr));
+                                          }, 150);
+                                        }}
                                         className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                                       >
                                         {row.widthUnit === 'FT' ? 'ft' : row.widthUnit === 'IN' ? 'in' : 'm'}
@@ -1799,7 +1834,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                             updateRow(row.id, { heightUnit: nextUnit });
                                           }
                                         }}
-                                        onBlur={() => setTimeout(() => setOpenUnitPickerId(null), 150)}
+                                        onFocus={() => {
+      if (unitBlurTimerRef.current) {
+        clearTimeout(unitBlurTimerRef.current);
+        unitBlurTimerRef.current = null;
+      }
+    }}
+    onBlur={() => {
+      if (unitBlurTimerRef.current) clearTimeout(unitBlurTimerRef.current);
+      unitBlurTimerRef.current = setTimeout(() => {
+        setOpenUnitPickerId(null);
+      }, 150);
+    }}
                                         className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                                       >
                                         {row.heightUnit === 'FT' ? 'ft' : row.heightUnit === 'IN' ? 'in' : 'm'}

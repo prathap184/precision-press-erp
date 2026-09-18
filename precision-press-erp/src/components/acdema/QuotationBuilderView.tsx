@@ -332,15 +332,20 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     if (pendingFocusNewRow && rows.length > 0) {
       const latestRow = rows[rows.length - 1];
       setPendingFocusNewRow(false);
-      setTimeout(() => {
+      if (autoFocusTimerRef.current) clearTimeout(autoFocusTimerRef.current);
+      autoFocusTimerRef.current = setTimeout(() => {
         const el = document.getElementById(`row-${latestRow.id}-product-input`);
         if (el) {
+          if (rowBlurTimerRef.current) {
+            clearTimeout(rowBlurTimerRef.current);
+            rowBlurTimerRef.current = null;
+          }
           el.focus();
           setOpenRowId(latestRow.id);
           setSearchQuery('');
           setHighlightProductIndex(-1);
         }
-      }, 60);
+      }, 50);
     }
   }, [rows.length, pendingFocusNewRow]);
 
@@ -543,59 +548,24 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     fullName: '', phone: '', pincode: '', state: '', stateCode: '', district: '', city: '', houseNo: '', roadName: '', area: '', addressType: 'Home'
   });
 
-  const productImages = useMemo(() => {
-    return rows
-      .flatMap(r => {
-        const p = products.find(prod => prod.id === r.productId);
-        if (!p) return [];
-        if (p.media?.images?.length) return p.media.images;
-        if ((p as any).image) return [(p as any).image];
-        return [];
-      })
-      .filter(Boolean) as string[];
-  }, [rows, products]);
-
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
-  useEffect(() => {
-    setCurrentImageIndex(0);
-  }, [productImages.length]);
-
-  useEffect(() => {
-    if (productImages.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % productImages.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [productImages.length]);
-
-  useEffect(() => {
-    if (!bootstrapLoading) {
-      const focusCustomer = () => {
-        const custInput = document.getElementById('quotation-customer-search-input') as HTMLInputElement;
-        if (custInput) {
-          custInput.focus();
-        }
-      };
-      focusCustomer();
-      const t1 = setTimeout(focusCustomer, 60);
-      const t2 = setTimeout(focusCustomer, 200);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
+  const currentImage = useMemo(() => {
+    if (openRowId) {
+      const activeRow = rows.find(r => r.id === openRowId);
+      if (activeRow?.productId) {
+        const p = products.find(prod => prod.id === activeRow.productId);
+        if (p?.media?.images?.length) return p.media.images[0];
+        if ((p as any)?.image) return (p as any).image;
+      }
     }
-  }, [bootstrapLoading]);
-
-  if (bootstrapLoading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="animate-spin text-slate-500" size={40} />
-      </div>
-    );
-  }
-
-  const currentImage = productImages.length > 0 ? productImages[currentImageIndex % productImages.length] : null;
+    for (const r of rows) {
+      if (r.productId) {
+        const p = products.find(prod => prod.id === r.productId);
+        if (p?.media?.images?.length) return p.media.images[0];
+        if ((p as any)?.image) return (p as any).image;
+      }
+    }
+    return null;
+  }, [openRowId, rows, products]);
 
   return (
     <RoleGuard allowedRoles={['ACDEMA', 'ADMIN', 'SUPER_ADMIN']}>
@@ -946,8 +916,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                              setHighlightProductIndex(0);
                                            }}
                                            onFocus={(e) => {
-                                             setOpenRowId(row.id);
-                                             const currentName = selProd?.name || '';
+    if (rowBlurTimerRef.current) {
+      clearTimeout(rowBlurTimerRef.current);
+      rowBlurTimerRef.current = null;
+    }
+    setOpenRowId(row.id);
+    const currentName = selProd?.name || '';
                                              setSearchQuery(currentName);
                                              const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
                                              setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
