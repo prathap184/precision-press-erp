@@ -14,6 +14,7 @@ import { calculateRowSubtotal, calculateOrderSummary } from '@/lib/pricing-engin
 import { createStandaloneQuotation, getNextQuotationIdAction } from '@/lib/actions/quotations';
 import { refreshAuthTokenCookie } from '@/lib/refresh-auth-token';
 import { ProxyOrderBuilderView } from '@/components/acdema/ProxyOrderBuilderView';
+import { isInterstateOrder } from '@/lib/company-config';
 
 type PaymentMode = 'HAND_CASH' | 'COD' | 'UPI' | 'CREDIT';
 type DeliveryType = 'selfPickup' | 'door' | 'courier' | 'transport';
@@ -333,14 +334,12 @@ export function QuotationBuilder() {
     const firstProduct = products.find(p => p.id === rows[0]?.productId);
     const dCharge = deliveryType === 'selfPickup' ? 0 : (firstProduct?.deliveryPricing?.[deliveryType] || 0);
 
-    const isInterstate = (() => {
-      if (deliveryType === 'selfPickup') return false;
-      if (!shippingAddress) return false;
-      const addr = shippingAddress.toLowerCase();
-      if (addr.includes('karnataka')) return false;
-      if (/\bka\b/.test(addr)) return false;
-      return true;
-    })();
+    const isInterstate = isInterstateOrder({
+      deliveryChoice: deliveryType,
+      shippingAddress,
+      customerState: selectedCustomer?.state,
+      stateCode: (selectedCustomer as any)?.stateCode,
+    });
 
     const pricingRows = rows.map((row) => {
       const product = products.find((item) => item.id === row.productId);
@@ -684,7 +683,12 @@ export function QuotationBuilder() {
         sgst: summary.sgst,
         igst: summary.igst,
         grandTotal: summary.grandTotal,
-        isInterstate: (selectedCustomer as any)?.state && (selectedCustomer as any)?.state !== 'Tamil Nadu',
+        isInterstate: isInterstateOrder({
+          deliveryChoice: deliveryType,
+          shippingAddress,
+          customerState: (selectedCustomer as any)?.state,
+          stateCode: (selectedCustomer as any)?.stateCode,
+        }),
         voucherApplied: summary.voucherApplied,
         voucherGstDiscount: summary.voucherGstDiscount,
       };

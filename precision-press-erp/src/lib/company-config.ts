@@ -44,3 +44,41 @@ export const numberToWords = (num: number): string => {
   }
   return result + ' Only';
 };
+
+export function isInterstateOrder(params: {
+  deliveryChoice?: string | null;
+  shippingAddress?: string | null;
+  customerState?: string | null;
+  stateCode?: string | null;
+}): boolean {
+  // 1. Self pickup is strictly local (Karnataka) -> Not Interstate
+  const choice = (params.deliveryChoice || '').toLowerCase();
+  if (choice === 'selfpickup' || choice === 'pickup') {
+    return false;
+  }
+
+  // 2. Check GST State Code (Karnataka is '29')
+  const code = (params.stateCode || '').trim();
+  if (code === COMPANY_DETAILS.stateCode || code === '29') {
+    return false;
+  }
+
+  // 3. Check Customer State
+  if (params.customerState) {
+    const s = params.customerState.trim().toLowerCase();
+    if (s === COMPANY_DETAILS.state.toLowerCase() || s === 'karnataka' || s === 'ka' || s === '29') {
+      return false;
+    }
+  }
+
+  // 4. Check Shipping Address
+  if (params.shippingAddress) {
+    const addr = params.shippingAddress.trim().toLowerCase();
+    if (addr.includes('karnataka')) return false;
+    if (/\bka\b/i.test(addr)) return false;
+  }
+
+  // 5. Otherwise, outside Karnataka -> Interstate (IGST)
+  return true;
+}
+

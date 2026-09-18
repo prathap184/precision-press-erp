@@ -38,6 +38,7 @@ import { generateOrderId, generateChildOrderId, generateJobId } from './order-id
 
 import { getWorkspaceMode } from './workspaceAccess';
 import { StaffRole } from '@/types/roles';
+import { isInterstateOrder } from './company-config';
 
 function checkStageNotCompleted(stageRole: StaffRole, workflowSnapshot?: OrderWorkflowSnapshot | null) {
   if (!workflowSnapshot) return;
@@ -1059,13 +1060,22 @@ async function executeOrderPlacementTx(
     }
   }
 
+  const resolvedIsInterstate = typeof payload.isInterstate === 'boolean'
+    ? payload.isInterstate
+    : isInterstateOrder({
+        deliveryChoice: payload.deliveryChoice,
+        shippingAddress: payload.shippingAddress,
+        customerState: payload.customerSnapshot?.state,
+        stateCode: payload.customerSnapshot?.stateCode,
+      });
+
   // Parent Order
   const parentOrder = {
     id: baseId,
     customerId: customerData.id,
     customerName: customerData.name,
     customerSnapshot: payload.customerSnapshot || {},
-    is_inter_state: payload.customerSnapshot?.state !== 'Maharashtra',
+    is_inter_state: resolvedIsInterstate,
     ref_order_id: payload.refOrderId || null,
     parent_order_id: payload.parentOrderId || null,
     status: initialStatus,
@@ -1077,13 +1087,13 @@ async function executeOrderPlacementTx(
     proxyExecutor: payload.proxyExecutor || null,
     printerCategory: derivedCategory,
     amounts: totals,
-    cgst_percentage: payload.items.length === 1 ? (payload.isInterstate ?? (payload.customerSnapshot?.state !== 'Maharashtra') ? 0 : (firstProduct?.gst_rate ? firstProduct.gst_rate / 2 : 9)) : null,
+    cgst_percentage: payload.items.length === 1 ? (resolvedIsInterstate ? 0 : (firstProduct?.gst_rate ? firstProduct.gst_rate / 2 : 9)) : null,
     cgst_amount: Number(totals.cgst.toFixed(2)),
-    sgst_percentage: payload.items.length === 1 ? (payload.isInterstate ?? (payload.customerSnapshot?.state !== 'Maharashtra') ? 0 : (firstProduct?.gst_rate ? firstProduct.gst_rate / 2 : 9)) : null,
+    sgst_percentage: payload.items.length === 1 ? (resolvedIsInterstate ? 0 : (firstProduct?.gst_rate ? firstProduct.gst_rate / 2 : 9)) : null,
     sgst_amount: Number(totals.sgst.toFixed(2)),
-    igst_percentage: payload.items.length === 1 ? (payload.isInterstate ?? (payload.customerSnapshot?.state !== 'Maharashtra') ? (firstProduct?.gst_rate || 18) : 0) : null,
+    igst_percentage: payload.items.length === 1 ? (resolvedIsInterstate ? (firstProduct?.gst_rate || 18) : 0) : null,
     igst_amount: Number(totals.igst.toFixed(2)),
-    gst_type: payload.isInterstate ?? (payload.customerSnapshot?.state !== 'Maharashtra') ? 'IGST' : 'CGST_SGST',
+    gst_type: resolvedIsInterstate ? 'IGST' : 'CGST_SGST',
     allocated_logistics_percentage: 100,
     allocated_logistics_amount: Number((payload.transportCharges || 0).toFixed(2)),
     item_amount: Number((totals.productTotal + totals.designCharges + totals.finishCharges + totals.packingCharges).toFixed(2)),
@@ -1157,7 +1167,7 @@ async function executeOrderPlacementTx(
 
       // Calculate proportional financial values for child orders
       const childPricingItem = pricingItems[i];
-      const childIsInterstate = payload.isInterstate ?? (payload.customerSnapshot?.state !== 'Maharashtra');
+      const childIsInterstate = resolvedIsInterstate;
       const childGstRate = childPricingItem.gstRate ?? (payload.gstRate ?? 0.18);
       const childTotals = calculateOrderTotals({
         items: [childPricingItem],

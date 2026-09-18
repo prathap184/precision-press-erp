@@ -16,6 +16,7 @@ import { refreshAuthTokenCookie } from '@/lib/refresh-auth-token';
 import { ProxyOrderBuilderView } from '@/components/acdema/ProxyOrderBuilderView';
 import { getQuotationById, createStandaloneQuotation } from '@/lib/actions/quotations';
 import { supabase } from '@/lib/supabase';
+import { isInterstateOrder } from '@/lib/company-config';
 
 type PaymentMode = 'HAND_CASH' | 'COD' | 'CREDIT';
 type DeliveryType = 'selfPickup' | 'door' | 'courier' | 'transport';
@@ -450,14 +451,12 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
     const firstProduct = products.find(p => p.id === rows[0]?.productId);
     const dCharge = deliveryType === 'selfPickup' ? 0 : (firstProduct?.deliveryPricing?.[deliveryType] || 0);
 
-    const isInterstate = (() => {
-      if (deliveryType === 'selfPickup') return false;
-      if (!shippingAddress) return false;
-      const addr = shippingAddress.toLowerCase();
-      if (addr.includes('karnataka')) return false;
-      if (/\bka\b/.test(addr)) return false;
-      return true;
-    })();
+    const isInterstate = isInterstateOrder({
+      deliveryChoice: deliveryType,
+      shippingAddress,
+      customerState: selectedCustomer?.state,
+      stateCode: (selectedCustomer as any)?.stateCode,
+    });
 
     const pricingRows = rows.map((row) => {
       const product = products.find((item) => item.id === row.productId);
@@ -773,14 +772,12 @@ ${parts.join(', ')}`;
       const firstProduct = products.find(p => p.id === validRows[0]?.productId);
       const submissionGstRate = firstProduct?.gst_rate ? firstProduct.gst_rate / 100 : 0.18;
 
-      const submissionIsInterstate = (() => {
-        if (deliveryType === 'selfPickup') return false;
-        if (!shippingAddress) return false;
-        const addr = shippingAddress.trim().toLowerCase();
-        if (addr.includes('karnataka')) return false;
-        if (/ ka /.test(addr)) return false;
-        return true;
-      })();
+      const submissionIsInterstate = isInterstateOrder({
+        deliveryChoice: deliveryType,
+        shippingAddress,
+        customerState: selectedCustomer?.state,
+        stateCode: (selectedCustomer as any)?.stateCode,
+      });
 
       const payloadBase = {
         customerId: selectedCustomer.uid,
