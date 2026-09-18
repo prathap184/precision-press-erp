@@ -7,6 +7,7 @@ import { db } from '@/lib/firebase';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { RoleGuard } from '@/lib/role-guard';
 import { Order } from '@/types/models';
+import { sortOrdersNewestFirst } from '@/lib/order-sort';
 import { OrderThumbnail } from '@/components/orders/OrderThumbnail';
 import { WorkflowPipelineVisual } from '@/components/orders/WorkflowPipelineVisual';
 import {
@@ -633,7 +634,8 @@ export function GlobalOrdersPage() {
         if (isUmbrellaParent || hasGroupChildren) return false; // hide parent orders
         return true;                                           // standalone order — show
       });
-      setOrders(visible);
+      const sortedVisible = sortOrdersNewestFirst(visible);
+      setOrders(sortedVisible);
       setHasMore(snapshot.docs.length === limitCount);
       setLoading(false);
     });

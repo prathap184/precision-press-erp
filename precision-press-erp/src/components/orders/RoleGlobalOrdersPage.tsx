@@ -30,6 +30,7 @@ import {
 import { db } from '@/lib/firebase';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Order } from '@/types/models';
+import { sortOrdersNewestFirst } from '@/lib/order-sort';
 import { OrderThumbnail } from '@/components/orders/OrderThumbnail';
 import { WorkflowPipelineVisual } from '@/components/orders/WorkflowPipelineVisual';
 import {
@@ -267,7 +268,8 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
         if (Array.isArray(wf?.groupOrderIds) && wf.groupOrderIds.length > 0) return false;
         return true;
       });
-      setOrders(visible);
+      const sortedVisible = sortOrdersNewestFirst(visible);
+      setOrders(sortedVisible);
       setHasMore(snap.docs.length === limitCount);
       setLoading(false);
     });

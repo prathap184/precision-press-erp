@@ -457,7 +457,21 @@ function applyOrderAndLimit(rows: any[], constraints: FirestoreConstraint[] = []
     result.sort((left, right) => {
       const leftValue = getPathValue(left, order.field);
       const rightValue = getPathValue(right, order.field);
-      if (leftValue === rightValue) return 0;
+      if (leftValue === rightValue) {
+        if (order.field.toLowerCase().includes('date') || order.field.toLowerCase().includes('at')) {
+          const idA = String(left.id || '');
+          const idB = String(right.id || '');
+          const [baseA, itemA] = idA.split('-item');
+          const [baseB, itemB] = idB.split('-item');
+          if (baseA !== baseB) {
+            return baseB.localeCompare(baseA, undefined, { numeric: true });
+          }
+          const numA = itemA ? parseInt(itemA, 10) : 0;
+          const numB = itemB ? parseInt(itemB, 10) : 0;
+          return numA - numB;
+        }
+        return 0;
+      }
       if (leftValue == null) return 1;
       if (rightValue == null) return -1;
       const comparison = leftValue > rightValue ? 1 : -1;
@@ -500,6 +514,11 @@ async function fetchRows(client: SupabaseClient, ref: FirestoreRef): Promise<any
 
   if (ref.orderId) {
     builder = builder.eq('order_id', ref.orderId);
+  }
+
+  const orderConstraint = constraints.find((item) => item.type === 'orderBy') as Extract<FirestoreConstraint, { type: 'orderBy' }> | undefined;
+  if (orderConstraint && !orderConstraint.field.includes('.')) {
+    builder = builder.order(orderConstraint.field, { ascending: orderConstraint.direction === 'asc' });
   }
 
   for (const constraint of constraints) {

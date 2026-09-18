@@ -972,7 +972,14 @@ async function executeOrderPlacementTx(
   const isMultiItem = payload.items.length > 1;
 
   // 3. Prepare Payloads
-  const now = payload.orderDate ? new Date(payload.orderDate).toISOString() : new Date().toISOString();
+  let orderCreatedAt = new Date();
+  if (payload.orderDate) {
+    const parts = payload.orderDate.split('-').map(Number);
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      orderCreatedAt.setFullYear(parts[0], parts[1] - 1, parts[2]);
+    }
+  }
+  const now = orderCreatedAt.toISOString();
 
   // Initial Statuses
   let initialStatus: OrderStatus = 'PLACED';
