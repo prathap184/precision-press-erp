@@ -655,10 +655,10 @@ export default function InvoiceDetailPage() {
         }),
       });
         const data = await res.json();
-        const inv = data.invoice || data;
+        const createdInv = data.invoice || data;
         toast.success("Invoice duplicated");
-        if (inv?.id) {
-          router.push(`/accounting/sales/${inv.id}`);
+        if (createdInv?.id) {
+          router.push(`/accounting/sales/${createdInv.id}`);
         }
     } catch {
       toast.error("Failed to duplicate invoice");

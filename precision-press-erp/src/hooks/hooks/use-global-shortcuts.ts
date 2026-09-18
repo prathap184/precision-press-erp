@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 
-export type MenuState = null | 'VOUCHERS' | 'DISPLAY_REPORTS' | 'ACCOUNT_BOOKS' | 'LEDGERS';
+export type MenuState = null | 'VOUCHERS' | 'DISPLAY_REPORTS' | 'ACCOUNT_BOOKS' | 'LEDGERS' | 'ALL_SHORTCUTS';
 
 export function useGlobalShortcuts() {
   const [menuState, setMenuState] = useState<MenuState>(null);
@@ -13,6 +13,21 @@ export function useGlobalShortcuts() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle All Shortcuts modal on Alt + S (works globally anywhere, including inside input fields and search boxes)
+      if ((e.altKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuState((prev) => (prev === 'ALL_SHORTCUTS' ? null : 'ALL_SHORTCUTS'));
+        return;
+      }
+
+      // Close open shortcut menu on Escape regardless of focus
+      if (e.key === 'Escape' && menuState !== null) {
+        e.preventDefault();
+        closeMenu();
+        return;
+      }
+
       // Ignore if user is typing in an input, textarea, or contenteditable element
       const activeElement = document.activeElement as HTMLElement;
       if (activeElement) {

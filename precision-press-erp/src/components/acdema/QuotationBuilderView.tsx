@@ -37,6 +37,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
   const [openUnitPickerId, setOpenUnitPickerId] = useState<string | null>(null);
   const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const rowBlurTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoFocusTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const tallyNaturalCompare = (aStr: any, bStr: any) => {
     return String(aStr || '').trim().localeCompare(String(bStr || '').trim(), undefined, { numeric: true, sensitivity: 'base' });

@@ -64,7 +64,22 @@ export function useGlobalShortcuts() {
       return;
     }
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input, textarea, or contenteditable element
+      // Toggle All Shortcuts modal on Alt + S (works globally anywhere, including inside input fields and search boxes)
+      if ((e.altKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuState((prev) => (prev === 'ALL_SHORTCUTS' ? null : 'ALL_SHORTCUTS'));
+        return;
+      }
+
+      // Close open shortcut menu on Escape regardless of focus
+      if (e.key === 'Escape' && menuState !== null) {
+        e.preventDefault();
+        closeMenu();
+        return;
+      }
+
+      // Ignore other shortcuts if user is typing in an input, textarea, or contenteditable element
       const activeElement = document.activeElement as HTMLElement;
       if (activeElement) {
         const tagName = activeElement.tagName;
@@ -83,13 +98,6 @@ export function useGlobalShortcuts() {
         ) {
           return;
         }
-      }
-
-      // Toggle All Shortcuts modal on Alt + S
-      if ((e.altKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-        setMenuState((prev) => (prev === 'ALL_SHORTCUTS' ? null : 'ALL_SHORTCUTS'));
-        return;
       }
 
       // Ignore shortcut handling when modifier keys (Ctrl, Cmd, Alt) are pressed

@@ -383,7 +383,6 @@ export async function loadTallyStockItems(): Promise<any[]> {
 
     const rawUom = uomM ? cleanStr(uomM[1]) : 'N';
     const normalizedUom = rawUom;
-    const hsn = hsnM ? cleanStr(hsnM[1]) : '';
     const guid = guidM ? cleanStr(guidM[1]) : null;
 
     let rate = 0;
