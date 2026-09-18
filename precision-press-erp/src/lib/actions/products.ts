@@ -5,7 +5,7 @@ import { Product } from "@/types/models";
 import { revalidatePath } from "next/cache";
 import { invalidateProduct, invalidateProductsList } from "@/lib/cache/products";
 
-function parseProduct(row: any, catMap?: Map<string, boolean>): Product {
+function parseProduct(row: any): Product {
   const meta = row.metadata || {};
   const uom = (row.unit_of_measure || row.tally_uom || 'N').trim();
   const isSqftOrFt = uom.toLowerCase() === 'sqft' || uom.toLowerCase() === 'ft';
@@ -17,16 +17,15 @@ function parseProduct(row: any, catMap?: Map<string, boolean>): Product {
     ? Boolean(row.has_multiple_sizes) 
     : (meta.hasMultipleSizes !== undefined ? Boolean(meta.hasMultipleSizes) : (meta.has_multiple_sizes !== undefined ? Boolean(meta.has_multiple_sizes) : false));
 
-  // Category Rule from inventory_category (TreatSalesAsManufactured = Yes)
-  const categoryAllowsSize = Boolean(
-    (row.category_id && catMap?.get(row.category_id)) ||
-    (row.category && catMap?.get(row.category.toLowerCase().trim())) ||
-    (row.tally_stock_group && catMap?.get(row.tally_stock_group.toLowerCase().trim())) ||
-    row.inventory_category?.treat_sales_as_manufactured
+  const hasSingleDefaultSize = Boolean(
+    row.has_single_default_size !== null && row.has_single_default_size !== undefined
+      ? Boolean(row.has_single_default_size)
+      : (meta.hasSingleDefaultSize !== undefined 
+          ? Boolean(meta.hasSingleDefaultSize) 
+          : (meta.has_single_default_size !== undefined 
+              ? Boolean(meta.has_single_default_size) 
+              : (Number(row.default_width) > 0 && Number(row.default_length) > 0)))
   );
-
-  // Combined unified rule: Item's own setting OR Category's TreatSalesAsManufactured setting!
-  const allowCustomSize = isMultiSize || categoryAllowsSize;
 
   return {
     ...row,
@@ -70,33 +69,22 @@ function parseProduct(row: any, catMap?: Map<string, boolean>): Product {
     tallyBillingMode: (row.tally_billing_mode as any) || (row.tallyBillingMode as any) || defaultMode,
     tally_uom: uom,
     tally_alt_uom: row.tally_alt_uom,
-    category_allows_size: categoryAllowsSize,
-    categoryAllowsSize: categoryAllowsSize,
+    category_allows_size: false,
+    categoryAllowsSize: false,
     item_has_multiple_sizes: isMultiSize,
-    has_multiple_sizes: allowCustomSize,
-    hasMultipleSizes: allowCustomSize,
-    default_width: row.default_width != null ? Number(row.default_width) : (meta.defaultWidth ?? meta.default_width ?? (allowCustomSize ? 1 : undefined)),
-    default_length: row.default_length != null ? Number(row.default_length) : (meta.defaultLength ?? meta.default_length ?? (allowCustomSize ? 1 : undefined)),
+    has_multiple_sizes: isMultiSize,
+    hasMultipleSizes: isMultiSize,
+    has_single_default_size: hasSingleDefaultSize,
+    hasSingleDefaultSize: hasSingleDefaultSize,
+    default_width: row.default_width != null ? Number(row.default_width) : (meta.defaultWidth ?? meta.default_width ?? undefined),
+    default_length: row.default_length != null ? Number(row.default_length) : (meta.defaultLength ?? meta.default_length ?? undefined),
     default_width_unit: row.default_width_unit || meta.defaultWidthUnit || meta.default_width_unit || 'FT',
     default_length_unit: row.default_length_unit || meta.defaultLengthUnit || meta.default_length_unit || 'FT',
-    default_size_name: row.default_size_name || meta.defaultSizeName || meta.default_size_name || (allowCustomSize ? '1 F x 1 F' : ''),
+    default_size_name: row.default_size_name || meta.defaultSizeName || meta.default_size_name || '',
   };
 }
 
 export async function getProducts(limit = 100, search?: string) {
-  // Load category manufacturing flags once
-  const { data: categories } = await supabase
-    .from('inventory_category')
-    .select('id, name, tally_stock_group, treat_sales_as_manufactured');
-
-  const catMap = new Map<string, boolean>();
-  (categories || []).forEach((c: any) => {
-    const isMfg = Boolean(c.treat_sales_as_manufactured);
-    if (c.id) catMap.set(c.id, isMfg);
-    if (c.name) catMap.set(c.name.toLowerCase().trim(), isMfg);
-    if (c.tally_stock_group) catMap.set(c.tally_stock_group.toLowerCase().trim(), isMfg);
-  });
-
   if (limit && limit > 0) {
     let query = supabase
       .from('inventory_item')
@@ -111,7 +99,7 @@ export async function getProducts(limit = 100, search?: string) {
 
     const { data, error } = await query.limit(limit);
     if (error) throw error;
-    return (data || []).map(row => parseProduct(row, catMap));
+    return (data || []).map(parseProduct);
   }
 
   const allRows: any[] = [];
@@ -147,7 +135,7 @@ export async function getProducts(limit = 100, search?: string) {
     }
   }
 
-  return allRows.map(row => parseProduct(row, catMap));
+  return allRows.map(parseProduct);
 }
 
 export async function searchProducts(search: string, limit = 50): Promise<Product[]> {
