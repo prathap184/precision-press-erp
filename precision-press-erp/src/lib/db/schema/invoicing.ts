@@ -398,6 +398,10 @@ export const invoiceLineRelations = relations(invoiceLine, ({ one }) => ({
     fields: [invoiceLine.costCenterId],
     references: [costCenter.id],
   }),
+  inventoryItem: one(inventoryItem, {
+    fields: [invoiceLine.inventoryItemId],
+    references: [inventoryItem.id],
+  }),
 }));
 
 export const quoteRelations = relations(quote, ({ one, many }) => ({

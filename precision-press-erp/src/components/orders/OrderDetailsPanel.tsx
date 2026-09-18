@@ -337,11 +337,12 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
                   const billingMode = (item as any).billingMode ?? (item as any).tallyBillingMode ?? (item as any).tally_billing_mode ?? (item as any).mode ?? (item.specs as any)?.billingMode ?? 'B';
                   const itemNote = (item as any).description ?? (item as any).notes ?? (item as any).item_notes ?? (item as any).remarks ?? (item.specs as any)?.description ?? (item.specs as any)?.notes ?? '';
                   const rate = (item as any).rate ?? item.pricingSnapshot?.baseRate ?? 0;
-                  const sqft = (item as any).subTotal && rate
-                    ? Number(((item as any).subTotal / rate).toFixed(2))
-                    : item.specs?.sqft
-                    ? Number(item.specs.sqft.toFixed(2))
-                    : '—';
+                  const wInFt = wUnit === 'IN' ? Number(w) / 12 : (wUnit === 'MTR' ? Number(w) * 3.28084 : Number(w));
+                  const hInFt = hUnit === 'IN' ? Number(h) / 12 : (hUnit === 'MTR' ? Number(h) * 3.28084 : Number(h));
+                  const calculatedSqft = (wInFt > 0 && hInFt > 0) ? (wInFt * hInFt) : 0;
+                  const sqft = calculatedSqft > 0
+                    ? Number(calculatedSqft.toFixed(2))
+                    : (item.specs?.sqft ? Number(item.specs.sqft.toFixed(2)) : '—');
                   const subTotal = (item as any).subTotal ?? item.pricingSnapshot?.subTotal ?? 0;
                   const eyeletType = (item as any).eyeletType ?? item.materialMetadata?.eyeletType ?? 'NONE';
                   const gstPct = item.pricingSnapshot?.tax ? item.pricingSnapshot.tax * 100 : 18;
@@ -444,7 +445,7 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
                       <td className="py-3 px-2 text-center tabular-nums">
                         <div className="flex h-10 min-w-[48px] px-2.5 mx-auto items-center justify-center gap-1 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
                           <span className="text-xs font-black text-slate-900">{qty}</span>
-                          <span className="text-[10px] font-bold text-slate-500">{rawUom || 'N'}</span>
+                          <span className="text-[10px] font-bold text-slate-500">{isModeB ? 'sqft' : (rawUom || 'N')}</span>
                         </div>
                       </td>
                       <td className="py-3 px-2 text-center text-xs font-bold tabular-nums">
@@ -454,8 +455,8 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
                       </td>
                       <td className="py-3 px-2 text-center text-xs font-black text-slate-900 tabular-nums">
                         {hasMultipleSizes && isModeA
-                          ? (typeof sqft === 'number' && rate ? (sqft * rate).toFixed(2) : (rate ? Number(rate).toFixed(2) : '0.00'))
-                          : (rate ? Number(rate).toFixed(2) : '0.00')}
+                          ? (typeof sqft === 'number' && rate ? `${(sqft * rate).toFixed(2)} N` : (rate ? `${Number(rate).toFixed(2)} N` : '0.00 N'))
+                          : (rate ? (isModeB ? `${Number(rate).toFixed(2)} sqft` : Number(rate).toFixed(2)) : '0.00')}
                       </td>
                       <td className="py-3 px-2 tabular-nums text-center">
                         {eyeletType && eyeletType !== 'NONE' ? (

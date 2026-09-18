@@ -58,7 +58,7 @@ export async function GET(
       with: {
         contact: true,
         lines: {
-          with: { account: true, taxRate: true },
+          with: { account: true, taxRate: true, inventoryItem: true },
         },
       },
     });
@@ -126,7 +126,19 @@ export async function GET(
       }
     );
 
-    return NextResponse.json({ invoice: found, payments, base });
+    const enrichedLines = (found.lines || []).map((l: any) => {
+      const billingMode = l.inventoryItem?.tally_billing_mode || l.inventoryItem?.tallyBillingMode || l.inventoryItem?.metadata?.billingMode || (l.billingMode || null);
+      const hsnCode = l.inventoryItem?.hsn_code || l.inventoryItem?.hsn || l.inventoryItem?.metadata?.hsn || l.hsnCode || '';
+      const unit = l.inventoryItem?.metadata?.unit || l.inventoryItem?.unit_of_measure || l.inventoryItem?.tally_uom || 'N';
+      return {
+        ...l,
+        billingMode,
+        hsnCode,
+        unit,
+      };
+    });
+
+    return NextResponse.json({ invoice: { ...found, lines: enrichedLines }, payments, base });
   } catch (err) {
     return handleError(err);
   }

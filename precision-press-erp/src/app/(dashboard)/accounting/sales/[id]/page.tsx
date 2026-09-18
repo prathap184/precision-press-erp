@@ -996,13 +996,13 @@ export default function InvoiceDetailPage() {
                   const width = line.width || 0;
                   const length = line.length || 0;
                   const sqFtVal = line.sqFt || ((width > 0 && length > 0) ? (width * length) : 0);
-                  const pcs = line.pcsNo != null ? line.pcsNo : (isModeA ? null : (sqFtVal > 0 ? Math.round((line.quantity / 100) / sqFtVal) : null));
+                  const pcs = isModeA ? null : (line.pcsNo != null ? line.pcsNo : (sqFtVal > 0 ? Math.round((line.quantity / 100) / sqFtVal) : null));
                   const qtyDisplay = (line.quantity / 100);
                   const gstRate = line.taxRate ? (line.taxRate.rate / 100) : 18;
-                  const rateSqFtStr = formatMoney(line.unitPrice, inv.currencyCode);
+                  const rateSqFtStr = isModeA ? formatMoney(line.unitPrice, inv.currencyCode) : '—';
                   const ratePerUnitStr = isModeA && sqFtVal > 0
-                    ? formatMoney(Math.round(line.unitPrice * sqFtVal), inv.currencyCode)
-                    : rateSqFtStr;
+                    ? `${formatMoney(Math.round(line.unitPrice * sqFtVal), inv.currencyCode)} N`
+                    : (isModeB ? `${formatMoney(line.unitPrice, inv.currencyCode)} sqft` : formatMoney(line.unitPrice, inv.currencyCode));
 
                   return (
                     <tr key={line.id} className="hover:bg-muted/10 transition-colors">
