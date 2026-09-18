@@ -345,7 +345,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           el.focus();
           setOpenRowId(latestRow.id);
           setSearchQuery('');
-          setHighlightProductIndex(0);
+          setHighlightProductIndex(-1);
         }
       }, 50);
     }
@@ -380,8 +380,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           el.focus();
           setOpenRowId(currentRow.id);
           setSearchQuery('');
-          const currIdx = currentRow.productId ? products.findIndex((p) => p.id === currentRow.productId) : -1;
-          setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+          setHighlightProductIndex(-1);
         }
         return;
       }
@@ -395,9 +394,15 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           if (nextEl) {
             nextEl.focus();
             setOpenRowId(nextRow.id);
-            setSearchQuery('');
-            const currIdx = nextRow.productId ? products.findIndex((p) => p.id === nextRow.productId) : -1;
-            setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+            if (nextRow.productId) {
+              const sel = products.find((p: any) => p.id === nextRow.productId);
+              setSearchQuery(sel?.name || '');
+              const currIdx = displayedItems.findIndex((p: any) => p.id === nextRow.productId);
+              setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+            } else {
+              setSearchQuery('');
+              setHighlightProductIndex(-1);
+            }
           }
         }, 50);
       }
@@ -927,14 +932,20 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     setOpenRowId(row.id);
     const currentName = selProd?.name || '';
                                              setSearchQuery(currentName);
-                                             const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                             setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                             if (row.productId) {
+                                               const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
+                                               setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                             } else {
+                                               setHighlightProductIndex(-1);
+                                             }
 
                                              const inputEl = e.currentTarget;
                                              setTimeout(() => {
                                                try {
                                                  const len = inputEl.value ? inputEl.value.length : 0;
-                                                 inputEl.setSelectionRange(len, len);
+                                                 if (len > 0) {
+                                                   inputEl.setSelectionRange(0, len);
+                                                 }
                                                } catch {}
                                              }, 10);
                                            }}
@@ -1045,8 +1056,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                           setOpenRowId(row.id);
                                           const currentName = selProd?.name || '';
                                           setSearchQuery(currentName);
-                                          const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                          setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                          if (row.productId) {
+                                            const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
+                                            setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
+                                          } else {
+                                            setHighlightProductIndex(-1);
+                                          }
                                         }
                                       }} />
                                     </div>
