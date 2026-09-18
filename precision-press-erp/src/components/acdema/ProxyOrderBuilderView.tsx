@@ -532,6 +532,29 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     };
   }, [showExitConfirmModal, customerDropdownOpen, openRowId, openUnitPickerId, showAddressModal, showCreditModal, showConfirmOrderModal, showCreateCustomer]);
 
+  // Keyboard shortcut listener for Exit Confirmation Modal (Y/Enter = Yes, Go Back; N/Esc/Backspace = Cancel, Stay)
+  useEffect(() => {
+    if (!showExitConfirmModal) return;
+    const handleExitModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        const targetUrl = process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL
+          ? `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}/admin/orders`
+          : '/admin/orders';
+        window.location.href = targetUrl;
+      } else if (e.key === 'n' || e.key === 'N' || e.key === 'Escape' || e.key === 'Backspace') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowExitConfirmModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleExitModalKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleExitModalKeyDown, true);
+    };
+  }, [showExitConfirmModal]);
+
   // Keyboard shortcut listener for Confirm Order Placement Modal (Y/Enter = Yes, N/Esc = No)
   useEffect(() => {
     if (!showConfirmOrderModal) return;
@@ -3804,9 +3827,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   <button
                     type="button"
                     onClick={() => setShowExitConfirmModal(false)}
-                    className="flex-1 py-3 rounded-xl border border-slate-200 bg-slate-100 text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                    className="flex-1 py-3 rounded-xl border border-slate-200 bg-slate-100 text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer flex items-center justify-center gap-2"
                   >
-                    Cancel (Stay)
+                    <span>Cancel (Stay)</span>
+                    <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-white border border-slate-300 rounded shadow-2xs text-slate-600">N / Esc</kbd>
                   </button>
                   <button
                     type="button"
@@ -3817,9 +3841,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         : '/admin/orders';
                       window.location.href = targetUrl;
                     }}
-                    className="flex-1 py-3 rounded-xl bg-red-600 text-xs font-black uppercase tracking-wider text-white hover:bg-red-700 shadow-md transition-colors cursor-pointer"
+                    className="flex-1 py-3 rounded-xl bg-red-600 text-xs font-black uppercase tracking-wider text-white hover:bg-red-700 shadow-md transition-colors cursor-pointer flex items-center justify-center gap-2"
                   >
-                    Yes, Go Back
+                    <span>Yes, Go Back</span>
+                    <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-red-700 border border-red-500 rounded shadow-2xs text-white">Y / ↵</kbd>
                   </button>
                 </div>
               </div>
