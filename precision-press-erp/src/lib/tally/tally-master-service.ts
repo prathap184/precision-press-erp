@@ -74,7 +74,7 @@ async function fetchLiveTally(type: MasterType): Promise<string> {
     collectionName = 'StockItemCollection';
     tdlXml = `<COLLECTION NAME="StockItemCollection" ISMODIFY="No">
       <TYPE>StockItem</TYPE>
-      <FETCH>Name,Parent,Guid,AlterId,BaseUnits,GstHsnName,HsnCode,OpeningRate,OpeningValue,ClosingRate,ClosingValue,OpeningBalance,ClosingBalance,IsItemSizeDetailsMandatory,StkItemSizesBillingType</FETCH>
+      <FETCH>Name,Parent,Guid,AlterId,BaseUnits,GstHsnName,HsnCode,OpeningRate,OpeningValue,ClosingRate,ClosingValue,OpeningBalance,ClosingBalance,IsItemSizeDetailsMandatory,StkItemSizesBillingType,HSNDETAILS.*,GSTDETAILS.*,GSTITEMDETAILS.*</FETCH>
      </COLLECTION>`;
   } else if ((type as string) === 'groups') {
     collectionName = 'GroupCollection';
@@ -316,7 +316,10 @@ export async function loadTallyStockItems(): Promise<any[]> {
 
     const parentM = body.match(/<PARENT[^>]*>([^<]*)<\/PARENT>/i);
     const uomM = body.match(/<BASEUNITS[^>]*>([^<]*)<\/BASEUNITS>/i);
-    const hsnM = body.match(/<GSTHSNNAME[^>]*>([^<]*)<\/GSTHSNNAME>/i) || body.match(/<HSNCODE[^>]*>([^<]*)<\/HSNCODE>/i);
+    const hsnM = body.match(/<HSNCODE[^>]*>([^<]+)<\/HSNCODE>/i) ||
+                 body.match(/<GSTHSNNAME[^>]*>([^<]+)<\/GSTHSNNAME>/i) ||
+                 body.match(/<HSN[^>]*>([^<]+)<\/HSN>/i) ||
+                 body.match(/<TARIFFCODE[^>]*>([^<]+)<\/TARIFFCODE>/i);
     const rateM = body.match(/<OPENINGRATE[^>]*>([^<]*)<\/OPENINGRATE>/i) || body.match(/<CLOSINGRATE[^>]*>([^<]*)<\/CLOSINGRATE>/i) || body.match(/<RATE[^>]*>([^<]*)<\/RATE>/i);
     const valM = body.match(/<OPENINGVALUE[^>]*>([^<]*)<\/OPENINGVALUE>/i) || body.match(/<CLOSINGVALUE[^>]*>([^<]*)<\/CLOSINGVALUE>/i);
     const balM = body.match(/<OPENINGBALANCE[^>]*>([^<]*)<\/OPENINGBALANCE>/i) || body.match(/<CLOSINGBALANCE[^>]*>([^<]*)<\/CLOSINGBALANCE>/i);
@@ -367,7 +370,7 @@ export async function loadTallyStockItems(): Promise<any[]> {
       isSqft,
       hasMultipleSizes,
       billingMode: billingMode,
-      hsnCode: hsn || '32141000',
+      hsnCode: hsn || null,
       rate,
       openingQuantity: qty,
       tallyGuid: guid,
