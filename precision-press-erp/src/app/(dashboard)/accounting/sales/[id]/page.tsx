@@ -75,6 +75,14 @@ interface InvoiceDetail {
     taxAmount: number;
     account: { code: string; name: string; id: string } | null;
     taxRate: { id: string; name: string; rate: number } | null;
+    billingMode?: string | null;
+    pcsNo?: number | null;
+    width?: number | null;
+    length?: number | null;
+    sqFt?: number | null;
+    finishAmount?: number | null;
+    deliveryAmount?: number | null;
+    hsnCode?: string | null;
   }[];
 }
 
@@ -958,47 +966,77 @@ export default function InvoiceDetailPage() {
 
           {/* Line items */}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px] text-sm">
+            <table className="w-full min-w-[950px] text-xs">
               <thead>
-                <tr className="border-b bg-muted/20">
-                  <th className="px-6 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Description</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-20">Qty</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-28">Price</th>
-                  <th className="px-4 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-28">Tax</th>
-                  <th className="px-6 py-2.5 text-right text-[11px] font-semibold uppercase tracking-wide text-muted-foreground w-28">Amount</th>
+                <tr className="border-b bg-muted/20 text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2.5 text-center w-8">#</th>
+                  <th className="px-4 py-2.5 text-left min-w-[180px]">Name of Item</th>
+                  <th className="px-2 py-2.5 text-center w-20">HSN Code</th>
+                  <th className="px-2 py-2.5 text-center w-10">T</th>
+                  <th className="px-2 py-2.5 text-center w-14">GST%</th>
+                  <th className="px-2 py-2.5 text-center w-16">Width</th>
+                  <th className="px-2 py-2.5 text-center w-16">Length</th>
+                  <th className="px-2 py-2.5 text-center w-16">Sq.Ft.</th>
+                  <th className="px-2 py-2.5 text-center w-16">Pcs/No</th>
+                  <th className="px-2 py-2.5 text-center w-20">Qty</th>
+                  <th className="px-3 py-2.5 text-right w-24">Rate/SqFt</th>
+                  <th className="px-3 py-2.5 text-right w-24">Rate Per</th>
+                  <th className="px-4 py-2.5 text-right w-28">Amount</th>
                 </tr>
               </thead>
-              <tbody>
-                {inv.lines.filter(l => l.description !== "Logistics / Shipping").map((line, i, arr) => (
-                  <tr key={line.id} className={i < arr.length - 1 ? "border-b border-dashed" : ""}>
-                    <td className="px-6 py-3">
-                      <p className="font-semibold text-slate-900">{line.description}</p>
-                      {(line.width || line.length || line.sqFt) && (
-                        <p className="text-xs text-slate-500 font-mono mt-0.5">
-                          Size: {line.width || '—'} × {line.length || '—'} ft {line.sqFt ? `(${Number(line.sqFt).toFixed(2)} sqft)` : ''}
-                        </p>
-                      )}
-                      {line.account && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{line.account.code} · {line.account.name}</p>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums">{(line.quantity / 100).toFixed(0)}</td>
-                    <td className="px-4 py-3 text-right font-mono tabular-nums text-muted-foreground">{formatMoney(line.unitPrice, inv.currencyCode)}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
-                      {line.taxRate ? (
-                        <div>
-                          <span className="font-mono">{(line.taxRate.rate / 100).toFixed(2)}%</span>
-                          {line.taxAmount > 0 && (
-                            <p className="text-[11px] font-mono">{formatMoney(line.taxAmount, inv.currencyCode)}</p>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-xs">No tax</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-3 text-right font-mono tabular-nums font-medium">{formatMoney(line.amount, inv.currencyCode)}</td>
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-border/50">
+                {inv.lines.filter(l => l.description !== "Logistics / Shipping").map((line, i) => {
+                  const isModeA = line.billingMode === 'A';
+                  const isModeB = line.billingMode === 'B';
+                  const modeLabel = isModeA ? 'A' : (isModeB ? 'B' : null);
+                  const modeBadgeClass = isModeA 
+                    ? 'bg-blue-600 text-white' 
+                    : (isModeB ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-700');
+                  
+                  const width = line.width || 0;
+                  const length = line.length || 0;
+                  const sqFtVal = line.sqFt || ((width > 0 && length > 0) ? (width * length) : 0);
+                  const pcs = line.pcsNo != null ? line.pcsNo : (isModeA ? null : (sqFtVal > 0 ? Math.round((line.quantity / 100) / sqFtVal) : null));
+                  const qtyDisplay = (line.quantity / 100);
+                  const gstRate = line.taxRate ? (line.taxRate.rate / 100) : 18;
+                  const rateSqFtStr = formatMoney(line.unitPrice, inv.currencyCode);
+                  const ratePerUnitStr = isModeA && sqFtVal > 0
+                    ? formatMoney(Math.round(line.unitPrice * sqFtVal), inv.currencyCode)
+                    : rateSqFtStr;
+
+                  return (
+                    <tr key={line.id} className="hover:bg-muted/10 transition-colors">
+                      <td className="px-3 py-3 text-center text-muted-foreground font-mono">{i + 1}</td>
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-slate-900">{line.description}</p>
+                        {line.account && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{line.account.code} · {line.account.name}</p>
+                        )}
+                      </td>
+                      <td className="px-2 py-3 text-center font-mono text-slate-600">{line.hsnCode || '—'}</td>
+                      <td className="px-2 py-3 text-center">
+                        {modeLabel ? (
+                          <span className={`inline-flex items-center justify-center size-5 text-[10px] font-black rounded-full ${modeBadgeClass}`}>
+                            {modeLabel}
+                          </span>
+                        ) : '—'}
+                      </td>
+                      <td className="px-2 py-3 text-center font-mono text-slate-600">{gstRate}%</td>
+                      <td className="px-2 py-3 text-center font-mono">{width > 0 ? width : '—'}</td>
+                      <td className="px-2 py-3 text-center font-mono">{length > 0 ? length : '—'}</td>
+                      <td className="px-2 py-3 text-center font-mono font-semibold">{sqFtVal > 0 ? sqFtVal.toFixed(2) : '—'}</td>
+                      <td className="px-2 py-3 text-center font-mono">{pcs != null ? pcs : '—'}</td>
+                      <td className="px-2 py-3 text-center font-mono font-bold text-slate-900">
+                        {isModeB ? `${qtyDisplay} sqft` : (isModeA ? `${qtyDisplay} N` : qtyDisplay)}
+                      </td>
+                      <td className="px-3 py-3 text-right font-mono text-slate-600 tabular-nums">{rateSqFtStr}</td>
+                      <td className="px-3 py-3 text-right font-mono text-slate-700 tabular-nums">{ratePerUnitStr}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-slate-900 tabular-nums">
+                        {formatMoney(line.amount, inv.currencyCode)}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
