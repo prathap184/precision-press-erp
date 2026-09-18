@@ -489,11 +489,12 @@ export async function POST(request: Request) {
           const newAmountDue = created.total - applyAmount;
           const newStatus = newAmountDue === 0 ? "paid" : "partial";
           const creditStatus = newRemaining === 0 ? "applied" : "open";
-          const advRefName =
+          const advRefName = String(
             credit.journalEntry?.reference ||
             credit.journalEntry?.entryNumber ||
             credit.notes ||
-            "Advance";
+            "Advance"
+          );
 
           // 1. Decrement the advance balance
           await db
@@ -649,7 +650,7 @@ export async function POST(request: Request) {
         where: and(eq(contact.id, result.contactId), eq(contact.organizationId, ctx.organizationId)),
       });
 
-      const customerLedgerName = customer?.displayName || customer?.businessName || customer?.name || "Cash Customer";
+      const customerLedgerName = (customer as any)?.tallyLedgerName || (customer as any)?.displayName || (customer as any)?.businessName || customer?.name || "Cash Customer";
 
       // ── Determine bill allocation type ──────────────────────────────────────
       // NEW_REF (default) → standard "New Ref" — customer pays later.
@@ -692,7 +693,7 @@ export async function POST(request: Request) {
         partyLedgerName: customerLedgerName,
         customerName: customerLedgerName,
         partyGstin: customer?.taxNumber || "",
-        placeOfSupply: customer?.state || "Karnataka",
+        placeOfSupply: customer?.placeOfSupply || "Karnataka",
         isCreditSale: true,
         billAllocations: {
           name: billAllocationName,

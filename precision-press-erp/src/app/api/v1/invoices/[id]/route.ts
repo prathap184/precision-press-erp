@@ -198,7 +198,7 @@ export async function PATCH(
         const deliveryAmount = Math.round((l.deliveryAmount || 0) * 100);
         
         const unitPriceCents = decimalToMinorUnits(l.unitPrice, existing.currencyCode);
-        const isModeA = l.billingMode === 'A';
+        const isModeA = (l as any).billingMode === 'A';
         const baseAmount = (isModeA && hasSizes)
           ? Math.round(l.quantity * sqFt * unitPriceCents)
           : Math.round(l.quantity * unitPriceCents);

@@ -306,7 +306,9 @@ export async function loadTallyStockItems(): Promise<any[]> {
     .from('inventory_category')
     .select('name')
     .eq('treat_sales_as_manufactured', true);
-  const mfgSet = new Set((mfgCategories || []).map(c => (c.name || '').toLowerCase()));
+  const items: any[] = [];
+  const itemRegex = /<STOCKITEM NAME="([^"]+)"[^>]*>([\s\S]*?)<\/STOCKITEM>/gi;
+  let m: RegExpExecArray | null;
 
   while ((m = itemRegex.exec(xml)) !== null) {
     const name = cleanStr(m[1]);

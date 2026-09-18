@@ -283,7 +283,7 @@ export function StagePhotoWorkspace({
                   </div>
                 </div>
                 <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-1">
-                  Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'} • {order.customerSnapshot?.companyName || 'Hindustan Enterprises'}
+                  Placed on {order.createdAt ? new Date((order.createdAt as any).seconds ? (order.createdAt as any).seconds * 1000 : order.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-'} • {(order.customerSnapshot as any)?.companyName || order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Hindustan Enterprises'}
                 </p>
               </div>
             </div>

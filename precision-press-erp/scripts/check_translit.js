@@ -53,121 +53,45 @@ function normalizeUnit(unit) {
   return u;
 }
 
-async function resync() {
-  console.log('=== 1. FETCHING ALL STOCK ITEMS FROM LIVE TALLY 9000 ===');
-  const nativeExportXml = `<ENVELOPE>
- <HEADER>
-  <TALLYREQUEST>Export Data</TALLYREQUEST>
- </HEADER>
- <BODY>
-  <EXPORTDATA>
-   <REQUESTDESC>
-    <REPORTNAME>List of Accounts</REPORTNAME>
-    <STATICVARIABLES>
-     <SVCURRENTCOMPANY>${TARGET_COMPANY}</SVCURRENTCOMPANY>
-     <SVEXPORTFORMAT>$$SysName:XML</SVEXPORTFORMAT>
-     <ACCOUNTTYPE>Stock Items</ACCOUNTTYPE>
-    </STATICVARIABLES>
-   </REQUESTDESC>
-  </EXPORTDATA>
- </BODY>
-</ENVELOPE>`;
+async function verify() {
+  console.log('=== 100% DATABASE SYNC VERIFICATION ===\n');
 
-  const xml = await queryTally(nativeExportXml);
-  console.log(`Received ${xml.length} bytes from Tally 9000.`);
+  const res = await pool.query(`
+    SELECT 
+      has_multiple_sizes,
+      (metadata->>'has_single_default_size')::boolean as has_single_default_size,
+      COUNT(*)::int as item_count
+    FROM inventory_item
+    GROUP BY has_multiple_sizes, (metadata->>'has_single_default_size')::boolean
+    ORDER BY has_multiple_sizes DESC, has_single_default_size DESC;
+  `);
 
-  const rawItems = xml.split('</STOCKITEM>');
-  console.log(`Total STOCKITEM blocks in Tally 9000: ${rawItems.length - 1}`);
+  console.table(res.rows);
 
-  let multiSizeCount = 0;
-  let singleDefaultSizeCount = 0;
-  let fixedNoSizeCount = 0;
+  const sampleSingleDefault = await pool.query(`
+    SELECT name, category, default_width, default_length, default_width_unit, default_length_unit, default_size_name
+    FROM inventory_item
+    WHERE (metadata->>'has_single_default_size')::boolean = true
+    LIMIT 10;
+  `);
 
-  const updateTasks = [];
+  console.log('\n--- Sample 10 Items with Set Multiple Size = NO BUT Single Default Size (Width & Length Active) ---');
+  console.table(sampleSingleDefault.rows);
 
-  for (const itemXml of rawItems) {
-    const nameMatch = itemXml.match(/<STOCKITEM NAME="([^"]+)"/);
-    if (!nameMatch) continue;
-    const itemName = cleanStr(nameMatch[1]);
-    if (!itemName) continue;
+  const sampleFixed = await pool.query(`
+    SELECT name, category, has_multiple_sizes, default_width, default_length
+    FROM inventory_item
+    WHERE has_multiple_sizes = false 
+      AND (metadata->>'has_single_default_size')::boolean IS NOT TRUE
+    LIMIT 10;
+  `);
 
-    const sizeNameMatches = itemXml.match(/<UDF:ITEMSIZENAMEUDF[^>]*>([^<]+)<\/UDF:ITEMSIZENAMEUDF>/g) || [];
-    const isMandatory = itemXml.includes('IsItemSizeDetailsMandatory">Yes') || itemXml.includes('ISITEMSIZEDETAILSMANDATORY">Yes');
-
-    // Extract size details
-    const widthM = itemXml.match(/<UDF:ITEMWIDTHUDF[^>]*>([^<]+)<\/UDF:ITEMWIDTHUDF>/);
-    const lengthM = itemXml.match(/<UDF:ITEMLENGTHUDF[^>]*>([^<]+)<\/UDF:ITEMLENGTHUDF>/);
-    const widthUnitM = itemXml.match(/<UDF:ITEMWIDTHUNITUDF[^>]*>([^<]+)<\/UDF:ITEMWIDTHUNITUDF>/);
-    const lengthUnitM = itemXml.match(/<UDF:ITEMLENGTHUNITUDF[^>]*>([^<]+)<\/UDF:ITEMLENGTHUNITUDF>/);
-    const sizeNameM = itemXml.match(/<UDF:ITEMNEWSIZENAMEUDF[^>]*>([^<]+)<\/UDF:ITEMNEWSIZENAMEUDF>/) || itemXml.match(/<UDF:ITEMSIZENAMEUDF[^>]*>([^<]+)<\/UDF:ITEMSIZENAMEUDF>/);
-
-    const defaultWidth = widthM ? parseFloat(widthM[1].trim()) || null : null;
-    const defaultLength = lengthM ? parseFloat(lengthM[1].trim()) || null : null;
-    const defaultWidthUnit = normalizeUnit(widthUnitM ? widthUnitM[1].trim() : 'FT');
-    const defaultLengthUnit = normalizeUnit(lengthUnitM ? lengthUnitM[1].trim() : 'FT');
-    const defaultSizeName = sizeNameM ? cleanStr(sizeNameM[1]) : null;
-
-    let hasMultipleSizes = false;
-    let hasSingleDefaultSize = false;
-
-    if (sizeNameMatches.length > 1 || isMandatory) {
-      hasMultipleSizes = true;
-      multiSizeCount++;
-    } else if (sizeNameMatches.length === 1 || (defaultWidth !== null && defaultLength !== null)) {
-      hasMultipleSizes = false;
-      hasSingleDefaultSize = true;
-      singleDefaultSizeCount++;
-    } else {
-      hasMultipleSizes = false;
-      hasSingleDefaultSize = false;
-      fixedNoSizeCount++;
-    }
-
-    updateTasks.push(
-      pool.query(
-        `UPDATE inventory_item
-         SET has_multiple_sizes = $1,
-             default_width = $2,
-             default_length = $3,
-             default_width_unit = $4,
-             default_length_unit = $5,
-             default_size_name = $6,
-             metadata = jsonb_set(
-               jsonb_set(
-                 jsonb_set(
-                   COALESCE(metadata, '{}'::jsonb),
-                   '{hasMultipleSizes}', to_jsonb($1::boolean)
-                 ),
-                 '{has_multiple_sizes}', to_jsonb($1::boolean)
-               ),
-               '{has_single_default_size}', to_jsonb($7::boolean)
-             )
-         WHERE LOWER(name) = LOWER($8) OR LOWER(tally_item_name) = LOWER($8);`,
-        [
-          hasMultipleSizes,
-          hasSingleDefaultSize ? defaultWidth : null,
-          hasSingleDefaultSize ? defaultLength : null,
-          defaultWidthUnit,
-          defaultLengthUnit,
-          hasSingleDefaultSize ? defaultSizeName : null,
-          hasSingleDefaultSize,
-          itemName
-        ]
-      )
-    );
-  }
-
-  console.log(`Running ${updateTasks.length} database updates...`);
-  await Promise.all(updateTasks);
-
-  console.log('\n=== TALLY 9000 RESYNC COMPLETED SUCCESSFULLY ===');
-  console.log(`Updated ${updateTasks.length} items in PostgreSQL database.`);
-  console.log(`  • Multiple Size Items (has_multiple_sizes = true): ${multiSizeCount}`);
-  console.log(`  • Single Default Size Items (has_single_default_size = true, default W&L set): ${singleDefaultSizeCount}`);
-  console.log(`  • Fixed No Size Items (has_multiple_sizes = false, W&L disabled): ${fixedNoSizeCount}`);
+  console.log('\n--- Sample 10 Fixed Items (Set Multiple Size = NO & No Default Size, Width & Length Disabled) ---');
+  console.table(sampleFixed.rows);
 }
 
-resync().catch(console.error).finally(() => pool.end());
+verify().catch(console.error).finally(() => pool.end());
+
 
 
 

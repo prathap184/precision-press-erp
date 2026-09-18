@@ -155,6 +155,7 @@ export async function POST(request: Request) {
     // each document's currency + issue date so the journal entry can convert to
     // base currency and book realised FX. A payment settles one currency only.
     const docCurrencies = new Set<string>();
+    const invoiceMap = new Map<string, any>();
     const journalAllocations: {
       amount: number;
       currencyCode: string;
@@ -167,7 +168,7 @@ export async function POST(request: Request) {
             eq(invoice.id, alloc.documentId),
             eq(invoice.organizationId, ctx.organizationId)
           ),
-          columns: { currencyCode: true, issueDate: true },
+          columns: { id: true, invoiceNumber: true, currencyCode: true, issueDate: true },
         });
         if (!doc) {
           return NextResponse.json(
@@ -175,6 +176,7 @@ export async function POST(request: Request) {
             { status: 404 }
           );
         }
+        invoiceMap.set(doc.id, doc);
         docCurrencies.add(doc.currencyCode);
         journalAllocations.push({
           amount: alloc.amount,
@@ -229,6 +231,8 @@ export async function POST(request: Request) {
 
     // Generate payment number
     const paymentNumber = await getNextNumber(ctx.organizationId, "payment", "payment_number", "PAY");
+
+    let resolvedBankAccountId = parsed.bankAccountId || null;
 
     // Atomically write the payment, its allocations, the settled-document
     // balance/status updates, the GL journal entry, and the payment→journal
@@ -389,6 +393,7 @@ export async function POST(request: Request) {
           sourceType: "manual",
           currencyCode,
         });
+        resolvedBankAccountId = selectedBankAccountId;
       }
 
       return { created, journalEntry };
@@ -404,8 +409,9 @@ export async function POST(request: Request) {
     // Enqueue to Tally Sync Queue
     if (parsed.type === "received") {
       try {
-        const selectedBank = selectedBankAccountId
-          ? await db.query.bankAccount.findFirst({ where: eq(bankAccount.id, selectedBankAccountId) })
+        const customerLedgerName = (result?.contact as any)?.tallyLedgerName || result?.contact?.name || "Customer";
+        const selectedBank = resolvedBankAccountId
+          ? await db.query.bankAccount.findFirst({ where: eq(bankAccount.id, resolvedBankAccountId) })
           : null;
         const bankLedgerName = selectedBank?.tallyLedgerName || selectedBank?.accountName || (parsed.method === "cash" ? "Cash" : "Federal 2091");
         const voucherType = "Web Receipt";
@@ -440,11 +446,11 @@ export async function POST(request: Request) {
           cmpState: "Karnataka",
           remarks: parsed.notes || `Receipt ${paymentNumber}`,
           allocations: billAllocs,
-          billAllocations: billAllocs.length > 0 ? billAllocs : {
+          billAllocations: billAllocs.length > 0 ? billAllocs : [{
             name: paymentNumber,
             billType: "On Account",
             amount: parsed.amount / 100,
-          },
+          }],
         };
 
         await enqueueTallySync({
@@ -457,7 +463,7 @@ export async function POST(request: Request) {
           voucherType: "Web Receipt",
           refId: paymentNumber,
           customerName: customerLedgerName,
-          amountSnap: parsed.amount / 100,
+          amountSnap: { amount: parsed.amount / 100 },
         });
       } catch (tErr) {
         console.warn("Failed to enqueue receipt to Tally queue:", tErr);

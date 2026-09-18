@@ -28,9 +28,9 @@ function selectAll(el: HTMLElement) {
     if (["button", "submit", "checkbox", "radio", "file"].includes(el.type)) return;
     try {
       if (el.type === "number") {
-        el.type = "text";
+        (el as any).type = "text";
         el.setSelectionRange(0, el.value.length);
-        el.type = "number";
+        (el as any).type = "number";
       } else {
         el.select();
       }
@@ -43,10 +43,10 @@ function moveCursorToEnd(el: HTMLElement) {
     if (["button", "submit", "checkbox", "radio", "file"].includes(el.type)) return;
     try {
       if (el.type === "number") {
-        el.type = "text";
+        (el as any).type = "text";
         const len = el.value ? el.value.length : 0;
         el.setSelectionRange(len, len);
-        el.type = "number";
+        (el as any).type = "number";
       } else {
         const len = el.value ? el.value.length : 0;
         el.setSelectionRange(len, len);
@@ -110,9 +110,9 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           if (isNumber) {
             try {
               e.preventDefault();
-              input.type = "text";
+              (input as any).type = "text";
               input.setSelectionRange(0, 0);
-              input.type = "number";
+              (input as any).type = "number";
             } catch {}
           } else {
             try {
@@ -129,10 +129,10 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           if (isNumber) {
             try {
               e.preventDefault();
-              input.type = "text";
+              (input as any).type = "text";
               const len = input.value ? input.value.length : 0;
               input.setSelectionRange(len, len);
-              input.type = "number";
+              (input as any).type = "number";
             } catch {}
             return;
           }
@@ -152,9 +152,9 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           if (isNumber) {
             try {
               e.preventDefault();
-              input.type = "text";
+              (input as any).type = "text";
               input.setSelectionRange(0, 0);
-              input.type = "number";
+              (input as any).type = "number";
             } catch {}
             return;
           }

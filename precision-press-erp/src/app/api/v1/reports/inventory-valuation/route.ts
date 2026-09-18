@@ -36,8 +36,7 @@ export async function GET(request: Request) {
     });
 
     const valuedItems = items.map((item) => {
-      // @ts-ignore
-      const metadata = item.metadata || {};
+      const metadata = (item.metadata || {}) as Record<string, any>;
       const isDirect = metadata.isDirectSelling !== false;
       const activeSalePrice = isDirect ? item.salePrice : (metadata.baseRate || item.salePrice);
       
