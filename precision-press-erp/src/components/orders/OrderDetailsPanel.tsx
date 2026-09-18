@@ -361,6 +361,7 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
                   const rawUom = String((item as any).unit || (item.specs as any)?.unit || (item as any).tally_uom || 'N').trim();
                   const cleanUom = rawUom.toLowerCase().replace(/[\s\._-]/g, '');
                   const hasMultipleSizes = Boolean(
+                    (Number(w) > 0 && Number(h) > 0) ||
                     (item as any).hasMultipleSizes ?? 
                     (item as any).has_multiple_sizes ?? 
                     (item.specs as any)?.hasMultipleSizes ?? 

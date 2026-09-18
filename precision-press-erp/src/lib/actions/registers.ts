@@ -159,8 +159,16 @@ export async function getQuotationRegister(dateFrom?: string, dateTo?: string) {
 
   return quotations.map(q => ({
     ...q,
-    customerName: q.profiles?.name || q.customer_snapshot?.name || 'Unknown Customer',
+    id: q.id,
+    refId: q.quotation_number,
+    sale_entry_number: q.quotation_number,
+    type: 'QUOTATION',
+    timestamp: q.created_at || q.quotation_date,
+    customerName: q.profiles?.name || q.customer_snapshot?.displayName || q.customer_snapshot?.name || 'Unknown Customer',
+    debit: Number(q.total_amount || 0),
+    credit: 0,
     status: q.status || 'PENDING',
+    link: `/proxy-order?quotationId=${q.id}`,
   }));
 }
 

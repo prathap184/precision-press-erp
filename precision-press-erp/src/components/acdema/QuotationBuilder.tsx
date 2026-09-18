@@ -696,7 +696,7 @@ export function QuotationBuilder() {
       }
 
       toast.success(`Quotation generated: ${(result as any).quotationNumber || ''}`);
-      router.push('/quotations');
+      router.push('/quotation-register');
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || 'Failed to submit quotation.');

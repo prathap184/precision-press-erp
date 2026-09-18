@@ -313,8 +313,9 @@ export function TransactionList({ title, transactions, emptyMessage, newActionHr
                         </td>
                         <td className="p-3">
                           <Link 
-                            href={t.invoiceId ? `/admin/invoices/${t.invoiceId}/print` : '#'} 
+                            href={t.link || (t.type === 'QUOTATION' ? `/proxy-order?quotationId=${t.id}` : (t.invoiceId ? `/admin/invoices/${t.invoiceId}/print` : '#'))} 
                             className="font-medium text-slate-900 hover:text-indigo-600 hover:underline flex items-center gap-2"
+                            title={t.type === 'QUOTATION' ? 'Open in Proxy Order' : undefined}
                           >
                             <FileText className="w-4 h-4 text-slate-400 group-hover:text-indigo-500" />
                             {t.sale_entry_number || t.receipt_entry_number || t.refId || t.id.split('-')[0]}
@@ -335,7 +336,21 @@ export function TransactionList({ title, transactions, emptyMessage, newActionHr
                           {formatCurrency(amount)}
                         </td>
                         <td className="p-3 text-center">
-                          {t.status ? (
+                          {t.type === 'QUOTATION' ? (
+                            <div className="flex items-center justify-center gap-2">
+                              <Badge variant={t.status === 'ORDERED' ? 'success' : 'secondary'} className="font-normal rounded-full px-2.5">
+                                {t.status}
+                              </Badge>
+                              {t.status !== 'ORDERED' && (
+                                <Link
+                                  href={`/proxy-order?quotationId=${t.id}`}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-colors shrink-0 shadow-2xs"
+                                >
+                                  Convert to Order →
+                                </Link>
+                              )}
+                            </div>
+                          ) : t.status ? (
                             <Badge variant={
                               t.status === 'Paid' || t.status === 'Verified' ? 'success' : 
                               t.status === 'Partially Paid' ? 'warning' : 'secondary'

@@ -216,14 +216,23 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
                 if (Array.isArray(parsedItems)) {
                   const mappedRows = parsedItems.map((item: any) => {
                     const product = activeProducts.find((p: any) => p.name === (item.productName || item.product_name) || p.id === item.productId);
+                    const effectiveRate = item.rate !== undefined && item.rate !== null && item.rate !== '' 
+                      ? item.rate.toString() 
+                      : (item.manualRate ? item.manualRate.toString() : '');
                     return {
                       ...makeRow(product),
                       quantity: item.quantity?.toString() || '1',
-                      width: item.width || '',
-                      height: item.height || '',
+                      width: item.width?.toString() || '',
+                      height: item.height?.toString() || '',
                       widthUnit: item.widthUnit || 'FT',
                       heightUnit: item.heightUnit || 'FT',
-                      pcsNo: item.pcsNo || '',
+                      pcsNo: item.pcsNo?.toString() || '',
+                      manualRate: effectiveRate,
+                      billingMode: item.billingMode || (product as any)?.tally_billing_mode || 'B',
+                      projectName: item.projectName || '',
+                      description: item.description || '',
+                      eyeletType: item.eyeletType || 'NONE',
+                      eyeletCount: Number(item.eyeletCount || 0),
                     };
                   });
                   setRows(mappedRows.length > 0 ? mappedRows : [makeRow(activeProducts[0])]);
@@ -237,13 +246,16 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
                 
                 if (logistics?.deliveryChoice) {
                   const choice = logistics.deliveryChoice;
-                  if (choice === 'PICKUP') setDeliveryType('selfPickup');
-                  else if (choice === 'DOOR_DELIVERY') setDeliveryType('door');
-                  else if (choice === 'COURIER') setDeliveryType('courier');
-                  else if (choice === 'TRANSPORT') setDeliveryType('transport');
+                  if (choice === 'PICKUP' || choice === 'selfPickup') setDeliveryType('selfPickup');
+                  else if (choice === 'DOOR_DELIVERY' || choice === 'door') setDeliveryType('door');
+                  else if (choice === 'COURIER' || choice === 'courier') setDeliveryType('courier');
+                  else if (choice === 'TRANSPORT' || choice === 'transport') setDeliveryType('transport');
                 }
-                if (quotation.shipping_address) {
-                  setShippingAddress(quotation.shipping_address);
+                if (quotation.shipping_address || logistics?.shippingAddress) {
+                  setShippingAddress(quotation.shipping_address || logistics?.shippingAddress);
+                }
+                if (logistics?.notes || (quotation as any).notes) {
+                  setNotes(logistics?.notes || (quotation as any).notes);
                 }
               }
             }
@@ -838,6 +850,10 @@ ${parts.join(', ')}`;
             projectName: row.projectName,
             description: row.description || row.projectName || '',
             notes: row.description || '',
+            hsnCode: (product as any)?.hsn_code || (product as any)?.hsn || (product as any)?.hsnCode || '',
+            gstRate: (product as any)?.gst_rate ?? 18,
+            hasMultipleSizes: isSizeInputActive,
+            hasSingleDefaultSize: hasSingleDefaultSize,
             billingMode: currentMode,
             pcsNo: isModeA ? '' : (row.pcsNo || '1'),
             width,
