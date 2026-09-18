@@ -66,6 +66,37 @@ export function useGlobalShortcuts() {
         return;
       }
 
+      // Toggle Search Bar Focus on Alt + Q (un-focus if in search bar, or focus search bar if outside)
+      if ((e.altKey || e.metaKey) && (e.key === 'q' || e.key === 'Q' || e.code === 'KeyQ')) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const activeEl = document.activeElement as HTMLElement | null;
+        const isEditing = activeEl && (
+          activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          activeEl.isContentEditable ||
+          activeEl.getAttribute('role') === 'textbox' ||
+          activeEl.getAttribute('role') === 'searchbox' ||
+          activeEl.getAttribute('role') === 'combobox'
+        );
+
+        if (isEditing) {
+          activeEl?.blur();
+        } else {
+          const searchInput = document.querySelector<HTMLInputElement>(
+            'input[placeholder*="Search" i], input[type="search"], #global-search-input, input:not([type="hidden"]):not([disabled])'
+          );
+          if (searchInput) {
+            searchInput.focus();
+            try {
+              searchInput.select();
+            } catch {}
+          }
+        }
+        return;
+      }
+
       // Close open shortcut menu on Escape or Backspace regardless of focus
       if ((e.key === 'Escape' || e.key === 'Backspace') && menuState !== null) {
         e.preventDefault();

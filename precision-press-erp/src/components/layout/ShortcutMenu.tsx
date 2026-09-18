@@ -308,6 +308,24 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
                     <kbd className="px-1.5 py-0.5 text-xs font-bold font-mono bg-amber-100 border border-amber-300 rounded text-amber-900">F</kbd>
                   </div>
                 </div>
+                <div 
+                  onClick={() => {
+                    closeMenu();
+                    setTimeout(() => {
+                      const searchInput = document.querySelector<HTMLInputElement>(
+                        'input[placeholder*="Search" i], input[type="search"], #global-search-input, input:not([type="hidden"]):not([disabled])'
+                      );
+                      if (searchInput) {
+                        searchInput.focus();
+                        try { searchInput.select(); } catch {}
+                      }
+                    }, 50);
+                  }}
+                  className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+                >
+                  <span className="text-xs font-semibold text-slate-800">Toggle Search Bar Focus (Un-focus / Focus)</span>
+                  <kbd className="px-2 py-1 text-xs font-bold font-mono bg-blue-100 border border-blue-300 rounded-md shadow-2xs text-blue-900">Alt + Q</kbd>
+                </div>
               </div>
             </div>
 
