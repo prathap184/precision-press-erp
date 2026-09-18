@@ -254,7 +254,10 @@ export async function POST(request: Request) {
       const finishAmount = Math.round((l.finishAmount || 0) * 100);
       const deliveryAmount = Math.round((l.deliveryAmount || 0) * 100);
 
-      const baseAmount = Math.round(sqFt * l.quantity * unitPriceCents);
+      const isModeA = l.billingMode === 'A';
+      const baseAmount = (isModeA && hasSizes)
+        ? Math.round(l.quantity * sqFt * unitPriceCents)
+        : Math.round(l.quantity * unitPriceCents);
       const grossAmount = baseAmount + finishAmount + deliveryAmount;
       
       const discountAmount = l.discountPercent ? Math.round(grossAmount * l.discountPercent / 10000) : 0;

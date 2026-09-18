@@ -180,12 +180,16 @@ export async function PATCH(
       const processedLines = parsed.lines.map((l, i) => {
         const width = l.width || 0;
         const length = l.length || 0;
+        const hasSizes = (l.sqFt && l.sqFt > 0) || (width > 0 && length > 0);
         const sqFt = l.sqFt || ((width > 0 && length > 0) ? width * length : 1);
         const finishAmount = Math.round((l.finishAmount || 0) * 100);
         const deliveryAmount = Math.round((l.deliveryAmount || 0) * 100);
         
         const unitPriceCents = decimalToMinorUnits(l.unitPrice, existing.currencyCode);
-        const baseAmount = Math.round(sqFt * l.quantity * unitPriceCents);
+        const isModeA = l.billingMode === 'A';
+        const baseAmount = (isModeA && hasSizes)
+          ? Math.round(l.quantity * sqFt * unitPriceCents)
+          : Math.round(l.quantity * unitPriceCents);
         const grossAmount = baseAmount + finishAmount + deliveryAmount;
         
         const discountAmount = l.discountPercent
