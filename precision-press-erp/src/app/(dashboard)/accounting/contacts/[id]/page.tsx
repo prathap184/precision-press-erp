@@ -45,6 +45,8 @@ export default function ContactDetailsPage() {
     setFormOpeningBalance,
     formOpeningBalanceType,
     setFormOpeningBalanceType,
+    formVoucherType,
+    setFormVoucherType,
     formRevenueAccountId,
     setFormRevenueAccountId,
     formExpenseAccountId,
@@ -121,6 +123,7 @@ export default function ContactDetailsPage() {
           defaultTaxRateId: formTaxRateId !== "none" ? formTaxRateId : null,
           openingBalance: formOpeningBalance ? formOpeningBalance : "0",
           openingBalanceType: formOpeningBalanceType || "Dr",
+          voucherType: formVoucherType || "Type 0",
           notes: form.get("notes") || null,
         }),
       });
@@ -139,6 +142,7 @@ export default function ContactDetailsPage() {
       setFormCurrencyCode(c.currencyCode || "");
       setFormOpeningBalance(c.openingBalance != null ? String(c.openingBalance) : "");
       setFormOpeningBalanceType(c.openingBalanceType || "Dr");
+      setFormVoucherType(c.voucherType || (c as any).voucher_type || "Type 0");
       toast.success("Contact updated");
     } catch {
       toast.error("Failed to update contact");
@@ -258,6 +262,47 @@ export default function ContactDetailsPage() {
                   >
                     Don&apos;t charge tax to this contact
                   </Label>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold uppercase tracking-wide">
+                  Customer Discount Category (Voucher Eligibility)
+                </Label>
+                <span className="text-[11px] text-muted-foreground">
+                  Controls GST discount voucher in proxy orders & quotations
+                </span>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 items-center">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium">Pricing / Voucher Category</Label>
+                  <Select
+                    value={formVoucherType}
+                    onValueChange={setFormVoucherType}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Type 0">Normal Customer (No Voucher Discount)</SelectItem>
+                      <SelectItem value="Type 1">Discount Customer (Eligible for GST Voucher Discount)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="text-xs text-muted-foreground pt-3 sm:pt-0">
+                  {formVoucherType === "Type 1" ? (
+                    <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-medium">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Eligible: Operator can apply GST voucher discount in orders.
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                      <span className="h-2.5 w-2.5 rounded-full bg-slate-400" />
+                      Normal: Standard pricing without GST voucher discount eligibility.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

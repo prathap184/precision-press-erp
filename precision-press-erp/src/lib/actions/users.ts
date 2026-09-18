@@ -185,6 +185,7 @@ export async function getCustomers(limit = 100, search?: string) {
         customerType: data.customer_type || data.customerType || (data.payment_terms_days && data.payment_terms_days > 0 ? 'CREDIT' : 'CASH'),
         creditLimit: Number(data.credit_limit ?? data.creditLimit ?? 0),
         usedCredit: Number(data.used_credit ?? data.usedCredit ?? 0),
+        voucherType: data.voucherType || data.voucher_type || 'Type 0',
       };
       customerData.uid = data.uid || data.id;
       return customerData as UserProfile;
@@ -287,6 +288,7 @@ export async function updateCustomerProfile(uid: string, data: Partial<UserProfi
       gst_number: gstNumber,
       gst_verified: gstVerified,
       voucher_type: voucherType,
+      voucherType: voucherType,
       addresses,
       billing_address_line1,
       billing_address_line2,

@@ -1310,7 +1310,41 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
   4. `src/lib/actions/products.ts` & `src/lib/cache/products.ts`
 
 ---
-*Memory Updated & Persisted on: 2026-09-18 (Newest-First Registry Sorting, Centralized Interstate GST Evaluator & 3 Golden Rules Enforced)*
+
+## 🎟️ 50. Voucher Discount Retention & Customer Discount Management (BUG-12)
+
+### A. Root Cause of BUG-12
+- In `ProxyOrderBuilder.tsx` and `QuotationBuilder.tsx`, `setApplyVoucher(false)` was previously triggered inside an address-sync `useEffect` hook listening to `[selectedCustomer, deliveryType]`.
+- Whenever the operator changed the delivery option (e.g., from *Self Pickup* to *Door Delivery* or *Courier*), the effect re-executed and wiped out the ticked voucher (`applyVoucher = false`), unintentionally removing the GST voucher discount and increasing the order total.
+
+### B. BUG-12 Fix: Independent Customer Change Tracker
+- Separated delivery address synchronization from voucher reset.
+- Added `prevCustomerIdRef = React.useRef<string | null>(null)` to explicitly check if `selectedCustomer?.uid` (or `id`) has actually changed.
+- `applyVoucher` now **strictly persists** across all delivery choice changes (Self Pickup, Door, Courier, Transport).
+- `applyVoucher` **only** un-ticks/resets when the operator switches to a completely different customer or clears the customer selection.
+- Enforced identically in:
+  1. `src/components/acdema/ProxyOrderBuilder.tsx`
+  2. `src/components/acdema/QuotationBuilder.tsx`
+
+### C. Universal Customer Default: Normal Customer (`Type 0`)
+- Standardized all 4,866 existing contacts in the database:
+  - `voucher_type = 'Type 0'`
+  - `voucherType = 'Type 0'`
+- `getCustomers` in `src/lib/actions/users.ts` automatically maps any customer missing voucher type to default `'Type 0'`.
+- Both `voucherType` and `voucher_type` columns are supported and normalized across queries and updates.
+
+### D. Admin Customer Discount Category UI (`/accounting/contacts/[id]`)
+- Added **Pricing / Voucher Category** field in `/accounting/contacts/[id]` under the **Payment** section:
+  - **Type 0**: Normal Customer (No Voucher Discount)
+  - **Type 1**: Discount Customer (Eligible for GST Voucher Discount)
+- Connected end-to-end through:
+  - Drizzle schema: `voucherType: text("voucher_type")` in `src/lib/db/schema/contacts.ts`
+  - REST API route: `src/app/api/v1/contacts/[id]/route.ts` (accepts `voucherType` in `updateSchema`, updates via Drizzle and syncs both `voucher_type` and `voucherType` columns in Supabase)
+  - State & Context: `contact-context.tsx` and `layout.tsx` (`formVoucherType`, `setFormVoucherType`)
+  - View component: `src/app/(dashboard)/accounting/contacts/[id]/page.tsx` with live status indicator (Emerald indicator for Discount Customer, Slate for Normal Customer).
+
+---
+*Memory Updated & Persisted on: 2026-09-18 (BUG-12 Delivery Voucher Retention & Admin Customer Discount Category Management)*
 
 
 

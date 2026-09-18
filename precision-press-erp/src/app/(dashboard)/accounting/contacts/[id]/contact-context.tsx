@@ -42,6 +42,8 @@ export interface ContactDetail {
   openingBalanceType?: "Dr" | "Cr" | string | null;
   tallyLedgerName?: string | null;
   tallyClosingBalance?: string | null;
+  voucherType?: string | null;
+  voucher_type?: string | null;
   createdAt: string;
 }
 
@@ -154,6 +156,8 @@ export interface ContactContextValue {
   setFormOpeningBalance: (v: string) => void;
   formOpeningBalanceType: string;
   setFormOpeningBalanceType: (v: string) => void;
+  formVoucherType: string;
+  setFormVoucherType: (v: string) => void;
   saving: boolean;
   setSaving: (v: boolean) => void;
 }

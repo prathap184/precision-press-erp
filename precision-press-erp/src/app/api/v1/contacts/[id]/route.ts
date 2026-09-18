@@ -28,6 +28,7 @@ const updateSchema = z.object({
   defaultTaxRateId: z.string().uuid().nullable().optional(),
   openingBalance: z.union([z.number(), z.string()]).optional().transform((v) => (v !== undefined && v !== null ? String(v) : undefined)),
   openingBalanceType: z.enum(["Dr", "Cr"]).optional(),
+  voucherType: z.string().nullable().optional(),
 });
 
 export async function GET(
@@ -89,6 +90,21 @@ export async function PATCH(
       .set({ ...parsed, updatedAt: new Date() })
       .where(eq(contact.id, id))
       .returning();
+
+    if (parsed.voucherType !== undefined) {
+      try {
+        const { supabaseServer } = await import("@/lib/supabase-server");
+        await supabaseServer
+          .from("contact")
+          .update({
+            voucher_type: parsed.voucherType,
+            voucherType: parsed.voucherType,
+          })
+          .eq("id", id);
+      } catch (syncErr) {
+        console.warn("Failed to sync voucherType to Supabase:", syncErr);
+      }
+    }
 
     logAudit({ ctx, action: "update", entityType: "contact", entityId: id, changes: diffChanges(existing as Record<string, unknown>, updated as Record<string, unknown>), request });
 

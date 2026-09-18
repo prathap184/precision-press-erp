@@ -88,6 +88,7 @@ export const contact = pgTable("contact", {
   shippingPincode: text("shipping_pincode"),
   shippingCountry: text("shipping_country"),
   placeOfSupply: text("place_of_supply"),
+  voucherType: text("voucher_type"),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
   deletedAt: timestamp("deleted_at", { mode: "date" }),

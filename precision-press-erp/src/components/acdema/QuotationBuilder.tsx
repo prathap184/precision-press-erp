@@ -231,6 +231,7 @@ export function QuotationBuilder() {
             shipping_country: c.shippingCountry || c.shipping_country,
             place_of_supply: c.placeOfSupply || c.place_of_supply,
             ...c,
+            voucherType: c.voucherType || c.voucher_type || 'Type 0',
           }));
 
           setCustomers((prev) => {
@@ -266,6 +267,16 @@ export function QuotationBuilder() {
   const selectedCustomer = customers.find((customer) => (customer.uid === selectedCustomerId || (customer as any).id === selectedCustomerId)) || null;
 
   const [applyVoucher, setApplyVoucher] = useState(false);
+  const prevCustomerIdRef = React.useRef<string | null>(null);
+
+  // BUG-12 FIX: Reset voucher ONLY when customer actually changes, NOT when delivery option changes
+  useEffect(() => {
+    const currentCustId = selectedCustomer ? (selectedCustomer.uid || (selectedCustomer as any).id) : null;
+    if (prevCustomerIdRef.current !== currentCustId) {
+      prevCustomerIdRef.current = currentCustId;
+      setApplyVoucher(false);
+    }
+  }, [selectedCustomer]);
 
   useEffect(() => {
     if (!selectedCustomer) return;
@@ -326,8 +337,6 @@ export function QuotationBuilder() {
         setShippingAddress(parts.join(', '));
       }
     }
-    
-    setApplyVoucher(false);
   }, [selectedCustomer, deliveryType]);
 
   const summary = useMemo(() => {
@@ -414,7 +423,7 @@ export function QuotationBuilder() {
       };
     });
 
-    const isVoucherEligible = selectedCustomer?.voucherType === 'Type 1';
+    const isVoucherEligible = selectedCustomer?.voucherType === 'Type 1' || (selectedCustomer as any)?.voucher_type === 'Type 1';
     const isVoucherType1 = isVoucherEligible && applyVoucher;
     const voucherGstDiscount = isVoucherType1 ? calculatedSummary.gstAmount : 0;
     const finalGrandTotal = calculatedSummary.grandTotal - voucherGstDiscount;
