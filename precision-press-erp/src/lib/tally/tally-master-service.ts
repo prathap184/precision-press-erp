@@ -331,7 +331,38 @@ export async function loadTallyStockItems(): Promise<any[]> {
     const group = parentM ? cleanStr(parentM[1]) : 'General';
     const sizeMandatoryM = body.match(/<(?:UDF:)?ISITEMSIZEDETAILSMANDATORY[^>]*>([^<]+)<\/(?:UDF:)?ISITEMSIZEDETAILSMANDATORY>/i);
     const isMandatory = sizeMandatoryM ? cleanStr(sizeMandatoryM[1]).toLowerCase() === 'yes' : false;
-    const hasMultipleSizes = isMandatory; // Strictly follow Tally item master setting!
+    const sizeEntries = body.match(/<(?:UDF:)?ITEMMULTIPLESIZE\.LIST[\s\S]*?<\/(?:UDF:)?ITEMMULTIPLESIZE\.LIST>/gi) || [];
+
+    let hasMultipleSizes = false;
+    let hasSingleDefaultSize = false;
+    let defaultWidth: number | null = null;
+    let defaultLength: number | null = null;
+    let defaultSizeName: string | null = null;
+
+    if (isMandatory || sizeEntries.length > 1) {
+      hasMultipleSizes = true;
+      hasSingleDefaultSize = false;
+      defaultWidth = 1;
+      defaultLength = 1;
+      defaultSizeName = '1 F x 1 F';
+    } else if (sizeEntries.length === 1) {
+      const entry = sizeEntries[0];
+      const wM = entry.match(/<(?:UDF:)?ITEMWIDTHUDF[^>]*>\s*([\d.]+)\s*<\/(?:UDF:)?ITEMWIDTHUDF>/i) || entry.match(/<ITEMWIDTH[^>]*>\s*([\d.]+)\s*<\/ITEMWIDTH>/i);
+      const lM = entry.match(/<(?:UDF:)?ITEMLENGTHUDF[^>]*>\s*([\d.]+)\s*<\/(?:UDF:)?ITEMLENGTHUDF>/i) || entry.match(/<ITEMLENGTH[^>]*>\s*([\d.]+)\s*<\/ITEMLENGTH>/i);
+      const nameM = entry.match(/<(?:UDF:)?ITEMSIZENAMEUDF[^>]*>([^<]+)<\/(?:UDF:)?ITEMSIZENAMEUDF>/i) || entry.match(/<ITEMSIZENAME[^>]*>([^<]+)<\/ITEMSIZENAME>/i);
+
+      const parsedWidth = wM ? parseFloat(wM[1]) : 0;
+      const parsedLength = lM ? parseFloat(lM[1]) : 0;
+      const parsedName = nameM ? cleanStr(nameM[1]) : '';
+
+      if (parsedWidth > 0 && parsedLength > 0 && parsedName && parsedName !== 'Default Size') {
+        hasMultipleSizes = false;
+        hasSingleDefaultSize = true;
+        defaultWidth = parsedWidth;
+        defaultLength = parsedLength;
+        defaultSizeName = parsedName;
+      }
+    }
 
     const rawUom = uomM ? cleanStr(uomM[1]) : 'N';
     const normalizedUom = rawUom;
@@ -369,6 +400,10 @@ export async function loadTallyStockItems(): Promise<any[]> {
       rawUom: rawUom,
       isSqft,
       hasMultipleSizes,
+      hasSingleDefaultSize,
+      defaultWidth,
+      defaultLength,
+      defaultSizeName,
       billingMode: billingMode,
       hsnCode: hsn || null,
       rate,
@@ -739,8 +774,9 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         unit_of_measure: normalizedUom,
         tally_billing_mode: billingMode,
         has_multiple_sizes: hasMultipleSizes,
-        default_width: hasMultipleSizes ? (existing?.default_width || 1) : null,
-        default_length: hasMultipleSizes ? (existing?.default_length || 1) : null,
+        default_width: item.defaultWidth,
+        default_length: item.defaultLength,
+        default_size_name: item.defaultSizeName,
         hsn_code: item.hsnCode || existing?.hsn_code || null,
         purchase_price: paiseVal,
         sale_price: Math.round(paiseVal * 1.25),
@@ -754,6 +790,7 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         cost_method: 'average',
         tracking_method: 'none',
         metadata: {
+          ...(existing?.metadata || {}),
           hsn: item.hsnCode || null,
           unit: item.rawUom || item.uom || 'N',
           baseRate: rateVal,
@@ -761,6 +798,14 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
           billingMode: billingMode,
           hasMultipleSizes: hasMultipleSizes,
           has_multiple_sizes: hasMultipleSizes,
+          hasSingleDefaultSize: item.hasSingleDefaultSize,
+          has_single_default_size: item.hasSingleDefaultSize,
+          defaultWidth: item.defaultWidth,
+          default_width: item.defaultWidth,
+          defaultLength: item.defaultLength,
+          default_length: item.defaultLength,
+          defaultSizeName: item.defaultSizeName,
+          default_size_name: item.defaultSizeName,
         },
         tally_guid: item.tallyGuid || existing?.tally_guid || null,
       };
