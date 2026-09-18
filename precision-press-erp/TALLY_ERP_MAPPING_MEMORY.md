@@ -1249,6 +1249,68 @@ A friendly notice is rendered on the order/quotation confirmation modal informin
 *"Note: Order number may change if placed simultaneously with another order."*
 
 ---
-*Memory Updated & Persisted on: 2026-09-18 (Inventory Reduction Policy, Concurrency Lock Across 4 Flows & Modal Notice Added)*
+
+## 🕒 47. Newest-First Global Order Registry Sorting & High-Precision Placement Timestamps
+
+### A. Registry Sorting Hierarchy (`src/lib/order-sort.ts`)
+To ensure newly placed orders immediately show at the very top of the Global Order Registry (`/admin/orders`) and all role-scoped workboards:
+1. **Primary Sort**: `createdAt` ISO timestamp descending (newest timestamp at top).
+2. **Secondary Tie-Breaker**: Numeric base order ID descending (`ORD-0012` > `ORD-0011` > `ORD-0010`).
+3. **Tertiary Item Grouping**: Multi-item child orders keep ascending item sequence (`-item1` before `-item2`).
+
+### B. High-Precision Same-Day Timestamps (`src/lib/workflow.ts`)
+- Previously, selecting an order date truncated `createdAt` to midnight (`00:00:00.000Z`), causing same-day orders to have identical timestamps.
+- Now, placement time of day (`hours:minutes:seconds.milliseconds`) is preserved so orders placed minutes apart maintain true chronological order.
+
+### C. PostgREST Native Database Ordering (`src/lib/supabase-firestore-core.ts`)
+- Added native `.order()` application in Supabase query builder and fallback ID tie-breaker so the database returns newest rows first even across thousands of records.
+
+---
+
+## 🇮🇳 48. Centralized Interstate GST Detection (BUG-9) & Tax Consistency
+
+### A. Company Base Configuration
+- **Company**: Hindustan Enterprises
+- **State**: Karnataka (GST State Code: `29`)
+- **Location**: Mysore
+
+### B. Centralized Evaluator (`isInterstateOrder` in `src/lib/company-config.ts`)
+Unified interstate tax evaluation across UI summary, order placement, quotations, and backend workflows:
+1. **Self Pickup**: Strictly local intra-state (Karnataka) $\rightarrow$ `isInterstate = false` (CGST 9% + SGST 9%).
+2. **GST State Code**: `29` $\rightarrow$ `isInterstate = false`.
+3. **Customer Profile State**: `Karnataka` or `KA` $\rightarrow$ `isInterstate = false`.
+4. **Punctuation-Safe Address Matching**: Uses regex `/\b(karnataka|ka)\b/i`. Safely matches `"Mysore, KA, 570021"`, `"KA-560001"`, `"Hubli (KA)"` without falsely triggering on cities like *Kanyakumari*, *Kalyan*, or *Karur*.
+5. **Outside Addresses**: Any destination outside Karnataka $\rightarrow$ `isInterstate = true` (IGST 18%).
+
+### C. Purged Obsolete Checks
+- Removed flawed `/ ka /` regex in `ProxyOrderBuilder.tsx` which required spaces and failed on commas/dashes.
+- Purged hardcoded `'Tamil Nadu'` check in `QuotationBuilder.tsx`.
+- Purged hardcoded `'Maharashtra'` fallback in `workflow.ts`.
+
+---
+
+## 📐 49. Strict 3 Golden Rules for Item-Level Dimensions (BUG-10)
+
+### A. Complete Purge of Category Override
+- Deleted `categoryAllowsSize` and `treat_sales_as_manufactured` override in `src/lib/actions/products.ts`.
+- Stock groups and categories **never** dictate or force dimensions on products.
+- Removed fake `default_width = 1` and `default_length = 1` injections.
+
+### B. The 3 Golden Rules Enforced Across Proxy Order, Quotations & Invoices:
+| Rule | `has_multiple_sizes` | `default_size` (has default dimensions) | Width & Length Fields Status |
+| :---: | :---: | :---: | :--- |
+| **Rule 1** | **`true`** | **`true`** | **ACTIVE** (Operator can enter Width & Length; prefilled with default size) |
+| **Rule 2** | **`false`** | **`true`** | **ACTIVE** (Operator can view/use fixed default Width & Length) |
+| **Rule 3** | **`false`** | **`false`** | **INACTIVE** (Width & Length are hidden/disabled; item is billed strictly by Quantity/Pcs) |
+
+- Enforced in:
+  1. `src/components/acdema/ProxyOrderBuilder.tsx` & `ProxyOrderBuilderView.tsx`
+  2. `src/components/acdema/QuotationBuilder.tsx` & `QuotationBuilderView.tsx`
+  3. `src/components/dashboard/InvoiceFormView.tsx` & `line-items-editor.tsx`
+  4. `src/lib/actions/products.ts` & `src/lib/cache/products.ts`
+
+---
+*Memory Updated & Persisted on: 2026-09-18 (Newest-First Registry Sorting, Centralized Interstate GST Evaluator & 3 Golden Rules Enforced)*
+
 
 
