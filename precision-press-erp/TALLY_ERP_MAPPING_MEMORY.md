@@ -1229,5 +1229,25 @@ To ensure rapid, mouse-free operator workflows matching Tally Prime speed:
 | **Invoice 2** | Mode A/B Area Type 2 | *Scheduled* | — | — | ⏳ Pending Test | ⏳ Pending Test | `New Ref` |
 
 ---
-*Memory Updated & Persisted on: 2026-09-18 (Golden Rule Size Decoupling, Shortcuts Engine & Sync Registry Persisted)*
+
+## 🔒 46. Parallel Order Placement, Collision-Proof Numbering & Inventory Policy
+
+### A. Inventory Deduction Lifecycle Rule
+- **Order Placement (Proxy Order / Web Order)**: **DO NOT DEDUCT INVENTORY**. Orders represent commitments or jobs in progress; stock remains untouched.
+- **Sales Invoice Creation**: **DEDUCT INVENTORY HERE**. Inventory is strictly reduced from `inventory_item` and logged in `product_track` when the Sales Invoice is issued.
+
+### B. Collision-Proof Numbering Across 4 Flows
+When multiple operators submit records at the exact same second:
+1. **Proxy Orders (`ORD-XXXX`)**: Backend verifies `baseId` uniqueness against `orders`. If taken by a parallel submission, it automatically claims the next unused sequence number.
+2. **Quotations (`QU-XXXX`)**: Verified against `quotations`. Automatically claims the next unique quotation number.
+3. **Sales Invoices (`INV-XXXXX`)**: Locked via PostgreSQL `SELECT ... FOR UPDATE` in `number_sequence` transaction table.
+4. **Receipt Vouchers (`REC-X`)**: Atomic verification against `transactions` and `orders` prevents duplicate receipt voucher numbers.
+
+### C. Confirmation Dialog Operator Notice
+A friendly notice is rendered on the order/quotation confirmation modal informing operators:
+*"Note: Order number may change if placed simultaneously with another order."*
+
+---
+*Memory Updated & Persisted on: 2026-09-18 (Inventory Reduction Policy, Concurrency Lock Across 4 Flows & Modal Notice Added)*
+
 

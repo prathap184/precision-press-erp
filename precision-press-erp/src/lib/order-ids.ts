@@ -17,7 +17,10 @@ export async function generateOrderId(): Promise<string> {
   const { data, error } = await supabaseServer.rpc('get_next_order_id');
   
   if (!error && data) {
-    return data;
+    const { data: existing } = await supabaseServer.from('orders').select('id').eq('id', data).maybeSingle();
+    if (!existing) {
+      return data;
+    }
   }
   
   // Sequential fallback (e.g. ORD-0001, ORD-0002...)
@@ -38,8 +41,18 @@ export async function generateOrderId(): Promise<string> {
         }
       }
     }
-    const nextNum = maxNum + 1;
-    return `ORD-${String(nextNum).padStart(4, '0')}`;
+    let nextNum = maxNum + 1;
+    let candidate = `ORD-${String(nextNum).padStart(4, '0')}`;
+
+    // Collision check guard
+    while (true) {
+      const { data: ex } = await supabaseServer.from('orders').select('id').eq('id', candidate).maybeSingle();
+      if (!ex) break;
+      nextNum++;
+      candidate = `ORD-${String(nextNum).padStart(4, '0')}`;
+    }
+
+    return candidate;
   } catch (seqErr) {
     console.error('Failed to compute sequential order ID, falling back to UUID:', seqErr);
     return `ORD-${generateUUIDShort()}`;
@@ -76,8 +89,18 @@ export async function generateQuotationNumber(): Promise<string> {
         }
       }
     }
-    const nextNum = maxNum + 1;
-    return `QU-${String(nextNum).padStart(4, '0')}`;
+    let nextNum = maxNum + 1;
+    let candidate = `QU-${String(nextNum).padStart(4, '0')}`;
+
+    // Collision check guard
+    while (true) {
+      const { data: ex } = await supabaseServer.from('quotations').select('id').eq('quotation_number', candidate).maybeSingle();
+      if (!ex) break;
+      nextNum++;
+      candidate = `QU-${String(nextNum).padStart(4, '0')}`;
+    }
+
+    return candidate;
   } catch (seqErr) {
     console.error('Failed to compute sequential quotation number:', seqErr);
     return `QU-0001`;

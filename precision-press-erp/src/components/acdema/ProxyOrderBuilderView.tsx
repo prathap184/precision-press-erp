@@ -3738,6 +3738,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   </div>
                 </div>
 
+                <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50/70 p-2.5 text-[11px] font-medium text-amber-800 flex items-center gap-2">
+                  <span className="shrink-0 font-bold">ℹ️ Note:</span>
+                  <span>{vm.mode === 'quotation' ? 'Quotation' : 'Order'} number may change if placed simultaneously with another order.</span>
+                </div>
+
                 <div className="flex gap-3">
                   <button
                     type="button"

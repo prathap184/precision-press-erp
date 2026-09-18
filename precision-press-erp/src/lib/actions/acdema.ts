@@ -141,7 +141,21 @@ export async function createAcdemaProxyOrder(payload: ProxyOrderPayload): Promis
     if (!payload.items.length) throw new Error('At least one item is required.');
     if (payload.grandTotal <= 0) throw new Error('Grand total must be greater than zero.');
 
-    const baseId = payload.orderNumber?.trim() || await generateOrderId();
+    let baseId = payload.orderNumber?.trim();
+    if (baseId) {
+      const { data: existingOrder } = await supabaseServer
+        .from('orders')
+        .select('id')
+        .eq('id', baseId)
+        .maybeSingle();
+
+      if (existingOrder) {
+        // ID was taken by another staff member placing at the exact same moment; generate next unique ID
+        baseId = await generateOrderId();
+      }
+    } else {
+      baseId = await generateOrderId();
+    }
     const isMultiItem = payload.items.length > 1;
 
     const preparedItems = payload.items.map((item) => {
@@ -220,41 +234,7 @@ export async function createAcdemaProxyOrder(payload: ProxyOrderPayload): Promis
         parent_order_id: baseId 
       }).eq('id', payload.refOrderId);
     }
-
-    // Inventory reduction
-    for (const item of preparedItems) {
-      if (item.productId && item.quantity > 0) {
-        // Fetch current stock
-        const { data: prodData } = await supabaseServer
-          .from('inventory_item')
-          .select('stock_quantity')
-          .eq('sku', item.productId)
-          .limit(1)
-          .maybeSingle();
-          
-        const currentStock = Number(prodData?.stock_quantity || 0);
-        
-        // For non-direct sales, sqft includes quantity. For direct sales, sqft is 0 or undefined.
-        const sqft = Number((item as any).specs?.sqft || 0);
-        const deductQty = sqft > 0 ? sqft : item.quantity;
-
-        const newStock = currentStock - deductQty;
-        
-        await supabaseServer.from('inventory_item')
-          .update({ stock_quantity: newStock })
-          .eq('sku', item.productId);
-          
-        await supabaseServer.from('product_track')
-          .insert({
-            product_id: item.productId,
-            movement_type: 'OUTWARD',
-            quantity: deductQty,
-            reference_id: baseId,
-            remarks: `Order placed via Proxy. Order ID: ${baseId} (Qty: ${item.quantity}${sqft > 0 ? `, SqFt: ${sqft}` : ''})`,
-            created_by: user.id
-          });
-      }
-    }
+    // Note: Stock deduction is strictly deferred to Sales Invoice creation, not at order placement.
 
     // revalidatePath is intentionally synchronous — it is an in-process Next.js
     // cache-tag flush with no network round-trip (microsecond cost), and keeping

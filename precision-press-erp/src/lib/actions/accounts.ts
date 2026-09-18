@@ -703,7 +703,25 @@ export async function createReceiptEntry(
   const countPromise = supabaseServer.from('transactions').select('*', { count: 'exact', head: true }).eq('type', 'RECEIPT');
   const [authUser, { count }] = await Promise.all([authUserPromise, countPromise]);
   
-  const receiptEntryNumber = `REC-${(count || 0) + 1}`;
+  let receiptSeq = (count || 0) + 1;
+  let receiptEntryNumber = `REC-${receiptSeq}`;
+  while (true) {
+    const { data: exTrans } = await supabaseServer
+      .from('transactions')
+      .select('id')
+      .eq('reference_number', receiptEntryNumber)
+      .maybeSingle();
+
+    const { data: exOrder } = await supabaseServer
+      .from('orders')
+      .select('id')
+      .eq('receipt_entry_number', receiptEntryNumber)
+      .maybeSingle();
+
+    if (!exTrans && !exOrder) break;
+    receiptSeq++;
+    receiptEntryNumber = `REC-${receiptSeq}`;
+  }
   const nowStr = new Date().toISOString();
   const dateStr = nowStr.split('T')[0];
 

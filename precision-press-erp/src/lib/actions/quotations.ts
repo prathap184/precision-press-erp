@@ -131,8 +131,21 @@ export async function createStandaloneQuotation(payload: any) {
     if (!token) throw new Error('Unauthorized');
     const { data: { user }, error: authError } = await supabaseServer.auth.getUser(token);
     if (authError || !user) throw new Error('Unauthorized');
-    
-    const quotationNumber = payload.quotationNumber?.trim() || await generateQuotationNumber();
+    let quotationNumber = payload.quotationNumber?.trim();
+    if (quotationNumber) {
+      const { data: existingQu } = await supabaseServer
+        .from('quotations')
+        .select('id')
+        .eq('quotation_number', quotationNumber)
+        .maybeSingle();
+
+      if (existingQu) {
+        // Taken by another staff member placing at the exact same moment; generate next unique quotation number
+        quotationNumber = await generateQuotationNumber();
+      }
+    } else {
+      quotationNumber = await generateQuotationNumber();
+    }
     const quotationDate = payload.quotationDate || new Date().toISOString().split('T')[0];
     const quotationId = crypto.randomUUID();
     
