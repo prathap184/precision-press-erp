@@ -1141,14 +1141,93 @@ All 1,801 stock items were queried directly from live Tally Prime Port 9000 and 
   - Fixed items with no size list or default size configured in Tally (e.g. *AMS Aluminium Name Plate*, *Cutting Plotter V60*, pens, tools).
   - Reset `default_width = null` and `default_length = null`.
 
-### C. Master Item-Level UI Size Rules (Rules 1, 2, 3)
+### C. Master Item-Level UI Size Rules (The Golden Rule)
 
-| Rule | Tally XML Condition | Database Flags | UI Behavior in ERP (Proxy Order / Quote / Invoice) |
+| Rule | Tally XML / DB Condition | Database Flags | UI Behavior in ERP (Proxy Order / Quote / Invoice) |
 | :--- | :--- | :--- | :--- |
 | **Rule 1** | `Set Multiple Size Details = YES` in Tally (`ITEMMULTIPLESIZE.LIST > 1`) | `has_multiple_sizes = true`<br>`has_single_default_size = false` | • **Width & Length fields ACTIVE & EDITABLE**<br>• Size dropdown list enabled for preset selection |
 | **Rule 2** | `Set Multiple Size Details = NO`, BUT item has a single default size in Tally (`default_width > 0` & `default_length > 0`) | `has_multiple_sizes = false`<br>`has_single_default_size = true` | • **Width & Length fields ACTIVE & EDITABLE**<br>• Pre-fills Width & Length with Tally default values (e.g., 4 & 8)<br>• Auto-calculates SqFt ($4 \times 8 = 32\text{ SqFt}$) upon selection |
-| **Rule 3** | `Set Multiple Size Details = NO` AND no size details in Tally | `has_multiple_sizes = false`<br>`has_single_default_size = false` | • **Width & Length fields DISABLED & BLANK (`—`)**<br>• Cursor skips directly to Quantity input |
+| **Rule 3** | `Set Multiple Size Details = NO` AND no size details in Tally | `has_multiple_sizes = false`<br>`has_single_default_size = false` | • **Width & Length fields INACTIVE & DISABLED (`—`)**<br>• Direct Quantity billing: $\text{Amount} = \text{Quantity} \times \text{Rate}$<br>• Cursor & navigation skips directly to Quantity |
 
 ---
-*Memory Updated & Persisted on: 2026-09-17 (Item-Level Tally Size Sync 100% Completed)*
+
+## 🔒 43. The Golden Rule for Size Input Activation & Decoupling from UOM (`sqft`)
+
+> **Architectural Law**: Size input activation (`Width` and `Length`) MUST be determined **solely and exclusively** by `has_multiple_sizes` and `has_single_default_size`. It must **NEVER** fall back to or depend on the unit of measure (`unit === 'sqft'` or `cleanUom === 'sqft'`).
+
+### A. The Core Problem Solved
+- In previous versions, the codebase included fallbacks like:
+  ```typescript
+  // ❌ ERRONEOUS LEGACY PATTERN:
+  const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
+  ```
+- **Why this caused bugs**:
+  - Many raw materials, sheets, rolls, or standard catalog items in Tally Prime are sold by square footage (e.g., `_Brush Silver 3921`), but have:
+    - `has_multiple_sizes = false`
+    - `has_single_default_size = false`
+    - `default_width = null`, `default_length = null`
+  - Because their unit was `sqft`, the legacy fallback activated Width and Length inputs for them, confusing operators who only needed to enter direct unit quantity.
+
+### B. The Standardized Implementation Formula
+All size input logic, keyboard navigation, row initialization, and calculation across **Proxy Order**, **Quotation Builder**, and **Invoice Forms** now strictly enforce:
+
+```typescript
+// ✅ ENFORCED GOLDEN RULE PATTERN:
+const hasMultipleSizes = Boolean((product as any)?.has_multiple_sizes ?? (product as any)?.hasMultipleSizes);
+const hasSingleDefaultSize = Boolean((product as any)?.has_single_default_size ?? (product as any)?.metadata?.has_single_default_size ?? (Number((product as any)?.default_width) > 0 && Number((product as any)?.default_length) > 0));
+const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
+```
+
+### C. File Parity Registry
+The Golden Rule is enforced in:
+1. `src/components/acdema/ProxyOrderBuilderView.tsx` (Rows calculation, validation, focus advance, keyboard navigation)
+2. `src/components/acdema/ProxyOrderBuilder.tsx` (`makeRow`, `updateRow`, `calculatePricing`, `handleSubmit`)
+3. `src/components/acdema/QuotationBuilderView.tsx` (Rows calculation, validation, focus advance, keyboard navigation)
+4. `src/components/acdema/QuotationBuilder.tsx` (`makeRow`, `updateRow`, `calculatePricing`, `handleSubmit`)
+5. `src/components/dashboard/InvoiceFormView.tsx` (Product catalog mapping, `handleSaveDescAndAdvance`)
+6. `src/components/dashboard/line-items-editor.tsx` (Auto-match, `lineAmount`, `handleSaveDescAndAdvance`, table rendering)
+7. `src/components/orders/OrderDetailsPanel.tsx` (Order item dimension & rate display)
+
+---
+
+## ⌨️ 44. Comprehensive Keyboard Shortcuts & Modal Navigation Standards
+
+To ensure rapid, mouse-free operator workflows matching Tally Prime speed:
+
+### A. Global Shortcuts Matrix
+| Shortcut | Scope | Action & Behavior |
+| :--- | :--- | :--- |
+| **`Alt + S`** | Universal (Global) | **Toggles the Product Search Modal / Drawer** from anywhere in the app, even when typing inside an input or search field. Pressing `Esc` or `Backspace` (on empty search) closes the modal. |
+| **`Alt + Q`** | Universal (Global) | **Toggles Focus on the Main Search Bar** on any page. If focused, blurs it so single-key hotkeys (like `V` for Voucher) do not type into the search bar. If blurred, immediately focuses and selects the search input. |
+| **`Esc`** | Modal / Drawer | Closes open drawers, search dialogs, and triggers the Confirmation Exit Modal. |
+| **`Enter` / `Y`** | Exit Confirmation Modal | Confirms leaving the page (returns to Global Orders). |
+| **`N` / `Esc` / `Backspace`** | Exit Confirmation Modal | Cancels modal and stays on the current editing page. |
+
+### B. Product Search Drawer Selection & Row Auto-Focus
+1. **New Row Navigation**:
+   - When a new row is opened, the drawer auto-highlights **"End of list"** so operators can press `Enter` to complete the document.
+2. **Existing Row Navigation**:
+   - When reopening an already entered item, the drawer auto-selects that specific product in the list with blue text styling.
+   - When navigating into the product name input, the text is automatically selected in full (like Tally) so the operator can type over or press Enter to accept.
+3. **Smart Backspace Navigation**:
+   - When pressing `Backspace` from the `Quantity` field on an empty value:
+     - If `isSizeInputActive === true`: Cursor jumps back to `Length Unit` / `Length`.
+     - If `isSizeInputActive === false`: Cursor skips the inactive `—` size columns and jumps directly back to `Product Name`.
+
+---
+
+## 🧾 45. Tally Prime Receipt & Invoice Sync Testing Registry
+
+### A. Test Execution & Ledger Parity Matrix
+| Test Case | Voucher Type | Voucher Ref | Party Ledger | Amount | Tally Prime Status | ERP Double-Entry Ledger | Bill Allocation |
+| :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: |
+| **Receipt 1** | Receipt Voucher | `REF-9` | `A & N Transformers` | ₹1,000.00 | ✅ Synced (`Web Receipt`) | ✅ Ledger #47 (Dr Bank / Cr Party) | `New Ref` / `On Account` |
+| **Receipt 2** | Against Ref Receipt | *Scheduled* | — | — | ⏳ Pending Test | ⏳ Pending Test | `Agst Ref` |
+| **Receipt 3** | On Account Receipt | *Scheduled* | — | — | ⏳ Pending Test | ⏳ Pending Test | `On Account` |
+| **Receipt 4** | Advance Receipt | *Scheduled* | — | — | ⏳ Pending Test | ⏳ Pending Test | `Advance` |
+| **Invoice 1** | Direct Sales Type 1 | *Scheduled* | — | — | ⏳ Pending Test | ⏳ Pending Test | `New Ref` |
+| **Invoice 2** | Mode A/B Area Type 2 | *Scheduled* | — | — | ⏳ Pending Test | ⏳ Pending Test | `New Ref` |
+
+---
+*Memory Updated & Persisted on: 2026-09-18 (Golden Rule Size Decoupling, Shortcuts Engine & Sync Registry Persisted)*
 
