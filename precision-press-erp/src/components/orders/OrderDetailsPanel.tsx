@@ -364,8 +364,9 @@ export function OrderDetailsPanel({ order, role, items: propItems, className }: 
                     (item as any).hasMultipleSizes ?? 
                     (item as any).has_multiple_sizes ?? 
                     (item.specs as any)?.hasMultipleSizes ?? 
-                    (Number(w) > 0 && Number(h) > 0) ?? 
-                    (cleanUom === 'sqft' || cleanUom === 'sqf')
+                    (item as any).hasSingleDefaultSize ??
+                    (item as any).has_single_default_size ??
+                    (item.specs as any)?.hasSingleDefaultSize
                   );
                   const isModeA = billingMode === 'A';
                   const isModeB = billingMode === 'B';

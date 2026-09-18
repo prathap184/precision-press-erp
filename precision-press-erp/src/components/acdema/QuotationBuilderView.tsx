@@ -254,7 +254,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     const cleanUom = rawUom.replace(/[\s\._-]/g, '');
     const hasMultipleSizes = Boolean((product as any)?.has_multiple_sizes ?? (product as any)?.hasMultipleSizes);
     const hasSingleDefaultSize = Boolean((product as any)?.has_single_default_size ?? (product as any)?.metadata?.has_single_default_size ?? (Number((product as any)?.default_width) > 0 && Number((product as any)?.default_length) > 0));
-    const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
+    const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
 
     setTimeout(() => {
       if (isSizeInputActive) {
@@ -425,8 +425,10 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
       const product = products.find((p: any) => p.id === row.productId);
       const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
       const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-      const hasMultipleSizes = product ? (product.has_multiple_sizes ?? product.hasMultipleSizes ?? (cleanUom === 'sqft' || cleanUom === 'sqf')) : false;
-      const isSqft = hasMultipleSizes;
+      const hasMultipleSizes = Boolean((product as any)?.has_multiple_sizes ?? (product as any)?.hasMultipleSizes);
+      const hasSingleDefaultSize = Boolean((product as any)?.has_single_default_size ?? (product as any)?.metadata?.has_single_default_size ?? (Number((product as any)?.default_width) > 0 && Number((product as any)?.default_length) > 0));
+      const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
+      const isSqft = isSizeInputActive;
       const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
       const isModeA = currentMode === 'A';
       const isModeB = currentMode === 'B';
@@ -434,7 +436,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
       if (!row.productId) {
         errors[`row-${row.id}-product`] = `Item #${idx + 1}: Please select a product`;
       }
-      if (isModeB && hasMultipleSizes) {
+      if (isModeB && isSizeInputActive) {
         if (!row.width || Number(row.width) <= 0) {
           errors[`row-${row.id}-width`] = `Item #${idx + 1}: Width is required`;
         }
@@ -442,7 +444,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           errors[`row-${row.id}-height`] = `Item #${idx + 1}: Length is required`;
         }
       }
-      if (isModeA || !hasMultipleSizes) {
+      if (isModeA || !isSizeInputActive) {
         if (!row.quantity || Number(row.quantity) <= 0) {
           errors[`row-${row.id}-quantity`] = `Item #${idx + 1}: Quantity must be at least 1`;
         }
@@ -859,10 +861,10 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         const product = products.find((item: any) => item.id === row.productId);
                         const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
                         const cleanUom = rawUom.replace(/[\s\._-]/g, '');
-                        // If product has multiple size details explicitly set in Tally (or UOM is sqft)
+                        // If product has multiple size details explicitly set in Tally or has single default size
                         const hasMultipleSizes = Boolean((product as any)?.has_multiple_sizes ?? (product as any)?.hasMultipleSizes);
                         const hasSingleDefaultSize = Boolean((product as any)?.has_single_default_size ?? (product as any)?.metadata?.has_single_default_size ?? (Number((product as any)?.default_width) > 0 && Number((product as any)?.default_length) > 0));
-                        const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
+                        const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
                         const isSqft = isSizeInputActive;
                         const isDirect = !isSqft;
                         const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';

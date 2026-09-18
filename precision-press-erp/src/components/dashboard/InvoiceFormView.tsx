@@ -293,20 +293,19 @@ export function InvoiceFormView() {
           const pd = await prodRes.json();
           const pList = (pd.data || []).map((row: any) => {
             const meta = row.metadata || {};
-            const uom = (row.unit_of_measure || row.tally_uom || "sqft").trim().toLowerCase();
-            const cleanUom = uom.replace(/[\s\._-]/g, "");
             const hasSingleDefaultSize = Boolean(
               row.has_single_default_size ??
               meta.has_single_default_size ??
               (Number(row.default_width || row.defaultWidth) > 0 && Number(row.default_length || row.defaultLength) > 0)
             );
             const hasMultipleSizes = Boolean(
-              (row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
+              row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
                 ? Boolean(row.has_multiple_sizes)
+                : row.hasMultipleSizes !== undefined
+                ? Boolean(row.hasMultipleSizes)
                 : meta.hasMultipleSizes !== undefined
                 ? Boolean(meta.hasMultipleSizes)
-                : cleanUom === "sqft" || cleanUom === "sqf") ||
-              hasSingleDefaultSize
+                : false
             );
             const defaultMode: "A" | "B" =
               row.tally_billing_mode === "A" || meta.billingMode === "A" ? "A" : "B";
@@ -706,22 +705,19 @@ export function InvoiceFormView() {
           if (pd.data && Array.isArray(pd.data) && !cancelled) {
             const mapped = (pd.data || []).map((row: any) => {
               const meta = row.metadata || {};
-              const uom = (row.unit_of_measure || row.unitOfMeasure || row.tally_uom || row.tallyUom || "sqft").trim().toLowerCase();
-              const cleanUom = uom.replace(/[\s\._-]/g, "");
               const hasSingleDefaultSize = Boolean(
                 row.has_single_default_size ??
                 meta.has_single_default_size ??
                 (Number(row.default_width || row.defaultWidth) > 0 && Number(row.default_length || row.defaultLength) > 0)
               );
               const hasMultipleSizes = Boolean(
-                (row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
+                row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
                   ? Boolean(row.has_multiple_sizes)
                   : row.hasMultipleSizes !== undefined
                   ? Boolean(row.hasMultipleSizes)
                   : meta.hasMultipleSizes !== undefined
                   ? Boolean(meta.hasMultipleSizes)
-                  : cleanUom === "sqft" || cleanUom === "sqf") ||
-                hasSingleDefaultSize
+                  : false
               );
               const defaultMode: "A" | "B" =
                 row.tally_billing_mode === "A" || row.tallyBillingMode === "A" || meta.billingMode === "A" ? "A" : "B";
@@ -858,7 +854,7 @@ export function InvoiceFormView() {
       const cleanUom = rawUom.replace(/[\s\._-]/g, '');
       const hasMultipleSizes = Boolean((prod as any)?.has_multiple_sizes ?? (prod as any)?.hasMultipleSizes);
       const hasSingleDefaultSize = Boolean((prod as any)?.has_single_default_size ?? (prod as any)?.metadata?.has_single_default_size ?? (Number((prod as any)?.default_width) > 0 && Number((prod as any)?.default_length) > 0));
-      const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
+      const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
       if (isSizeInputActive) {
         const el = document.getElementById(`row-${rowId}-width`);
         if (el) {

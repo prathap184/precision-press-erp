@@ -515,17 +515,24 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
           if (matched) {
             needsUpdate = true;
             const uom = String(matched.unitOfMeasure || (matched as any).tallyUom || (matched as any).tally_uom || matched.metadata?.unit || '').trim().toLowerCase();
-            const cleanUom = uom.replace(/[\s\._-]/g, '');
             const hasMultipleSizes = Boolean(
               matched.hasMultipleSizes ??
               matched.has_multiple_sizes ??
               matched.metadata?.hasMultipleSizes ??
-              matched.metadata?.has_multiple_sizes ??
-              (cleanUom === 'sqft' || cleanUom === 'sqf')
+              matched.metadata?.has_multiple_sizes
             );
+            const hasSingleDefaultSize = Boolean(
+              matched.hasSingleDefaultSize ??
+              matched.has_single_default_size ??
+              matched.metadata?.hasSingleDefaultSize ??
+              matched.metadata?.has_single_default_size ??
+              (Number(matched.default_width || matched.defaultWidth || matched.metadata?.default_width) > 0 &&
+               Number(matched.default_length || matched.defaultLength || matched.metadata?.default_length) > 0)
+            );
+            const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
             const defaultMode = (matched as any).tallyBillingMode || (matched as any).tally_billing_mode || matched.metadata?.tallyBillingMode || matched.metadata?.tally_billing_mode || 'B';
-            const defW = hasMultipleSizes ? String(matched.metadata?.default_width ?? matched.default_width ?? matched.defaultWidth ?? '1') : '';
-            const defL = hasMultipleSizes ? String(matched.metadata?.default_length ?? matched.default_length ?? matched.defaultLength ?? '1') : '';
+            const defW = isSizeInputActive ? String(matched.metadata?.default_width ?? matched.default_width ?? matched.defaultWidth ?? '1') : '';
+            const defL = isSizeInputActive ? String(matched.metadata?.default_length ?? matched.default_length ?? matched.defaultLength ?? '1') : '';
             return {
               ...line,
               inventoryItemId: matched.id,
@@ -588,10 +595,9 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
       (itemObj as any)?.hasSingleDefaultSize ??
       itemObj?.metadata?.has_single_default_size ??
       itemObj?.metadata?.hasSingleDefaultSize ??
-      ((Number((itemObj as any)?.default_width) > 0 && Number((itemObj as any)?.default_length) > 0) ||
-      (parseFloat(line?.width || '0') > 0 && parseFloat(line?.length || '0') > 0))
+      (Number((itemObj as any)?.default_width) > 0 && Number((itemObj as any)?.default_length) > 0)
     );
-    const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
+    const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
     setTimeout(() => {
       if (isSizeInputActive) {
         const wInput = document.getElementById(`row-${lineIndex}-width`);
@@ -610,13 +616,12 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
   const handleBackFromDescModal = (lineIndex: number) => {
     setActiveDescLineIndex(null);
     setTimeout(() => {
-      const itemInput = document.getElementById(`row-${lineIndex}-product-input`);
+      const itemInput = document.getElementById(`row-${lineIndex}-item-input`);
       if (itemInput) {
         itemInput.focus();
         try {
-          const inp = itemInput as HTMLInputElement;
-          const len = inp.value ? inp.value.length : 0;
-          inp.setSelectionRange(len, len);
+          const len = (itemInput as HTMLInputElement).value ? (itemInput as HTMLInputElement).value.length : 0;
+          (itemInput as HTMLInputElement).setSelectionRange(len, len);
         } catch {}
       }
     }, 50);
@@ -670,13 +675,20 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
       itemObj?.hasMultipleSizes ??
       itemObj?.has_multiple_sizes ??
       itemObj?.metadata?.hasMultipleSizes ??
-      itemObj?.metadata?.has_multiple_sizes ??
-      (cleanUom === 'sqft' || cleanUom === 'sqf' || (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0))
+      itemObj?.metadata?.has_multiple_sizes
     );
+    const hasSingleDefaultSize = Boolean(
+      (itemObj as any)?.has_single_default_size ??
+      (itemObj as any)?.hasSingleDefaultSize ??
+      itemObj?.metadata?.has_single_default_size ??
+      itemObj?.metadata?.hasSingleDefaultSize ??
+      (Number((itemObj as any)?.default_width) > 0 && Number((itemObj as any)?.default_length) > 0)
+    );
+    const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
 
     const isModeA = (line.billingMode || (itemObj as any)?.tallyBillingMode || (itemObj as any)?.tally_billing_mode || itemObj?.metadata?.tallyBillingMode || itemObj?.metadata?.tally_billing_mode) === 'A';
     
-    if (!hasMultipleSizes) {
+    if (!isSizeInputActive) {
       // Direct piece/unit billing: Quantity * Rate per unit + finish + delivery
       return (qty * rate) + finish + delivery;
     }
@@ -772,10 +784,9 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
                 (itemObj as any)?.hasSingleDefaultSize ??
                 itemObj?.metadata?.has_single_default_size ??
                 itemObj?.metadata?.hasSingleDefaultSize ??
-                ((Number((itemObj as any)?.default_width) > 0 && Number((itemObj as any)?.default_length) > 0) ||
-                (parseFloat(line.width || '0') > 0 && parseFloat(line.length || '0') > 0))
+                (Number((itemObj as any)?.default_width) > 0 && Number((itemObj as any)?.default_length) > 0)
               );
-              const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize || (cleanUom === 'sqft' || cleanUom === 'sqf');
+              const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
               const defaultMode = (itemObj as any)?.tallyBillingMode || (itemObj as any)?.tally_billing_mode || itemObj?.metadata?.tallyBillingMode || itemObj?.metadata?.tally_billing_mode || 'B';
               const currentMode = line.billingMode || defaultMode;
               const isModeA = currentMode === 'A';
@@ -790,7 +801,7 @@ export function LineItemsEditor({ lines, onChange, accountTypeFilter, taxContext
               const widthNum = widthFt;
               const lengthNum = lengthFt;
               const pcs = Math.max(1, parseFloat(line.pcsNo || line.quantity || "1") || 1);
-              const sqFtNum = hasMultipleSizes && widthNum > 0 && lengthNum > 0 ? (widthNum * lengthNum) : 0;
+              const sqFtNum = isSizeInputActive && widthNum > 0 && lengthNum > 0 ? (widthNum * lengthNum) : 0;
               const calculatedSqFt = sqFtNum > 0 ? sqFtNum.toFixed(2) : "—";
               const totalBilledSqft = sqFtNum * pcs;
               const rateNum = parseFloat(line.unitPrice) || 0;
