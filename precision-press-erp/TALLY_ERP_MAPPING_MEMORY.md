@@ -1124,10 +1124,11 @@ When an operator selects a customer for a proxy order or quotation, the address 
 > **Context**: Previously, the ERP relied on a Stock Group level override (`treat_sales_as_manufactured = true`) which forcibly unlocked Width & Length input fields for all items belonging to certain groups (like Kinetic or Stationery), even if individual items within those groups had no size parameters configured in Tally. This override was completely removed to ensure 100% strict item-level parity with Tally Prime's `<UDF:ITEMMULTIPLESIZE.LIST>` XML configuration.
 
 ### A. Removal of Stock Group Override (`treat_sales_as_manufactured`)
-- **Action Taken**: Removed group-level forced size activation (`treat_sales_as_manufactured`) across:
-  1. Proxy Order Page (`src/components/acdema/ProxyOrderBuilderView.tsx`)
-  2. Quotation Builder Page (`src/components/acdema/QuotationBuilderView.tsx`)
-  3. Invoice Creation Page (`src/components/dashboard/InvoiceFormView.tsx`)
+- **Action Taken**: Removed group-level forced size activation (`treat_sales_as_manufactured` and `categoryAllowsSize`) across:
+  1. Proxy Order Page (`src/components/acdema/ProxyOrderBuilder.tsx` & `ProxyOrderBuilderView.tsx`)
+  2. Quotation Builder Page (`src/components/acdema/QuotationBuilder.tsx` & `QuotationBuilderView.tsx`)
+  3. Invoice Creation Page (`src/components/dashboard/InvoiceFormView.tsx` & `line-items-editor.tsx`)
+  4. Product Loader Action (`src/lib/actions/products.ts`)
 - **Result**: Item size input field availability (Width & Length) is now governed strictly by each item's individual Tally XML configuration stored in PostgreSQL `inventory_item`.
 
 ### B. 100% Full Resync of 1,801 Inventory Items from Live Tally Port 9000
