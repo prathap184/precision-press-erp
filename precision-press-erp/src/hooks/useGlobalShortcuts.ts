@@ -72,9 +72,10 @@ export function useGlobalShortcuts() {
         return;
       }
 
-      // Close open shortcut menu on Escape regardless of focus
-      if (e.key === 'Escape' && menuState !== null) {
+      // Close open shortcut menu on Escape or Backspace regardless of focus
+      if ((e.key === 'Escape' || e.key === 'Backspace') && menuState !== null) {
         e.preventDefault();
+        e.stopPropagation();
         closeMenu();
         return;
       }

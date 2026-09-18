@@ -105,11 +105,18 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [menuState, currentItems, selectedIndex]);
 
-  // Keypress listener for S, R, B, I when ALL_SHORTCUTS window is open
+  // Keypress listener for S, R, B, I and close keys when ALL_SHORTCUTS window is open
   React.useEffect(() => {
     if (menuState !== 'ALL_SHORTCUTS') return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Backspace') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMenu();
+        return;
+      }
+
       if (e.altKey || e.ctrlKey || e.metaKey) return;
 
       const key = e.key.toLowerCase();
@@ -147,7 +154,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
   const isAllShortcuts = menuState === 'ALL_SHORTCUTS';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md transition-all p-4">
+    <div data-shortcut-modal="true" className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 backdrop-blur-md transition-all p-4">
       <div className={`bg-white rounded-2xl shadow-2xl w-full overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-200 ${isAllShortcuts ? 'max-w-4xl' : 'max-w-lg'}`}>
         
         {/* Header */}
@@ -360,7 +367,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
         <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 text-xs font-medium text-slate-400 flex justify-between">
           <span className="flex items-center gap-1.5">
             <span>Press <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-600 font-bold">Alt + S</kbd> anytime to toggle</span>
-            <span>· Press <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-600 font-bold">Esc</kbd> to close</span>
+            <span>· Press <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-600 font-bold">Esc</kbd> or <kbd className="font-mono bg-white border border-slate-200 px-1 rounded text-slate-600 font-bold">Backspace</kbd> to close</span>
           </span>
           {(menuState === 'ACCOUNT_BOOKS' || menuState === 'LEDGERS') && (
             <button 

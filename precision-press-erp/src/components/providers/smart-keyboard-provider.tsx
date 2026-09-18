@@ -69,6 +69,9 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
 
     function handleKeyDown(e: KeyboardEvent) {
       if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (typeof document !== 'undefined' && document.querySelector('[data-shortcut-modal="true"]')) {
+        return;
+      }
 
       const target = document.activeElement as HTMLElement | null;
       if (!target) return;
