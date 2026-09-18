@@ -339,7 +339,7 @@ export async function loadTallyStockItems(): Promise<any[]> {
     let defaultLength: number | null = null;
     let defaultSizeName: string | null = null;
 
-    if (isMandatory || sizeEntries.length > 1) {
+    if (sizeEntries.length > 1) {
       hasMultipleSizes = true;
       hasSingleDefaultSize = false;
       defaultWidth = 1;
