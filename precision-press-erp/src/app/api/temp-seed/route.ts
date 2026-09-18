@@ -15,7 +15,7 @@ const CATEGORIES = [
 
 const DEFAULT_PRICING = {
   eyelet: { metal: 2, plastic: 3, none: 0 },
-  delivery: { selfPickup: 0, door: 50, courier: 100, transport: 150 }
+  delivery: { selfPickup: 0, door: 0, courier: 0, transport: 0 }
 };
 
 export async function GET() {
