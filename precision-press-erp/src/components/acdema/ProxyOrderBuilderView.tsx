@@ -785,7 +785,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           el.focus();
           setOpenRowId(latestRow.id);
           setSearchQuery('');
-          setHighlightProductIndex(-1);
+          setHighlightProductIndex(0);
         }
       }, 50);
     }
@@ -837,7 +837,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           el.focus();
           setOpenRowId(currentRow.id);
           setSearchQuery('');
-          setHighlightProductIndex(-1);
+          const currIdx = currentRow.productId ? matchedProducts.findIndex((p: any) => p.id === currentRow.productId) : -1;
+          setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
         }
         return;
       }
@@ -852,7 +853,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             nextEl.focus();
             setOpenRowId(nextRow.id);
             setSearchQuery('');
-            setHighlightProductIndex(-1);
+            const currIdx = nextRow.productId ? matchedProducts.findIndex((p: any) => p.id === nextRow.productId) : -1;
+            setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
           }
         }, 50);
       }
@@ -1416,7 +1418,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               
                                               // Find index in displayed grouped list
                                               const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                              setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
+                                              const targetIdx = currIdx >= 0 ? currIdx : 0;
+                                              setHighlightProductIndex(targetIdx);
+                                              if (targetIdx >= productLimit - 15) {
+                                                setProductLimit(prev => Math.max(prev, targetIdx + 50));
+                                              }
 
                                               const inputEl = e.currentTarget;
                                               setTimeout(() => {
@@ -1557,8 +1563,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                setOpenRowId(row.id);
                                                const currentName = selProd?.name || '';
                                                setSearchQuery(currentName);
+                                               // Find index in displayed grouped list and auto-map
                                                const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                               setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
+                                               const targetIdx = currIdx >= 0 ? currIdx : 0;
+                                               setHighlightProductIndex(targetIdx);
+                                               if (targetIdx >= productLimit - 15) {
+                                                 setProductLimit(prev => Math.max(prev, targetIdx + 50));
+                                               }
                                              }
                                            }}
                                          />

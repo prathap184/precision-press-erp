@@ -345,7 +345,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           el.focus();
           setOpenRowId(latestRow.id);
           setSearchQuery('');
-          setHighlightProductIndex(-1);
+          setHighlightProductIndex(0);
         }
       }, 50);
     }
@@ -380,7 +380,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           el.focus();
           setOpenRowId(currentRow.id);
           setSearchQuery('');
-          setHighlightProductIndex(-1);
+          const currIdx = currentRow.productId ? products.findIndex((p) => p.id === currentRow.productId) : -1;
+          setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
         }
         return;
       }
@@ -395,7 +396,8 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
             nextEl.focus();
             setOpenRowId(nextRow.id);
             setSearchQuery('');
-            setHighlightProductIndex(-1);
+            const currIdx = nextRow.productId ? products.findIndex((p) => p.id === nextRow.productId) : -1;
+            setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
           }
         }, 50);
       }
@@ -926,7 +928,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     const currentName = selProd?.name || '';
                                              setSearchQuery(currentName);
                                              const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                             setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
+                                             setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
 
                                              const inputEl = e.currentTarget;
                                              setTimeout(() => {
@@ -1044,7 +1046,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                           const currentName = selProd?.name || '';
                                           setSearchQuery(currentName);
                                           const currIdx = displayedItems.findIndex((p: any) => p.id === row.productId);
-                                          setHighlightProductIndex(currIdx >= 0 ? currIdx : (!currentName ? -1 : 0));
+                                          setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
                                         }
                                       }} />
                                     </div>
