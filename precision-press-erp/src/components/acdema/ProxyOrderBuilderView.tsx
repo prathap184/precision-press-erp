@@ -1034,8 +1034,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     );
   }
 
-  const currentImage = productImages.length > 0 ? productImages[currentImageIndex % productImages.length] : null;
-
   return (
     <RoleGuard allowedRoles={['ACDEMA', 'ADMIN', 'SUPER_ADMIN']}>
       <div className="font-sans text-slate-800 p-3 md:p-4 pt-2 md:pt-3 relative z-10 min-h-screen rounded-none">
