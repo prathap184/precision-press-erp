@@ -1627,8 +1627,53 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
   - **All 101 Base System Accounts** (`chart_account` where `is_system = true`) were preserved and their balances cleanly reset to `0.00`.
   - **Base Bank Accounts**: `Main Cash Drawer`, `Federal Bank`, `Cash B2 Drawer` preserved with balances reset to zero.
 
+
 ---
-*Memory Updated & Persisted on: 2026-09-19 (Live Database Clean-Up for Real Company Onboarding)*
 
+## 🏦 60. Live Company "New Web Testing" (100007) Bank & Chart of Accounts Sync
 
+### A. Context & Architecture
+- **Active Company**: `New Web Testing` (Company ID: `100007`, Period: `1-Apr-2024 to 19-Sep-2026`).
+- **Core Requirement**:
+  - **Tally Live Closing Balance = ERP Opening Balance & Current Balance**.
+  - All synchronization is strictly keyed on **`tally_guid`** first.
+  - Foreign key double-entry linkage between `public.bank_account.chart_account_id` and `public.chart_account.id`.
+  - Exclusion of contact groups (`sundry debtors`, `sundry creditors`, `MAIN`, `PX1`, `DEBT`, etc.) so party accounts remain in `public.contact`.
 
+### B. PostgreSQL Schema Hardening (`public.bank_account.balance`)
+- `public.bank_account.balance` was originally `INTEGER` (32-bit signed integer maxing out at ₹2.14 Crores in paise).
+- Because `EVIZ Bank` has a balance of **₹17.38 Crores** (`17,381,803,415` paise), the column was safely altered:
+  ```sql
+  ALTER TABLE public.bank_account ALTER COLUMN balance TYPE BIGINT;
+  ```
+- Now supports multi-hundred crore enterprise balances with zero overflow risk.
+
+### C. Live Verified Bank & Drawer Profiles in ERP Database
+1. **`EVIZ Bank`**:
+   - **Tally Ledger**: `EVIZ` (Parent: `Bank Accounts`)
+   - **Tally GUID**: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-000009ba`
+   - **Alter ID**: `479919`
+   - **Balance**: **₹17,38,18,034.15** (`17381803415` paise)
+   - **Linked GL Account**: Code `1100` (`Checking Account` / `EVIZ Bank`)
+   - **Double-Entry FK**: `chart_account_id` $\rightarrow$ `431d0bc3-6daf-4912-8277-09714ca520c0`
+2. **`ICICI Bank - 4349`**:
+   - **Tally Ledger**: `ICICI 4349` (Parent: `Bank Accounts`)
+   - **Tally GUID**: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00005859`
+   - **Alter ID**: `479921`
+   - **Balance**: **₹18,08,758.80** (`180875880` paise)
+   - **Linked GL Account**: Code `1110` (`Savings Account` / `ICICI 4349`)
+   - **Double-Entry FK**: `chart_account_id` $\rightarrow$ `27c49187-fb8c-43e1-9872-c3c5c82734e4`
+3. **`Main Cash Drawer`**:
+   - **Tally Ledger**: `Cash` (Parent: `Cash-in-hand`)
+   - **Tally GUID**: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000098e`
+   - **Alter ID**: `479918`
+   - **Balance**: **₹6,94,184.00** (`69418400` paise)
+   - **Linked GL Account**: Code `1000` (`Cash` / `Cash on Hand`)
+   - **Double-Entry FK**: `chart_account_id` $\rightarrow$ `0fc0c971-bd22-4c7c-8030-82c4f67a7dea`
+
+### D. Chart of Accounts Status
+- **70 Total GL & Bank Accounts** synchronized with GUIDs, Alter IDs, Parent Groups, and Opening Balances.
+- Obsolete banks from the old test company (`Cash B2`, `Federal Bank`) were purged from `public.bank_account`.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Live Company "New Web Testing" Bank & GL Sync)*
