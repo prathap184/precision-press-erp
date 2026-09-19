@@ -1976,3 +1976,91 @@ From `C:\tally\Master.xml` (1,912 total ledgers):
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 62 - Full Master.xml Bank Accounts & Chart of Accounts 165/165 Integrity)*
 
+---
+
+## 👥 63. Live Customer Master Synchronization & Reconciliation (1,754 Customers with 100% GUID & Closing Balance Parity)
+
+### A. Context & Architecture
+- **Target Table**: `public.contact` (`type = 'customer'`).
+- **Data Source**: Live Tally Prime Gold (`New Web Testing` - 100007) on Port 9000 & Master Export `C:\tally\Master.xml` (50.85 MB).
+- **Core Business Rule Satisfied**: **Tally Closing Balance = ERP Opening Balance & Tally Closing Balance** down to the exact paisa.
+- **Suppliers Segregation**: All 88 `Sundry Creditors` (Suppliers) strictly deferred and excluded from this customer ingestion.
+- **Database Schema Hardening**:
+  - `public.contact.credit_limit` was originally `INTEGER`.
+  - Certain accounts in Tally had decimal/fractional limits (`-0.50`, etc.).
+  - Executed migration:
+    ```sql
+    ALTER TABLE public.contact ALTER COLUMN credit_limit TYPE NUMERIC(15,2);
+    ```
+
+---
+
+### B. Live Ingestion & Reconciliation Audit
+
+```mermaid
+pie title Live Customer Ingestion Audit (1,754 Total Records)
+    "Sundry Debtors (General Customers)" : 1710
+    "MAIN (Main Commercial Clients)" : 16
+    "PX1 (Pixel / Division Clients)" : 10
+    "STF (Staff / Internal Counterparts)" : 9
+    "DEBT (Direct Debtors)" : 8
+    "BRNH (Branch Customers)" : 1
+```
+
+| Metric | Target / Tally | Ingested to ERP (`public.contact`) | Parity Rate | Status |
+|:---|:---:|:---:|:---:|:---:|
+| **Total Customers** | 1,754 | **1,754** | **100.0%** | ✅ Exact Match |
+| **Tally GUID Mapping** | 1,754 | **1,754** | **100.0%** | ✅ 0 Nulls, 0 Collisions |
+| **Tally Closing Bal = ERP Opening Bal** | 1,754 | **1,754** | **100.0%** | ✅ Exact to Paisa |
+| **Total Customer Receivable Balances** | ₹2,21,55,296.08 | **₹2,21,55,296.08** | **100.0%** | ✅ Exact Balance Parity |
+| **Subgroups Preserved in `printerCategory`** | 6 Subgroups | **6 Subgroups** | **100.0%** | ✅ Exact Taxonomy |
+| **Address Line 1 (Full Combined)** | Populated | **Clean Single Line** | **100.0%** | ✅ Clean Street Addresses |
+| **Address Line 2 (Clean Null)** | Null | **1,754 / 1,754 Null** | **100.0%** | ✅ No Duplicate Invoice Lines |
+| **Extracted Phones** | — | **1,187 Records** | — | ✅ Deep Name/Tag Extraction |
+| **Suppliers Mixed In** | 0 | **0** | **0.0%** | ✅ Pure Customer Segregation |
+
+---
+
+### C. Breakdown by Tally Subgroup in Database
+
+| Subgroup (`printerCategory`) | Parent Group | Hierarchy Path (`remarks`) | Total Customers | Active Balances | Total Opening Balance |
+|:---|:---|:---|:---:|:---:|:---:|
+| **`Sundry Debtors`** | Current Assets | `Current Assets ➔ Sundry Debtors` | **1,710** | 1,180 | ₹1,74,56,346.08 |
+| **`MAIN`** | Sundry Debtors | `Current Assets ➔ Sundry Debtors ➔ MAIN` | **16** | 16 | ₹34,56,930.00 |
+| **`PX1`** | Sundry Debtors | `Current Assets ➔ Sundry Debtors ➔ PX1` | **10** | 10 | ₹5,68,467.00 |
+| **`STF`** | Sundry Debtors | `Current Assets ➔ Sundry Debtors ➔ STF` | **9** | 7 | ₹1,18,076.00 |
+| **`DEBT`** | Sundry Debtors | `Current Assets ➔ Sundry Debtors ➔ DEBT` | **8** | 7 | ₹2,22,076.00 |
+| **`BRNH`** | Sundry Debtors | `Current Assets ➔ Sundry Debtors ➔ BRNH` | **1** | 1 | ₹3,33,401.00 |
+| **TOTAL** | — | — | **1,754** | **1,221** | **₹2,21,55,296.08** |
+
+---
+
+### D. Representative Verified Records in `public.contact`:
+1. **`Arihanth Graphics ( 9886860363-9036379886 )`**:
+   - `type`: `'customer'`, `printerCategory`: `'MAIN'`
+   - `tally_guid`: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000939`
+   - `opening_balance`: `₹92,326.00`, `opening_balance_type`: `'Dr'`
+   - `phone`: `'9886860363'`, `alternate_mobile`: `'9036379886'`
+2. **`Chirag Ads Mr Vivek 9880637618`**:
+   - `type`: `'customer'`, `printerCategory`: `'MAIN'`
+   - `tally_guid`: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000096e`
+   - `opening_balance`: `₹8,40,511.00`, `opening_balance_type`: `'Dr'`
+   - `phone`: `'9880637618'`
+3. **`HE Big Branch ( 0821-2525602 - 9901201911 )`**:
+   - `type`: `'customer'`, `printerCategory`: `'BRNH'`
+   - `tally_guid`: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-000009e0`
+   - `opening_balance`: `₹3,33,401.00`, `opening_balance_type`: `'Dr'`
+   - `phone`: `'08212525602'`, `alternate_mobile`: `'9901201911'`
+4. **`Excellent ( Prakash 9844255652 - Off 0821 - 424788)`**:
+   - `type`: `'customer'`, `printerCategory`: `'PX1'`
+   - `tally_guid`: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-000009bb`
+   - `opening_balance`: `₹2,19,984.00`, `opening_balance_type`: `'Dr'`
+   - `phone`: `'9844255652'`, `contact_person`: `'Prakash'`
+5. **`Ayaz Bhai`**:
+   - `type`: `'customer'`, `printerCategory`: `'DEBT'`
+   - `tally_guid`: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000944`
+   - `opening_balance`: `₹5,740.00`, `opening_balance_type`: `'Dr'`
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Section 63 - Live Customer Master 1,754/1,754 Synchronization)*
+
