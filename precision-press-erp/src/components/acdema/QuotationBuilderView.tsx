@@ -2295,7 +2295,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                               )}
                             </div>
                             <div className={`w-48 text-left truncate text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
-                              {c.businessName || c.billing_city || '—'}
+                              {[c.billing_city || c.city, c.billing_area || c.area].filter(Boolean).join(', ') || '—'}
                             </div>
                             <div className={`w-44 text-center font-mono text-[11px] truncate shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
                               {c.gstin || '—'}

@@ -1398,7 +1398,7 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
 - In `ProxyOrderBuilderView.tsx`, replaced `window.location.href = targetUrl` with Next.js App Router client-side transition `router.push(targetUrl)`.
 - Eliminates the full page white-screen reload when exiting to `/admin/orders`.
 
-### E. Contacts Table Credit Limit Display (BUG-26 Follow-up)
+### E. Contacts Table Credit Limit Display (BUG-26 Storage Follow-up)
 - In `src/app/(dashboard)/accounting/contacts/page.tsx`, the `creditLimit` column previously called `formatMoney(r.creditLimit, ...)`.
 - Because `formatMoney(cents)` divides input by 100 (assuming cents/paise), a credit limit of `10000` stored in Rupees was formatted as `₹100.00`.
 - Fixed by formatting `r.creditLimit` directly in Rupees via `new Intl.NumberFormat("en-IN", { style: "currency", currency: r.currencyCode || "INR", maximumFractionDigits: 0 }).format(Number(r.creditLimit))`.
@@ -1406,4 +1406,17 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
 - Also added two-table synchronization on contact creation (`src/app/api/v1/contacts/route.ts` POST handler).
 
 ---
-*Memory Updated & Persisted on: 2026-09-19 (BUG-24 Credit Modal Shortcuts, BUG-25 Fast Router Exit, BUG-26 Credit Limit Rupee Standardization & Contacts Table Display)*
+
+## 🏙️ 53. Customer Drawer City / Area Column Alignment (BUG-26 Audit Fix)
+
+### A. Root Cause
+- In the Terminal customer search drawer (`ProxyOrderBuilderView.tsx` line 4031 and `QuotationBuilderView.tsx` line 2298), the column subheader is labeled **"City / Area"**.
+- However, the cell rendered `c.businessName || c.billing_city || '—'`.
+- Since `c.businessName` held company names (e.g. `_Shree Siddhivinayak Enterprises- Thane- PO`), the company name duplicated inside the "City / Area" column instead of displaying the actual city or area.
+
+### B. Resolution
+- Updated the cell in both `ProxyOrderBuilderView.tsx` and `QuotationBuilderView.tsx` to render `[c.billing_city || c.city, c.billing_area || c.area].filter(Boolean).join(', ') || '—'`.
+- Expanded client-side `filteredCustomers` search filter in both `ProxyOrderBuilder.tsx` and `QuotationBuilder.tsx` to include `billing_city`, `city`, `billing_area`, and `area` so operators can filter customers by geographic location.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (BUG-24 Credit Modal, BUG-25 Fast Router Exit, BUG-26 Credit Limit & Drawer City/Area)*

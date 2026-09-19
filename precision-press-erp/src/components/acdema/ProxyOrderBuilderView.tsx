@@ -4028,7 +4028,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               )}
                             </div>
                             <div className={`w-48 text-left truncate text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
-                              <HighlightMatch text={c.businessName || c.billing_city || '—'} query={customerSearch} isHighlighted={isHighlighted} />
+                              <HighlightMatch text={[c.billing_city || c.city, c.billing_area || c.area].filter(Boolean).join(', ') || '—'} query={customerSearch} isHighlighted={isHighlighted} />
                             </div>
                             <div className={`w-44 text-center font-mono text-[11px] truncate shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
                               <HighlightMatch text={c.gstin || '—'} query={customerSearch} isHighlighted={isHighlighted} />

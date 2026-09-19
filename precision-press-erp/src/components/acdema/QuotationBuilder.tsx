@@ -258,7 +258,20 @@ export function QuotationBuilder() {
     const term = customerSearch.trim().toLowerCase();
     if (!term) return customers;
     return customers.filter((customer) => {
-      return [customer.name, customer.displayName, customer.phone, customer.businessName, customer.email, (customer as any).gstNumber, (customer as any).taxNumber]
+      const c = customer as any;
+      return [
+        customer.name,
+        customer.displayName,
+        customer.phone,
+        customer.businessName,
+        c.billing_city,
+        c.city,
+        c.billing_area,
+        c.area,
+        customer.email,
+        c.gstNumber,
+        c.taxNumber,
+      ]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term));
     });
