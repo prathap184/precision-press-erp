@@ -357,7 +357,7 @@ export default function ContactsPage() {
   useEffect(() => {
     const handleScroll = () => {
       setDropdownOpen(false);
-      hasAutoFocusedRef.current = true;
+      hasAutoScrolledRef.current = true;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
