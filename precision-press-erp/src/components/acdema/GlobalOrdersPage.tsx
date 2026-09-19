@@ -123,9 +123,19 @@ export function GlobalOrdersPage() {
         e.preventDefault();
         openDateModal();
       }
-      if (e.key === 'Escape' && showDatePicker) {
-        e.preventDefault();
-        setShowDatePicker(false);
+      if (e.key === 'Escape') {
+        if (showDatePicker) {
+          e.preventDefault();
+          setShowDatePicker(false);
+          return;
+        }
+        const searchInput = searchInputRef.current || (document.getElementById("orders-search-input") as HTMLInputElement | null);
+        if (document.activeElement === searchInput) {
+          e.preventDefault();
+          if (search) setSearch('');
+          searchInput?.blur();
+          return;
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -897,6 +907,16 @@ export function GlobalOrdersPage() {
               type="text"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (search) {
+                    setSearch('');
+                  }
+                  e.currentTarget.blur();
+                }
+              }}
               placeholder="Search manifest by ID, Customer, Phone... (Alt+Q)"
               className="w-full h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg pl-9 pr-3 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-indigo-600 focus:bg-white/40 focus:ring-2 focus:ring-indigo-500 transition-all shadow-2xs"
             />

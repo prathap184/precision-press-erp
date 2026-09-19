@@ -1559,5 +1559,52 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
   - On <kbd>Backspace</kbd> when text is empty or all-selected $\rightarrow$ closes dropdown and focuses `order-date-input`.
 
 ---
-*Memory Updated & Persisted on: 2026-09-19 (Alt+Q Search Shortcuts, Auto-Focus Removal, Esc Navigation across Accounting, Staff & Proxy Order)*
+
+## 🛑 58. Global Orders Search Bar <kbd>Esc</kbd> Unpoint (Blur) Navigation
+
+### A. Context & User Requirement
+- In `/admin/orders` (`GlobalOrdersPage.tsx` and `RoleGlobalOrdersPage.tsx`), pressing <kbd>Alt</kbd>+<kbd>Q</kbd> focused `#orders-search-input` (or `#role-orders-search-input`).
+- However, when the search input was focused (whether empty or containing text), pressing <kbd>Esc</kbd> did not unpoint (blur) the input.
+- User requested: *"in gl;obal orders also esc for un point? ok?"*
+
+### B. Implementation
+- In both `src/components/acdema/GlobalOrdersPage.tsx` and `src/components/orders/RoleGlobalOrdersPage.tsx`:
+  1. **Direct Input `onKeyDown`**:
+     ```tsx
+     onKeyDown={(e) => {
+       if (e.key === 'Escape') {
+         e.preventDefault();
+         e.stopPropagation();
+         if (search) {
+           setSearch('');
+         }
+         e.currentTarget.blur();
+       }
+     }}
+     ```
+  2. **Global Window Keydown Listener**:
+     Enhanced the window `handleKeyDown` listener so that when <kbd>Esc</kbd> is pressed while the search input is focused:
+     ```tsx
+     if (e.key === 'Escape') {
+       if (showDatePicker) {
+         e.preventDefault();
+         setShowDatePicker(false);
+         return;
+       }
+       const searchInput = searchInputRef.current || (document.getElementById("orders-search-input") as HTMLInputElement | null);
+       if (document.activeElement === searchInput) {
+         e.preventDefault();
+         if (search) setSearch('');
+         searchInput?.blur();
+         return;
+       }
+     }
+     ```
+- When <kbd>Esc</kbd> is pressed in the Global Orders search input:
+  - If search text is present: clears the search query and immediately blurs (unpoints) the input.
+  - If search input is empty: immediately blurs (unpoints) the input.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Global Orders Esc Search Unpoint)*
+
 
