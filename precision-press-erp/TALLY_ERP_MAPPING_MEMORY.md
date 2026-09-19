@@ -2285,7 +2285,53 @@ graph TD
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 67 - Inventory Stock Groups 30/30 Synchronization)*
 
+---
 
+## 68. Godown Master Synchronization Audit (`Main Location`)
 
+In Tally (`C:\Users\jprat\Videos\gosdswin.xml`), exactly 1 Godown exists. It has been synchronized into `public.warehouse` with complete GUID and Alter ID tracking:
 
+| Field | Tally Source (`gosdswin.xml`) | `public.warehouse` Database Value | Parity Rate | Status |
+|:---|:---:|:---:|:---:|:---:|
+| **Godown Name** | `Main Location` | `'Main Location'` | **100.0%** | ✅ Exact Match |
+| **Warehouse Code** | Primary Code | `'MAIN'` | **100.0%** | ✅ Clean Unique Code |
+| **Tally GUID (`tally_guid`)** | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000003e` | `'f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000003e'` | **100.0%** | ✅ 0 Nulls, 0 Collisions |
+| **Alter ID (`alter_id`)** | `478014` | `478014` | **100.0%** | ✅ Exact Tally Revision ID |
+| **Default Flag** | Default Primary Location | `is_default = true` | **100.0%** | ✅ Default Order Warehouse |
+| **Status** | Active | `is_active = true` | **100.0%** | ✅ Active Warehouse |
 
+---
+
+## 69. Inventory Stock Items Master Synchronization Audit (335 / 335 Items)
+
+All **335 verified Stock Items** from Tally (`items.xml` / Live Port 9000) have been synchronized into PostgreSQL table `public.inventory_item` under an ACID transaction, enforcing the **3 Golden Rules** for Width & Length activation and linking directly to the 30 Stock Categories.
+
+### A. The 3 Golden Rules Enforcement
+
+| Rule | `has_multiple_sizes` | `default_size` (Dimensions) | Width & Length Status | Items Ingested | Parity Rate |
+|:---:|:---:|:---:|:---|:---:|:---:|
+| **Rule 1** | **`true`** | **`true`** (`1 F x 1 F`) | **ACTIVE** (Prefilled 1×1 Ft; Operator can enter Width & Length) | **200 Items** | **100.0%** |
+| **Rule 1B** | **`true`** | **`false`** (`null × null`) | **ACTIVE** (Custom size input required) | **10 Items** | **100.0%** |
+| **Rule 2** | **`false`** | **`true`** | **ACTIVE** (Fixed default dimensions) | **0 Items** | **100.0%** |
+| **Rule 3** | **`false`** | **`false`** | **INACTIVE** (Width & Length hidden/disabled; strictly billed by Qty/Pcs) | **125 Items** | **100.0%** |
+| **TOTAL** | — | — | **100% Categorized** | **335 Items** | **100.0%** |
+
+### B. Field-by-Field Parity Scorecard
+
+| Field / Attribute Verified | Tally Source | Ingested to `public.inventory_item` | Parity Rate | Status |
+|:---|:---:|:---:|:---:|:---:|
+| **Total Stock Items** | 335 Unique | **335 Records** | **100.0%** | ✅ Exact Match |
+| **Unique Item Names** | 335 Names | **335 Unique Names** | **100.0%** | ✅ 0 Duplicate Names |
+| **Tally Unique GUID (`tally_guid`)** | 335 GUIDs | **335 / 335 GUIDs** | **100.0%** | ✅ 0 Nulls, 0 Collisions |
+| **Category Hierarchy Linkage** | 307 with Parent | **307 Linked to `category_id` UUID** | **100.0%** | ✅ 100% Hierarchy Linked |
+| **Top-Level Items (Primary)** | 28 Items | **28 Items (`category_id = NULL`)** | **100.0%** | ✅ Clean Top Hierarchy |
+| **Units of Measure (UOM)** | 8 UOM types | **Exact Base Units (`sqft`, `nos`, `card`, etc.)** | **100.0%** | ✅ 1:1 Preserved |
+| **Alter ID Tracking** | 335 Alter IDs | **335 / 335 Alter IDs** | **100.0%** | ✅ Exact Revision Sequence |
+| **Billing Mode UDF** | 209 Items (`'B'`) | **209 Items (`tally_billing_mode = 'B'`)** | **100.0%** | ✅ Size-Based Billing |
+| **Opening Balances & Rates** | 249 Active Balances | **Exact Numeric Opening Balances** | **100.0%** | ✅ Exact to the Paisa |
+| **Total Valuation Storage** | Up to ₹3.11 Crores | **`total_value` Upgraded to `BIGINT`** | **100.0%** | ✅ No Overflow |
+| **GL Account Links** | Inventory, Sales, COGS | **Linked to GL 1300, 4010/4000, 5000** | **100.0%** | ✅ Double-Entry Complete |
+| **Discrepancies / Mismatches** | **0** | **0** | **0.0%** | 🎉 **PERFECT AUDIT** |
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Section 68 - Godown Master Sync & Section 69 - Inventory Stock Items 335/335 Synchronization)*

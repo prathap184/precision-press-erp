@@ -93,7 +93,7 @@ export const inventoryItem = pgTable(
     costMethod: costMethodEnum("cost_method").notNull().default("average"),
     averageCost: integer("average_cost").notNull().default(0), // cents per unit
     standardCost: integer("standard_cost").notNull().default(0), // cents per unit
-    totalValue: integer("total_value").notNull().default(0), // cents, on-hand book value
+    totalValue: bigint("total_value", { mode: "number" }).notNull().default(0), // cents, on-hand book value
     unitOfMeasure: text("unit_of_measure"),
     costAccountId: uuid("cost_account_id").references(() => chartAccount.id),
     revenueAccountId: uuid("revenue_account_id").references(() => chartAccount.id),
@@ -152,6 +152,8 @@ export const warehouse = pgTable(
     address: text("address"),
     isDefault: boolean("is_default").default(false),
     isActive: boolean("is_active").default(true),
+    tallyGuid: text("tally_guid"),
+    alterId: bigint("alter_id", { mode: "number" }),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "date" }),
