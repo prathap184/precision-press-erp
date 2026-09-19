@@ -55,9 +55,9 @@ const makeRow = (product?: Product): AcdemaRow => {
     hsnCode: '',
     billingMode: defaultMode,
     pcsNo: '1',
-    width: isSizeInputActive ? String(product?.default_width || '1') : '',
+    width: hasSingleDefaultSize && product?.default_width ? String(product.default_width) : '',
     widthUnit: (product?.default_width_unit as any) || 'FT',
-    height: isSizeInputActive ? String(product?.default_length || '1') : '',
+    height: hasSingleDefaultSize && product?.default_length ? String(product.default_length) : '',
     heightUnit: (product?.default_length_unit as any) || 'FT',
     quantity: '1',
     eyeletType: 'NONE',
@@ -490,11 +490,11 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
       const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
       const isModeA = currentMode === 'A';
       const isModeB = currentMode === 'B';
-      const width = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? (product?.default_width || 1) : 1)) || 1;
-      const height = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? (product?.default_length || 1) : 1)) || 1;
+      const width = Number(row.width !== undefined && row.width !== '' ? row.width : (hasSingleDefaultSize ? (product?.default_width || 0) : 0)) || 0;
+      const height = Number(row.height !== undefined && row.height !== '' ? row.height : (hasSingleDefaultSize ? (product?.default_length || 0) : 0)) || 0;
       const widthInFt = row.widthUnit === 'IN' ? width / 12 : (row.widthUnit === 'MTR' ? width * 3.28084 : width);
       const heightInFt = row.heightUnit === 'IN' ? height / 12 : (row.heightUnit === 'MTR' ? height * 3.28084 : height);
-      const sqft = isSqft ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 1) : 1;
+      const sqft = isSqft ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 0) : 0;
       const pcs = Math.max(1, Number(row.pcsNo || '1'));
       const totalBilledSqft = sqft * pcs;
       const baseRate = (row.manualRate !== undefined && row.manualRate !== '') ? Number(row.manualRate) || 0 : 0;
@@ -578,9 +578,9 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
         
         // Populate default dimensions and settings for the selected product
         next.billingMode = defaultMode;
-        next.width = isSizeInputActive ? String(product?.default_width || '1') : '';
+        next.width = hasSingleDefaultSize && product?.default_width ? String(product.default_width) : '';
         next.widthUnit = (product?.default_width_unit as any) || 'FT';
-        next.height = isSizeInputActive ? String(product?.default_length || '1') : '';
+        next.height = hasSingleDefaultSize && product?.default_length ? String(product.default_length) : '';
         next.heightUnit = (product?.default_length_unit as any) || 'FT';
         next.manualRate = undefined; // reset manual rate so product baseRate takes effect
       }
@@ -823,11 +823,11 @@ ${parts.join(', ')}`;
           const currentMode = (product as any)?.tally_billing_mode || (product as any)?.tallyBillingMode || 'B';
           const isModeA = currentMode === 'A';
           const isModeB = currentMode === 'B';
-          const width = Number(row.width !== undefined && row.width !== '' ? row.width : (isSqft ? (product?.default_width || 1) : 0)) || 0;
-          const height = Number(row.height !== undefined && row.height !== '' ? row.height : (isSqft ? (product?.default_length || 1) : 0)) || 0;
+          const width = Number(row.width !== undefined && row.width !== '' ? row.width : (hasSingleDefaultSize ? (product?.default_width || 0) : 0)) || 0;
+          const height = Number(row.height !== undefined && row.height !== '' ? row.height : (hasSingleDefaultSize ? (product?.default_length || 0) : 0)) || 0;
           const widthInFt = row.widthUnit === 'IN' ? width / 12 : (row.widthUnit === 'MTR' ? width * 3.28084 : width);
           const heightInFt = row.heightUnit === 'IN' ? height / 12 : (row.heightUnit === 'MTR' ? height * 3.28084 : height);
-          const sqft = isSqft ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 1) : 1;
+          const sqft = isSqft ? ((widthInFt > 0 && heightInFt > 0) ? (widthInFt * heightInFt) : 0) : 0;
           const pcs = Math.max(1, Number(row.pcsNo || '1'));
           const totalBilledSqft = sqft * pcs;
           const qtyNum = Number(row.quantity !== undefined && row.quantity !== '' ? row.quantity : (isDirect ? 1 : (isModeB ? totalBilledSqft : 1))) || 1;

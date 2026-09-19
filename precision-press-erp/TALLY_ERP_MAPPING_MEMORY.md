@@ -1344,7 +1344,30 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
   - View component: `src/app/(dashboard)/accounting/contacts/[id]/page.tsx` with live status indicator (Emerald indicator for Discount Customer, Slate for Normal Customer).
 
 ---
-*Memory Updated & Persisted on: 2026-09-18 (BUG-12 Delivery Voucher Retention & Admin Customer Discount Category Management)*
+
+## 📏 51. Custom Size Dimension Empty Defaulting & Label Cleanup (BUG-18 & BUG-21)
+
+### A. Root Cause of BUG-18
+- When an operator selected a multi-size / custom-size product (like Flex, Vinyl, or Banner) that had **no default fixed dimensions**, the system previously forced `product?.default_width || '1'` and `product?.default_length || '1'` into the inputs and pricing engine.
+- This forced a default size of `1 ft × 1 ft`. If the operator typed Width `10` but forgot to fill in Length, it billed `10 ft × 1 ft` without warning because `1` was already pre-filled. Operators had to constantly backspace `1`.
+
+### B. Golden Rule Enforced (BUG-18 Fix)
+- **Multi-size with No Default Size (Rule 1)**: Width and Length inputs now initialize **empty (`""`)**.
+- **Validation**: If the operator attempts to create the order or quotation without entering Width or Length, the system strictly blocks submission and highlights the missing field with:
+  - `Item #X: Width is required`
+  - `Item #X: Length is required`
+- **Fixed Default Size (Rule 2)**: Only products with a genuine default size configured in Tally/Master (`hasSingleDefaultSize = true`) pre-fill their designated dimensions (e.g., `2 ft × 3 ft`).
+- Enforced across:
+  1. `src/components/acdema/ProxyOrderBuilder.tsx` (`makeRow`, `updateRow`, `summary`, `submitProxyOrder`)
+  2. `src/components/acdema/QuotationBuilder.tsx` (`makeRow`, `updateRow`, `summary`, `submitQuotation`)
+  3. `src/components/acdema/ProxyOrderBuilderView.tsx` (row render, input value binds, and `validateAndSubmit`)
+
+### C. Forwarding Charge Label Cleanup (BUG-21 Fix)
+- In `ProxyOrderBuilderView.tsx`, the delivery charge row in the order summary table was displaying the internal Tally sort prefix `z` as `zForwarding Charge- Sale`.
+- Cleaned the label to `Forwarding Charges (Delivery)`.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (BUG-18 Custom Size Empty Defaulting & BUG-21 Forwarding Label Cleanup)*
 
 
 

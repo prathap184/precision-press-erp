@@ -1387,9 +1387,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const isModeA = currentMode === 'A';
                         const isModeB = currentMode === 'B';
                         const isSqftModeB = isSizeInputActive && isModeB;
-                        const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'N';
-                        const w = Number(row.width !== undefined && row.width !== '' ? row.width : (isSizeInputActive ? (product?.default_width || 1) : 0)) || 0;
-                        const h = Number(row.height !== undefined && row.height !== '' ? row.height : (isSizeInputActive ? (product?.default_length || 1) : 0)) || 0;
+                        const w = Number(row.width !== undefined && row.width !== '' ? row.width : (hasSingleDefaultSize ? (product?.default_width || 0) : 0)) || 0;
+                        const h = Number(row.height !== undefined && row.height !== '' ? row.height : (hasSingleDefaultSize ? (product?.default_length || 0) : 0)) || 0;
                         const wFt = row.widthUnit === 'IN' ? w / 12 : (row.widthUnit === 'MTR' ? w * 3.28084 : w);
                         const hFt = row.heightUnit === 'IN' ? h / 12 : (row.heightUnit === 'MTR' ? h * 3.28084 : h);
                         const sqft = isSizeInputActive ? ((wFt > 0 && hFt > 0) ? (wFt * hFt) : 0) : 0;
@@ -1665,7 +1664,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                                     <input
                                       id={`error-row-${row.id}-width`}
-                                      value={row.width !== undefined ? row.width : (product?.default_width || '1')}
+                                      value={row.width !== undefined ? row.width : (hasSingleDefaultSize && product?.default_width ? String(product.default_width) : '')}
                                       onChange={(e) => {
                                         const val = e.target.value;
                                         updateRow(row.id, { width: val });
@@ -1787,7 +1786,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
                                     <input
                                       id={`error-row-${row.id}-height`}
-                                      value={row.height !== undefined ? row.height : (product?.default_length || '1')}
+                                      value={row.height !== undefined ? row.height : (hasSingleDefaultSize && product?.default_length ? String(product.default_length) : '')}
                                       onChange={(e) => {
                                         const val = e.target.value;
                                         updateRow(row.id, { height: val });
@@ -2538,7 +2537,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
                           <td className="py-0.5 px-2"></td>
                           <td colSpan={13} className="py-0.5 px-2 font-bold text-slate-800">
-                            zForwarding Charge- Sale
+                            Forwarding Charges (Delivery)
                           </td>
                           <td className="py-0.5 px-2 text-right font-black tabular-nums text-slate-900">
                             {summary.deliveryCharges.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
