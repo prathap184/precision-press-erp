@@ -477,6 +477,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     setTimeout(focusItem, 250);
   };
 
+  // Auto-focus Customer Search on page arrival
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const custInput = document.getElementById('proxy-customer-search-input') as HTMLInputElement;
+      if (custInput) {
+        custInput.focus();
+        try { custInput.select(); } catch {}
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     const handleExitRequest = () => {
       if (customerDropdownOpen) {
@@ -515,11 +527,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         e.preventDefault();
         e.stopPropagation();
         const custInput = document.getElementById('proxy-customer-search-input') as HTMLInputElement;
-        if (custInput) {
-          custInput.focus();
-          try { custInput.select(); } catch {}
+        const isCurrentlyFocused = document.activeElement === custInput;
+        if (isCurrentlyFocused) {
+          custInput?.blur();
+          setCustomerDropdownOpen(false);
+        } else {
+          if (custInput) {
+            custInput.focus();
+            try { custInput.select(); } catch {}
+          }
+          setCustomerDropdownOpen(true);
         }
-        setCustomerDropdownOpen(true);
         return;
       }
       if (e.key === 'F2') {
@@ -556,17 +574,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           e.stopPropagation();
           if (customerSearch !== '') {
             setCustomerSearch('');
-          } else if (customerDropdownOpen) {
-            setCustomerDropdownOpen(false);
-          } else {
-            const dateInput = document.getElementById('order-date-input') as HTMLInputElement;
-            if (dateInput) {
-              dateInput.focus();
-              try { dateInput.select(); } catch {}
-            } else {
-              (document.activeElement as HTMLElement)?.blur();
-            }
           }
+          setCustomerDropdownOpen(false);
+          (document.activeElement as HTMLElement)?.blur();
           return;
         }
         if (customerDropdownOpen) {
@@ -1412,17 +1422,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             e.stopPropagation();
                             if (customerSearch !== '') {
                               setCustomerSearch('');
-                            } else if (customerDropdownOpen) {
-                              setCustomerDropdownOpen(false);
-                            } else {
-                              const dateInput = document.getElementById('order-date-input');
-                              if (dateInput) {
-                                dateInput.focus();
-                                try { (dateInput as HTMLInputElement).select(); } catch {}
-                              } else {
-                                e.currentTarget.blur();
-                              }
                             }
+                            setCustomerDropdownOpen(false);
+                            e.currentTarget.blur();
                           }
                         }}
                         onBlur={() => {

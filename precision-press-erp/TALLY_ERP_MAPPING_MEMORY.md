@@ -2441,5 +2441,32 @@ flowchart TD
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 72 - Sizing Fields Targeted Re-Sync & Rule 3 Alignment)*
 
+---
+
+## 73. Proxy Order Customer Search: Auto-Focus on Arrival, Alt+Q Toggle Focus/Unselect & Esc Blur/Unselect
+
+### A. Context & User Requirement
+- In Proxy Order (`/proxy-order`, `ProxyOrderBuilderView.tsx`):
+  1. **Page Arrival Auto-Focus**: When the operator arrives at the Proxy Order page, the cursor must auto-map / auto-focus directly to `#proxy-customer-search-input`.
+  2. **<kbd>Alt</kbd>+<kbd>Q</kbd> Toggle**:
+     - If the customer search input is NOT focused: points/focuses the customer search input, selects any text, and opens the customer dropdown.
+     - If the customer search input is ALREADY focused: unselects / unpoints (blurs) the input and closes the dropdown.
+  3. **<kbd>Esc</kbd> Unselect / Blur**:
+     - When inside customer search: clears search text, closes the dropdown, and unselects / blurs the input (without navigating to date input or opening the exit modal).
+     - Once unselected, pressing <kbd>Esc</kbd> performs standard page escape operations (exit modal, modal dismiss).
+
+### B. Implementation Summary
+- **File**: [`src/components/acdema/ProxyOrderBuilderView.tsx`](file:///c:/Users/jprat/OneDrive/Desktop/Hindustan%20Enterprices/precision-press-erp/src/components/acdema/ProxyOrderBuilderView.tsx)
+- **Mount Effect**: Added `useEffect` on mount focusing `#proxy-customer-search-input` after 120ms with `try { custInput.select(); } catch {}`.
+- **`handleKeyDown` Listener**:
+  - `(e.key === 'q' || e.key === 'Q') && e.altKey`: Checks `document.activeElement === custInput`. If focused $\rightarrow$ `custInput.blur(); setCustomerDropdownOpen(false)`. If not focused $\rightarrow$ `custInput.focus(); custInput.select(); setCustomerDropdownOpen(true)`.
+  - `e.key === 'Escape'`: When `isCustomerInput` is true $\rightarrow$ clears `customerSearch`, closes dropdown, and calls `(document.activeElement as HTMLElement)?.blur()`.
+- **Input Direct `onKeyDown`**:
+  - Synchronized `Escape` handler to clear search query, close dropdown, and call `e.currentTarget.blur()`.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Section 73 - Proxy Order Customer Search Auto-Focus, Alt+Q Toggle & Esc Unselect)*
+
+
 
 
