@@ -1488,4 +1488,76 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
   4. **Unified Callback**: Wired `onClose` to `handleBackFromDescModal(activeDescRowId)` and added top-priority `if (activeDescRowId)` check in the parent keydown handler.
 
 ---
-*Memory Updated & Persisted on: 2026-09-19 (Alt+Q Global Orders, Item Description Modal Esc/Backspace Return Navigation)*
+
+## 🔍 57. Disable Auto-Focus Search on Page Load, Add Alt+Q Shortcut & Esc Clear/Blur Across Accounting, Staff, and Proxy Order
+
+### A. Context & User Requirement
+- In 7 specific dashboard pages:
+  1. `/admin/staff` (`src/app/(dashboard)/admin/staff/page.tsx`)
+  2. `/accounting/banking` (`src/app/(dashboard)/accounting/banking/page.tsx`)
+  3. `/accounting/accounts` (`src/app/(dashboard)/accounting/accounts/page.tsx`)
+  4. `/accounting` (`src/app/(dashboard)/accounting/page.tsx`)
+  5. `/accounting/sales` (`src/app/(dashboard)/accounting/sales/page.tsx`)
+  6. `/accounting/sales/customer-prepayments` (`src/app/(dashboard)/accounting/sales/customer-prepayments/page.tsx`)
+  7. `/accounting/purchases` (`src/app/(dashboard)/accounting/purchases/page.tsx`)
+- The page arrival logic previously auto-focused the search input (`focusSearch()`, `t3 = setTimeout(focusSearch, 600)`, `autoFocus`).
+- User requested:
+  1. **Do not auto-point/auto-focus** the search bar on page load.
+  2. **Keep the smooth scroll** to the table toolbar (`doScroll`).
+  3. **Add <kbd>Alt</kbd>+<kbd>Q</kbd> shortcut** to focus the search bar on demand and select existing text.
+  4. **Add <kbd>Esc</kbd> key handler** on each search input: clears search text if non-empty, or blurs (`e.currentTarget.blur()`) if empty.
+  5. In **Proxy Order** (`ProxyOrderBuilderView.tsx`):
+     - Remove auto-focus on page arrival (`focusInitial` and `autoFocus` on `#proxy-customer-search-input`).
+     - When pressing <kbd>Alt</kbd>+<kbd>Q</kbd>, focus `#proxy-customer-search-input`, select text, and open the customer dropdown.
+     - When at the customer search bar, <kbd>Esc</kbd> clears search or closes dropdown or returns to previous field (`order-date-input`), without accidentally triggering the exit modal.
+
+### B. Implementation Details Across All 7 Pages
+- **Removed Unwanted Focus on Load**: Removed `focusSearch()` calls and timeouts (`t3 = setTimeout(focusSearch, 600)`) and removed `autoFocus` from the `<Input>` elements.
+- **Preserved Toolbar Smooth Scroll**: Maintained `doScroll()` targeting each page's toolbar (`#staff-table-toolbar`, `#banking-table-toolbar`, `#accounts-table-toolbar`, `#entries-table-toolbar`, `#sales-table-toolbar`, `#prepayments-table-toolbar`, `#purchases-table-toolbar`) with `window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" })`.
+- **Added Global <kbd>Alt</kbd>+<kbd>Q</kbd> Listener**:
+  ```tsx
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'q' || e.key === 'Q') && e.altKey) {
+        e.preventDefault();
+        const input = searchInputRef.current || (document.getElementById("<page>-search-input") as HTMLInputElement | null);
+        if (input) {
+          input.focus();
+          try { input.select(); } catch {}
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  ```
+- **Added <kbd>Esc</kbd> Handler & <kbd>(Alt+Q)</kbd> Placeholder**:
+  ```tsx
+  placeholder="... (Alt+Q)"
+  onKeyDown={(e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (search) {
+        setSearch('');
+      } else {
+        e.currentTarget.blur();
+      }
+    }
+  }}
+  ```
+
+### C. Implementation in Proxy Order (`ProxyOrderBuilderView.tsx`)
+- **Removed Auto-Focus on Arrival**: Removed the `focusInitial` effect from `ProxyOrderBuilderView.tsx` and removed `autoFocus` from `<input id="proxy-customer-search-input">`.
+- **Added <kbd>Alt</kbd>+<kbd>Q</kbd> Handler**: Pressing <kbd>Alt</kbd>+<kbd>Q</kbd> prevents default, focuses `#proxy-customer-search-input`, selects text, and opens the customer dropdown (`setCustomerDropdownOpen(true)`).
+- **Fixed <kbd>Esc</kbd> and <kbd>Backspace</kbd> Key Navigation**:
+  - In `handleKeyDown` and the input's `onKeyDown`:
+    - If `customerSearch` is non-empty $\rightarrow$ clears `customerSearch`.
+    - If `customerDropdownOpen` is open $\rightarrow$ closes the dropdown.
+    - If empty / closed $\rightarrow$ smoothly navigates back to previous field (`order-date-input`).
+    - Does NOT trigger `setShowExitConfirmModal(true)` while inside customer search input.
+  - On <kbd>Backspace</kbd> when text is empty or all-selected $\rightarrow$ closes dropdown and focuses `order-date-input`.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Alt+Q Search Shortcuts, Auto-Focus Removal, Esc Navigation across Accounting, Staff & Proxy Order)*
+

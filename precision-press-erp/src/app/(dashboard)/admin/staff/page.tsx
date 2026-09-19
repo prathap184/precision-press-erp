@@ -380,29 +380,36 @@ export default function StaffManagementPage() {
     if (!loading && staffList.length > 0 && !hasAutoScrolledRef.current) {
       hasAutoScrolledRef.current = true;
 
-      const focusSearch = () => {
-        const input = searchInputRef.current || (document.getElementById("staff-search-input") as HTMLInputElement | null);
-        if (input) {
-          try { input.focus({ preventScroll: true }); } catch { input.focus(); }
-        }
-      };
-
-      const doScrollAndFocus = () => {
+      const doScroll = () => {
         const toolbarEl = document.getElementById("staff-table-toolbar");
         if (toolbarEl) {
           const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
           window.scrollTo({ top: Math.max(0, topPos), behavior: "smooth" });
         }
-        focusSearch();
       };
 
-      const t1 = setTimeout(doScrollAndFocus, 100);
-      const t2 = setTimeout(doScrollAndFocus, 350);
-      const t3 = setTimeout(focusSearch, 600);
+      const t1 = setTimeout(doScroll, 100);
+      const t2 = setTimeout(doScroll, 350);
 
-      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [loading, staffList]);
+
+  // Alt+Q Shortcut to focus search bar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'q' || e.key === 'Q') && e.altKey) {
+        e.preventDefault();
+        const input = searchInputRef.current || (document.getElementById("staff-search-input") as HTMLInputElement | null);
+        if (input) {
+          input.focus();
+          try { input.select(); } catch {}
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const loadStaff = useCallback(async () => {
     setLoading(true);
@@ -474,11 +481,21 @@ export default function StaffManagementPage() {
             <input
               id="staff-search-input"
               ref={searchInputRef}
-              autoFocus
               type="text"
-              placeholder="Search staff..."
+              placeholder="Search staff... (Alt+Q)"
               value={search}
               onChange={e => setSearch(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (search) {
+                    setSearch('');
+                  } else {
+                    e.currentTarget.blur();
+                  }
+                }
+              }}
               className="w-full pl-9 pr-4 h-9 text-xs bg-white border border-slate-300 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
             />
           </div>

@@ -225,23 +225,12 @@ export default function CustomerPrepaymentsPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const hasAutoScrolledRef = useRef(false);
 
-  // One-time auto-scroll to search bar toolbar position & auto-focus search bar on arrival
+  // One-time auto-scroll to search bar toolbar position
   useEffect(() => {
     if (!initialLoad && !hasAutoScrolledRef.current) {
       hasAutoScrolledRef.current = true;
 
-      const focusSearch = () => {
-        const input = searchInputRef.current || (document.getElementById("prepayments-search-input") as HTMLInputElement | null);
-        if (input) {
-          try {
-            input.focus({ preventScroll: true });
-          } catch {
-            input.focus();
-          }
-        }
-      };
-
-      const doScrollAndFocus = () => {
+      const doScroll = () => {
         const toolbarEl = document.getElementById("prepayments-table-toolbar");
         if (toolbarEl) {
           const topPos = toolbarEl.getBoundingClientRect().top + window.pageYOffset - 75;
@@ -249,20 +238,33 @@ export default function CustomerPrepaymentsPage() {
         } else {
           window.scrollTo({ top: 220, behavior: "smooth" });
         }
-        focusSearch();
       };
 
-      const t1 = setTimeout(doScrollAndFocus, 100);
-      const t2 = setTimeout(doScrollAndFocus, 350);
-      const t3 = setTimeout(focusSearch, 600);
+      const t1 = setTimeout(doScroll, 100);
+      const t2 = setTimeout(doScroll, 350);
 
       return () => {
         clearTimeout(t1);
         clearTimeout(t2);
-        clearTimeout(t3);
       };
     }
   }, [initialLoad]);
+
+  // Alt+Q Shortcut to focus search bar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'q' || e.key === 'Q') && e.altKey) {
+        e.preventDefault();
+        const input = searchInputRef.current || (document.getElementById("prepayments-search-input") as HTMLInputElement | null);
+        if (input) {
+          input.focus();
+          try { input.select(); } catch {}
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Global F2 / f shortcut listener
   useEffect(() => {
@@ -545,10 +547,20 @@ export default function CustomerPrepaymentsPage() {
             <Input
               id="prepayments-search-input"
               ref={searchInputRef}
-              autoFocus
-              placeholder="Search receipts..."
+              placeholder="Search receipts... (Alt+Q)"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (search) {
+                    setSearch('');
+                  } else {
+                    e.currentTarget.blur();
+                  }
+                }
+              }}
               className="h-8 w-56 pl-8 text-xs bg-white border-slate-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus-visible:border-blue-500 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none transition-all shadow-xs"
             />
           </div>

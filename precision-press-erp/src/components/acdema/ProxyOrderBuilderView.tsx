@@ -511,6 +511,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.key === 'q' || e.key === 'Q') && e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const custInput = document.getElementById('proxy-customer-search-input') as HTMLInputElement;
+        if (custInput) {
+          custInput.focus();
+          try { custInput.select(); } catch {}
+        }
+        setCustomerDropdownOpen(true);
+        return;
+      }
       if (e.key === 'F2') {
         e.preventDefault();
         e.stopPropagation();
@@ -537,6 +548,25 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           e.preventDefault();
           e.stopPropagation();
           setShowCreateCustomer(false);
+          return;
+        }
+        const isCustomerInput = document.activeElement?.id === 'proxy-customer-search-input';
+        if (isCustomerInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (customerSearch !== '') {
+            setCustomerSearch('');
+          } else if (customerDropdownOpen) {
+            setCustomerDropdownOpen(false);
+          } else {
+            const dateInput = document.getElementById('order-date-input') as HTMLInputElement;
+            if (dateInput) {
+              dateInput.focus();
+              try { dateInput.select(); } catch {}
+            } else {
+              (document.activeElement as HTMLElement)?.blur();
+            }
+          }
           return;
         }
         if (customerDropdownOpen) {
@@ -1102,26 +1132,6 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     }
   }, [showAddressModal]);
 
-  useEffect(() => {
-    if (!bootstrapLoading) {
-      const focusInitial = () => {
-        const custInput = document.getElementById('proxy-customer-search-input') as HTMLInputElement;
-        if (custInput) {
-          custInput.focus();
-        } else {
-          const dateInput = document.getElementById('order-date-input') as HTMLInputElement;
-          if (dateInput) dateInput.focus();
-        }
-      };
-      focusInitial();
-      const t1 = setTimeout(focusInitial, 60);
-      const t2 = setTimeout(focusInitial, 200);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
-    }
-  }, [bootstrapLoading]);
 
   const currentImage = useMemo(() => {
     // 1. If a row is currently open/focused, prioritize that row's image
@@ -1268,9 +1278,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       )}
                       <input
                         id="proxy-customer-search-input"
-                        autoFocus
                         value={customerSearch !== '' ? customerSearch : (selectedCustomer?.displayName || selectedCustomer?.name || '')}
-                        placeholder="Search customer by name, phone, GSTIN..."
+                        placeholder="Search customer by name, phone, GSTIN... (Alt+Q)"
                         data-dropdown-open={customerDropdownOpen ? "true" : "false"}
                         onChange={(e) => {
                           setCustomerDropdownOpen(true);
@@ -1383,24 +1392,36 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               requestAnimationFrame(focusItem);
                             }
                           } else if (e.key === "Backspace") {
-                            if (!customerSearch && !selectedCustomer) {
+                            const val = e.currentTarget.value || '';
+                            const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                            if (customerSearch === '' || val === '' || isAllSelected || (!customerSearch && !selectedCustomer)) {
                               e.preventDefault();
+                              if (isAllSelected && selectedCustomer) {
+                                setSelectedCustomerId('');
+                                setCustomerSearch('');
+                              }
                               setCustomerDropdownOpen(false);
                               const dateInput = document.getElementById('order-date-input');
-                              if (dateInput) dateInput.focus();
-                            } else if (customerSearch === '') {
-                              e.preventDefault();
-                              setCustomerDropdownOpen(false);
-                              const dateInput = document.getElementById('order-date-input');
-                              if (dateInput) dateInput.focus();
+                              if (dateInput) {
+                                dateInput.focus();
+                                try { (dateInput as HTMLInputElement).select(); } catch {}
+                              }
                             }
                           } else if (e.key === "Escape") {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (customerDropdownOpen) {
+                            if (customerSearch !== '') {
+                              setCustomerSearch('');
+                            } else if (customerDropdownOpen) {
                               setCustomerDropdownOpen(false);
                             } else {
-                              setShowExitConfirmModal(true);
+                              const dateInput = document.getElementById('order-date-input');
+                              if (dateInput) {
+                                dateInput.focus();
+                                try { (dateInput as HTMLInputElement).select(); } catch {}
+                              } else {
+                                e.currentTarget.blur();
+                              }
                             }
                           }
                         }}
