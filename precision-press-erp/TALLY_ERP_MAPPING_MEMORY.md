@@ -1398,9 +1398,12 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
 - In `ProxyOrderBuilderView.tsx`, replaced `window.location.href = targetUrl` with Next.js App Router client-side transition `router.push(targetUrl)`.
 - Eliminates the full page white-screen reload when exiting to `/admin/orders`.
 
+### E. Contacts Table Credit Limit Display (BUG-26 Follow-up)
+- In `src/app/(dashboard)/accounting/contacts/page.tsx`, the `creditLimit` column previously called `formatMoney(r.creditLimit, ...)`.
+- Because `formatMoney(cents)` divides input by 100 (assuming cents/paise), a credit limit of `10000` stored in Rupees was formatted as `₹100.00`.
+- Fixed by formatting `r.creditLimit` directly in Rupees via `new Intl.NumberFormat("en-IN", { style: "currency", currency: r.currencyCode || "INR", maximumFractionDigits: 0 }).format(Number(r.creditLimit))`.
+- An entered limit of `10000` now correctly renders as `₹10,000` across the entire contacts list table.
+- Also added two-table synchronization on contact creation (`src/app/api/v1/contacts/route.ts` POST handler).
+
 ---
-*Memory Updated & Persisted on: 2026-09-19 (BUG-24 Credit Modal Shortcuts, BUG-25 Fast Router Exit, BUG-26 Credit Limit Rupee Standardization)*
-
-
-
-
+*Memory Updated & Persisted on: 2026-09-19 (BUG-24 Credit Modal Shortcuts, BUG-25 Fast Router Exit, BUG-26 Credit Limit Rupee Standardization & Contacts Table Display)*

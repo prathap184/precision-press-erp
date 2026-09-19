@@ -116,7 +116,11 @@ function buildColumns(onDelete: (c: Contact) => void, onOpen: (c: Contact) => vo
       render: (r) => (
         <span className="text-sm tabular-nums text-muted-foreground">
           {r.creditLimit != null
-            ? formatMoney(r.creditLimit, r.currencyCode || "INR")
+            ? new Intl.NumberFormat("en-IN", {
+                style: "currency",
+                currency: r.currencyCode || "INR",
+                maximumFractionDigits: 0,
+              }).format(Number(r.creditLimit))
             : "No limit"}
         </span>
       ),

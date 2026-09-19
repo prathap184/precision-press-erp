@@ -239,6 +239,29 @@ export async function POST(request: Request) {
 
     logAudit({ ctx, action: "create", entityType: "contact", entityId: created.id, request });
 
+    if (parsed.creditLimit !== undefined) {
+      try {
+        const { supabaseServer } = await import("@/lib/supabase-server");
+        const numericLimit = parsed.creditLimit ?? 0;
+        await supabaseServer
+          .from("profiles")
+          .update({
+            creditLimit: numericLimit,
+            customerType: numericLimit > 0 ? "CREDIT" : "CASH",
+          })
+          .eq("id", created.id);
+        await supabaseServer
+          .from("contact")
+          .update({
+            credit_limit: numericLimit,
+            customer_type: numericLimit > 0 ? "CREDIT" : "CASH",
+          })
+          .eq("id", created.id);
+      } catch (syncErr) {
+        console.warn("Failed to sync creditLimit to profiles and contact on create:", syncErr);
+      }
+    }
+
     return NextResponse.json({ contact: created }, { status: 201 });
   } catch (err) {
     return handleError(err);
