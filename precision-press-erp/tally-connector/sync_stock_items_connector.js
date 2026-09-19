@@ -115,14 +115,19 @@ async function syncStockItems() {
       const altUom = (rawAlt && !rawAlt.includes('Not Applicable')) ? rawAlt : null;
 
       const alterId = alterM ? parseInt(alterM[1].trim(), 10) : null;
-      const isMandatory = Boolean(sizeMandM && clean(sizeMandM[1]).toLowerCase() === 'yes');
-      const billingMode = billingTypeM ? clean(billingTypeM[1]) : (isMandatory ? 'B' : null);
+      const rawWidth = widthM && clean(widthM[1]) ? parseFloat(clean(widthM[1])) : null;
+      const rawLength = lengthM && clean(lengthM[1]) ? parseFloat(clean(lengthM[1])) : null;
+      const rawSizeName = sizeNameM ? clean(sizeNameM[1]) : null;
 
-      const defaultWidth = widthM ? parseFloat(clean(widthM[1])) : null;
-      const defaultLength = lengthM ? parseFloat(clean(lengthM[1])) : null;
-      const defaultWidthUnit = defaultWidth ? 'FT' : null;
-      const defaultLengthUnit = defaultLength ? 'FT' : null;
-      const defaultSizeName = sizeNameM ? clean(sizeNameM[1]) : null;
+      const hasPredefinedSize = Boolean(rawWidth && rawLength && rawWidth > 0 && rawLength > 0 && rawSizeName);
+      const isMandatory = hasPredefinedSize;
+      const billingMode = billingTypeM ? clean(billingTypeM[1]) : ((isSqft || sizeMandM) ? 'B' : null);
+
+      const defaultWidth = hasPredefinedSize ? rawWidth : null;
+      const defaultLength = hasPredefinedSize ? rawLength : null;
+      const defaultWidthUnit = hasPredefinedSize ? 'FT' : null;
+      const defaultLengthUnit = hasPredefinedSize ? 'FT' : null;
+      const defaultSizeName = hasPredefinedSize ? rawSizeName : null;
 
       const godownName = (godownM && clean(godownM[1])) ? clean(godownM[1]) : 'Main Location';
       const isSqft = uom.toLowerCase().includes('sqft');

@@ -2417,4 +2417,29 @@ flowchart TD
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 71 - Stock Item Sizing & 3 Golden Rules 335/335 Parity Audit)*
 
+---
+
+## 72. Sizing Fields Targeted Re-Sync: Tally 'None' Predefined Size Mapped to Rule 3 (`has_multiple_sizes = false`)
+
+### A. Context & User Confirmation
+- Analysis of live Tally vouchers (e.g. Quotation CRD `SE2512`) confirmed that when a stock item has **no predefined size** (`None`) in Tally master (e.g. `3m Black Back Vinyl (Re)`, `3m Black Back Vinyl (Mu)`):
+  - In Tally, the voucher sets **`Size: *Not Applicable`**.
+  - Width & Length fields are **completely blank / inactive**.
+  - The operator directly enters the quantity in the **`Quantity`** box (e.g. `2.000 sqft`).
+- In ERP, these items previously had `has_multiple_sizes = true` (Rule 1B), which forced the operator to enter `W ft` and `L ft`.
+- User instructed to re-sync **ONLY** these sizing fields, without touching any balances, GL accounts, categories, or warehouse stock.
+
+### B. Execution & Post-Sync Distribution
+1. **Rule 1 (Predefined Size in Tally ➔ Active Width & Length)**:
+   - **200 items**: `has_multiple_sizes = true`, `default_width = 1`, `default_length = 1`, `default_size_name = '1 F x 1 F'`.
+2. **Rule 3 (Size is None in Tally ➔ Inactive Width & Length)**:
+   - **135 items**: `has_multiple_sizes = false`, `default_width = null`, `default_length = null`, `default_size_name = null`.
+   - (Includes 125 non-size items + 10 items like `3m Black Back Vinyl` where size is `*Not Applicable`).
+3. **Preserved Fields (100% Untouched)**:
+   - All 335 opening balances, rates, values, quantities on hand, GL mappings, contact links, and `warehouse_stock` mappings to `Main Location` (`MAIN`) were fully preserved.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Section 72 - Sizing Fields Targeted Re-Sync & Rule 3 Alignment)*
+
+
 
