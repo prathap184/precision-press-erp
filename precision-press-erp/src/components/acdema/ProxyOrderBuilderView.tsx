@@ -518,7 +518,46 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           setShowExitConfirmModal(false);
           return;
         }
-        if (customerDropdownOpen || openRowId || openUnitPickerId || showAddressModal || showCreditModal || showConfirmOrderModal || showCreateCustomer) {
+        if (showCreateCustomer) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowCreateCustomer(false);
+          return;
+        }
+        if (customerDropdownOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+          setCustomerDropdownOpen(false);
+          return;
+        }
+        if (openRowId) {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpenRowId(null);
+          return;
+        }
+        if (openUnitPickerId) {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpenUnitPickerId(null);
+          return;
+        }
+        if (showAddressModal) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowAddressModal(false);
+          return;
+        }
+        if (showCreditModal) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowCreditModal(false);
+          return;
+        }
+        if (showConfirmOrderModal) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowConfirmOrderModal(false);
           return;
         }
         e.preventDefault();
@@ -1103,25 +1142,25 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       <div className="font-sans text-slate-800 p-3 md:p-4 pt-2 md:pt-3 relative z-10 min-h-screen rounded-none">
         <div className="w-full">
           
-          {/* Moving Animated Light Pink & Light Blue Ambient Background (Image 2 Parity) */}
-          <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#e2ecf8]">
-            {/* Soft grid & noise texture */}
-            <div className="absolute inset-0 bg-[radial-gradient(#bfdbfe_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-40"></div>
+          {/* Moving Animated Light Pink & Rich Ice Blue Ambient Background */}
+          <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#deebf8]">
+            {/* Subtle blue dot-matrix pattern */}
+            <div className="absolute inset-0 bg-[radial-gradient(#93c5fd_1.3px,transparent_1.3px)] [background-size:24px_24px] opacity-45"></div>
             
-            {/* 1. Moving Light Pink Orb - Left to Right Float across screen */}
-            <div className="animate-ambient-lr-1 absolute -top-[10%] -left-[10%] w-[68vw] h-[68vw] max-w-[900px] max-h-[900px] rounded-full bg-gradient-to-r from-pink-300/40 via-rose-200/35 to-pink-100/20 blur-[100px] pointer-events-none"></div>
+            {/* 1. Rich Sky Blue Aura - Top Right */}
+            <div className="absolute -top-[15%] -right-[10%] w-[70vw] h-[70vw] max-w-[1000px] max-h-[1000px] rounded-full bg-sky-300/40 blur-[130px] pointer-events-none"></div>
 
-            {/* 2. Soft Sky Blue Orb from Image 2 */}
-            <div className="absolute -top-[15%] -right-[10%] w-[60vw] h-[60vw] max-w-[900px] max-h-[900px] rounded-full bg-sky-200/50 blur-[130px] pointer-events-none"></div>
+            {/* 2. Deep Blue Radiance - Bottom Left */}
+            <div className="absolute -bottom-[15%] -left-[10%] w-[65vw] h-[65vw] max-w-[950px] max-h-[950px] rounded-full bg-blue-300/35 blur-[140px] pointer-events-none"></div>
 
-            {/* 3. Deep soft blue glow */}
-            <div className="absolute -bottom-[15%] -left-[10%] w-[55vw] h-[55vw] max-w-[850px] max-h-[850px] rounded-full bg-blue-200/40 blur-[130px] pointer-events-none"></div>
+            {/* 3. Central Cyan/Ice-Blue Drifting Aura */}
+            <div className="animate-ambient-lr-2 absolute top-[25%] left-[20%] w-[60vw] h-[60vw] max-w-[850px] max-h-[850px] rounded-full bg-gradient-to-tr from-sky-200/50 via-blue-200/35 to-cyan-100/30 blur-[130px] pointer-events-none"></div>
 
-            {/* 4. Moving Light Pink Orb 2 - Counter gliding Right to Left */}
-            <div className="animate-ambient-rl-1 absolute -bottom-[10%] right-[5%] w-[62vw] h-[62vw] max-w-[850px] max-h-[850px] rounded-full bg-gradient-to-l from-pink-300/35 via-rose-200/25 to-transparent blur-[110px] pointer-events-none"></div>
+            {/* 4. Moving Delicate Light Pink Orb - Small, soft, subtle accent drifting across screen */}
+            <div className="animate-ambient-lr-1 absolute top-[5%] -left-[5%] w-[42vw] h-[42vw] max-w-[550px] max-h-[550px] rounded-full bg-gradient-to-r from-pink-300/25 via-rose-200/20 to-transparent blur-[90px] pointer-events-none"></div>
 
-            {/* 5. Center ambient aura drifting Left to Right */}
-            <div className="animate-ambient-lr-2 absolute top-[28%] left-[18%] w-[55vw] h-[55vw] max-w-[750px] max-h-[750px] rounded-full bg-gradient-to-tr from-pink-200/30 via-sky-100/40 to-transparent blur-[120px] pointer-events-none"></div>
+            {/* 5. Subtle Counter-drifting Light Pink Accent - Bottom Right */}
+            <div className="animate-ambient-rl-1 absolute -bottom-[5%] right-[10%] w-[35vw] h-[35vw] max-w-[450px] max-h-[450px] rounded-full bg-gradient-to-l from-pink-300/20 via-rose-200/15 to-transparent blur-[100px] pointer-events-none"></div>
           </div>
 
           <div className="flex flex-col gap-4 pb-2">
@@ -1339,6 +1378,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               setCustomerDropdownOpen(false);
                               const dateInput = document.getElementById('order-date-input');
                               if (dateInput) dateInput.focus();
+                            }
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (customerDropdownOpen) {
+                              setCustomerDropdownOpen(false);
+                            } else {
+                              setShowExitConfirmModal(true);
                             }
                           }
                         }}
@@ -2116,6 +2163,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               try {
                                                 const len = (itemInput as HTMLInputElement).value ? (itemInput as HTMLInputElement).value.length : 0;
                                                 (itemInput as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
                                             }
                                           }
                                         }
@@ -3913,7 +3961,16 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           {/* Tally Full Vertical Right Sidebar Drawer (List of Ledger Accounts / List of Stock Items) */}
           {(customerDropdownOpen || openRowId) && !activeDescRowId && (
             <div 
-              className="fixed right-0 top-0 bottom-0 w-[900px] lg:w-[980px] max-w-[96vw] z-[99999] bg-[#eef6ff] border-l-2 border-[#1a4a7a] shadow-2xl flex flex-col animate-in slide-in-from-right duration-150 font-sans"
+              tabIndex={-1}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (customerDropdownOpen) setCustomerDropdownOpen(false);
+                  if (openRowId) setOpenRowId(null);
+                }
+              }}
+              className="fixed right-0 top-0 bottom-0 w-[900px] lg:w-[980px] max-w-[96vw] z-[99999] bg-[#eef6ff] border-l-2 border-[#1a4a7a] shadow-2xl flex flex-col animate-in slide-in-from-right duration-150 font-sans outline-none"
             >
               {customerDropdownOpen ? (
                 <>

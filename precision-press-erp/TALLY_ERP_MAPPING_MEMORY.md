@@ -1441,4 +1441,27 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
    - Table rows use `hover:bg-white/20 border-b border-white/25`, and summary totals use `bg-white/30 backdrop-blur-md border-t border-b border-white/40`.
 
 ---
-*Memory Updated & Persisted on: 2026-09-19 (BUG-24, BUG-25, BUG-26, Section 54 Image 2 Parity & Glassmorphism)*
+
+## ⚡ 55. Customer Search Esc Navigation, Ambient Blue Refinement & Code Cleanups (BUG-6 & BUG-7)
+
+### A. Syntax Error Resolution (`ProxyOrderBuilderView.tsx`)
+- Fixed unclosed `try` block (missing `catch {}`) in the quantity input's Enter keyboard handler when auto-focusing next product input. This unclosed block was preventing Next.js / SWC from compiling the JSX component.
+
+### B. Customer Search Bar & Drawer <kbd>Esc</kbd> Navigation
+- **Problem**: When focus was placed in the Customer Search bar (`#proxy-customer-search-input`) or within the "List of Ledger Accounts" drawer, pressing <kbd>Esc</kbd> did not close the drawer. The global key handler returned early without acting on `customerDropdownOpen`, and the search input lacked an `Escape` key event listener.
+- **Fix**:
+  1. **Input Handler**: In `ProxyOrderBuilderView.tsx` & `QuotationBuilderView.tsx`, added `e.key === "Escape"` to the customer search input's `onKeyDown` to immediately close `setCustomerDropdownOpen(false)`.
+  2. **Global Listener**: In `handleKeyDown`, added priority check: if `customerDropdownOpen` is open, pressing <kbd>Esc</kbd> closes the customer drawer cleanly.
+  3. **Drawer Container**: Added `tabIndex={-1}` and `onKeyDown` to the drawer sidebar element to capture <kbd>Esc</kbd> from anywhere inside the drawer.
+
+### C. Ambient Color Balance: "More Blue, Less Pink"
+- Switched base canvas to a serene ice-blue `#deebf8` with sharper contrast micro-dots (`#93c5fd` at 45% opacity).
+- Amplified the soft sky-blue (`bg-sky-300/40`) and deep blue (`bg-blue-300/35`) atmospheric auras across 70vw spans.
+- Downsized the light pink ambient glow to delicate, subtle drifting accents (`w-[42vw]`, `bg-gradient-to-r from-pink-300/25 via-rose-200/20 to-transparent blur-[90px]`), ensuring the interface remains calmingly blue with an elegant hint of moving pink.
+
+### D. Audit BUG-6 & BUG-7: Dead Variable & Dead Code Removal (`ProxyOrderBuilder.tsx`)
+- **BUG-6**: Removed dead, unused declarations of `rawUom` and `cleanUom` across `summary` calculation, `updateRow`, and `submitProxyOrder` (superceded by the Golden Rule dimension evaluator).
+- **BUG-7**: Removed redundant `invalidRowIndex = -1` check and unused error toast in `submitProxyOrder`.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Syntax fix, Esc Drawer Close, More Blue Less Pink, BUG-6 & BUG-7 Cleaned)*

@@ -397,7 +397,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
             if (nextRow.productId) {
               const sel = products.find((p: any) => p.id === nextRow.productId);
               setSearchQuery(sel?.name || '');
-              const currIdx = displayedItems.findIndex((p: any) => p.id === nextRow.productId);
+              const currIdx = matchedProducts.findIndex((p: any) => p.id === nextRow.productId);
               setHighlightProductIndex(currIdx >= 0 ? currIdx : 0);
             } else {
               setSearchQuery('');
@@ -591,19 +591,18 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
             </div>
           </div>
 
-          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-[#e2ecf8]">
+          <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-[#deebf8]">
             {/* Grid Pattern */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-overlay"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(#bfdbfe_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-40"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(#93c5fd_1.3px,transparent_1.3px)] [background-size:24px_24px] opacity-45"></div>
             
-            {/* Moving Light Pink Orb 1 - Left to Right Float */}
-            <div className="animate-ambient-lr-1 absolute -top-[10%] -left-[10%] w-[68vw] h-[68vw] max-w-[900px] max-h-[900px] rounded-full bg-gradient-to-r from-pink-300/40 via-rose-200/35 to-pink-100/20 blur-[100px] pointer-events-none"></div>
-
             {/* Pure Soft Light Blue Ambient Orbs */}
-            <div className="absolute -top-[15%] -right-[10%] w-[55vw] h-[55vw] rounded-full bg-sky-200/50 blur-[130px] pointer-events-none"></div>
-            <div className="animate-ambient-rl-1 absolute -bottom-[10%] right-[5%] w-[62vw] h-[62vw] max-w-[850px] max-h-[850px] rounded-full bg-gradient-to-l from-pink-300/35 via-rose-200/25 to-transparent blur-[110px] pointer-events-none"></div>
-            <div className="absolute -bottom-[15%] -left-[10%] w-[55vw] h-[55vw] rounded-full bg-blue-200/40 blur-[130px] pointer-events-none"></div>
-            <div className="animate-ambient-lr-2 absolute top-[28%] left-[18%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-pink-200/30 via-sky-100/40 to-transparent blur-[120px] pointer-events-none"></div>
+            <div className="absolute -top-[15%] -right-[10%] w-[70vw] h-[70vw] rounded-full bg-sky-300/40 blur-[130px] pointer-events-none"></div>
+            <div className="absolute -bottom-[15%] -left-[10%] w-[65vw] h-[65vw] rounded-full bg-blue-300/35 blur-[140px] pointer-events-none"></div>
+            <div className="animate-ambient-lr-2 absolute top-[25%] left-[20%] w-[60vw] h-[60vw] rounded-full bg-gradient-to-tr from-sky-200/50 via-blue-200/35 to-cyan-100/30 blur-[130px] pointer-events-none"></div>
+
+            {/* Moving Light Pink Delicate Accent */}
+            <div className="animate-ambient-lr-1 absolute top-[5%] -left-[5%] w-[42vw] h-[42vw] max-w-[550px] max-h-[550px] rounded-full bg-gradient-to-r from-pink-300/25 via-rose-200/20 to-transparent blur-[90px] pointer-events-none"></div>
+            <div className="animate-ambient-rl-1 absolute -bottom-[5%] right-[10%] w-[35vw] h-[35vw] max-w-[450px] max-h-[450px] rounded-full bg-gradient-to-l from-pink-300/20 via-rose-200/15 to-transparent blur-[100px] pointer-events-none"></div>
           </div>
 
           <div className="flex flex-col gap-6">
@@ -718,6 +717,10 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                 requestAnimationFrame(focusItem);
                               }
                             }
+                          } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setCustomerDropdownOpen(false);
                           }
                         }}
                         onBlur={() => {
@@ -2186,7 +2189,16 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           {/* Tally Full Vertical Right Sidebar Drawer (List of Ledger Accounts / List of Stock Items) */}
           {(customerDropdownOpen || openRowId) && !activeDescRowId && (
             <div 
-              className="fixed right-0 top-0 bottom-0 w-[900px] lg:w-[980px] max-w-[96vw] z-[99999] bg-[#eef6ff] border-l-2 border-[#1a4a7a] shadow-2xl flex flex-col animate-in slide-in-from-right duration-150 font-sans"
+              tabIndex={-1}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (customerDropdownOpen) setCustomerDropdownOpen(false);
+                  if (openRowId) setOpenRowId(null);
+                }
+              }}
+              className="fixed right-0 top-0 bottom-0 w-[900px] lg:w-[980px] max-w-[96vw] z-[99999] bg-[#eef6ff] border-l-2 border-[#1a4a7a] shadow-2xl flex flex-col animate-in slide-in-from-right duration-150 font-sans outline-none"
             >
               {customerDropdownOpen ? (
                 <>
@@ -2279,6 +2291,31 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                               };
                               focusItem();
                               requestAnimationFrame(focusItem);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                setSelectedCustomerId(c.uid || c.id);
+                                setCustomerDropdownOpen(false);
+                                setCustomerSearch('');
+                                setHighlightCustomerIndex(0);
+                                const firstRowId = rows[0]?.id;
+                                if (firstRowId) {
+                                  setOpenRowId(firstRowId);
+                                  setSearchQuery('');
+                                }
+                                const focusItem = () => {
+                                  const firstProductInput = (firstRowId ? document.getElementById(`row-${firstRowId}-product-input`) : null)
+                                    || (document.querySelector('input[placeholder="Select item..."]') as HTMLElement);
+                                  if (firstProductInput) firstProductInput.focus();
+                                };
+                                focusItem();
+                                requestAnimationFrame(focusItem);
+                              } else if (e.key === "Escape") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setCustomerDropdownOpen(false);
+                              }
                             }}
                             className={`py-1.5 px-4 cursor-pointer transition-colors flex items-center justify-between text-xs select-none ${
                               isHighlighted

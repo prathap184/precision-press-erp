@@ -481,8 +481,6 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
 
     const pricingRows = rows.map((row) => {
       const product = products.find((item) => item.id === row.productId);
-      const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || (row as any).unit || '').trim().toLowerCase();
-      const cleanUom = rawUom.replace(/[\s\._-]/g, '');
       const hasMultipleSizes = Boolean(
         (product as any)?.has_multiple_sizes ??
         (product as any)?.hasMultipleSizes ??
@@ -582,8 +580,6 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
       if (updates.productId) {
         const product = products.find((item) => item.id === updates.productId);
         next.productName = product?.name || '';
-        const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || '').trim().toLowerCase();
-        const cleanUom = rawUom.replace(/[\s\._-]/g, '');
         const hasMultipleSizes = Boolean((product as any)?.has_multiple_sizes ?? (product as any)?.hasMultipleSizes);
         const hasSingleDefaultSize = Boolean((product as any)?.has_single_default_size ?? (product as any)?.metadata?.has_single_default_size ?? (Number((product as any)?.default_width) > 0 && Number((product as any)?.default_length) > 0));
         const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
@@ -779,12 +775,6 @@ ${parts.join(', ')}`;
     }
 
     const resolvedRowPaths = validRows.map((row) => row.tiffPath.trim());
-    const invalidRowIndex = -1; // Removed extension validation
-    
-    if (invalidRowIndex !== -1) {
-      toast.error(`Invalid file type in row ${invalidRowIndex + 1}. All files must have a valid extension.`);
-      return;
-    }
 
     await refreshAuthTokenCookie().catch(e => console.warn('Token refresh failed', e));
 
@@ -814,8 +804,6 @@ ${parts.join(', ')}`;
         shippingAddress: deliveryType === 'selfPickup' ? 'Self Pickup' : shippingAddress.trim(),
         items: validRows.map((row) => {
           const product = products.find((item) => item.id === row.productId);
-          const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || (row as any).unit || '').trim().toLowerCase();
-          const cleanUom = rawUom.replace(/[\s\._-]/g, '');
           const hasMultipleSizes = Boolean(
             (product as any)?.has_multiple_sizes ??
             (product as any)?.hasMultipleSizes ??
