@@ -927,8 +927,8 @@ async function executeOrderPlacementTx(
   }
 
   // Pre-validate credit limit (for friendly error)
-  const usedCredit = Number(customerProfile.usedCredit || 0);
-  const creditLimit = Number(customerProfile.creditLimit || 0);
+  const usedCredit = Number(customerProfile.used_credit ?? customerProfile.usedCredit ?? 0);
+  const creditLimit = Number(customerProfile.credit_limit ?? customerProfile.creditLimit ?? 0);
   if (customerData.type === 'CREDIT' && (usedCredit + payload.grandTotal > creditLimit)) {
     throw new Error(`Credit limit exceeded. Used: ${usedCredit}, Limit: ${creditLimit}`);
   }

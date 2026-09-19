@@ -6,6 +6,7 @@ import { RoleGuard } from '@/lib/role-guard';
 import { INDIAN_STATES } from '@/lib/constants';
 import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 import { ItemDescriptionModal } from '@/components/dashboard/ItemDescriptionModal';
 import { searchProducts } from '@/lib/actions/products';
 
@@ -133,6 +134,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     verifyingGst, handleVerifyGst,
     orderNumber, setOrderNumber, orderDate, setOrderDate
   } = vm;
+
+  const router = useRouter();
 
   const [dateDisplayInput, setDateDisplayInput] = useState(() => isoToDisplayDate(orderDate || new Date().toISOString().split('T')[0]));
 
@@ -542,7 +545,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         const targetUrl = process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL
           ? `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}/admin/orders`
           : '/admin/orders';
-        window.location.href = targetUrl;
+        if (targetUrl.startsWith('http')) {
+          window.location.href = targetUrl;
+        } else {
+          router.push(targetUrl);
+        }
       } else if (e.key === 'n' || e.key === 'N' || e.key === 'Escape' || e.key === 'Backspace') {
         e.preventDefault();
         e.stopPropagation();
@@ -553,7 +560,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     return () => {
       window.removeEventListener('keydown', handleExitModalKeyDown, true);
     };
-  }, [showExitConfirmModal]);
+  }, [showExitConfirmModal, router]);
 
   // Keyboard shortcut listener for Confirm Order Placement Modal (Y/Enter = Yes, N/Esc = No)
   useEffect(() => {
@@ -583,6 +590,31 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       window.removeEventListener('keydown', handleConfirmKeyDown, true);
     };
   }, [showConfirmOrderModal, paymentMethodTab, submitProxyOrder]);
+
+  // Keyboard shortcut listener for Credit Confirmation Modal (Y/Enter = Confirm, N/Esc = Cancel)
+  useEffect(() => {
+    if (!showCreditModal) return;
+    const handleCreditModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowCreditModal(false);
+        submitProxyOrder();
+      } else if (e.key === 'n' || e.key === 'N' || e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowCreditModal(false);
+        setTimeout(() => {
+          const submitBtn = document.getElementById("submit-order-btn");
+          if (submitBtn) submitBtn.focus();
+        }, 50);
+      }
+    };
+    window.addEventListener('keydown', handleCreditModalKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleCreditModalKeyDown, true);
+    };
+  }, [showCreditModal, submitProxyOrder]);
 
   useEffect(() => {
     if (showAddressModal) {
@@ -3793,21 +3825,26 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                 </p>
                 <div className="flex gap-3">
                   <button
+                    type="button"
                     onClick={() => setShowCreditModal(false)}
-                    className="flex-1 py-3 px-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                    className="flex-1 py-3 px-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    Cancel
+                    <span>Cancel</span>
+                    <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-white border border-slate-300 rounded shadow-2xs text-slate-600">N / Esc</kbd>
                   </button>
                   <button
+                    type="button"
+                    autoFocus
                     onClick={() => {
                       setShowCreditModal(false);
                       submitProxyOrder();
                     }}
                     disabled={loading}
-                    className="flex-1 py-3 px-4 rounded-xl font-black text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50 flex justify-center items-center gap-2"
+                    className="flex-1 py-3 px-4 rounded-xl font-black text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20 disabled:opacity-50 flex justify-center items-center gap-1.5 cursor-pointer"
                   >
                     {loading && <Loader2 className="animate-spin" size={16} />}
-                    Confirm
+                    <span>Confirm</span>
+                    <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-blue-700 border border-blue-500 rounded shadow-2xs text-white">Y / ↵</kbd>
                   </button>
                 </div>
               </div>
@@ -3846,7 +3883,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       const targetUrl = process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL
                         ? `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}/admin/orders`
                         : '/admin/orders';
-                      window.location.href = targetUrl;
+                      if (targetUrl.startsWith('http')) {
+                        window.location.href = targetUrl;
+                      } else {
+                        router.push(targetUrl);
+                      }
                     }}
                     className="flex-1 py-3 rounded-xl bg-red-600 text-xs font-black uppercase tracking-wider text-white hover:bg-red-700 shadow-md transition-colors cursor-pointer flex items-center justify-center gap-2"
                   >

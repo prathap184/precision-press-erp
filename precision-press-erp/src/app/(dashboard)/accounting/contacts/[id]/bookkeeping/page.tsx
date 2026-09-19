@@ -93,7 +93,7 @@ export default function ContactBookkeepingPage() {
           type: formType,
           paymentTermsDays: contact.paymentTermsDays,
           creditLimit: formCreditLimit
-            ? decimalToCents(formCreditLimit)
+            ? Math.round(Number(formCreditLimit))
             : null,
           isTaxExempt: formTaxExempt,
           currencyCode: formCurrencyCode || null,

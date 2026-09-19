@@ -113,7 +113,7 @@ export default function ContactDetailsPage() {
           paymentTermsDays:
             parseInt(form.get("paymentTermsDays") as string) || 30,
           creditLimit: creditLimitValue
-            ? decimalToCents(creditLimitValue)
+            ? Math.round(Number(creditLimitValue))
             : null,
           isTaxExempt: formTaxExempt,
           is1099Vendor: form1099Vendor,
@@ -138,7 +138,7 @@ export default function ContactDetailsPage() {
       setFormTaxRateId(c.defaultTaxRateId || "none");
       setFormTaxExempt(c.isTaxExempt);
       setForm1099Vendor(c.is1099Vendor ?? false);
-      setFormCreditLimit(c.creditLimit != null ? String(c.creditLimit / 100) : "");
+      setFormCreditLimit(c.creditLimit != null ? String(c.creditLimit) : "");
       setFormCurrencyCode(c.currencyCode || "");
       setFormOpeningBalance(c.openingBalance != null ? String(c.openingBalance) : "");
       setFormOpeningBalanceType(c.openingBalanceType || "Dr");

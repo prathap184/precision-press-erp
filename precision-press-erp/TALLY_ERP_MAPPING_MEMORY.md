@@ -1367,7 +1367,40 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
 - Cleaned the label to `Forwarding Charges (Delivery)`.
 
 ---
-*Memory Updated & Persisted on: 2026-09-19 (BUG-18 Custom Size Empty Defaulting & BUG-21 Forwarding Label Cleanup)*
+
+## 💳 52. Credit Limit Currency Standardization (BUG-26) & Terminal Flow Ergonomics (BUG-24 & BUG-25)
+
+### A. Root Cause of Credit Limit 100x Multiplier (BUG-26)
+- In the Accounting Contact screens (`/accounting/contacts/[id]/page.tsx`, `layout.tsx`, and `bookkeeping/page.tsx`), the inputs previously wrapped `creditLimit` in `decimalToCents(creditLimitValue)`.
+- When an administrator entered `1000`, the form multiplied it by 100 and stored `100000` into `contact.credit_limit`.
+- Conversely, the Order Terminal and Tally mappings treat currency figures directly as Indian Rupees (₹). As a result, the terminal read `100000` as ₹100,000 credit instead of ₹1,000.
+- Furthermore, `src/lib/workflow.ts` only evaluated `customerProfile.creditLimit` (which was `undefined` because `contact` table uses `credit_limit`), causing backend validation to treat the limit as `0` and throw `Credit limit exceeded. Used: 0, Limit: 0`.
+
+### B. BUG-26 Fix: Pure Rupee Storage & Two-Table Synchronization
+1. **Rupee Direct Entry**:
+   - Stripped `decimalToCents()` and `/ 100` from `contacts/[id]/page.tsx`, `layout.tsx`, and `bookkeeping/page.tsx`. `creditLimit` is saved and read directly in integer Rupees.
+2. **Two-Table Atomic Sync (`src/app/api/v1/contacts/[id]/route.ts`)**:
+   - Whenever `creditLimit` is updated, the route atomically updates both:
+     - `contact.credit_limit`
+     - `profiles.creditLimit`
+     - `customer_type` / `customerType = 'CREDIT'` (if limit > 0)
+3. **Workflow Fallback (`src/lib/workflow.ts`)**:
+   - Evaluates `const creditLimit = Number(customerProfile.credit_limit ?? customerProfile.creditLimit ?? 0);`
+   - Evaluates `const usedCredit = Number(customerProfile.used_credit ?? customerProfile.usedCredit ?? 0);`
+
+### C. Credit Confirmation Modal Keyboard Navigation (BUG-24 Fix)
+- In `ProxyOrderBuilderView.tsx`, added dedicated `useEffect` keyboard listener for `showCreditModal`:
+  - <kbd>Y</kbd> or <kbd>Enter</kbd> $\rightarrow$ confirms and submits the order (`setShowCreditModal(false); submitProxyOrder();`).
+  - <kbd>N</kbd> or <kbd>Esc</kbd> $\rightarrow$ cancels modal and returns focus to Submit button.
+  - Added visual keyboard badges (`<kbd>Y / ↵</kbd>` and `<kbd>N / Esc</kbd>`) on modal buttons.
+
+### D. Exit Terminal Client-Side Navigation (BUG-25 Fix)
+- In `ProxyOrderBuilderView.tsx`, replaced `window.location.href = targetUrl` with Next.js App Router client-side transition `router.push(targetUrl)`.
+- Eliminates the full page white-screen reload when exiting to `/admin/orders`.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (BUG-24 Credit Modal Shortcuts, BUG-25 Fast Router Exit, BUG-26 Credit Limit Rupee Standardization)*
+
 
 
 

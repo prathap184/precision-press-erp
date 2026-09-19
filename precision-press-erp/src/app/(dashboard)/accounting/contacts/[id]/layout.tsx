@@ -184,7 +184,7 @@ export default function ContactDetailLayout({ children }: { children: React.Reac
         setFormTaxRateId(c.defaultTaxRateId || "none");
         setFormTaxExempt(c.isTaxExempt);
         setForm1099Vendor(c.is1099Vendor ?? false);
-        setFormCreditLimit(c.creditLimit != null ? centsToDecimal(c.creditLimit) : "");
+        setFormCreditLimit(c.creditLimit != null ? String(c.creditLimit) : "");
         setFormCurrencyCode(c.currencyCode || "");
         setFormOpeningBalance(c.openingBalance != null ? String(c.openingBalance) : "");
         setFormOpeningBalanceType(c.openingBalanceType || "Dr");

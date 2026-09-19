@@ -106,6 +106,29 @@ export async function PATCH(
       }
     }
 
+    if (parsed.creditLimit !== undefined) {
+      try {
+        const { supabaseServer } = await import("@/lib/supabase-server");
+        const numericLimit = parsed.creditLimit ?? 0;
+        await supabaseServer
+          .from("profiles")
+          .update({
+            creditLimit: numericLimit,
+            customerType: numericLimit > 0 ? 'CREDIT' : 'CASH',
+          })
+          .eq("id", id);
+        await supabaseServer
+          .from("contact")
+          .update({
+            credit_limit: numericLimit,
+            customer_type: numericLimit > 0 ? 'CREDIT' : 'CASH',
+          })
+          .eq("id", id);
+      } catch (syncErr) {
+        console.warn("Failed to sync creditLimit to profiles and contact:", syncErr);
+      }
+    }
+
     logAudit({ ctx, action: "update", entityType: "contact", entityId: id, changes: diffChanges(existing as Record<string, unknown>, updated as Record<string, unknown>), request });
 
     return NextResponse.json({ contact: updated });
