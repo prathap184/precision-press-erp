@@ -274,12 +274,21 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
   const handleBackFromDescModal = (rowId: string) => {
     setActiveDescRowId(null);
     setOpenRowId(rowId);
-    setTimeout(() => {
+    lastFocusedElementIdRef.current = `row-${rowId}-product-input`;
+    const focusItem = () => {
       const itemInput = document.getElementById(`row-${rowId}-product-input`);
       if (itemInput) {
         itemInput.focus();
+        try {
+          (itemInput as HTMLInputElement).select();
+        } catch {}
       }
-    }, 50);
+    };
+    focusItem();
+    requestAnimationFrame(focusItem);
+    setTimeout(focusItem, 40);
+    setTimeout(focusItem, 120);
+    setTimeout(focusItem, 250);
   };
 
   const handleRowFileSelect = async (rowId: string, file: File) => {
@@ -2177,7 +2186,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           {activeDescRowId && (
             <ItemDescriptionModal
               isOpen={Boolean(activeDescRowId)}
-              onClose={() => setActiveDescRowId(null)}
+              onClose={() => handleBackFromDescModal(activeDescRowId)}
               onBackNavigate={() => handleBackFromDescModal(activeDescRowId)}
               onSaveAndAdvance={(text) => handleSaveDescAndAdvance(activeDescRowId, text)}
               initialValue={rows.find((r: any) => r.id === activeDescRowId)?.description || rows.find((r: any) => r.id === activeDescRowId)?.projectName || ''}

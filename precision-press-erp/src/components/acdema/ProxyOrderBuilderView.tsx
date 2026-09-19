@@ -459,13 +459,22 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
   const handleBackFromDescModal = (rowId: string) => {
     setActiveDescRowId(null);
-    setTimeout(() => {
+    setOpenRowId(rowId);
+    lastFocusedElementIdRef.current = `row-${rowId}-product-input`;
+    const focusItem = () => {
       const itemInput = document.getElementById(`row-${rowId}-product-input`);
       if (itemInput) {
-        setOpenRowId(rowId);
         itemInput.focus();
+        try {
+          (itemInput as HTMLInputElement).select();
+        } catch {}
       }
-    }, 50);
+    };
+    focusItem();
+    requestAnimationFrame(focusItem);
+    setTimeout(focusItem, 40);
+    setTimeout(focusItem, 120);
+    setTimeout(focusItem, 250);
   };
 
   useEffect(() => {
@@ -516,6 +525,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           e.preventDefault();
           e.stopPropagation();
           setShowExitConfirmModal(false);
+          return;
+        }
+        if (activeDescRowId) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleBackFromDescModal(activeDescRowId);
           return;
         }
         if (showCreateCustomer) {
@@ -572,7 +587,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       window.removeEventListener('request-exit-proxy-order', handleExitRequest);
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [showExitConfirmModal, customerDropdownOpen, openRowId, openUnitPickerId, showAddressModal, showCreditModal, showConfirmOrderModal, showCreateCustomer]);
+  }, [showExitConfirmModal, activeDescRowId, customerDropdownOpen, openRowId, openUnitPickerId, showAddressModal, showCreditModal, showConfirmOrderModal, showCreateCustomer]);
 
   // Keyboard shortcut listener for Exit Confirmation Modal (Y/Enter = Yes, Go Back; N/Esc/Backspace = Cancel, Stay)
   useEffect(() => {
@@ -3949,7 +3964,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           {activeDescRowId && (
             <ItemDescriptionModal
               isOpen={Boolean(activeDescRowId)}
-              onClose={() => setActiveDescRowId(null)}
+              onClose={() => handleBackFromDescModal(activeDescRowId)}
               onBackNavigate={() => handleBackFromDescModal(activeDescRowId)}
               onSaveAndAdvance={(text) => handleSaveDescAndAdvance(activeDescRowId, text)}
               initialValue={rows.find((r: any) => r.id === activeDescRowId)?.description || rows.find((r: any) => r.id === activeDescRowId)?.projectName || ''}

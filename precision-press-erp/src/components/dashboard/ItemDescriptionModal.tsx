@@ -63,6 +63,33 @@ export function ItemDescriptionModal({
     }
   };
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleGoBack();
+        return;
+      }
+      if (e.key === 'Backspace') {
+        const isTextarea = document.activeElement === textareaRef.current;
+        if (!isTextarea || !text || text.length === 0 || (textareaRef.current && textareaRef.current.selectionStart === 0 && textareaRef.current.selectionEnd === 0)) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleGoBack();
+          return;
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleWindowKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleWindowKeyDown, true);
+    };
+  }, [isOpen, text, onBackNavigate, onClose]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -72,13 +99,6 @@ export function ItemDescriptionModal({
     }
 
     if (e.key === 'Backspace') {
-      // Guard against the preceding Backspace that opened this modal from immediately closing it
-      if (Date.now() - mountedAtRef.current < 400) {
-        e.preventDefault();
-        e.stopPropagation();
-        return;
-      }
-
       if (!text || text.length === 0 || (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0)) {
         e.preventDefault();
         e.stopPropagation();

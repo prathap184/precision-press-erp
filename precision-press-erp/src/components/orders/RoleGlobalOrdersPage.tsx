@@ -172,6 +172,17 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
       const target = e.target as HTMLElement;
       const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || (target as any).isContentEditable);
       
+      // Alt+Q: Focus search input
+      if ((e.key === 'q' || e.key === 'Q') && e.altKey) {
+        e.preventDefault();
+        const input = document.getElementById('role-orders-search-input') as HTMLInputElement | null;
+        if (input) {
+          input.focus();
+          try { input.select(); } catch {}
+        }
+        return;
+      }
+
       // F2 or (f / F when not typing in an input)
       if (e.key === 'F2' || ((e.key === 'f' || e.key === 'F') && !isInput && !e.ctrlKey && !e.metaKey && !e.altKey)) {
         e.preventDefault();
@@ -479,10 +490,11 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
           <div className="flex-1 relative group">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
             <input
+              id="role-orders-search-input"
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search by ID, Customer, Phone..."
+              placeholder="Search by ID, Customer, Phone... (Alt+Q)"
               className="w-full h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-lg pl-9 pr-3 text-xs font-semibold text-slate-800 placeholder:text-slate-400 outline-none focus:border-indigo-600 focus:bg-white/40 transition-all shadow-2xs"
             />
           </div>

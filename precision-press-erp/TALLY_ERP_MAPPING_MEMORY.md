@@ -1464,4 +1464,28 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
 - **BUG-7**: Removed redundant `invalidRowIndex = -1` check and unused error toast in `submitProxyOrder`.
 
 ---
-*Memory Updated & Persisted on: 2026-09-19 (Syntax fix, Esc Drawer Close, More Blue Less Pink, BUG-6 & BUG-7 Cleaned)*
+
+## 🧭 56. Global Orders Alt+Q Search Focus & Description Modal Esc/Backspace Return Navigation
+
+### A. Global Orders Search Focus on Demand (<kbd>Alt</kbd>+<kbd>Q</kbd>)
+- **Problem**: In `/admin/orders` (`GlobalOrdersPage.tsx`), the page previously had `autoFocus` and several delayed timers (`t1`, `t2`, `t3`) that automatically focused and scrolled to `#orders-search-input` on every page load.
+- **Fix**:
+  1. Removed `autoFocus` and the mounting `useEffect` scroll/focus timers from `GlobalOrdersPage.tsx`.
+  2. Implemented global keyboard shortcut <kbd>Alt</kbd>+<kbd>Q</kbd> in both `GlobalOrdersPage.tsx` and `RoleGlobalOrdersPage.tsx`. Pressing <kbd>Alt</kbd>+<kbd>Q</kbd> immediately focuses the search bar and selects any existing text.
+  3. Updated placeholder text to indicate the shortcut: `Search manifest by ID, Customer, Phone... (Alt+Q)`.
+
+### B. Item Description Modal Esc & Backspace Return Navigation
+- **Problem**: When inside the "Description for Stock Item" modal (`ItemDescriptionModal.tsx`), pressing <kbd>Esc</kbd> or <kbd>Backspace</kbd> would intermittently fail to return to the product item name input (`row-${rowId}-product-input`), leaving focus lost or opening the Exit Confirmation modal over it.
+- **Root Causes**:
+  1. A 400ms guard (`Date.now() - mountedAtRef.current < 400`) in `ItemDescriptionModal.tsx` swallowed Backspaces pressed immediately after opening.
+  2. Keyboard handlers were only attached to the `<textarea>` element. If focus shifted to buttons or modal container, key events were ignored.
+  3. In `ProxyOrderBuilderView.tsx`, `activeDescRowId` was missing from the global window `handleKeyDown` listener, causing global Esc to trigger the exit modal instead of dismissing the description dialog.
+  4. `onClose` was mapped to `() => setActiveDescRowId(null)` without triggering focus return.
+- **Fix**:
+  1. **Capture-Phase Window Listener**: Added window keydown listener in `ItemDescriptionModal.tsx` in capture phase (`true`). Pressing <kbd>Esc</kbd> at any point or <kbd>Backspace</kbd> (when text is empty, cursor is at 0, or focus is outside textarea) immediately calls `handleGoBack()`.
+  2. **Removed 400ms Delay**: Removed the time-based lock so empty descriptions can be exited immediately.
+  3. **Multi-Frame Focus Retention**: Upgraded `handleBackFromDescModal` in `ProxyOrderBuilderView.tsx` and `QuotationBuilderView.tsx` to set `openRowId(rowId)`, update `lastFocusedElementIdRef`, and focus + select `row-${rowId}-product-input` across immediate, `requestAnimationFrame`, 40ms, 120ms, and 250ms intervals.
+  4. **Unified Callback**: Wired `onClose` to `handleBackFromDescModal(activeDescRowId)` and added top-priority `if (activeDescRowId)` check in the parent keydown handler.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Alt+Q Global Orders, Item Description Modal Esc/Backspace Return Navigation)*
