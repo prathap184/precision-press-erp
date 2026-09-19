@@ -1605,6 +1605,30 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
   - If search input is empty: immediately blurs (unpoints) the input.
 
 ---
-*Memory Updated & Persisted on: 2026-09-19 (Global Orders Esc Search Unpoint)*
+
+## 🧹 59. Live Database Test Data Clean-Up for Real Company Onboarding
+
+### A. Context & Purpose
+- Prior to onboarding the live, real company into the ERP, all synthetic/test operational data was wiped from the PostgreSQL / Supabase database inside a strict atomic transaction (`BEGIN ... COMMIT`).
+- **Pre-requisite verified**: Full server backup (`full_db_backup.sql`, `.env`, `docker-compose.yml`, `volumes_backup.tar.gz`) was dumped from the Azure VM via `pg_dumpall`, bundled into `supabase-full-backup.tar.gz` (34 MB), and downloaded to the client's desktop.
+- Verified 1:1 table and column presence (290 total tables, 237 public tables).
+
+### B. Clean-Up Execution Details
+- **Tables Cleaned (Data rows deleted, schema & columns 100% preserved)**:
+  1. **Orders, Manifests & Line Items**: `order_items` (51 rows), `orders` (64 rows), `product_track` (15 rows).
+  2. **Invoices & Quotations**: `invoice_line` (36 rows), `invoice` (26 rows), `quotations` (1 row).
+  3. **Payments & Credits**: `payment` (14 rows), `customer_credit` (9 rows), `bank_transaction` (10 rows).
+  4. **Inventory & Products**: `products` (60 rows), `inventory_item` (1,801 rows), `inventory_category` (187 rows), `inventory_movement` (7 rows).
+  5. **Contacts & Parties**: `contact` (4,866 rows), `profiles` (1 customer profile `ram@gmail.com`).
+  6. **Journal Entries**: `journal_line` (180 rows), `journal_entry` (50 rows).
+  7. **Custom Non-System Accounts**: `chart_account` where `is_system = false` (121 rows).
+- **Core Entities Preserved (100% Intact & Untouched)**:
+  - **All 34 Staff and Admin user profiles** (`profiles` where `role != 'CUSTOMER'`) were preserved so all administrative and operational staff retain full login access.
+  - **All 101 Base System Accounts** (`chart_account` where `is_system = true`) were preserved and their balances cleanly reset to `0.00`.
+  - **Base Bank Accounts**: `Main Cash Drawer`, `Federal Bank`, `Cash B2 Drawer` preserved with balances reset to zero.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Live Database Clean-Up for Real Company Onboarding)*
+
 
 
