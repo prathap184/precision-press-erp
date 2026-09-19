@@ -2335,3 +2335,35 @@ All **335 verified Stock Items** from Tally (`items.xml` / Live Port 9000) have 
 
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 68 - Godown Master Sync & Section 69 - Inventory Stock Items 335/335 Synchronization)*
+
+---
+
+## 70. Item Godown Field (`tally_godown`), Warehouse Stock Linkage & Complete Eradication of Legacy "B1" References
+
+### A. Context & Purpose
+- In Tally (`gosdswin.xml` and `items.xml`), the single real godown is **`Main Location`** (GUID `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000003e`).
+- Legacy seed templates and temporary mockups originally used a dummy label `"B1"` / `"B1 (Stock)"`.
+- In this phase:
+  1. Added dedicated column `tally_godown text DEFAULT 'Main Location'` to `public.inventory_item`.
+  2. All **335 items** were linked in `public.warehouse_stock` to the `Main Location` warehouse record (`id: 'a38d79d9-5b26-4f91-90e7-020248889fb9'`).
+  3. Every residual `"B1"` reference across UI drawers, tables, and invoice payload builders was cleanly replaced with `"Main Location"`.
+
+### B. Modifications Summary
+1. **Database Schema (`public.inventory_item`)**:
+   - Added `tally_godown text DEFAULT 'Main Location'`
+   - Drizzle schema updated in `src/lib/db/schema/inventory.ts`
+2. **Warehouse Stock (`public.warehouse_stock`)**:
+   - 335 items mapped to `Main Location` with their respective `quantity_on_hand`
+3. **UI Column Subheaders (`B1 (Stock)` ➔ `Main Location (Stock)`)**:
+   - `src/components/acdema/ProxyOrderBuilderView.tsx` (line 4242)
+   - `src/components/acdema/QuotationBuilderView.tsx` (line 2468)
+   - `src/components/dashboard/InvoiceFormView.tsx` (line 2837)
+4. **Invoice Generation & Tally Sync Routes**:
+   - `src/app/api/v1/invoices/route.ts`: `godownName` changed to `l.godownName || "Main Location"`, `commonGodown` changed to `"Main Location"`
+   - `src/lib/tally/tally-master-service.ts`: `godown` default set to `'Main Location'`
+5. **Inventory Details View (`/accounting/inventory/[id]`)**:
+   - Fallbacks and Tally XML preview tag `<GODOWNNAME>Main Location</GODOWNNAME>` updated to strictly reference `Main Location` (code `MAIN`).
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Section 70 - Complete Eradication of Legacy B1 References & Main Location Godown Linkage)*
+

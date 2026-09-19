@@ -111,6 +111,7 @@ export const inventoryItem = pgTable(
     tallyGuid: text("tally_guid"),
     alterId: bigint("alter_id", { mode: "number" }),
     tallyStockGroup: text("tally_stock_group"),
+    tallyGodown: text("tally_godown").default("Main Location"),
     tallyUom: text("tally_uom"),
     tallyAltUom: text("tally_alt_uom"),
     tallyBillingMode: text("tally_billing_mode").default("B"), // 'A' (Pieces) or 'B' (SqFt)

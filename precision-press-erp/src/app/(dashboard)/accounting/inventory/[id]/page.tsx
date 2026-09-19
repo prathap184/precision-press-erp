@@ -566,10 +566,10 @@ export default function InventoryItemDetailsPage() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-foreground">
-                        {warehouseStocks.length > 0 ? warehouseStocks[0].warehouseName : "Godown B1"}
+                        {warehouseStocks.length > 0 ? warehouseStocks[0].warehouseName : "Main Location"}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Godown Code: <span className="font-mono font-medium text-foreground">{warehouseStocks.length > 0 ? warehouseStocks[0].warehouseCode : "B1"}</span>
+                        Godown Code: <span className="font-mono font-medium text-foreground">{warehouseStocks.length > 0 ? warehouseStocks[0].warehouseCode : "MAIN"}</span>
                       </p>
                     </div>
                   </div>
@@ -601,7 +601,7 @@ export default function InventoryItemDetailsPage() {
                   <p className="text-xs font-semibold text-foreground">Tally Stock Sync Location</p>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  When this item is billed on a Sales Invoice, Tally XML will automatically deduct inventory from Godown <strong className="text-foreground">{warehouseStocks.length > 0 ? warehouseStocks[0].warehouseCode : "B1"}</strong> using tag <code className="text-xs bg-muted px-1.5 py-0.5 rounded">&lt;GODOWNNAME&gt;{warehouseStocks.length > 0 ? warehouseStocks[0].warehouseCode : "B1"}&lt;/GODOWNNAME&gt;</code>.
+                  When this item is billed on a Sales Invoice, Tally XML will automatically deduct inventory from Godown <strong className="text-foreground">{warehouseStocks.length > 0 ? warehouseStocks[0].warehouseName : "Main Location"}</strong> using tag <code className="text-xs bg-muted px-1.5 py-0.5 rounded">&lt;GODOWNNAME&gt;{warehouseStocks.length > 0 ? warehouseStocks[0].warehouseName : "Main Location"}&lt;/GODOWNNAME&gt;</code>.
                 </p>
               </div>
             </div>

@@ -707,7 +707,7 @@ export async function POST(request: Request) {
           unit: "N",
           rate: (l.unitPrice || 0) / 100,
           taxableAmount: l.amount / 100,
-          godownName: "B1",
+          godownName: l.godownName || "Main Location",
           cgstRate: l.cgstRate || 9,
           sgstRate: l.sgstRate || 9,
           cgstAmount: (l.cgstAmount || 0) / 100,
@@ -731,7 +731,7 @@ export async function POST(request: Request) {
         sgst: (result.sgstTotal || 0) / 100,
         igst: (result.igstTotal || 0) / 100,
         grandTotal: result.total / 100,
-        commonGodown: "B1",
+        commonGodown: "Main Location",
       };
 
       await enqueueTallySync({

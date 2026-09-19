@@ -425,7 +425,7 @@ export async function loadTallyStockItems(): Promise<any[]> {
       rate,
       openingQuantity: qty,
       tallyGuid: guid,
-      godown: 'B1',
+      godown: 'Main Location',
     });
   }
 
@@ -786,6 +786,7 @@ export async function executeMasterSync(type: MasterType, options?: ExecuteSyncO
         category_id: categoryId,
         tally_item_name: item.name,
         tally_stock_group: item.group,
+        tally_godown: item.godown || 'Main Location',
         tally_uom: item.rawUom || item.uom || 'N',
         unit_of_measure: normalizedUom,
         tally_billing_mode: billingMode,

@@ -2465,7 +2465,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                         <div className="flex-1 font-bold">Stock Item Name</div>
                         <div className="w-28 text-center shrink-0">HSN Code</div>
                         <div className="w-20 text-center shrink-0">GST Rate</div>
-                        <div className="w-32 text-right pr-2 shrink-0">B1 (Stock)</div>
+                        <div className="w-32 text-right pr-2 shrink-0 whitespace-nowrap">Main Location (Stock)</div>
                         <div className="w-28 text-right shrink-0">Rate / Unit</div>
                       </div>
 
