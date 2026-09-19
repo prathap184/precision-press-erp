@@ -1447,6 +1447,17 @@ async function executeOrderPlacementTx(
     throw new Error(`Order placement failed: ${dbRes.error}`);
   }
 
+  if (customerData.type === 'CREDIT') {
+    try {
+      await supabaseServer
+        .from('contact')
+        .update({ used_credit: balanceAfter })
+        .eq('id', customerData.id);
+    } catch (syncErr) {
+      console.warn('Failed to sync used_credit to contact table:', syncErr);
+    }
+  }
+
   return {
     success: true,
     orderId: dbRes?.orderId || baseId,
