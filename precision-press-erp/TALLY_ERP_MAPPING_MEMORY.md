@@ -2223,6 +2223,69 @@ flowchart TD
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 66 - Supplier Master 88/88 Synchronization & Grand Contact Master Audit)*
 
+---
+
+## 67. Inventory Stock Groups Master Synchronization Audit (30 / 30 Groups)
+
+All **30 verified Stock Groups** (22 Primary Top-Level groups and 8 Child Sub-groups) from `C:\Users\jprat\Videos\groups.xml` have been synchronized into PostgreSQL table `public.inventory_category` under an ACID transaction, with 100% hierarchy preservation (`parent_id` linkage) and GUID mapping.
+
+```mermaid
+graph TD
+    classDef primary fill:#2563eb,stroke:#1d4ed8,color:#fff;
+    classDef child fill:#10b981,stroke:#059669,color:#fff;
+
+    SX["SX (Primary)"]:::primary
+    SX --> Bond["Bond"]:::child
+    SX --> Cutter["Cutter"]:::child
+    SX --> Del["Del"]:::child
+    SX --> Extra["Extra"]:::child
+    SX --> PromoTable["Promo Table"]:::child
+
+    Offset["Offset (Primary)"]:::primary
+    Offset --> Lamination["Lamination"]:::child
+
+    Mutoh["Mutoh (Primary)"]:::primary
+    Mutoh --> LGMatt["LG Matt Vinyl (Mu)"]:::child
+
+    ZMat["Z Material (Primary)"]:::primary
+    ZMat --> Pocket["Pocket"]:::child
+```
+
+### A. Stock Group Verification Scorecard
+
+| Field / Attribute Verified | Tally `groups.xml` | Ingested to `public.inventory_category` | Parity Rate | Status |
+|:---|:---:|:---:|:---:|:---:|
+| **Total Stock Groups** | 30 Unique | **30 Records** | **100.0%** | ✅ Exact Match |
+| **Primary Groups (Top-Level)** | 22 Groups | **22 Groups (`parent_id = NULL`)** | **100.0%** | ✅ Clean Top Hierarchy |
+| **Child Groups (Sub-Groups)** | 8 Groups | **8 Groups (`parent_id` linked)** | **100.0%** | ✅ 100% Hierarchy Linked |
+| **Tally Unique GUID (`tally_guid`)** | 30 GUIDs | **30 / 30 GUIDs** | **100.0%** | ✅ 0 Nulls, 0 Collisions |
+| **Tally Stock Group Name** | 30 Names | **30 / 30 Names** | **100.0%** | ✅ 1:1 Matching |
+| **Tally Alter ID (`alter_id`)** | Populated | **30 / 30 Alter IDs** | **100.0%** | ✅ Exact Sequence ID |
+| **Discrepancies / Mismatches** | **0** | **0** | **0.0%** | 🎉 **PERFECT AUDIT** |
+
+---
+
+### B. Complete Ingested Stock Group Tree in `public.inventory_category`
+
+1. **SX Group** (`cb483e18-0c37-4534-b5eb-14e8be847eac`):
+   - ↳ `Bond` (`f3994950-8901-4710-91fb-ad8c880ef50a`)
+   - ↳ `Cutter` (`b1d36da2-335b-4931-9598-dadb5a6ebf7f`)
+   - ↳ `Del` (`f6335d39-4d8c-4d4e-be3e-8e1aba3045a4`)
+   - ↳ `Extra` (`8d9fc51f-ef6e-476a-b2f9-5b404003a1f8`)
+   - ↳ `Promo Table` (`f7e708ef-a9bc-4897-802c-4a348db74436`)
+2. **Offset Group** (`7928e6ca-5ede-4281-8240-e62c0ce9d18e`):
+   - ↳ `Lamination` (`12fe235e-8466-49b7-8894-4642ceb82839`)
+3. **Mutoh Group** (`9c6cbf5f-1bf6-4fd3-9477-263e03c37d1f`):
+   - ↳ `LG Matt Vinyl (Mu)` (`7ebb345b-2dff-4490-81bb-e1359983255e`)
+4. **Z Material Group** (`a202f66f-d0b6-4e68-a572-8dcf4a65ba7a`):
+   - ↳ `Pocket` (`cbefe698-b86e-479b-b7a6-ad4fd07d5814`)
+5. **Standalone Primary Groups (18 Groups)**:
+   - `Display Stand`, `Eco`, `Flex`, `Frosted Macal Crystal (PL)`, `LED`, `LG`, `PC Sheet`, `Plain`, `Plastic`, `Regular`, `SignBoard`, `Solvent`, `Sticker`, `Xerox`, `Z DMD`, `Z Ink`, `Z Machine`, `Z Sublimation`.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Section 67 - Inventory Stock Groups 30/30 Synchronization)*
+
+
 
 
 
