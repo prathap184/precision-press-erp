@@ -1103,26 +1103,25 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       <div className="font-sans text-slate-800 p-3 md:p-4 pt-2 md:pt-3 relative z-10 min-h-screen rounded-none">
         <div className="w-full">
           
-          {/* Moving Animated Light Pink & Light Blue Ambient Background */}
-          <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#f1f6fd]">
+          {/* Moving Animated Light Pink & Light Blue Ambient Background (Image 2 Parity) */}
+          <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none bg-[#e2ecf8]">
             {/* Soft grid & noise texture */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(#93c5fd_1.2px,transparent_1.2px)] [background-size:28px_28px] opacity-25"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(#bfdbfe_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-40"></div>
             
-            {/* 1. Ultra Light Pink Orb - Moving from Left to Right Side */}
-            <div className="animate-ambient-lr-1 absolute -top-[12%] -left-[10%] w-[70vw] h-[70vw] max-w-[950px] max-h-[950px] rounded-full bg-gradient-to-r from-pink-200/40 via-rose-100/30 to-pink-50/15 blur-[120px] pointer-events-none"></div>
+            {/* 1. Moving Light Pink Orb - Left to Right Float across screen */}
+            <div className="animate-ambient-lr-1 absolute -top-[10%] -left-[10%] w-[68vw] h-[68vw] max-w-[900px] max-h-[900px] rounded-full bg-gradient-to-r from-pink-300/40 via-rose-200/35 to-pink-100/20 blur-[100px] pointer-events-none"></div>
 
-            {/* 2. Light Blue Orb - Counter drift */}
-            <div className="animate-ambient-rl-1 absolute -top-[15%] -right-[15%] w-[70vw] h-[70vw] max-w-[950px] max-h-[950px] rounded-full bg-gradient-to-l from-sky-200/45 via-blue-100/35 to-cyan-50/20 blur-[120px] pointer-events-none"></div>
+            {/* 2. Soft Sky Blue Orb from Image 2 */}
+            <div className="absolute -top-[15%] -right-[10%] w-[60vw] h-[60vw] max-w-[900px] max-h-[900px] rounded-full bg-sky-200/50 blur-[130px] pointer-events-none"></div>
 
-            {/* 3. Light Blue / Cyan Orb - Bottom Left floating */}
-            <div className="animate-ambient-rl-2 absolute -bottom-[15%] -left-[15%] w-[68vw] h-[68vw] max-w-[920px] max-h-[920px] rounded-full bg-gradient-to-tr from-cyan-200/40 via-blue-100/30 to-sky-50/20 blur-[120px] pointer-events-none"></div>
+            {/* 3. Deep soft blue glow */}
+            <div className="absolute -bottom-[15%] -left-[10%] w-[55vw] h-[55vw] max-w-[850px] max-h-[850px] rounded-full bg-blue-200/40 blur-[130px] pointer-events-none"></div>
 
-            {/* 4. Ultra Light Pink / Rose Orb - Bottom gliding Left to Right */}
-            <div className="animate-ambient-lr-2 absolute -bottom-[12%] left-[10%] w-[65vw] h-[65vw] max-w-[880px] max-h-[880px] rounded-full bg-gradient-to-r from-pink-200/35 via-rose-100/25 to-transparent blur-[120px] pointer-events-none"></div>
+            {/* 4. Moving Light Pink Orb 2 - Counter gliding Right to Left */}
+            <div className="animate-ambient-rl-1 absolute -bottom-[10%] right-[5%] w-[62vw] h-[62vw] max-w-[850px] max-h-[850px] rounded-full bg-gradient-to-l from-pink-300/35 via-rose-200/25 to-transparent blur-[110px] pointer-events-none"></div>
 
-            {/* 5. Center soft ambient aura drifting Left to Right */}
-            <div className="animate-ambient-lr-1 absolute top-[20%] left-[15%] w-[60vw] h-[60vw] max-w-[820px] max-h-[820px] rounded-full bg-gradient-to-r from-pink-100/30 via-indigo-50/20 to-sky-100/35 blur-[140px] pointer-events-none"></div>
+            {/* 5. Center ambient aura drifting Left to Right */}
+            <div className="animate-ambient-lr-2 absolute top-[28%] left-[18%] w-[55vw] h-[55vw] max-w-[750px] max-h-[750px] rounded-full bg-gradient-to-tr from-pink-200/30 via-sky-100/40 to-transparent blur-[120px] pointer-events-none"></div>
           </div>
 
           <div className="flex flex-col gap-4 pb-2">
@@ -1130,14 +1129,14 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             {/* Top Row: Image, Order # / Date, Customer */}
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-[180px_auto_1fr] xl:grid-cols-[200px_auto_1fr] items-stretch">
               {/* Image Card */}
-              <div className="relative z-10 rounded-[2rem] bg-white/50 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-center min-h-[120px]">
-                <div className="w-full h-full rounded-[1.5rem] overflow-hidden relative bg-white">
+              <div className="relative z-10 rounded-[2rem] bg-white/30 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40 flex flex-col justify-center min-h-[120px]">
+                <div className="w-full h-full rounded-[1.5rem] overflow-hidden relative bg-white/40 backdrop-blur-sm">
                   <img src={currentImage || 'https://images.unsplash.com/photo-1626282874430-c11ae32d2898?auto=format&fit=crop&w=1200'} className="absolute inset-0 w-full h-full object-cover" alt="Product preview" />
                 </div>
               </div>
 
               {/* Order # & Date Card */}
-              <div className="relative z-20 rounded-[2rem] bg-white/50 p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-center shrink-0">
+              <div className="relative z-20 rounded-[2rem] bg-white/30 p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40 flex flex-col justify-center shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight">
@@ -1150,12 +1149,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       readOnly
                       tabIndex={-1}
                       placeholder={vm.mode === 'quotation' ? 'QU-0001' : 'ORD-0001'}
-                      className="h-10 w-28 bg-slate-50 text-slate-800 font-mono font-black text-xs px-3 rounded-xl border-2 border-slate-200 outline-none select-all cursor-default"
+                      className="h-10 w-28 bg-white/40 backdrop-blur-md text-slate-800 font-mono font-black text-xs px-3 rounded-xl border border-white/60 outline-none select-all cursor-default shadow-xs"
                       title={vm.mode === 'quotation' ? 'Quote # (Auto-generated)' : 'Order # (Auto-generated)'}
                     />
                   </div>
 
-                  <div className="h-9 w-[1px] bg-slate-200 self-end mb-0.5" />
+                  <div className="h-9 w-[1px] bg-slate-300/60 self-end mb-0.5" />
 
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight flex items-center justify-between gap-1">
@@ -1190,7 +1189,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         }
                       }}
                       placeholder="DD-MM-YYYY"
-                      className="h-10 w-28 text-center bg-slate-50 hover:bg-slate-100 focus:bg-white text-slate-800 font-bold text-xs px-2 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all tabular-nums"
+                      className="h-10 w-28 text-center bg-white/40 backdrop-blur-md hover:bg-white/60 focus:bg-white/90 text-slate-800 font-bold text-xs px-2 rounded-xl border border-white/60 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all tabular-nums shadow-xs"
                       title={vm.mode === 'quotation' ? 'Quotation Date (Press F2)' : 'Order Date (Press F2)'}
                     />
                   </div>
@@ -1198,7 +1197,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
               </div>
 
               {/* Customer Card */}
-              <div className="relative z-50 rounded-[2rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 min-w-0">
+              <div className="relative z-50 rounded-[2rem] bg-white/30 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40 min-w-0">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Customer</h3>
                   <button onClick={() => setShowCreateCustomer(true)} className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-700">
@@ -1207,7 +1206,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                 </div>
                 
                 <div className="relative">
-                  <div id="error-customer" className={`flex h-10 w-full items-center rounded-xl px-3 transition-all duration-150 ${validationErrors['customer'] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : customerDropdownOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-md' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                  <div id="error-customer" className={`flex h-10 w-full items-center rounded-xl px-3 transition-all duration-150 ${validationErrors['customer'] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : customerDropdownOpen ? 'border-2 border-blue-600 bg-white/90 backdrop-blur-md ring-4 ring-blue-500/20 shadow-md' : 'border border-white/60 bg-white/40 backdrop-blur-md focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white/90 shadow-xs'}`}>
                       {customerSearching ? (
                         <Loader2 size={16} className="mr-2 animate-spin text-blue-600 shrink-0" />
                       ) : (
@@ -1357,7 +1356,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                   </div>
                   
                   {selectedCustomer && (
-                    <div className="mt-2 rounded-xl bg-slate-50 p-2 text-xs font-medium text-slate-600 border border-slate-200">
+                    <div className="mt-2 rounded-xl bg-white/40 backdrop-blur-md p-2 text-xs font-medium text-slate-700 border border-white/50 shadow-xs">
                       {selectedCustomer.phone || 'No phone'} • {selectedCustomer.businessName || selectedCustomer.billing_city || 'Customer'}
                     </div>
                   )}
@@ -1369,7 +1368,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             {/* Middle Row: Items Card (Full Width) */}
             <div className="w-full mb-2">
               {/* Items Card */}
-              <div className="relative z-10 w-full rounded-[1.75rem] bg-white/50 p-3.5 pb-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col">
+              <div className="relative z-10 w-full rounded-[1.75rem] bg-white/30 p-3.5 pb-3 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40 flex flex-col">
                 <div className="mb-2 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</h3>
                   <button
@@ -1385,7 +1384,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                 <div className="flex-1 overflow-visible">
                   <table className="w-full text-left">
                     <thead>
-                      <tr className="border-b-2 border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                      <tr className="border-b border-white/40 text-[10px] font-black uppercase tracking-widest text-slate-500">
                         <th className="py-1.5 px-1.5 w-8 text-center">#</th>
                         <th className="py-1.5 px-2 min-w-[220px] text-left">Name of Item</th>
                         <th className="py-1.5 px-1 w-[88px] text-center">HSN Code</th>
@@ -1404,7 +1403,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         <th className="py-1.5 px-1 w-9 text-center">×</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-white/20">
                       {rows.map((row: any, index: number) => {
                         const product = products.find((item: any) => item.id === row.productId);
                         const rawUom = ((product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || '').trim().toLowerCase();
@@ -1443,7 +1442,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const gstRate = product?.gst_rate || 18;
 
                         return (
-                          <tr key={row.id} className="group transition-colors hover:bg-slate-50/50 align-top">
+                          <tr key={row.id} className="group transition-colors hover:bg-white/20 align-top border-b border-white/25">
                             <td className="py-1 px-1.5 text-center tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center text-xs font-bold text-slate-400">
                                 {index + 1}
@@ -1458,7 +1457,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                   return (
                                     <div className="space-y-1 min-w-[220px]">
                                       <div id={`error-row-${row.id}-product`} className="relative w-full">
-                                      <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white ring-4 ring-blue-500/20 shadow-sm' : activeDescRowId ? 'border-2 border-slate-200 bg-slate-50' : 'border-2 border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                      <div className={`flex h-10 w-full items-center rounded-lg px-3 transition-all duration-150 ${validationErrors[`row-${row.id}-product`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 shadow-md' : isOpen ? 'border-2 border-blue-600 bg-white/95 backdrop-blur-md ring-4 ring-blue-500/20 shadow-sm' : activeDescRowId ? 'border border-white/60 bg-white/40 backdrop-blur-md' : 'border border-white/60 bg-white/40 backdrop-blur-md focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white/90 shadow-xs'}`}>
                                          <input
                                            id={`row-${row.id}-product-input`}
                                            value={isOpen ? searchQuery : (selProd?.name ?? '')}
@@ -1645,20 +1644,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                      <div className="flex items-center gap-1.5 pt-0.5">
                                        <span className="text-[10px] font-bold text-slate-400 select-none pl-1" title="Tally Additional Description">↳</span>
                                        <input
-                                         id={`row-${row.id}-description`}
-                                         value={row.description !== undefined ? row.description : (row.projectName || '')}
-                                         readOnly
-                                         tabIndex={-1}
-                                         onClick={() => {
-                                           setOpenRowId(null);
-                                           setActiveDescRowId(row.id);
-                                         }}
-                                         placeholder="Description / notes (optional)..."
-                                         className="h-7 w-full rounded-md border border-slate-200 bg-slate-50/70 px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer truncate"
-                                         title="Additional Description for stock item (like Tally Prime) — Opens description window"
-                                       />
+                                          id={`row-${row.id}-description`}
+                                          value={row.description !== undefined ? row.description : (row.projectName || '')}
+                                          readOnly
+                                          tabIndex={-1}
+                                          onClick={() => {
+                                            setOpenRowId(null);
+                                            setActiveDescRowId(row.id);
+                                          }}
+                                          placeholder="Description / notes (optional)..."
+                                          className="h-7 w-full rounded-md border border-white/40 bg-white/30 backdrop-blur-sm px-2 text-[11px] font-medium text-slate-700 placeholder:text-slate-400 outline-none focus:border-blue-600 focus:bg-white/90 focus:ring-2 focus:ring-blue-500/20 transition-all shadow-2xs cursor-pointer truncate"
+                                          title="Additional Description for stock item (like Tally Prime) — Opens description window"
+                                        />
+                                      </div>
                                      </div>
-                                    </div>
                                   );
                                 })()}
                             </td>
@@ -1692,9 +1691,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             <td className="py-1 px-1 tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center">
                                 {!isSizeInputActive ? (
-                                  <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
+                                  <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-white/20 backdrop-blur-sm rounded-lg font-bold border border-white/30">—</div>
                                 ) : (
-                                  <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                  <div className={`flex h-10 w-[90px] items-center rounded-lg px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-width`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border border-white/60 bg-white/40 backdrop-blur-md focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white/90 shadow-xs'}`}>
                                     <input
                                       id={`error-row-${row.id}-width`}
                                       value={row.width !== undefined ? row.width : (hasSingleDefaultSize && product?.default_width ? String(product.default_width) : '')}
@@ -1814,9 +1813,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             <td className="py-1 px-1 tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center">
                                 {!isSizeInputActive ? (
-                                  <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
+                                  <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-white/20 backdrop-blur-sm rounded-lg font-bold border border-white/30">—</div>
                                 ) : (
-                                  <div className={`flex h-10 w-[90px] items-center rounded-lg border-2 px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border-slate-200 bg-slate-50 focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white'}`}>
+                                  <div className={`flex h-10 w-[90px] items-center rounded-lg px-1 overflow-visible transition-all ${validationErrors[`row-${row.id}-height`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50' : 'border border-white/60 bg-white/40 backdrop-blur-md focus-within:border-blue-600 focus-within:ring-4 focus-within:ring-blue-500/20 focus-within:bg-white/90 shadow-xs'}`}>
                                     <input
                                       id={`error-row-${row.id}-height`}
                                       value={row.height !== undefined ? row.height : (hasSingleDefaultSize && product?.default_length ? String(product.default_length) : '')}
@@ -2018,10 +2017,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       }
                                     }}
-                                    className={`h-10 w-14 rounded-lg border-2 text-center text-xs font-bold outline-none transition-all ${
+                                    className={`h-10 w-14 rounded-lg border text-center text-xs font-bold outline-none transition-all ${
                                       validationErrors[`row-${row.id}-pcs`]
-                                        ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
-                                        : 'border-slate-200 bg-slate-50 text-slate-800 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'
+                                        ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                                        : 'border-white/60 bg-white/40 backdrop-blur-md text-slate-800 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white/90 shadow-xs'
                                     }`}
                                     placeholder="Pcs"
                                   />
@@ -2117,12 +2116,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                               try {
                                                 const len = (itemInput as HTMLInputElement).value ? (itemInput as HTMLInputElement).value.length : 0;
                                                 (itemInput as HTMLInputElement).setSelectionRange(len, len);
-                                              } catch {}
                                             }
                                           }
                                         }
                                       }}
-                                      className={`h-10 w-14 rounded-lg border-2 text-center text-xs font-bold transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700' : 'border-slate-200 bg-slate-50 text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'}`}
+                                      className={`h-10 w-14 rounded-lg border text-center text-xs font-bold transition-all ${validationErrors[`row-${row.id}-quantity`] ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700' : 'border-white/60 bg-white/40 backdrop-blur-md text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white/90 shadow-xs'}`}
                                       placeholder="Qty"
                                     />
                                     <span className="text-[11px] font-black text-slate-500">{displayUnit}</span>
@@ -2188,10 +2186,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       }
                                     }}
                                     placeholder="0.00"
-                                    className={`h-10 w-18 rounded-lg border-2 text-center text-xs font-bold outline-none transition-all tabular-nums ${
+                                    className={`h-10 w-18 rounded-lg border text-center text-xs font-bold outline-none transition-all tabular-nums ${
                                       validationErrors[`row-${row.id}-rate`]
-                                        ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
-                                        : 'border-blue-300 bg-blue-50 text-blue-800 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/30 focus:bg-white'
+                                        ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                                        : 'border-blue-300/60 bg-blue-50/50 backdrop-blur-md text-blue-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/30 focus:bg-white/90 shadow-xs'
                                     }`}
                                     title="Rate per sq.ft in Mode A — editable (like Tally)"
                                   />
@@ -2204,7 +2202,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             <td className="py-1 px-1 text-center tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center">
                                 {isSizeInputActive && isModeA ? (
-                                  <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 shadow-2xs">
+                                  <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-white/50 backdrop-blur-sm px-2.5 py-1.5 rounded-lg border border-white/60 shadow-2xs">
                                     {calculatedRatePerUnit.toFixed(2)}
                                     <span className="text-[10px] text-blue-500 font-bold">{displayUnit}</span>
                                   </span>
@@ -2278,10 +2276,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       }}
                                       placeholder="0.00"
-                                      className={`h-10 w-18 rounded-lg border-2 text-center text-xs font-bold outline-none transition-all tabular-nums ${
+                                      className={`h-10 w-18 rounded-lg border text-center text-xs font-bold outline-none transition-all tabular-nums ${
                                         validationErrors[`row-${row.id}-rate`]
-                                          ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
-                                          : 'border-emerald-300 bg-emerald-50 text-emerald-800 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/30 focus:bg-white'
+                                          ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                                          : 'border-emerald-300/60 bg-emerald-50/50 backdrop-blur-md text-emerald-900 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/30 focus:bg-white/90 shadow-xs'
                                       }`}
                                       title="Rate per unit in Mode B — editable (like Tally)"
                                     />
@@ -2294,7 +2292,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             <td className="py-1 px-1 text-center tabular-nums align-top">
                               <div className="h-10 flex items-center justify-center">
                                 {isDirect ? (
-                                  <div className="h-10 w-full min-w-[76px] flex items-center justify-center text-slate-400 bg-slate-100/60 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
+                                  <div className="h-10 w-full min-w-[76px] flex items-center justify-center text-slate-400 bg-white/20 backdrop-blur-sm rounded-lg border border-dashed border-white/40 text-xs font-bold font-mono">
                                     —
                                   </div>
                                 ) : (
@@ -2337,7 +2335,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                           }
                                         }
                                       }}
-                                      className="h-10 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all cursor-pointer"
+                                      className="h-10 w-full rounded-lg border border-white/60 bg-white/40 backdrop-blur-md px-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white/90 transition-all cursor-pointer shadow-xs"
                                     >
                                       <option value="NONE">None</option>
                                       <option value="METAL">Metal</option>
@@ -2396,10 +2394,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                         }
                                       }
                                     }}
-                                    className={`h-10 w-full rounded-lg border-2 pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all ${
+                                    className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white/90 transition-all ${
                                       validationErrors[`row-${row.id}-file`]
-                                        ? 'border-red-400 bg-red-50 text-red-600 placeholder-red-300'
-                                        : 'border-slate-200 bg-slate-50 text-slate-800'
+                                        ? 'border-2 border-red-400 bg-red-50 text-red-600 placeholder-red-300'
+                                        : 'border-white/60 bg-white/40 backdrop-blur-md text-slate-800 shadow-xs'
                                     }`}
                                     placeholder="Paste path or browse file..."
                                   />
@@ -2669,9 +2667,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         );
                       })()}
                     </tbody>
-                    {/* Tally Total Row (Clean soft borders matching table theme, removing harsh black line) */}
+                    {/* Tally Total Row (Clean translucent glass styling matching Image 2 theme) */}
                     <tfoot>
-                      <tr className="border-t-2 border-b border-slate-200 bg-slate-50/80 text-xs font-black text-slate-900">
+                      <tr className="border-t border-b border-white/40 bg-white/30 backdrop-blur-md text-xs font-black text-slate-900">
                         <td className="py-1.5 px-2 text-center"></td>
                         <td colSpan={13} className="py-1.5 px-2 font-black uppercase tracking-wider text-slate-800">
                           TOTAL
@@ -2692,7 +2690,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
 
               {/* LEFT: Logistics Card */}
-              <div className="rounded-[1.5rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+              <div className="rounded-[1.5rem] bg-white/30 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
                 </div>
@@ -2804,7 +2802,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         }
                       }
                     }}
-                    className="flex h-11 w-full items-center justify-between rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 text-sm font-black tracking-wide text-slate-800 transition-all hover:bg-slate-100/80 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer"
+                    className="flex h-11 w-full items-center justify-between rounded-xl border border-white/60 bg-white/40 backdrop-blur-md px-3.5 text-sm font-black tracking-wide text-slate-800 transition-all hover:bg-white/60 focus:border-blue-600 focus:bg-white/90 focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer shadow-xs"
                   >
                     {(() => {
                       const cur = LOGISTICS_OPTIONS.find(o => o.id === deliveryType) || LOGISTICS_OPTIONS[0];
@@ -2890,10 +2888,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       <>
                         <select
                           id="error-shippingAddress"
-                          className={`h-10 w-full rounded-lg border-2 px-3 text-sm font-medium transition-all ${
+                          className={`h-10 w-full rounded-lg border px-3 text-sm font-medium transition-all shadow-xs ${
                             validationErrors['shippingAddress']
-                              ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
-                              : 'border-slate-200 bg-slate-50 text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white'
+                              ? 'border-2 border-red-500 ring-4 ring-red-500/30 bg-red-50/50 text-red-700'
+                              : 'border-white/60 bg-white/40 backdrop-blur-md text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white/90'
                           }`}
                           value={shippingAddress}
                           onChange={(e) => {
@@ -3001,8 +2999,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             if (logBtn) logBtn.focus();
                           }
                         }}
-                        className={`flex h-10 w-full items-center justify-center rounded-xl border-2 border-dashed text-[11px] font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer ${
-                          validationErrors['shippingAddress'] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50 text-red-600' : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                        className={`flex h-10 w-full items-center justify-center rounded-xl border-2 border-dashed text-[11px] font-bold uppercase tracking-widest transition-all focus:border-2 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer shadow-xs ${
+                          validationErrors['shippingAddress'] ? 'border-red-500 ring-4 ring-red-500/30 bg-red-50 text-red-600' : 'border-white/60 bg-white/30 backdrop-blur-md text-slate-600 hover:bg-white/50'
                         }`}
                         title="Press Space to add address, or Enter to go to Terminal"
                       >
@@ -3015,7 +3013,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
               {/* RIGHT: Payment / Quotation Actions Card */}
               <div>
-                <div className="rounded-[1.5rem] bg-white/50 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+                <div className="rounded-[1.5rem] bg-white/30 p-4 pb-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">
                       {vm.mode === 'quotation' ? 'Quotation Actions' : 'Payment Terminal'}
@@ -3118,7 +3116,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               }
                             }
                           }}
-                          className="flex h-11 w-full items-center justify-between rounded-xl border-2 border-slate-200 bg-slate-50 px-3.5 text-sm font-black tracking-wide text-slate-800 transition-all hover:bg-slate-100/80 focus:border-blue-600 focus:bg-white focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer"
+                          className="flex h-11 w-full items-center justify-between rounded-xl border border-white/60 bg-white/40 backdrop-blur-md px-3.5 text-sm font-black tracking-wide text-slate-800 transition-all hover:bg-white/60 focus:border-blue-600 focus:bg-white/90 focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer shadow-xs"
                         >
                           {(() => {
                             const cur = PAYMENT_OPTIONS.find(o => o.id === paymentMode) || PAYMENT_OPTIONS[0];
@@ -3277,7 +3275,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         }
                       }}
                       placeholder="Specific color needs, hardware requirements..."
-                      className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-2 text-xs h-16 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white font-semibold resize-none transition-all"
+                      className="w-full bg-white/40 backdrop-blur-md border border-white/60 rounded-xl p-2 text-xs h-16 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white/90 font-semibold resize-none transition-all shadow-xs text-slate-800 placeholder:text-slate-400"
                     />
                   </div>
 

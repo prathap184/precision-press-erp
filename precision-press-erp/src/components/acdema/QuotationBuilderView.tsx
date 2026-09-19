@@ -594,12 +594,16 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
           <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-[#e2ecf8]">
             {/* Grid Pattern */}
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-overlay"></div>
-            <div className="absolute inset-0 bg-[radial-gradient(#bfdbfe_1px,transparent_1px)] [background-size:24px_24px] opacity-40"></div>
+            <div className="absolute inset-0 bg-[radial-gradient(#bfdbfe_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-40"></div>
             
+            {/* Moving Light Pink Orb 1 - Left to Right Float */}
+            <div className="animate-ambient-lr-1 absolute -top-[10%] -left-[10%] w-[68vw] h-[68vw] max-w-[900px] max-h-[900px] rounded-full bg-gradient-to-r from-pink-300/40 via-rose-200/35 to-pink-100/20 blur-[100px] pointer-events-none"></div>
+
             {/* Pure Soft Light Blue Ambient Orbs */}
             <div className="absolute -top-[15%] -right-[10%] w-[55vw] h-[55vw] rounded-full bg-sky-200/50 blur-[130px] pointer-events-none"></div>
+            <div className="animate-ambient-rl-1 absolute -bottom-[10%] right-[5%] w-[62vw] h-[62vw] max-w-[850px] max-h-[850px] rounded-full bg-gradient-to-l from-pink-300/35 via-rose-200/25 to-transparent blur-[110px] pointer-events-none"></div>
             <div className="absolute -bottom-[15%] -left-[10%] w-[55vw] h-[55vw] rounded-full bg-blue-200/40 blur-[130px] pointer-events-none"></div>
-            <div className="absolute top-[35%] left-[25%] w-[45vw] h-[45vw] rounded-full bg-sky-100/60 blur-[120px] pointer-events-none"></div>
+            <div className="animate-ambient-lr-2 absolute top-[28%] left-[18%] w-[50vw] h-[50vw] rounded-full bg-gradient-to-tr from-pink-200/30 via-sky-100/40 to-transparent blur-[120px] pointer-events-none"></div>
           </div>
 
           <div className="flex flex-col gap-6">
@@ -607,14 +611,14 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
             {/* Top Row: Image, Customer, Logistics */}
             <div className="grid gap-6 grid-cols-1 lg:grid-cols-[1.5fr_2.5fr_2.5fr] xl:grid-cols-[1fr_2fr_2fr] items-stretch">
               {/* Image Card */}
-              <div className="relative z-10 rounded-[2rem] bg-white/50 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-center min-h-[200px]">
-                <div className="w-full h-full rounded-[1.5rem] overflow-hidden relative bg-white">
+              <div className="relative z-10 rounded-[2rem] bg-white/30 p-2 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40 flex flex-col justify-center min-h-[200px]">
+                <div className="w-full h-full rounded-[1.5rem] overflow-hidden relative bg-white/40 backdrop-blur-sm">
                   <img src={currentImage || 'https://images.unsplash.com/photo-1626282874430-c11ae32d2898?auto=format&fit=crop&w=1200'} className="absolute inset-0 w-full h-full object-cover" alt="Product preview" />
                 </div>
               </div>
 
-{/* Customer Card */}
-                <div className="relative z-50 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+              {/* Customer Card */}
+              <div className="relative z-50 rounded-[2rem] bg-white/30 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40">
                   <div className="mb-4 flex items-center justify-between">
                     <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Customer</h3>
                     <button onClick={() => setShowCreateCustomer(true)} className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-700">
@@ -736,7 +740,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                 </div>
 
                 {/* Logistics Card */}
-                <div className="relative z-40 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 h-full">
+                <div className="relative z-40 rounded-[2rem] bg-white/30 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40 h-full">
                   <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Logistics</h3>
                   <div className="flex gap-2">
                     {[
@@ -826,7 +830,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
             {/* Middle Row: Items Card (Full Width) */}
             <div className="w-full mt-6 mb-6">
               {/* Items Card */}
-              <div className="relative z-10 w-full rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col">
+              <div className="relative z-10 w-full rounded-[2rem] bg-white/30 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40 flex flex-col">
                 <div className="mb-4 flex items-center justify-between">
                   <h3 className="text-xs font-black uppercase tracking-widest text-slate-400">Order Items</h3>
                   <button onClick={addRow} className="flex items-center gap-1 rounded-lg bg-slate-900 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-white hover:bg-slate-800 transition-colors">
@@ -1740,7 +1744,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
             <div className="grid gap-6 lg:grid-cols-12">
               <div className="lg:col-span-5 lg:col-start-8">
                 {/* Summary Card */}
-                <div className="rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60">
+                <div className="rounded-[2rem] bg-white/30 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/40">
                   <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Order Summary</h3>
                   {/* Special Notes block */}
                   <div className="mb-4">

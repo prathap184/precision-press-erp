@@ -1419,4 +1419,26 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
 - Expanded client-side `filteredCustomers` search filter in both `ProxyOrderBuilder.tsx` and `QuotationBuilder.tsx` to include `billing_city`, `city`, `billing_area`, and `area` so operators can filter customers by geographic location.
 
 ---
-*Memory Updated & Persisted on: 2026-09-19 (BUG-24 Credit Modal, BUG-25 Fast Router Exit, BUG-26 Credit Limit & Drawer City/Area)*
+
+## 🎨 54. Proxy Order Transparent Glassmorphic Redesign & Image 2 Parity with Moving Pink Orbs
+
+### A. Context & Background Alignment
+- **Target Aesthetic**: Image 2 (`media_1789800883228.png` / `RoleGlobalOrdersPage.tsx`) — light ice-blue `#e2ecf8` base, radial micro-dot matrix grid (`[radial-gradient(#bfdbfe_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-40`), and animated, drifting soft pink ambient light orbs.
+- **Problem**: The Proxy Order page previously had a dull background (`#f1f6fd`) with static, low-opacity orbs obscured by opaque white cards (`bg-white/50`, solid `bg-white`) and solid grey input fields (`bg-slate-50 border-2 border-slate-200`).
+
+### B. Implementation
+1. **Background & Ambient Movement**:
+   - `ProxyOrderBuilderView.tsx` & `QuotationBuilderView.tsx` root container set to `bg-[#e2ecf8]`.
+   - Grid overlay: `[radial-gradient(#bfdbfe_1.2px,transparent_1.2px)] [background-size:24px_24px] opacity-40 pointer-events-none`.
+   - Primary drifting pink orb: `animate-ambient-lr-1 absolute -top-[10%] -left-[10%] w-[68vw] h-[68vw] rounded-full bg-gradient-to-r from-pink-300/40 via-rose-200/35 to-pink-100/20 blur-[100px] pointer-events-none`.
+   - Secondary counter-drifting pink orb: `animate-ambient-rl-1 absolute -bottom-[10%] right-[5%] w-[62vw] h-[62vw] rounded-full bg-gradient-to-l from-pink-300/35 via-rose-200/25 to-transparent blur-[110px] pointer-events-none`.
+2. **Glassmorphic Card Transparency**:
+   - All 6 core cards (Order Number/Date, Image Preview, Customer Select, Order Items Table, Logistics & Dispatch, Payment Terminal) converted to translucent glass:
+     `bg-white/30 backdrop-blur-2xl border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)] rounded-[1.75rem]`.
+3. **Glassmorphic Translucent Form Controls**:
+   - All form inputs (Order #, Date picker, Customer Search, Product Dropdown, Width, Height/Length, Pcs, Quantity, Mode A Rate/SqFt, Mode B Rate per, Finish, File Path, Address buttons, Notes textarea) upgraded from opaque grey to translucent glass:
+     `bg-white/40 backdrop-blur-md border border-white/60 focus:bg-white/90 text-slate-800`.
+   - Table rows use `hover:bg-white/20 border-b border-white/25`, and summary totals use `bg-white/30 backdrop-blur-md border-t border-b border-white/40`.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (BUG-24, BUG-25, BUG-26, Section 54 Image 2 Parity & Glassmorphism)*
