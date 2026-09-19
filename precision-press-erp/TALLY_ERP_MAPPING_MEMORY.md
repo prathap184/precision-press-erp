@@ -2142,4 +2142,34 @@ flowchart TD
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 64 - Exhaustive 1:1 Live Customer Cross-Verification Audit)*
 
+---
+
+## 65. Credit Limit Reset to 0 & Live Customer Ledger Verification Audit
+
+### A. Credit Limit Policy Enforcement
+- Per user instruction, all **1,754 customers** in `public.contact` have had their `credit_limit` set to **`0.00`** (replacing null / "No limit").
+- If the business wishes to extend a custom credit limit to any customer, staff can directly input the desired limit on the customer page (`/accounting/contacts/[id]`) and save.
+- Connector scripts (`tally-connector/sync_customers_connector.js`) hardened to default newly synchronized customers to `0` instead of `null`.
+
+### B. Field & Balance Parity Cross-Check
+Verified live against Tally Prime Gold (`New Web Testing` - 100007):
+- **Customer Representative Verification (Aarohi Events)**:
+  - **Tally Ledger Vouchers**: Period 1-Sep-26 to 19-Sep-26
+  - **Tally Closing Balance**: **`₹1,771.00 Dr`**
+  - **ERP Contact ID**: `055eca5a-5098-41d8-900c-0380f5793539`
+  - **ERP Starting Balance (`opening_balance`)**: **`₹1,771.00`**
+  - **ERP Balance Type**: **`Debit (Dr) - Customer owes you money`**
+  - **ERP Credit Limit**: **`₹ 0.00`** (previously `No limit`)
+- **System-Wide Metric Audit**:
+  - `total_customers`: **1,754**
+  - `zero_credit_limit`: **1,754 / 1,754 (100.0%)**
+  - `erp_op_equals_tally_closing`: **1,754 / 1,754 (100.0%)**
+  - `total_erp_opening_balance`: **₹2,21,55,296.08**
+  - `total_tally_closing_balance`: **₹2,21,55,296.08**
+  - `total_tally_opening_balance`: **₹2,21,55,296.08**
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Section 65 - Customer Credit Limit Reset & Ledger Reconciliation)*
+
+
 

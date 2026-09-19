@@ -562,7 +562,7 @@ async function runLiveCustomerConnector() {
           tc.openingBalanceType,
           tc.printerCategory,
           tc.hierarchyPath,
-          tc.creditLimit || null,
+          0,
           tc.paymentTermsDays || 30,
           matchedErp.id
         ]);
@@ -640,7 +640,7 @@ async function runLiveCustomerConnector() {
           tc.openingBalanceType,
           tc.printerCategory,
           tc.hierarchyPath,
-          tc.creditLimit || null,
+          0,
           tc.paymentTermsDays || 30,
           tc.paymentTermsDays || 30
         ]);
