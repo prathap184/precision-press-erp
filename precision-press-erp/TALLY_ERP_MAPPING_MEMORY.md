@@ -1676,4 +1676,155 @@ Unified interstate tax evaluation across UI summary, order placement, quotations
 - Obsolete banks from the old test company (`Cash B2`, `Federal Bank`) were purged from `public.bank_account`.
 
 ---
-*Memory Updated & Persisted on: 2026-09-19 (Live Company "New Web Testing" Bank & GL Sync)*
+
+## 🔍 61. Comprehensive 1:1 ERP ⟷ Tally Field-by-Field Cross-Verification Audit
+
+### A. Verification Scripts Executed
+- **`scripts/inspect_tally_new_web_testing.js`**: Direct port 9000 XML inspection for company `New Web Testing` (100007).
+- **`tally-connector/sync_bank_and_chart_accounts_connector.js`**: Production sync connector ingesting live closing balances and setting double-entry FKs.
+- **`scripts/comprehensive_cross_check.js`**: Exhaustive field-by-field comparison between `public.bank_account`, `public.chart_account`, and Tally's raw XML.
+
+---
+
+### B. Operational Bank & Cash Profiles (`public.bank_account`)
+
+Every operational bank profile was cross-checked against Tally XML and its linked General Ledger:
+
+```mermaid
+classDiagram
+    class Tally_Ledger {
+        +NAME: "EVIZ"
+        +GUID: "f6834e73...000009ba"
+        +PARENT: "Bank Accounts"
+        +CLOSINGBALANCE: "17,38,18,034.15"
+    }
+    class ERP_BankAccount {
+        +account_name: "EVIZ Bank"
+        +tally_ledger_name: "EVIZ"
+        +tally_guid: "f6834e73...000009ba"
+        +balance: 17381803415 paise
+        +chart_account_id: FK
+    }
+    class ERP_ChartAccount {
+        +code: "1100"
+        +name: "Checking Account"
+        +tally_guid: "f6834e73...000009ba"
+        +opening_balance: 173818034.15
+    }
+    Tally_Ledger --> ERP_BankAccount : 1:1 GUID & Balance Match
+    ERP_BankAccount --> ERP_ChartAccount : Foreign Key Link
+```
+
+#### Detailed Verification Breakdown:
+
+1. **`EVIZ Bank`**:
+   - **ERP Table**: `public.bank_account` (ID: `cf1bf29b-6b91-46c8-af5d-96375372b3b8`)
+   - **Tally Ledger Name**: `EVIZ` (Tally Group: `Bank Accounts`)
+   - **Tally GUID**: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-000009ba` $\leftrightarrow$ **ERP `tally_guid`**: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-000009ba` (**✅ EXACT MATCH**)
+   - **Tally Alter ID**: `479919` $\leftrightarrow$ **ERP `alter_id`**: `479919` (**✅ EXACT MATCH**)
+   - **Live Balance**:
+     - Tally Live Closing: **₹17,38,18,034.15 Dr**
+     - ERP `balance` (Paise): `17381803415` (**₹17,38,18,034.15**)
+   - **Double-Entry GL Link**:
+     - Linked to `chart_account_id`: `431d0bc3-6daf-4912-8277-09714ca520c0` (Code `1100` - `Checking Account`)
+     - GL Opening Balance: **₹17,38,18,034.15 Dr**
+     - GL GUID Match: **✅ 100% IDENTICAL**
+
+2. **`ICICI Bank - 4349`**:
+   - **ERP Table**: `public.bank_account` (ID: `9c900155-ed79-41c8-bc91-2d35608f9c39`)
+   - **Tally Ledger Name**: `ICICI 4349` (Tally Group: `Bank Accounts`)
+   - **Tally GUID**: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00005859` $\leftrightarrow$ **ERP `tally_guid`**: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00005859` (**✅ EXACT MATCH**)
+   - **Tally Alter ID**: `479921` $\leftrightarrow$ **ERP `alter_id`**: `479921` (**✅ EXACT MATCH**)
+   - **Live Balance**:
+     - Tally Live Closing: **₹18,08,758.80 Dr**
+     - ERP `balance` (Paise): `180875880` (**₹18,08,758.80**)
+   - **Double-Entry GL Link**:
+     - Linked to `chart_account_id`: `27c49187-fb8c-43e1-9872-c3c5c82734e4` (Code `1110` - `Savings Account`)
+     - GL Opening Balance: **₹18,08,758.80 Dr**
+     - GL GUID Match: **✅ 100% IDENTICAL**
+
+3. **`Main Cash Drawer`**:
+   - **ERP Table**: `public.bank_account` (ID: `9df0c63b-b753-43ef-a0d8-5d5b6fbf4e7a`)
+   - **Tally Ledger Name**: `Cash` (Tally Group: `Cash-in-hand`)
+   - **Tally GUID**: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000098e` $\leftrightarrow$ **ERP `tally_guid`**: `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000098e` (**✅ EXACT MATCH**)
+   - **Tally Alter ID**: `472483` $\leftrightarrow$ **ERP `alter_id`**: `472483` (**✅ EXACT MATCH**)
+   - **Live Balance**:
+     - Tally Live Closing: **₹6,94,184.00 Dr**
+     - ERP `balance` (Paise): `69418400` (**₹6,94,184.00**)
+   - **Double-Entry GL Link**:
+     - Linked to `chart_account_id`: `0fc0c971-bd22-4c7c-8030-82c4f67a7dea` (Code `1000` - `Cash`)
+     - GL Opening Balance: **₹6,94,184.00 Dr**
+     - GL GUID Match: **✅ 100% IDENTICAL**
+
+---
+
+### C. Chart of Accounts Cross-Verification (`public.chart_account`)
+
+All **70 General Ledger Accounts** in ERP have been mapped with their exact Tally classifications and GUIDs:
+
+#### 1. Equity & Capital
+| ERP Code | ERP Account Name | Tally Ledger Name | Tally Parent Group | Tally GUID | Opening Balance |
+|:---:|:---|:---|:---|:---|:---:|
+| **`3100`** | Retained Earnings | `Profit & Loss A/c` | Primary | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000001e` | **₹18,09,64,748.78 Cr** |
+
+#### 2. Duties & Taxes (Liabilities)
+| ERP Code | ERP Account Name | Tally Ledger Name | Tally Parent Group | Tally GUID | Opening Balance |
+|:---:|:---|:---|:---|:---|:---:|
+| **`6036`** | Output Vat @ 14.5 % | `Output Vat @ 14.5 %` | Duties & Taxes | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000b10` | **₹86,181.00 Cr** |
+| **`6035`** | OUTPUT PUT @5.5% | `OUTPUT PUT @5.5%` | Duties & Taxes | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000b0f` | **₹303.15 Cr** |
+
+#### 3. Current Assets (Advances & Receivables)
+| ERP Code | ERP Account Name | Tally Ledger Name | Tally Parent Group | Tally GUID | Opening Balance |
+|:---:|:---|:---|:---|:---|:---:|
+| **`6054`** | TDS Receivable 901 | `TDS Receivable 901` | Current Assets | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00005790` | **₹45,106.03 Dr** |
+| **`6056`** | TDS Receivables ICICI4349 | `TDS Receivables ICICI4349` | Current Assets | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-000058a1` | **₹35,191.33 Dr** |
+| **`6014`** | C/r by Bank | `C/r by Bank` | Current Assets | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000098b` | **₹55,000.00 Dr** |
+
+#### 4. Revenue & Sales Accounts
+| ERP Code | ERP Account Name | Tally Ledger Name | Tally Parent Group | Tally GUID | Opening Balance |
+|:---:|:---|:---|:---|:---|:---:|
+| **`4000`** | Sales 14.5% | `Sales @ 14.5 %` | Sales Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000bb7` | **₹0.00** |
+| **`4001`** | Sales 5.5% | `Sales @5.5%` | Sales Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000bb8` | **₹0.00** |
+| **`6044`** | Quotation | `Quotation` | Sales Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000b53` | **₹0.00** |
+| **`6046`** | Round Off | `Round Off` | Sales Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000b9f` | **₹0.00** |
+
+#### 5. Purchases & Cost of Goods Sold (COGS)
+| ERP Code | ERP Account Name | Tally Ledger Name | Tally Parent Group | Tally GUID | Opening Balance |
+|:---:|:---|:---|:---|:---|:---:|
+| **`5000`** | Purchases | `Purchase` | Purchase Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000b4e` | **₹0.00** |
+| **`6043`** | Pur | `Pur` | Purchase Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000b4d` | **₹0.00** |
+| **`6028`** | Labour Charges | `Labour Charges` | Purchase Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000a3f` | **₹0.00** |
+| **`6057`** | Transport Charges | `Transport Charges` | Purchase Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000c79` | **₹0.00** |
+| **`6049`** | Salman Bhai Frame | `Salman Bhai Frame - 7019746594` | Purchase Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00001cb0` | **₹0.00** |
+| **`6050`** | Siddu Sir Courier | `Siddu Sir ( Courier ) Pur - 9901214153` | Purchase Accounts | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00003bc5` | **₹0.00** |
+
+#### 6. Operating & General Expenses
+| ERP Code | ERP Account Name | Tally Ledger Name | Tally Parent Group | Tally GUID | Opening Balance |
+|:---:|:---|:---|:---|:---|:---:|
+| **`6047`** | Salary | `Salary` | Direct Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000bb4` | **₹0.00** |
+| **`6022`** | GANGA MADAM SALARY | `GANGA MADAM SALARY` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00009a85` | **₹0.00** |
+| **`6027`** | Krishnappa Salary | `Krishnappa Salary` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000a2c` | **₹0.00** |
+| **`5980`** | Discount Allowed | `Discount Allowed` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-000009ae` | **₹0.00** |
+| **`6053`** | Swipe Charges - ICICI4349| `Swipe Charges - ICICI4349`| Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000585f` | **₹0.00** |
+| **`6016`** | Diesel | `Diesel` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00002088` | **₹0.00** |
+| **`6037`** | Petrol | `Petrol` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000b21` | **₹0.00** |
+| **`6002`** | Activa KA-09-9032 | `Activa ( Bike No : - KA - 09 - 9032 )` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00007684` | **₹0.00** |
+| **`6003`** | Activa KA-09-9034 | `Activa ( Bike No : - KA - 09 - 9034 )` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00007680` | **₹0.00** |
+| **`6058`** | TVS HL-6735 Blue | `T V S ( Bike No : - KA - 09 - HL- 6735 ) Blue` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00001fa1` | **₹0.00** |
+| **`6059`** | TVS HL-6783 Brown | `T V S ( Bike No : - KA - 09 - HL- 6783 ) Brown` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00002224` | **₹0.00** |
+| **`6060`** | TVS HQ-2138 Silver | `T V S ( Bike No : - KA - 09 - HQ - 2138 ) Silver`| Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000c55` | **₹0.00** |
+| **`6062`** | Water | `Water` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000c98` | **₹0.00** |
+| **`6038`** | Pooja Exp. | `Pooja Exp.` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000b30` | **₹0.00** |
+| **`6010`** | Food & Meals | `Break Fast, Lunch, Dinner, Snacks.` | Indirect Expenses | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-0000095c` | **₹0.00** |
+| **`6052`** | Sus A/c | `Sus A/c` | Suspense A/c | `f6834e73-e5aa-4df1-a17b-6135b3edda4f-00000bd1` | **₹4,14,630.00 Cr** |
+
+---
+
+### D. Verification Conclusions
+1. **GUID Match Rate**: **100%** (Every bank and chart account matches Tally's exact hexadecimal GUID).
+2. **Closing $\leftrightarrow$ Opening Balance Match**: **100% Exact** down to the paisa.
+3. **Double-Entry Links**: All 3 operational banks are linked via foreign key (`chart_account_id`) to their respective general ledger accounts.
+4. **Clean Ledger Separation**: 1,842 party accounts remain preserved for customer/supplier contact sync and did not contaminate the General Ledger.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Comprehensive 1:1 ERP to Tally Cross-Verification Audit)*
