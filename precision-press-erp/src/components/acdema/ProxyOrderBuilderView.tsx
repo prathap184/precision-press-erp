@@ -153,6 +153,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const unitBlurTimerRef = useRef<NodeJS.Timeout | null>(null);
   const customerBlurTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoFocusTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isCustomerExplicitlyBlurredRef = useRef(false);
 
   // Debounced live server search for products across entire catalog
   useEffect(() => {
@@ -482,9 +483,11 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     const timer = setTimeout(() => {
       const custInput = document.getElementById('proxy-customer-search-input') as HTMLInputElement;
       if (custInput) {
+        isCustomerExplicitlyBlurredRef.current = false;
         custInput.focus();
         try { custInput.select(); } catch {}
       }
+      setCustomerDropdownOpen(true);
     }, 120);
     return () => clearTimeout(timer);
   }, []);
@@ -523,15 +526,18 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Alt + Q: Toggle Customer Search Focus / Unselect
       if ((e.key === 'q' || e.key === 'Q') && e.altKey) {
         e.preventDefault();
         e.stopPropagation();
         const custInput = document.getElementById('proxy-customer-search-input') as HTMLInputElement;
         const isCurrentlyFocused = document.activeElement === custInput;
         if (isCurrentlyFocused) {
+          isCustomerExplicitlyBlurredRef.current = true;
           custInput?.blur();
           setCustomerDropdownOpen(false);
         } else {
+          isCustomerExplicitlyBlurredRef.current = false;
           if (custInput) {
             custInput.focus();
             try { custInput.select(); } catch {}
@@ -540,6 +546,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         }
         return;
       }
+
       if (e.key === 'F2') {
         e.preventDefault();
         e.stopPropagation();
@@ -549,7 +556,60 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         }
         return;
       }
+
+      // Check if user is actively focused in an input / textarea / select element
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isInputActive = activeEl && (
+        activeEl.tagName === 'INPUT' ||
+        activeEl.tagName === 'TEXTAREA' ||
+        activeEl.tagName === 'SELECT' ||
+        activeEl.isContentEditable ||
+        activeEl.getAttribute('role') === 'textbox' ||
+        activeEl.getAttribute('role') === 'searchbox' ||
+        activeEl.getAttribute('role') === 'combobox'
+      );
+
+      // 2. When Unselected (outside input fields), global shortcuts g, v, d must work immediately
+      if (!isInputActive && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        // g / G -> Navigate to role's global orders
+        if (e.key === 'g' || e.key === 'G') {
+          e.preventDefault();
+          e.stopPropagation();
+          const roleMatch = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : '';
+          const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+          const ws = urlParams.get('workspace') || roleMatch;
+          const target = ['designer', 'printer', 'pasting', 'finishing', 'dispatch', 'support', 'accountant', 'manager', 'acdema'].includes(ws)
+            ? `/${ws}/orders`
+            : '/admin/orders';
+          router.push(target);
+          return;
+        }
+
+        // v / V -> Open Vouchers Menu
+        if (e.key === 'v' || e.key === 'V') {
+          e.preventDefault();
+          e.stopPropagation();
+          window.dispatchEvent(new CustomEvent('set-shortcut-menu', { detail: 'VOUCHERS' }));
+          return;
+        }
+
+        // d / D -> Open Display Reports Menu
+        if (e.key === 'd' || e.key === 'D') {
+          e.preventDefault();
+          e.stopPropagation();
+          window.dispatchEvent(new CustomEvent('set-shortcut-menu', { detail: 'DISPLAY_REPORTS' }));
+          return;
+        }
+      }
+
+      // 3. Escape key handling
       if (e.key === 'Escape') {
+        // If shortcut modal (Vouchers or Display Reports) is open, let it handle Escape
+        const isShortcutModalOpen = Boolean(document.querySelector('[data-shortcut-modal="true"]'));
+        if (isShortcutModalOpen) {
+          return;
+        }
+
         if (showExitConfirmModal) {
           e.preventDefault();
           e.stopPropagation();
@@ -568,6 +628,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           setShowCreateCustomer(false);
           return;
         }
+
+        // Inside Customer Search: unselect, clear search, close dropdown, blur
         const isCustomerInput = document.activeElement?.id === 'proxy-customer-search-input';
         if (isCustomerInput) {
           e.preventDefault();
@@ -576,15 +638,20 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
             setCustomerSearch('');
           }
           setCustomerDropdownOpen(false);
+          isCustomerExplicitlyBlurredRef.current = true;
           (document.activeElement as HTMLElement)?.blur();
           return;
         }
+
         if (customerDropdownOpen) {
           e.preventDefault();
           e.stopPropagation();
           setCustomerDropdownOpen(false);
+          isCustomerExplicitlyBlurredRef.current = true;
+          (document.activeElement as HTMLElement)?.blur();
           return;
         }
+
         if (openRowId) {
           e.preventDefault();
           e.stopPropagation();
@@ -615,6 +682,8 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           setShowConfirmOrderModal(false);
           return;
         }
+
+        // When unselected outside everything, show exit confirmation modal
         e.preventDefault();
         e.stopPropagation();
         setShowExitConfirmModal(true);
@@ -627,7 +696,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       window.removeEventListener('request-exit-proxy-order', handleExitRequest);
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [showExitConfirmModal, activeDescRowId, customerDropdownOpen, openRowId, openUnitPickerId, showAddressModal, showCreditModal, showConfirmOrderModal, showCreateCustomer]);
+  }, [showExitConfirmModal, activeDescRowId, customerDropdownOpen, openRowId, openUnitPickerId, showAddressModal, showCreditModal, showConfirmOrderModal, showCreateCustomer, router, customerSearch, setCustomerSearch]);
 
   // Keyboard shortcut listener for Exit Confirmation Modal (Y/Enter = Yes, Go Back; N/Esc/Backspace = Cancel, Stay)
   useEffect(() => {
@@ -735,6 +804,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
           lastFocusedElementIdRef.current = target.id;
         }
       }
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        isCustomerExplicitlyBlurredRef.current = false;
+      }
     };
     document.addEventListener('focusin', handleFocusIn);
     return () => document.removeEventListener('focusin', handleFocusIn);
@@ -755,11 +828,17 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         return;
       }
 
+      // If customer search or view was explicitly blurred / unselected, do not hijack focus
+      if (isCustomerExplicitlyBlurredRef.current) {
+        return;
+      }
+
       const activeEl = document.activeElement;
       const isBodyOrBg = !activeEl || activeEl === document.body || activeEl.tagName === 'BODY' || activeEl.tagName === 'HTML' || activeEl.id === '__next' || (activeEl.tagName === 'DIV' && !activeEl.getAttribute('tabindex'));
 
       if (isBodyOrBg) {
-        if (['Control', 'Alt', 'Shift', 'Meta', 'F12', 'F5'].includes(e.key)) return;
+        const globalShortcutKeys = ['g', 'G', 'v', 'V', 'd', 'D', 'n', 'N', 'z', 'Z', 'c', 'C', 's', 'S', 'q', 'Q', 'Escape'];
+        if (['Control', 'Alt', 'Shift', 'Meta', 'F12', 'F5', ...globalShortcutKeys].includes(e.key)) return;
 
         const targetId = lastFocusedElementIdRef.current;
         let targetEl = targetId ? document.getElementById(targetId) : null;
@@ -1305,11 +1384,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           }
                         }}
                         onFocus={(e) => {
-    if (customerBlurTimerRef.current) {
-      clearTimeout(customerBlurTimerRef.current);
-      customerBlurTimerRef.current = null;
-    }
-    setCustomerDropdownOpen(true);
+                          isCustomerExplicitlyBlurredRef.current = false;
+                          if (customerBlurTimerRef.current) {
+                            clearTimeout(customerBlurTimerRef.current);
+                            customerBlurTimerRef.current = null;
+                          }
+                          setCustomerDropdownOpen(true);
                           const target = e.currentTarget;
                           if (selectedCustomer) {
                             setCustomerSearch(selectedCustomer.displayName || selectedCustomer.name || '');
@@ -1424,6 +1504,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                               setCustomerSearch('');
                             }
                             setCustomerDropdownOpen(false);
+                            isCustomerExplicitlyBlurredRef.current = true;
                             e.currentTarget.blur();
                           }
                         }}

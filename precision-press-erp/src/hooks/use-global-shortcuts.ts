@@ -57,6 +57,17 @@ export function useGlobalShortcuts() {
   const closeMenu = useCallback(() => setMenuState(null), []);
 
   useEffect(() => {
+    const handleCustomMenu = (e: Event) => {
+      const ce = e as CustomEvent<MenuState>;
+      if (ce.detail !== undefined) {
+        setMenuState(ce.detail);
+      }
+    };
+    window.addEventListener('set-shortcut-menu', handleCustomMenu);
+    return () => window.removeEventListener('set-shortcut-menu', handleCustomMenu);
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Toggle All Shortcuts modal on Alt + S (works globally anywhere, including inside input fields and search boxes)
       if ((e.altKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {

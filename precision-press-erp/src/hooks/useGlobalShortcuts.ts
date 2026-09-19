@@ -59,6 +59,17 @@ export function useGlobalShortcuts() {
   const closeMenu = useCallback(() => setMenuState(null), []);
 
   useEffect(() => {
+    const handleCustomMenu = (e: Event) => {
+      const ce = e as CustomEvent<MenuState>;
+      if (ce.detail !== undefined) {
+        setMenuState(ce.detail);
+      }
+    };
+    window.addEventListener('set-shortcut-menu', handleCustomMenu);
+    return () => window.removeEventListener('set-shortcut-menu', handleCustomMenu);
+  }, []);
+
+  useEffect(() => {
     const allowedRoles = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'];
     if (!profile || !allowedRoles.includes(profile.role)) {
       return;

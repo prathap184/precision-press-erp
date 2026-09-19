@@ -2467,6 +2467,37 @@ flowchart TD
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 73 - Proxy Order Customer Search Auto-Focus, Alt+Q Toggle & Esc Unselect)*
 
+---
 
+## 74. Proxy Order: Unselected Global Shortcuts (`g`, `v`, `d`) & Focus Hijacking Elimination
 
+### A. Context & User Requirement
+- In Proxy Order (`/proxy-order`, [`ProxyOrderBuilderView.tsx`](file:///c:/Users/jprat/OneDrive/Desktop/Hindustan%20Enterprices/precision-press-erp/src/components/acdema/ProxyOrderBuilderView.tsx)):
+  1. **Alt+Q Toggle**: When Customer Search is focused $\rightarrow$ <kbd>Alt</kbd>+<kbd>Q</kbd> unselects / blurs it and closes the customer list. Pressing <kbd>Alt</kbd>+<kbd>Q</kbd> again immediately re-focuses Customer Search, selects text, and opens the customer dropdown.
+  2. **Esc Unselect**: When inside Customer Search $\rightarrow$ <kbd>Esc</kbd> unselects / blurs it, resets search query, and closes the dropdown.
+  3. **Global Shortcuts when Unselected**:
+     - Once unselected, pressing **`g`** / **`G`** immediately navigates to Global Orders (`/admin/orders` or role orders).
+     - Pressing **`v`** / **`V`** immediately opens the **Vouchers Menu** (`ShortcutMenu.tsx`).
+     - Pressing **`d`** / **`D`** immediately opens the **Display Reports Menu** (`ShortcutMenu.tsx`).
 
+### B. Root Cause of Previous Hijacking
+- `handleGlobalFocusRestore` in `ProxyOrderBuilderView.tsx`:
+  - When the user was unselected (activeElement was `BODY`), typing any key previously called `targetEl.focus()`, automatically snapping focus back into `#proxy-customer-search-input`.
+  - This stole the keypress and typed `g`, `v`, or `d` into the search box instead of triggering navigation or the menus.
+
+### C. Implementation Fix
+1. **Focus Protection (`isCustomerExplicitlyBlurredRef`)**:
+   - Added `isCustomerExplicitlyBlurredRef` tracking when user explicitly unselects / blurs via <kbd>Alt</kbd>+<kbd>Q</kbd> or <kbd>Esc</kbd>.
+   - When this flag is set, `handleGlobalFocusRestore` aborts immediately and does not pull focus back.
+   - Also excluded navigation and shortcut keys (`['g', 'G', 'v', 'V', 'd', 'D', 'n', 'N', 'z', 'Z', 'c', 'C', 's', 'S', 'q', 'Q', 'Escape']`) from `handleGlobalFocusRestore`.
+2. **Direct Unselected Shortcut Handling in `handleKeyDown`**:
+   - When outside input fields (`!isInputActive`):
+     - `g` / `G` $\rightarrow$ `router.push('/admin/orders')` (or role orders).
+     - `v` / `V` $\rightarrow$ `window.dispatchEvent(new CustomEvent('set-shortcut-menu', { detail: 'VOUCHERS' }))`.
+     - `d` / `D` $\rightarrow$ `window.dispatchEvent(new CustomEvent('set-shortcut-menu', { detail: 'DISPLAY_REPORTS' }))`.
+3. **Event Communication in `useGlobalShortcuts.ts` and `use-global-shortcuts.ts`**:
+   - Added listener for `'set-shortcut-menu'` custom event so `ShortcutMenu` opens immediately upon dispatch.
+   - In `ProxyOrderBuilderView.tsx`, when `data-shortcut-modal="true"` is open, <kbd>Esc</kbd> does not open the Exit Confirm Modal, allowing the Shortcut Menu to close gracefully.
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Section 74 - Unselected Global Shortcuts g, v, d & Focus Hijacking Elimination)*
