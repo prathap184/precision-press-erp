@@ -1387,6 +1387,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         const isModeA = currentMode === 'A';
                         const isModeB = currentMode === 'B';
                         const isSqftModeB = isSizeInputActive && isModeB;
+                        const displayUnit = (product as any)?.tally_uom || (product as any)?.unit_of_measure || row.unit || 'N';
                         const w = Number(row.width !== undefined && row.width !== '' ? row.width : (hasSingleDefaultSize ? (product?.default_width || 0) : 0)) || 0;
                         const h = Number(row.height !== undefined && row.height !== '' ? row.height : (hasSingleDefaultSize ? (product?.default_length || 0) : 0)) || 0;
                         const wFt = row.widthUnit === 'IN' ? w / 12 : (row.widthUnit === 'MTR' ? w * 3.28084 : w);
