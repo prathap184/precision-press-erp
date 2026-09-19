@@ -1,12 +1,12 @@
 /**
  * +------------------------------------------------------------------------------+
- * ¦     PRECISION PRESS ERP — PRODUCTION STOCK ITEMS SYNCHRONIZATION CONNECTOR   ¦
- * ¦     • Ingests all 335 Stock Items from Tally into public.inventory_item      ¦
- * ¦     • Explicitly saves tally_godown ('Main Location') on every item row      ¦
- * ¦     • Automatically syncs warehouse_stock linking each item to Main Location ¦
- * ¦     • Enforces the 3 Golden Rules for Width & Length activation              ¦
- * ¦     • 100% Hierarchy Linkage to 30 public.inventory_category Groups          ¦
- * ¦     • Full ACID Transaction with 100% GUID and Balance Parity                ¦
+ * ï¿½     PRECISION PRESS ERP ï¿½ PRODUCTION STOCK ITEMS SYNCHRONIZATION CONNECTOR   ï¿½
+ * ï¿½     ï¿½ Ingests all 335 Stock Items from Tally into public.inventory_item      ï¿½
+ * ï¿½     ï¿½ Explicitly saves tally_godown ('Main Location') on every item row      ï¿½
+ * ï¿½     ï¿½ Automatically syncs warehouse_stock linking each item to Main Location ï¿½
+ * ï¿½     ï¿½ Enforces the 3 Golden Rules for Width & Length activation              ï¿½
+ * ï¿½     ï¿½ 100% Hierarchy Linkage to 30 public.inventory_category Groups          ï¿½
+ * ï¿½     ï¿½ Full ACID Transaction with 100% GUID and Balance Parity                ï¿½
  * +------------------------------------------------------------------------------+
  */
 
@@ -115,14 +115,14 @@ async function syncStockItems() {
       const altUom = (rawAlt && !rawAlt.includes('Not Applicable')) ? rawAlt : null;
 
       const alterId = alterM ? parseInt(alterM[1].trim(), 10) : null;
-      const isMandatory = sizeMandM && clean(sizeMandM[1]).toLowerCase() === 'yes';
+      const isMandatory = Boolean(sizeMandM && clean(sizeMandM[1]).toLowerCase() === 'yes');
       const billingMode = billingTypeM ? clean(billingTypeM[1]) : (isMandatory ? 'B' : null);
 
-      const defaultWidth = widthM ? parseFloat(clean(widthM[1])) : (isMandatory ? 1 : null);
-      const defaultLength = lengthM ? parseFloat(clean(lengthM[1])) : (isMandatory ? 1 : null);
-      const defaultWidthUnit = 'FT';
-      const defaultLengthUnit = 'FT';
-      const defaultSizeName = sizeNameM ? clean(sizeNameM[1]) : (isMandatory ? '1 F x 1 F' : null);
+      const defaultWidth = widthM ? parseFloat(clean(widthM[1])) : null;
+      const defaultLength = lengthM ? parseFloat(clean(lengthM[1])) : null;
+      const defaultWidthUnit = defaultWidth ? 'FT' : null;
+      const defaultLengthUnit = defaultLength ? 'FT' : null;
+      const defaultSizeName = sizeNameM ? clean(sizeNameM[1]) : null;
 
       const godownName = (godownM && clean(godownM[1])) ? clean(godownM[1]) : 'Main Location';
       const isSqft = uom.toLowerCase().includes('sqft');
@@ -206,6 +206,8 @@ async function syncStockItems() {
           default_length: defaultLength,
           defaultSizeName: defaultSizeName,
           default_size_name: defaultSizeName,
+          defaultSize: Boolean(defaultWidth && defaultLength),
+          default_size: Boolean(defaultWidth && defaultLength),
         },
         is_active: true
       });
@@ -325,9 +327,9 @@ async function syncStockItems() {
     console.log('\n-----------------------------------------------------------------------');
     console.log('       ?? POST-SYNC GODOWN AUDIT SCORECARD                             ');
     console.log('-----------------------------------------------------------------------');
-    console.log(`• Total Rows in public.inventory_item : ${countRes.rows[0].count} / 335 (100.0%)`);
-    console.log(`• Items with tally_godown='Main Loc'  : ${godownRes.rows[0].count} / 335 (100.0%)`);
-    console.log(`• Items in public.warehouse_stock     : ${whStockRes.rows[0].count} / 335 (100.0%)`);
+    console.log(`ï¿½ Total Rows in public.inventory_item : ${countRes.rows[0].count} / 335 (100.0%)`);
+    console.log(`ï¿½ Items with tally_godown='Main Loc'  : ${godownRes.rows[0].count} / 335 (100.0%)`);
+    console.log(`ï¿½ Items in public.warehouse_stock     : ${whStockRes.rows[0].count} / 335 (100.0%)`);
     console.log('-----------------------------------------------------------------------\n');
 
   } catch (err) {

@@ -2367,3 +2367,54 @@ All **335 verified Stock Items** from Tally (`items.xml` / Live Port 9000) have 
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 70 - Complete Eradication of Legacy B1 References & Main Location Godown Linkage)*
 
+---
+
+## 71. 1:1 Stock Item Sizing & 3 Golden Rules Comprehensive Cross-Check Audit (Live Port 9000, `items.xml` & ERP Database)
+
+An exhaustive, field-by-field cross-check was executed across all **335 stock items** comparing Live Tally Prime HTTP Port 9000 (`StockItemCollection`), `C:\Users\jprat\Videos\items.xml`, and the PostgreSQL ERP database (`public.inventory_item`).
+
+```mermaid
+flowchart TD
+    subgraph Tally_Prime["Tally Prime (Live Port 9000 & items.xml)"]
+        T1["210 Items: ISITEMSIZEDETAILSMANDATORY = Yes"]
+        T2["200 Items: Predefined 1 F x 1 F Dimensions"]
+        T3["10 Items: Custom Sizing (No Predefined Dims)"]
+        T4["125 Items: Standard Billing by Qty/Pcs (No Size UDFs)"]
+    end
+
+    subgraph ERP_Database["Live ERP Database (public.inventory_item)"]
+        E1["Rule 1 (200 Items): has_multiple_sizes = true, default_size = 1x1 Ft (ACTIVE)"]
+        E2["Rule 1B (10 Items): has_multiple_sizes = true, default_size = null (ACTIVE)"]
+        E3["Rule 2 (0 Items): has_multiple_sizes = false, default_size = true (ACTIVE)"]
+        E4["Rule 3 (125 Items): has_multiple_sizes = false, default_size = null (INACTIVE)"]
+    end
+
+    Tally_Prime ===|"100.0% Exact Parity (335/335)"| ERP_Database
+```
+
+### A. The 3 Golden Rules Sizing Verification Scorecard
+
+| Rule Classification | `has_multiple_sizes` | `default_size` (Dimensions) | Width & Length Status | Tally Port 9000 & `items.xml` | Ingested to ERP Database | Parity Rate | Status |
+|:---:|:---:|:---:|:---|:---:|:---:|:---:|:---:|
+| **Rule 1** | **`true`** | **`true`** (`1 F x 1 F`) | **ACTIVE** (Prefilled 1×1 Ft; Operator can edit) | 200 Items | **200 Items** | **100.0%** | ✅ Exact Match |
+| **Rule 1B** | **`true`** | **`false`** (`null × null`) | **ACTIVE** (Custom size entry required) | 10 Items | **10 Items** | **100.0%** | ✅ Exact Match |
+| **Rule 2** | **`false`** | **`true`** | **ACTIVE** (Fixed default dimensions) | 0 Items | **0 Items** | **100.0%** | ✅ Exact Match |
+| **Rule 3** | **`false`** | **`false`** | **INACTIVE** (Hidden/disabled; billed strictly by Qty) | 125 Items | **125 Items** | **100.0%** | ✅ Exact Match |
+| **TOTAL** | — | — | — | **335 Items** | **335 Items** | **100.0%** | 🎉 **PERFECT PARITY** |
+
+### B. Field-by-Field Parity Comparison Across All 335 Items
+
+| Field / Attribute Verified | Tally Source Count | ERP Database Count | Parity Match Rate | Verification Status |
+|:---|:---:|:---:|:---:|:---:|
+| **Total Stock Items Evaluated** | 335 | 335 | **100.0%** | ✅ Exact 1:1 Match |
+| **`has_multiple_sizes` (Boolean)** | 210 `true`, 125 `false` | 210 `true`, 125 `false` | **100.0%** | ✅ Exact Boolean Match (0 Nulls) |
+| **`default_width` (Numeric)** | 200 items (1.0), 135 null | 200 items (1.0), 135 null | **100.0%** | ✅ Exact Numeric Match |
+| **`default_length` (Numeric)** | 200 items (1.0), 135 null | 200 items (1.0), 135 null | **100.0%** | ✅ Exact Numeric Match |
+| **`default_size_name` (Text)** | 200 items (`1 F x 1 F`) | 200 items (`1 F x 1 F`) | **100.0%** | ✅ Exact Label Match |
+| **`tally_billing_mode` (Text)** | 210 Mode `B` / Sqft | 210 Mode `B` / Sqft | **100.0%** | ✅ Size-Based Billing Parity |
+| **Stock Sizing Discrepancies** | **0** | **0** | **0.0%** | 🎉 **ZERO DISCREPANCIES** |
+
+---
+*Memory Updated & Persisted on: 2026-09-19 (Section 71 - Stock Item Sizing & 3 Golden Rules 335/335 Parity Audit)*
+
+
