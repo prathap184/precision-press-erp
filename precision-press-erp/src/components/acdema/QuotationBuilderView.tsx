@@ -177,12 +177,12 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
     });
   }, [filteredCustomers, customerSearch]);
 
-  const [productLimit, setProductLimit] = useState(100);
+  const [productLimit, setProductLimit] = useState(1000);
   const [customerLimit, setCustomerLimit] = useState(100);
 
-  // Reset limit to 100 on new search or when opening drawer for instant 1ms rendering
+  // Reset limit on new search or when opening drawer
   useEffect(() => {
-    setProductLimit(100);
+    setProductLimit(1000);
   }, [searchQuery, selectedCategory, openRowId]);
 
   useEffect(() => {

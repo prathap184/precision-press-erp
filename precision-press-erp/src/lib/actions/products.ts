@@ -84,7 +84,7 @@ function parseProduct(row: any): Product {
   };
 }
 
-export async function getProducts(limit = 100, search?: string) {
+export async function getProducts(limit = 0, search?: string) {
   if (limit && limit > 0) {
     let query = supabase
       .from('inventory_item')

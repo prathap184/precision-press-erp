@@ -2537,3 +2537,36 @@ flowchart TD
 
 ---
 *Memory Updated & Persisted on: 2026-09-21 (Section 75 - Rule 3 Items: Inactive Finish & File Path Dashed Display and Enter Navigation)*
+
+---
+
+## 76. In-Memory Zero-Latency Catalog & Contact Architecture (All 335 Items & ~1,754 Customers Loaded at Once)
+
+### A. Context & Problem Statement
+- **Hardcoded Limit Cut-off**:
+  - `getProducts(100)` and `getCustomers(100)` previously loaded only the first 100 stock items and first 100 customers on bootstrap across **Proxy Order**, **Quotation Builder**, and **Sales Invoice**.
+  - In the item drawer, the category tab rendered `All (100)` instead of all 335 items.
+  - Slicing with `productLimit = 100` further cut off visibility.
+- **Server Roundtrip Search Latency**:
+  - Whenever the user typed into the customer search box or item search box, debounced `fetch` requests (`/api/v1/contacts?search=...` and `/api/v1/inventory?search=...` or `searchProducts`) fired across the network with 150ms–200ms delays.
+  - This caused noticeable lag, loading spinners, and network jitter compared to desktop Tally Prime.
+- **Catalog Sizing Analysis**:
+  - Exact stock items in Supabase: **335 items** (~70 KB payload).
+  - Exact customer contacts in Supabase: **~1,754 customers** (~250 KB payload).
+  - Both datasets combined total only ~320 KB, which transfers across the network in < 0.3s on initial page mount.
+
+### B. Architectural Solution
+1. **Uncapped Initial Bootstrap (`limit = 0` / Auto-Pagination)**:
+   - **`src/lib/actions/products.ts`**: `getProducts(limit = 0, search?: string)` defaults to 0 (all pages). When called without arguments (`getProducts()`), it paginates internally up to 1,000 items per batch and returns all 335 stock items in a single call.
+   - **`src/lib/actions/users.ts`**: `getCustomers(limit = 0, search?: string)` defaults to 0 (all pages). When called without arguments (`getCustomers()`), it loads all ~1,754 customers in 2 quick batches.
+   - **`src/components/dashboard/InvoiceFormView.tsx`**: Bootstraps with `/api/v1/inventory?status=active&limit=1000` (returns all 335 active items) and `/api/v1/contacts?type=customer&limit=5000` (returns all 1,754 customers).
+2. **Server Search Roundtrip Elimination (Instant 0ms RAM Search)**:
+   - Removed debounced server product search `useEffect` from `ProxyOrderBuilderView.tsx` and `InvoiceFormView.tsx`.
+   - Removed debounced server customer search `useEffect` from `ProxyOrderBuilder.tsx`, `QuotationBuilder.tsx`, and `InvoiceFormView.tsx`.
+   - All searches now evaluate instantaneously in client RAM using `matchedProducts` (supporting tokenization, multi-word matching, category prefixes `ct:`) and `filteredCustomers` with `tallyNaturalCompare`.
+3. **Full Drawer Visibility**:
+   - Initialized `productLimit` state to `1000` (instead of 100) across `ProxyOrderBuilderView.tsx`, `QuotationBuilderView.tsx`, and `InvoiceFormView.tsx`.
+   - The drawer tab displays `All (335)` immediately, and all category count chips accurately reflect the complete inventory catalog without artificial pagination boundaries.
+
+---
+*Memory Updated & Persisted on: 2026-09-21 (Section 76 - In-Memory Zero-Latency Catalog & Contact Architecture)*

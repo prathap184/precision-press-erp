@@ -8,7 +8,6 @@ import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { ItemDescriptionModal } from '@/components/dashboard/ItemDescriptionModal';
-import { searchProducts } from '@/lib/actions/products';
 
 function isoToDisplayDate(iso: string): string {
   if (!iso) return '';
@@ -147,56 +146,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [productSearching, setProductSearching] = useState(false);
+  const productSearching = false;
 
   const rowBlurTimerRef = useRef<NodeJS.Timeout | null>(null);
   const unitBlurTimerRef = useRef<NodeJS.Timeout | null>(null);
   const customerBlurTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoFocusTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isCustomerExplicitlyBlurredRef = useRef(false);
-
-  // Debounced live server search for products across entire catalog
-  useEffect(() => {
-    const term = searchQuery.trim();
-    if (!term) {
-      setProductSearching(false);
-      return;
-    }
-
-    const activeRow = rows.find((r: any) => r.id === openRowId);
-    const selProd = activeRow ? products.find((p: any) => p.id === activeRow.productId) : null;
-    if (selProd && term.toLowerCase() === (selProd.name || '').toLowerCase()) {
-      setProductSearching(false);
-      return;
-    }
-
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      setProductSearching(true);
-      try {
-        const cleanTerm = term.replace(/^ct[:\s\-\/]?\s*/i, '').trim();
-        if (!cleanTerm) return;
-        const results = await searchProducts(cleanTerm, 50);
-        if (results && results.length > 0 && !cancelled && setProducts) {
-          setProducts((prev: any[]) => {
-            const map = new Map();
-            prev.forEach((p: any) => map.set(p.id, p));
-            results.forEach((p: any) => map.set(p.id, p));
-            return Array.from(map.values());
-          });
-        }
-      } catch (err) {
-        console.error('Server product search failed:', err);
-      } finally {
-        if (!cancelled) setProductSearching(false);
-      }
-    }, 150);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [searchQuery, openRowId, rows, products, setProducts]);
   const [highlightProductIndex, setHighlightProductIndex] = useState<number>(0);
   const [highlightCustomerIndex, setHighlightCustomerIndex] = useState<number>(0);
   const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false);
@@ -352,12 +308,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
     });
   }, [filteredCustomers, customerSearch]);
 
-  const [productLimit, setProductLimit] = useState(100);
+  const [productLimit, setProductLimit] = useState(1000);
   const [customerLimit, setCustomerLimit] = useState(100);
 
-  // Reset limit to 100 on new search or when opening drawer for instant 1ms rendering
+  // Reset limit on new search or when opening drawer
   useEffect(() => {
-    setProductLimit(100);
+    setProductLimit(1000);
   }, [searchQuery, selectedCategory, openRowId]);
 
   useEffect(() => {

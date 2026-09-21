@@ -169,7 +169,7 @@ export async function createCustomer(data: {
   }
 }
 
-export async function getCustomers(limit = 100, search?: string) {
+export async function getCustomers(limit = 0, search?: string) {
   try {
     const serializeRow = (row: any) => {
       const data = serializeFirestoreData(row);
