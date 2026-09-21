@@ -2501,3 +2501,39 @@ flowchart TD
 
 ---
 *Memory Updated & Persisted on: 2026-09-19 (Section 74 - Unselected Global Shortcuts g, v, d & Focus Hijacking Elimination)*
+
+---
+
+## 75. Rule 3 Items (Predefined Size = None): Inactive Finish & File Path (Dashed Display '—' & Keyboard Auto-Skip on Enter)
+
+### A. Context & Design Standard (Option 1)
+- **Problem Statement**:
+  - When a line item falls under **Rule 3** (`has_multiple_sizes = false` and `has_single_default_size = false`, i.e., Tally predefined size is `None`, such as vinyl rolls, standalone materials, accessories, or services):
+    - Width, Length, and Sq.Ft. are already disabled and rendered as a dashed dash `—`.
+    - However, the row was still rendering interactive input controls for **Finish** (eyelet dropdown) and **File Path (optional)** (path input + browse button).
+    - Non-size items do not have finishing options (eyelets) or TIFF print files.
+- **Architectural Solution (Option 1 - Full Alignment with Mixed Orders)**:
+  1. **Table Header Integrity**: Column headers `FINISH` and `FILE PATH (optional)` remain visible in the `<thead>` so orders with mixed items (e.g., Row 1 is a printed banner with sizes + TIFF file, Row 2 is vinyl or accessories) remain perfectly aligned across columns.
+  2. **Row Inactivity (`—`)**:
+     - For any row where `isDirect = true` (`!isSizeInputActive`):
+       - **Finish Cell**: Renders a centered dashed box with `—` matching the styling of width/length/sqft dashes (`border-dashed border-white/40 text-xs font-bold font-mono`).
+       - **File Path Cell**: Renders a centered dashed box with `—` (`h-10 w-full min-w-[210px] flex items-center justify-center text-slate-400 bg-white/20 backdrop-blur-sm rounded-lg border border-dashed border-white/40 text-xs font-bold font-mono`).
+  3. **Keyboard <kbd>Enter</kbd> Flow for Rule 3**:
+     - Selecting Product $\rightarrow$ Item Description Modal (<kbd>Enter</kbd>) $\rightarrow$ Quantity (<kbd>Enter</kbd>) $\rightarrow$ Rate per Unit (<kbd>Enter</kbd>) $\rightarrow$ **Directly jumps to the next row** via `handleRowFinalEnter(index)` (or next existing row's product input).
+     - Because `error-row-${row.id}-file` and `row-${row.id}-browse-btn` are not rendered in the DOM when `isDirect` is true, pressing <kbd>Enter</kbd> on Rate per naturally skips them.
+  4. **Smart Backspace / Arrow Navigation**:
+     - Pressing <kbd>Backspace</kbd> or <kbd>ArrowLeft</kbd> on the row's Delete button (`row-${row.id}-delete-btn`):
+       - If `isDirect === true`: Jumps back to `row-${row.id}-rate-unit` (Rate per input).
+       - If `isDirect === false`: Jumps back to `row-${row.id}-browse-btn` (File Browse button).
+
+### B. Implementation Registry
+1. **`src/components/acdema/ProxyOrderBuilderView.tsx`**:
+   - File Path column: `{isDirect ? <div className="... border-dashed ...">—</div> : <div className="flex items-center ...">...</div>}`
+   - Delete button keydown: `if (isDirect) { document.getElementById('row-${row.id}-rate-unit')?.focus(); } else { ... }`
+2. **`src/components/acdema/QuotationBuilderView.tsx`**:
+   - Finish column: `{isDirect ? <div className="... border-dashed ...">—</div> : <select ... />}`
+   - File Path column: `{isDirect ? <div className="... border-dashed ...">—</div> : <div className="flex items-center ...">...</div>}`
+   - Delete button keydown: `if (isDirect) { document.getElementById('row-${row.id}-rate-unit')?.focus(); } else { ... }`
+
+---
+*Memory Updated & Persisted on: 2026-09-21 (Section 75 - Rule 3 Items: Inactive Finish & File Path Dashed Display and Enter Navigation)*

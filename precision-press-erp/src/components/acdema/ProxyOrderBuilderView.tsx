@@ -2514,151 +2514,157 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                             </td>
                             {/* File Path Column */}
                             <td className="py-1 px-2 tabular-nums align-top">
-                              <div className="flex items-center gap-1.5 min-w-[210px] h-10">
-                                <div className="relative flex-1">
-                                  <input
-                                    id={`error-row-${row.id}-file`}
-                                    value={row.fileName || row.tiffPath || ''}
-                                    onFocus={(e) => {
-                                      try {
-                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
-                                        e.currentTarget.setSelectionRange(len, len);
-                                      } catch {}
-                                    }}
-                                    onChange={(e) => {
-                                      const cleaned = sanitizeTiffPath(e.target.value);
-                                      updateRow(row.id, { tiffPath: cleaned, fileName: '' });
-                                      setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
+                              {isDirect ? (
+                                <div className="h-10 w-full min-w-[210px] flex items-center justify-center text-slate-400 bg-white/20 backdrop-blur-sm rounded-lg border border-dashed border-white/40 text-xs font-bold font-mono">
+                                  —
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-1.5 min-w-[210px] h-10">
+                                  <div className="relative flex-1">
+                                    <input
+                                      id={`error-row-${row.id}-file`}
+                                      value={row.fileName || row.tiffPath || ''}
+                                      onFocus={(e) => {
+                                        try {
+                                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                          e.currentTarget.setSelectionRange(len, len);
+                                        } catch {}
+                                      }}
+                                      onChange={(e) => {
+                                        const cleaned = sanitizeTiffPath(e.target.value);
+                                        updateRow(row.id, { tiffPath: cleaned, fileName: '' });
+                                        setValidationErrors((prev: any) => ({ ...prev, [`row-${row.id}-file`]: '' }));
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          handleRowFinalEnter(index);
+                                        } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
+                                          e.preventDefault();
+                                          const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                          if (finishSelect && !isDirect) {
+                                            finishSelect.focus();
+                                          } else {
+                                            const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                            const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                            if (rateSqft && hasMultipleSizes && isModeA) {
+                                              rateSqft.focus();
+                                              try {
+                                                const len = (rateSqft as HTMLInputElement).value ? (rateSqft as HTMLInputElement).value.length : 0;
+                                                (rateSqft as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
+                                            } else if (rateUnit) {
+                                              rateUnit.focus();
+                                              try {
+                                                const len = (rateUnit as HTMLInputElement).value ? (rateUnit as HTMLInputElement).value.length : 0;
+                                                (rateUnit as HTMLInputElement).setSelectionRange(len, len);
+                                              } catch {}
+                                            } else {
+                                              const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
+                                              if (qtyInput) qtyInput.focus();
+                                            }
+                                          }
+                                        }
+                                      }}
+                                      className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white/90 transition-all ${
+                                        validationErrors[`row-${row.id}-file`]
+                                          ? 'border-2 border-red-400 bg-red-50 text-red-600 placeholder-red-300'
+                                          : 'border-white/60 bg-white/40 backdrop-blur-md text-slate-800 shadow-xs'
+                                      }`}
+                                      placeholder="Paste path or browse file..."
+                                    />
+                                    {row.tiffPath && (
+                                      <button
+                                        type="button"
+                                        tabIndex={-1}
+                                        onClick={async () => {
+                                          const cleanedPath = sanitizeTiffPath(row.tiffPath);
+                                          if (row.blobUrl) {
+                                            window.open(row.blobUrl, '_blank', 'noopener,noreferrer');
+                                          } else if (/^https?:\/\//i.test(cleanedPath) || cleanedPath?.startsWith('/') || cleanedPath?.startsWith('blob:')) {
+                                            window.open(cleanedPath, '_blank', 'noopener,noreferrer');
+                                          } else {
+                                            try {
+                                              await navigator.clipboard.writeText(cleanedPath);
+                                            } catch {}
+                                            toast.custom(
+                                              (t) => (
+                                                <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-slate-900 shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-white/20 p-4 text-white`}>
+                                                  <div className="flex-1">
+                                                    <p className="text-xs font-black text-emerald-400 flex items-center gap-1">
+                                                      ✓ PATH COPIED TO CLIPBOARD
+                                                    </p>
+                                                    <p className="mt-1 text-[11px] text-slate-300 font-medium leading-relaxed">
+                                                      Press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Win + R</kbd>, then press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Ctrl + V</kbd> and hit <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-white font-mono font-bold">Enter</kbd> to open instantly!
+                                                    </p>
+                                                    <p className="mt-1.5 text-[9.5px] font-mono text-slate-400 truncate bg-slate-950 px-2 py-1 rounded border border-slate-800">
+                                                      {cleanedPath}
+                                                    </p>
+                                                  </div>
+                                                </div>
+                                              ),
+                                              { duration: 6000 }
+                                            );
+                                          }
+                                        }}
+                                        className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                        title="Copy Path & View Open Instructions"
+                                      >
+                                        <Copy size={12} />
+                                      </button>
+                                    )}
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    id={`row-${row.id}-browse-btn`}
+                                    onClick={() => {
+                                      const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
+                                      if (inputEl) inputEl.click();
                                     }}
                                     onKeyDown={(e) => {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
-                                        handleRowFinalEnter(index);
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
+                                        if (rows.length > 1) {
+                                          const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
+                                          if (delBtn) delBtn.focus();
+                                          else handleRowFinalEnter(index);
+                                        } else {
+                                          handleRowFinalEnter(index);
+                                        }
+                                      } else if (e.key === " " || e.key === "Spacebar") {
                                         e.preventDefault();
-                                        const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
-                                        if (finishSelect && !isDirect) {
-                                          finishSelect.focus();
-                                        } else {
-                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                          const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                          if (rateSqft && hasMultipleSizes && isModeA) {
-                                            rateSqft.focus();
-                                            try {
-                                              const len = (rateSqft as HTMLInputElement).value ? (rateSqft as HTMLInputElement).value.length : 0;
-                                              (rateSqft as HTMLInputElement).setSelectionRange(len, len);
-                                            } catch {}
-                                          } else if (rateUnit) {
-                                            rateUnit.focus();
-                                            try {
-                                              const len = (rateUnit as HTMLInputElement).value ? (rateUnit as HTMLInputElement).value.length : 0;
-                                              (rateUnit as HTMLInputElement).setSelectionRange(len, len);
-                                            } catch {}
-                                          } else {
-                                            const qtyInput = document.getElementById(`error-row-${row.id}-quantity`);
-                                            if (qtyInput) qtyInput.focus();
-                                          }
-                                        }
+                                        const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
+                                        if (inputEl) inputEl.click();
+                                      } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                        e.preventDefault();
+                                        const fileInput = document.getElementById(`error-row-${row.id}-file`);
+                                        if (fileInput) fileInput.focus();
                                       }
                                     }}
-                                    className={`h-10 w-full rounded-lg border pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white/90 transition-all ${
-                                      validationErrors[`row-${row.id}-file`]
-                                        ? 'border-2 border-red-400 bg-red-50 text-red-600 placeholder-red-300'
-                                        : 'border-white/60 bg-white/40 backdrop-blur-md text-slate-800 shadow-xs'
+                                    className={`flex items-center justify-center gap-1 h-10 px-2.5 rounded-lg border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-2xs outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 ${
+                                      row.tiffPath
+                                        ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+                                        : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-blue-600'
                                     }`}
-                                    placeholder="Paste path or browse file..."
-                                  />
-                                  {row.tiffPath && (
-                                    <button
-                                      type="button"
+                                    title="Browse file from computer (Space to open file dialog, Enter to next)"
+                                  >
+                                    <Upload size={12} />
+                                    <span>{row.tiffPath ? 'Change' : 'Browse'}</span>
+                                    <input
+                                      id={`row-${row.id}-file-input`}
+                                      type="file"
                                       tabIndex={-1}
-                                      onClick={async () => {
-                                        const cleanedPath = sanitizeTiffPath(row.tiffPath);
-                                        if (row.blobUrl) {
-                                          window.open(row.blobUrl, '_blank', 'noopener,noreferrer');
-                                        } else if (/^https?:\/\//i.test(cleanedPath) || cleanedPath?.startsWith('/') || cleanedPath?.startsWith('blob:')) {
-                                          window.open(cleanedPath, '_blank', 'noopener,noreferrer');
-                                        } else {
-                                          try {
-                                            await navigator.clipboard.writeText(cleanedPath);
-                                          } catch {}
-                                          toast.custom(
-                                            (t) => (
-                                              <div className={`${t.visible ? 'animate-enter' : 'animate-leave'} max-w-md w-full bg-slate-900 shadow-2xl rounded-2xl pointer-events-auto flex ring-1 ring-white/20 p-4 text-white`}>
-                                                <div className="flex-1">
-                                                  <p className="text-xs font-black text-emerald-400 flex items-center gap-1">
-                                                    ✓ PATH COPIED TO CLIPBOARD
-                                                  </p>
-                                                  <p className="mt-1 text-[11px] text-slate-300 font-medium leading-relaxed">
-                                                    Press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Win + R</kbd>, then press <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-cyan-300 font-mono font-bold">Ctrl + V</kbd> and hit <kbd className="px-1.5 py-0.5 bg-slate-800 border border-slate-600 rounded text-white font-mono font-bold">Enter</kbd> to open instantly!
-                                                  </p>
-                                                  <p className="mt-1.5 text-[9.5px] font-mono text-slate-400 truncate bg-slate-950 px-2 py-1 rounded border border-slate-800">
-                                                    {cleanedPath}
-                                                  </p>
-                                                </div>
-                                              </div>
-                                            ),
-                                            { duration: 6000 }
-                                          );
-                                        }
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const f = e.target.files?.[0];
+                                        if (f) handleRowFileSelect(row.id, f);
+                                        e.target.value = '';
                                       }}
-                                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
-                                      title="Copy Path & View Open Instructions"
-                                    >
-                                      <Copy size={12} />
-                                    </button>
-                                  )}
+                                    />
+                                  </button>
                                 </div>
-
-                                <button
-                                  type="button"
-                                  id={`row-${row.id}-browse-btn`}
-                                  onClick={() => {
-                                    const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
-                                    if (inputEl) inputEl.click();
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      if (rows.length > 1) {
-                                        const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
-                                        if (delBtn) delBtn.focus();
-                                        else handleRowFinalEnter(index);
-                                      } else {
-                                        handleRowFinalEnter(index);
-                                      }
-                                    } else if (e.key === " " || e.key === "Spacebar") {
-                                      e.preventDefault();
-                                      const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
-                                      if (inputEl) inputEl.click();
-                                    } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
-                                      e.preventDefault();
-                                      const fileInput = document.getElementById(`error-row-${row.id}-file`);
-                                      if (fileInput) fileInput.focus();
-                                    }
-                                  }}
-                                  className={`flex items-center justify-center gap-1 h-10 px-2.5 rounded-lg border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-2xs outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 ${
-                                    row.tiffPath
-                                      ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
-                                      : 'bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-blue-600'
-                                  }`}
-                                  title="Browse file from computer (Space to open file dialog, Enter to next)"
-                                >
-                                  <Upload size={12} />
-                                  <span>{row.tiffPath ? 'Change' : 'Browse'}</span>
-                                  <input
-                                    id={`row-${row.id}-file-input`}
-                                    type="file"
-                                    tabIndex={-1}
-                                    className="hidden"
-                                    onChange={(e) => {
-                                      const f = e.target.files?.[0];
-                                      if (f) handleRowFileSelect(row.id, f);
-                                      e.target.value = '';
-                                    }}
-                                  />
-                                </button>
-                              </div>
+                              )}
                             </td>
                             {/* Amount Column */}
                             <td className="py-1 px-2 text-right align-top">
@@ -2700,8 +2706,13 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                       handleRowFinalEnter(index);
                                     } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
                                       e.preventDefault();
-                                      const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
-                                      if (browseBtn) browseBtn.focus();
+                                      if (isDirect) {
+                                        const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                        if (rateUnit) rateUnit.focus();
+                                      } else {
+                                        const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                        if (browseBtn) browseBtn.focus();
+                                      }
                                     }
                                   }}
                                   className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all outline-none focus:ring-4 focus:ring-rose-500/30 focus:border-2 focus:border-rose-600 ${
