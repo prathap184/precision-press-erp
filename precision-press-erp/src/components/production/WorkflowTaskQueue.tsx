@@ -11,6 +11,7 @@ import {
 } from '@/lib/supabase-firestore-shim';
 import { Order } from '@/types/models';
 import { startWorkflowStep, fastCompleteProductionStage } from '@/lib/workflow';
+import { matchesPrinterStream } from '@/lib/role-workflow-utils';
 import { 
   Play, 
   CheckCircle, 
@@ -43,9 +44,23 @@ interface WorkflowTaskQueueProps {
   orderHrefBuilder?: (order: Order) => string | null | undefined;
   /** Restrict orders to a specific printer category if role is PRINTER */
   printerCategory?: string;
+  /** Restrict orders to a specific printer subcategory if role is PRINTER */
+  printerSubCategory?: string;
 }
 
-export function WorkflowTaskQueue({ role, title, icon, renderActions, renderExpanded, onTasksChange, emptyMessage, highlightOrderId, orderHrefBuilder, printerCategory }: WorkflowTaskQueueProps) {
+export function WorkflowTaskQueue({ 
+  role, 
+  title, 
+  icon, 
+  renderActions, 
+  renderExpanded, 
+  onTasksChange, 
+  emptyMessage, 
+  highlightOrderId, 
+  orderHrefBuilder, 
+  printerCategory,
+  printerSubCategory
+}: WorkflowTaskQueueProps) {
   const [tasks, setTasks] = useState<Order[]>([]);
   const [highlightedOrder, setHighlightedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,32 +149,10 @@ export function WorkflowTaskQueue({ role, title, icon, renderActions, renderExpa
 
       const selectedRoles = new Set((Array.isArray(role) ? role : [role]).map((item) => String(item).toUpperCase()));
       const matchingOrders = orders.filter((order) => {
-        if (printerCategory && printerCategory !== 'MAIN_PRINTER' && selectedRoles.has('PRINTER')) {
-          const normalizeCat = (cat?: string | null) => {
-            let c = (cat || '').toUpperCase().replace(/[^A-Z_]/g, '').replace('ECOSOLVENT', 'ECO_SOLVENT');
-            if (c === 'IDCARDS' || c === 'ID_CARDS') return 'ID_CARDS';
-    if (c === 'DIGITAL' || c === 'DIGITAL_PRINT') return 'DIGITAL_PRINT';
-            return c;
-          };
-          const userCat = normalizeCat(printerCategory);
-          let orderCat = normalizeCat(order.printerCategory);
-          
-          if (!orderCat) {
-             order.items?.some(item => {
-               const i = item as any;
-               const itemName = (i.productName || i.name || '').toLowerCase();
-               if (itemName.includes('eco')) orderCat = 'ECO_SOLVENT';
-               else if (itemName.includes('uv')) orderCat = 'UV_PRINT';
-               else if (itemName.includes('sol') || itemName.includes('solvent')) orderCat = 'SOLVENT_PRINT';
-               else if (itemName.includes('latex')) orderCat = 'LATEX_PRINT';
-               else if (itemName.includes('id card') || itemName.includes('visitor pass') || itemName.includes('membership') || itemName.includes('loyalty') || itemName.includes('access card') || itemName.includes('proximity') || itemName.includes('lanyard') || itemName.includes('holder') || itemName.includes('yo-yo')) orderCat = 'ID_CARDS';
-               else if (itemName.includes('dig') || itemName.includes('digital') || itemName.includes('vinyl') || itemName.includes('art paper') || itemName.includes('art card') || itemName.includes('sticker paper') || itemName.includes('envelope') || itemName.includes('invitation card') || itemName.includes('menu card') || itemName.includes('calendar sheet')) orderCat = 'DIGITAL_PRINT';
-               else if (itemName.includes('flex')) orderCat = 'FLEX_PRINT';
-               return !!orderCat;
-             });
+        if (selectedRoles.has('PRINTER')) {
+          if (!matchesPrinterStream(order, printerCategory, printerSubCategory)) {
+            return false;
           }
-
-          if (orderCat !== userCat) return false;
         }
 
         const currentRole = String(order.currentWorkflowRole || '').toUpperCase();

@@ -12,6 +12,7 @@ import {
   updateStaffRoles, updateStaffStatus,
   getStaffList, getRoleHistory,
 } from '@/lib/actions/staff';
+import { getPrintingCategories, PrintingCategory } from '@/lib/actions/printing-categories';
 import {
   Users, Search, Shield, CheckCircle2, XCircle,
   Clock, AlertTriangle, ChevronDown, ChevronUp,
@@ -121,13 +122,22 @@ const HistoryPanel = ({ userId }: { userId: string }) => {
 };
 
 // ─── Staff Row ────────────────────────────────────────────────────────────────
-const StaffRow = ({ staff, onRefresh }: { staff: StaffUser; onRefresh: () => void }) => {
+const StaffRow = ({ 
+  staff, 
+  onRefresh, 
+  availableCategories = [] 
+}: { 
+  staff: StaffUser; 
+  onRefresh: () => void; 
+  availableCategories?: PrintingCategory[];
+}) => {
   const [expanded, setExpanded] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   // Filter out deleted roles (PASTING, FINISHING, FIXING) when initializing
   const validRoles = staff.roles.filter(r => ROLE_META[r]);
   const [pendingRoles, setPendingRoles] = useState<StaffRole[]>(validRoles);
-  const [pendingPrinterCategory, setPendingPrinterCategory] = useState<PrinterCategory | undefined>(staff.printerCategory);
+  const [pendingPrinterCategory, setPendingPrinterCategory] = useState<string | undefined>(staff.printerCategory);
+  const [pendingPrinterSubCategory, setPendingPrinterSubCategory] = useState<string | undefined>(staff.printerSubCategory);
   const [reason, setReason] = useState('');
   const [confirm, setConfirm] = useState<null | { title: string; message: string; action: () => void; danger?: boolean }>(null);
   const [isPending, startTransition] = useTransition();
@@ -136,7 +146,12 @@ const StaffRow = ({ staff, onRefresh }: { staff: StaffUser; onRefresh: () => voi
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const isDirty = JSON.stringify(pendingRoles.sort()) !== JSON.stringify(staff.roles.sort()) || 
-                  (pendingRoles.includes('PRINTER') && pendingPrinterCategory !== staff.printerCategory);
+                  (pendingRoles.includes('PRINTER') && (
+                    pendingPrinterCategory !== staff.printerCategory || 
+                    pendingPrinterSubCategory !== staff.printerSubCategory
+                  ));
+
+  const selectedCategoryObj = availableCategories.find(c => c.name === pendingPrinterCategory);
 
   const handleToggleRole = (role: StaffRole) => {
     setPendingRoles(prev =>
@@ -158,7 +173,8 @@ const StaffRow = ({ staff, onRefresh }: { staff: StaffUser; onRefresh: () => voi
             staff.uid, 
             pendingRoles, 
             reason || undefined,
-            pendingRoles.includes('PRINTER') ? pendingPrinterCategory : undefined
+            pendingRoles.includes('PRINTER') ? pendingPrinterCategory : undefined,
+            pendingRoles.includes('PRINTER') ? pendingPrinterSubCategory : undefined
           );
           if (res.success) { showToast('✅ Roles updated'); onRefresh(); }
           else showToast(`❌ ${res.error}`);
@@ -234,16 +250,12 @@ const StaffRow = ({ staff, onRefresh }: { staff: StaffUser; onRefresh: () => voi
             <p className="text-[11px] text-slate-400 truncate mt-0.5">{staff.email}</p>
             <div className="flex flex-wrap gap-1 mt-1.5">
               {staff.roles.map(r => <RoleBadge key={r} role={r} />)}
-              {staff.roles.includes('PRINTER') && staff.printerCategory && (
+              {staff.roles.includes('PRINTER') && (staff.printerCategory || staff.printerSubCategory) && (
                 <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border"
-                  style={{ 
-                    color: PRINTER_CATEGORY_META[staff.printerCategory]?.color || '#64748b', 
-                    background: PRINTER_CATEGORY_META[staff.printerCategory]?.bg || '#f1f5f9',
-                    borderColor: PRINTER_CATEGORY_META[staff.printerCategory]?.color || '#cbd5e1'
-                  }}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border border-orange-200 bg-orange-50 text-orange-700"
                 >
-                  {PRINTER_CATEGORY_META[staff.printerCategory]?.label || staff.printerCategory}
+                  {staff.printerCategory === 'MAIN_PRINTER' ? 'Main Printer' : (staff.printerCategory || 'Main Printer')}
+                  {staff.printerSubCategory ? ` › ${staff.printerSubCategory}` : ''}
                 </span>
               )}
             </div>
@@ -288,20 +300,54 @@ const StaffRow = ({ staff, onRefresh }: { staff: StaffUser; onRefresh: () => voi
                 })}
               </div>
 
-              {/* Printer Category Sub-selection */}
+              {/* Printer Category & Subcategory Selection */}
               {pendingRoles.includes('PRINTER') && (
-                <div className="mb-4">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-orange-500 mb-1.5">Printer Machine Type</p>
+                <div className="mb-4 p-4 rounded-xl border border-orange-200 bg-orange-50/40 space-y-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-wider text-orange-600 mb-0.5">Printer Machine Stream</p>
+                    <p className="text-[11px] text-slate-500">Select which machine or production stream this printer handles:</p>
+                  </div>
+
                   <select
-                    value={pendingPrinterCategory || ''}
-                    onChange={(e) => setPendingPrinterCategory(e.target.value as PrinterCategory)}
-                    className="w-full text-xs font-bold text-slate-700 border-2 border-orange-200 bg-orange-50/50 rounded-xl px-3 py-2 focus:outline-none focus:border-orange-400 focus:bg-white transition-colors"
+                    value={pendingPrinterCategory || 'MAIN_PRINTER'}
+                    onChange={(e) => {
+                      setPendingPrinterCategory(e.target.value);
+                      setPendingPrinterSubCategory('');
+                    }}
+                    className="w-full text-xs font-bold text-slate-700 border-2 border-orange-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:border-orange-400 transition-colors"
                   >
-                    <option value="" disabled>Select Machine Type...</option>
-                    {ALL_PRINTER_CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>{PRINTER_CATEGORY_META[cat].label}</option>
-                    ))}
+                    <option value="MAIN_PRINTER">Main Printer (Supervisor – Sees All Orders)</option>
+                    {availableCategories.length > 0 ? (
+                      availableCategories.map(cat => (
+                        <option key={cat.id} value={cat.name}>
+                          {cat.name} {cat.has_subcategories && cat.subcategories?.length ? `(${cat.subcategories.length} sub-tiers)` : ''}
+                        </option>
+                      ))
+                    ) : (
+                      ALL_PRINTER_CATEGORIES.filter(c => c !== 'MAIN_PRINTER').map(cat => (
+                        <option key={cat} value={cat}>{PRINTER_CATEGORY_META[cat]?.label || cat}</option>
+                      ))
+                    )}
                   </select>
+
+                  {/* Subcategory dropdown if selected category has subcategories */}
+                  {selectedCategoryObj?.has_subcategories && (selectedCategoryObj.subcategories?.length || 0) > 0 && (
+                    <div className="pt-2 border-t border-orange-200/60">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-purple-700 mb-1">
+                        Assigned Subcategory (Optional)
+                      </p>
+                      <select
+                        value={pendingPrinterSubCategory || ''}
+                        onChange={(e) => setPendingPrinterSubCategory(e.target.value || undefined)}
+                        className="w-full text-xs font-semibold text-slate-700 border border-purple-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:border-purple-400 transition-colors"
+                      >
+                        <option value="">All {selectedCategoryObj.name} Subcategories</option>
+                        {selectedCategoryObj.subcategories?.map(sub => (
+                          <option key={sub.id} value={sub.name}>{sub.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -368,6 +414,7 @@ const StaffRow = ({ staff, onRefresh }: { staff: StaffUser; onRefresh: () => voi
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function StaffManagementPage() {
   const [staffList, setStaffList] = useState<StaffUser[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<PrintingCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState<StaffRole | 'ALL'>('ALL');
@@ -413,8 +460,12 @@ export default function StaffManagementPage() {
 
   const loadStaff = useCallback(async () => {
     setLoading(true);
-    const list = await getStaffList();
+    const [list, cats] = await Promise.all([
+      getStaffList(),
+      getPrintingCategories()
+    ]);
     setStaffList(list);
+    setAvailableCategories(cats);
     setLoading(false);
   }, []);
 
@@ -556,7 +607,12 @@ export default function StaffManagementPage() {
         ) : (
           <div className="space-y-3">
             {filtered.map(staff => (
-              <StaffRow key={staff.uid} staff={staff} onRefresh={loadStaff} />
+              <StaffRow 
+                key={staff.uid} 
+                staff={staff} 
+                onRefresh={loadStaff} 
+                availableCategories={availableCategories} 
+              />
             ))}
           </div>
         )}

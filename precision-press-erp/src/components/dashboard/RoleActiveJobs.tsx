@@ -12,7 +12,7 @@ import {
 import { db } from '@/lib/firebase';
 import { Order } from '@/types/models';
 import { UserRole } from '@/types/auth';
-import { filterActiveJobs, getStepForRole } from '@/lib/role-workflow-utils';
+import { filterActiveJobs, getStepForRole, matchesPrinterStream } from '@/lib/role-workflow-utils';
 import { OrderThumbnail } from '@/components/orders/OrderThumbnail';
 import { Loader2, ArrowUpRight, Eye, FileText, UserCheck, Users } from 'lucide-react';
 import { format } from 'date-fns';
@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 interface RoleActiveJobsProps {
   role: UserRole;
   printerCategory?: string;
+  printerSubCategory?: string;
   userId?: string;
   onJobsUpdate?: (orders: Order[]) => void;
   maxHeight?: string;
@@ -40,6 +41,7 @@ interface RoleActiveJobsProps {
 export function RoleActiveJobs({ 
   role, 
   printerCategory,
+  printerSubCategory,
   userId,
   onJobsUpdate,
   maxHeight = '160px',
@@ -77,31 +79,7 @@ export function RoleActiveJobs({
       const allOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
       
       const passesCategoryCheck = (order: Order) => {
-        if (!printerCategory || printerCategory === 'MAIN_PRINTER') return true;
-        const normalizeCat = (cat?: string | null) => {
-          let c = (cat || '').toUpperCase().replace(/[^A-Z_]/g, '').replace('ECOSOLVENT', 'ECO_SOLVENT');
-          if (c === 'IDCARDS' || c === 'ID_CARDS') return 'ID_CARDS';
-    if (c === 'DIGITAL' || c === 'DIGITAL_PRINT') return 'DIGITAL_PRINT';
-          return c;
-        };
-        const userCat = normalizeCat(printerCategory);
-        let orderCat = normalizeCat(order.printerCategory);
-        
-        if (!orderCat) {
-           const firstItem = order.items?.[0] as any;
-           const firstItemName = firstItem?.productName || firstItem?.name;
-           if (firstItemName) {
-              const itemName = firstItemName.toLowerCase();
-              if (itemName.includes('eco')) orderCat = 'ECO_SOLVENT';
-              else if (itemName.includes('uv')) orderCat = 'UV_PRINT';
-              else if (itemName.includes('sol') || itemName.includes('solvent')) orderCat = 'SOLVENT_PRINT';
-              else if (itemName.includes('latex')) orderCat = 'LATEX_PRINT';
-              else if (itemName.includes('id card') || itemName.includes('visitor pass') || itemName.includes('membership') || itemName.includes('loyalty') || itemName.includes('access card') || itemName.includes('proximity') || itemName.includes('lanyard') || itemName.includes('holder') || itemName.includes('yo-yo')) orderCat = 'ID_CARDS';
-        else if (itemName.includes('dig') || itemName.includes('digital') || itemName.includes('vinyl') || itemName.includes('art paper') || itemName.includes('art card') || itemName.includes('sticker paper') || itemName.includes('envelope') || itemName.includes('invitation card') || itemName.includes('menu card') || itemName.includes('calendar sheet')) orderCat = 'DIGITAL_PRINT';
-        else if (itemName.includes('flex')) orderCat = 'FLEX_PRINT';
-           }
-        }
-        return orderCat === userCat;
+        return matchesPrinterStream(order, printerCategory, printerSubCategory);
       };
 
       // Manager page can switch between only own printer assignments and all printer assignments.
@@ -153,7 +131,7 @@ export function RoleActiveJobs({
               const roleStep = getStepForRole(order, role);
               return Boolean(roleStep && roleStep.status === 'COMPLETED');
             })
-        : filterActiveJobs(allOrders, role, userId, activeScope, printerCategory);
+        : filterActiveJobs(allOrders, role, userId, activeScope, printerCategory, printerSubCategory);
 
       setActiveJobs(filtered);
       onJobsUpdate?.(filtered);
@@ -161,7 +139,7 @@ export function RoleActiveJobs({
     });
 
     return () => unsubscribe();
-  }, [role, printerCategory, userId, onJobsUpdate, dataMode, assignmentScope, assignedByUserId, activeScope]);
+  }, [role, printerCategory, printerSubCategory, userId, onJobsUpdate, dataMode, assignmentScope, assignedByUserId, activeScope]);
 
   const formatDate = (value: unknown) => {
     if (!value) return '—';
@@ -385,5 +363,3 @@ export function RoleActiveJobs({
     </div>
   );
 }
-
-

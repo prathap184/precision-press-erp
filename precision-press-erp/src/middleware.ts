@@ -33,6 +33,7 @@ const ROUTE_PERMISSIONS: { prefix: string; allowed: string[] }[] = [
   { prefix: '/support/orders',   allowed: ['SUPPORT',   'ADMIN', 'SUPER_ADMIN'] },
   { prefix: '/manager/orders',   allowed: ['MANAGER',   'ADMIN', 'SUPER_ADMIN'] },
   { prefix: '/accountant/orders', allowed: ['ACCOUNTANT', 'ADMIN', 'SUPER_ADMIN'] },
+  { prefix: '/admin/printing-categories', allowed: ['ADMIN', 'SUPER_ADMIN'] },
   // ── Shared global orders view for operations staff ─────────────────────────
   { prefix: '/admin/orders', allowed: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT'] },
   // ── Admin management: STRICTLY ADMIN & SUPER_ADMIN only ───────────────────

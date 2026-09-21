@@ -16,6 +16,7 @@ export default function PrinterAssignPage() {
         <RoleActiveJobs
           role="PRINTER"
           printerCategory={profile?.printerCategory}
+          printerSubCategory={profile?.printerSubCategory}
           maxHeight="none"
           title="Orders Completed by Me"
           subtitle="Orders you marked as Work Done and passed to next stage"

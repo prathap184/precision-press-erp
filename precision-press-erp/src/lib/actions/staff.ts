@@ -151,7 +151,8 @@ export async function updateStaffRoles(
   targetUid: string,
   newRoles: StaffRole[],
   reason?: string,
-  printerCategory?: string
+  printerCategory?: string,
+  printerSubCategory?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const cookieStore = await cookies();
@@ -187,17 +188,24 @@ export async function updateStaffRoles(
     const now = admin.firestore.FieldValue.serverTimestamp();
 
     const pCat = printerCategory || 'MAIN_PRINTER';
+    const pSub = printerSubCategory || null;
 
     // Update profiles collection (primary, used by auth-context realtime listener)
     const profileUpdate: Record<string, any> = {
       role: primaryRole,
       roles: finalRoles,
     };
-    // Save printerCategory only for PRINTER role; clear it for other roles
+    // Save printerCategory and subcategory only for PRINTER role; clear it for other roles
     if (newRoles.includes('PRINTER')) {
       profileUpdate.printerCategory = pCat;
+      profileUpdate.printerSubCategory = pSub;
+      profileUpdate.printing_category_name = pCat;
+      profileUpdate.printing_subcategory_name = pSub;
     } else {
       profileUpdate.printerCategory = null;
+      profileUpdate.printerSubCategory = null;
+      profileUpdate.printing_category_name = null;
+      profileUpdate.printing_subcategory_name = null;
     }
     
     try {
@@ -212,6 +220,8 @@ export async function updateStaffRoles(
         role: primaryRole,
         roles: JSON.stringify(finalRoles),
         printerCategory: newRoles.includes('PRINTER') ? pCat : null,
+        printing_category_name: newRoles.includes('PRINTER') ? pCat : null,
+        printing_subcategory_name: newRoles.includes('PRINTER') ? pSub : null,
       };
       const { error: supaErr } = await supabaseServer
         .from('profiles')
@@ -235,6 +245,7 @@ export async function updateStaffRoles(
     };
     if (newRoles.includes('PRINTER')) {
       staffPayload.printer_category = pCat;
+      staffPayload.printer_sub_category = pSub;
     }
 
     try {
@@ -363,7 +374,8 @@ export async function getStaffList(): Promise<StaffUser[]> {
           email: profile.email || '',
           roles: profileRoles,
           status: (staffRow.status as StaffStatus) || (profile.status as StaffStatus) || 'ACTIVE',
-          printerCategory: staffRow.printerCategory || profile.printerCategory || undefined,
+          printerCategory: staffRow.printerCategory || staffRow.printer_category || profile.printerCategory || undefined,
+          printerSubCategory: staffRow.printerSubCategory || staffRow.printer_sub_category || profile.printerSubCategory || undefined,
           assignedBy: staffRow.assigned_by,
           assignedAt: toPlain(staffRow.assigned_at),
           updatedAt: toPlain(staffRow.updated_at ?? profile.updatedAt),

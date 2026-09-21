@@ -29,36 +29,92 @@ export function hasRoleStepInProgressOrCompleted(order: Order | null, role: User
 }
 
 /**
+ * Normalizes string for fuzzy / robust matching across spaces, underscores, cases
+ */
+export function normalizeCategoryString(str?: string | null): string {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]/g, ''); // removes spaces, underscores, hyphens
+}
+
+/**
+ * Centralized verification: does an order belong to this printer user's machine stream?
+ */
+export function matchesPrinterStream(
+  order: Order | null,
+  printerCategory?: string,
+  printerSubCategory?: string
+): boolean {
+  if (!order) return false;
+  // If no category specified or user is MAIN_PRINTER, supervisor sees everything
+  if (!printerCategory || printerCategory === 'MAIN_PRINTER') return true;
+
+  const targetCatNorm = normalizeCategoryString(printerCategory);
+  
+  // Extract order category
+  let orderCat = order.printerCategory || (order as any).printing_category_name || '';
+  if (!orderCat && order.items?.length) {
+    const firstItem = order.items[0] as any;
+    orderCat = firstItem.printerCategory || firstItem.printing_category_name || firstItem.printingCategoryName || firstItem.category || '';
+    if (!orderCat) {
+      const firstItemName = (firstItem.productName || firstItem.name || '').toLowerCase();
+      if (firstItemName.includes('eco')) orderCat = 'ECO_SOLVENT';
+      else if (firstItemName.includes('uv')) orderCat = 'UV_PRINT';
+      else if (firstItemName.includes('sol') || firstItemName.includes('solvent')) orderCat = 'SOLVENT_PRINT';
+      else if (firstItemName.includes('latex')) orderCat = 'LATEX_PRINT';
+      else if (firstItemName.includes('id card') || firstItemName.includes('visitor pass') || firstItemName.includes('membership') || firstItemName.includes('loyalty') || firstItemName.includes('access card') || firstItemName.includes('proximity') || firstItemName.includes('lanyard') || firstItemName.includes('holder') || firstItemName.includes('yo-yo')) orderCat = 'ID_CARDS';
+      else if (firstItemName.includes('dig') || firstItemName.includes('digital') || firstItemName.includes('vinyl') || firstItemName.includes('art paper') || firstItemName.includes('art card') || firstItemName.includes('sticker paper') || firstItemName.includes('envelope') || firstItemName.includes('invitation card') || firstItemName.includes('menu card') || firstItemName.includes('calendar sheet')) orderCat = 'DIGITAL_PRINT';
+      else if (firstItemName.includes('flex')) orderCat = 'FLEX_PRINT';
+    }
+  }
+
+  const orderCatNorm = normalizeCategoryString(orderCat);
+
+  // If order category does not match user category, reject immediately
+  if (orderCatNorm !== targetCatNorm) {
+    // Also check standard aliases (e.g. "SOLVENT" vs "SOLVENT_PRINT", "ECOSOLVENT" vs "ECO_SOLVENT")
+    const simplifiedTarget = targetCatNorm.replace('print', '');
+    const simplifiedOrder = orderCatNorm.replace('print', '');
+    if (!simplifiedTarget || simplifiedTarget !== simplifiedOrder) {
+      return false;
+    }
+  }
+
+  // Category matched! Now check subcategory if assigned to this printer
+  const targetSubNorm = normalizeCategoryString(printerSubCategory);
+  if (!targetSubNorm) {
+    // Printer handles all subcategories of this category
+    return true;
+  }
+
+  // Extract order subcategory
+  let orderSubCat = (order as any).printerSubCategory || (order as any).printing_subcategory_name || '';
+  if (!orderSubCat && order.items?.length) {
+    const firstItem = order.items[0] as any;
+    orderSubCat = firstItem.printerSubCategory || firstItem.printing_subcategory_name || firstItem.printingSubcategoryName || '';
+  }
+
+  const orderSubNorm = normalizeCategoryString(orderSubCat);
+  return orderSubNorm === targetSubNorm;
+}
+
+/**
  * Checks if an order is in the "Unassigned Backlog" for a given role
  * (order is at this role's step and status is PENDING)
  */
-export function isUnassignedForRole(order: Order | null, role: UserRole, printerCategory?: string): boolean {
+export function isUnassignedForRole(
+  order: Order | null, 
+  role: UserRole, 
+  printerCategory?: string,
+  printerSubCategory?: string
+): boolean {
   if (!order) return false;
 
-  const normalizeCat = (cat?: string | null) => {
-    let c = (cat || '').toUpperCase().replace(/[^A-Z_]/g, '').replace('ECOSOLVENT', 'ECO_SOLVENT');
-    if (c === 'IDCARDS' || c === 'ID_CARDS') return 'ID_CARDS';
-    if (c === 'DIGITAL' || c === 'DIGITAL_PRINT') return 'DIGITAL_PRINT';
-    return c;
-  };
-
-  // For PRINTER, ensure the order matches the specific printer category (unless MAIN_PRINTER)
-  if (role === 'PRINTER' && printerCategory && printerCategory !== 'MAIN_PRINTER') {
-    let orderCat = normalizeCat(order.printerCategory);
-    const firstItem = order.items?.[0] as any;
-    const firstItemName = firstItem?.productName || firstItem?.name;
-    if (!orderCat && firstItemName) {
-       const itemName = firstItemName.toLowerCase();
-       if (itemName.includes('eco')) orderCat = 'ECO_SOLVENT';
-       else if (itemName.includes('uv')) orderCat = 'UV_PRINT';
-       else if (itemName.includes('sol') || itemName.includes('solvent')) orderCat = 'SOLVENT_PRINT';
-       else if (itemName.includes('latex')) orderCat = 'LATEX_PRINT';
-       else if (itemName.includes('id card') || itemName.includes('visitor pass') || itemName.includes('membership') || itemName.includes('loyalty') || itemName.includes('access card') || itemName.includes('proximity') || itemName.includes('lanyard') || itemName.includes('holder') || itemName.includes('yo-yo')) orderCat = 'ID_CARDS';
-        else if (itemName.includes('dig') || itemName.includes('digital') || itemName.includes('vinyl') || itemName.includes('art paper') || itemName.includes('art card') || itemName.includes('sticker paper') || itemName.includes('envelope') || itemName.includes('invitation card') || itemName.includes('menu card') || itemName.includes('calendar sheet')) orderCat = 'DIGITAL_PRINT';
-        else if (itemName.includes('flex')) orderCat = 'FLEX_PRINT';
-    }
-    const userCat = normalizeCat(printerCategory);
-    if (orderCat !== userCat) {
+  // For PRINTER, ensure the order matches the specific printer stream (unless MAIN_PRINTER)
+  if (role === 'PRINTER') {
+    if (!matchesPrinterStream(order, printerCategory, printerSubCategory)) {
       return false;
     }
   }
@@ -84,35 +140,17 @@ export function isUnassignedForRole(order: Order | null, role: UserRole, printer
  * Checks if an order is an "Active Job" for a given role
  * (order is at this role's step and status is IN_PROGRESS, COMPLETED, or assigned)
  */
-export function isActiveJobForRole(order: Order | null, role: UserRole, printerCategory?: string): boolean {
+export function isActiveJobForRole(
+  order: Order | null, 
+  role: UserRole, 
+  printerCategory?: string,
+  printerSubCategory?: string
+): boolean {
   if (!order) return false;
 
-  const normalizeCat = (cat?: string | null) => {
-    let c = (cat || '').toUpperCase().replace(/[^A-Z_]/g, '').replace('ECOSOLVENT', 'ECO_SOLVENT');
-    if (c === 'IDCARDS' || c === 'ID_CARDS') return 'ID_CARDS';
-    if (c === 'DIGITAL' || c === 'DIGITAL_PRINT') return 'DIGITAL_PRINT';
-    return c;
-  };
-
-  // For PRINTER, ensure the order matches the specific printer category (unless MAIN_PRINTER)
-  if (role === 'PRINTER' && printerCategory && printerCategory !== 'MAIN_PRINTER') {
-    let orderCat = normalizeCat(order.printerCategory);
-    if (!orderCat) {
-      order.items?.some(item => {
-        const i = item as any;
-        const itemName = (i.productName || i.name || '').toLowerCase();
-        if (itemName.includes('eco')) orderCat = 'ECO_SOLVENT';
-        else if (itemName.includes('uv')) orderCat = 'UV_PRINT';
-        else if (itemName.includes('sol') || itemName.includes('solvent')) orderCat = 'SOLVENT_PRINT';
-        else if (itemName.includes('latex')) orderCat = 'LATEX_PRINT';
-        else if (itemName.includes('id card') || itemName.includes('visitor pass') || itemName.includes('membership') || itemName.includes('loyalty') || itemName.includes('access card') || itemName.includes('proximity') || itemName.includes('lanyard') || itemName.includes('holder') || itemName.includes('yo-yo')) orderCat = 'ID_CARDS';
-        else if (itemName.includes('dig') || itemName.includes('digital') || itemName.includes('vinyl') || itemName.includes('art paper') || itemName.includes('art card') || itemName.includes('sticker paper') || itemName.includes('envelope') || itemName.includes('invitation card') || itemName.includes('menu card') || itemName.includes('calendar sheet')) orderCat = 'DIGITAL_PRINT';
-        else if (itemName.includes('flex')) orderCat = 'FLEX_PRINT';
-        return !!orderCat;
-      });
-    }
-    const userCat = normalizeCat(printerCategory);
-    if (orderCat !== userCat) {
+  // For PRINTER, ensure the order matches the specific printer stream (unless MAIN_PRINTER)
+  if (role === 'PRINTER') {
+    if (!matchesPrinterStream(order, printerCategory, printerSubCategory)) {
       return false;
     }
   }
@@ -151,14 +189,26 @@ export function isActiveJobForRole(order: Order | null, role: UserRole, printerC
 /**
  * Filters orders to show unassigned backlog for a role
  */
-export function filterUnassignedBacklog(orders: Order[], role: UserRole, printerCategory?: string): Order[] {
-  return orders.filter(order => isUnassignedForRole(order, role, printerCategory));
+export function filterUnassignedBacklog(
+  orders: Order[], 
+  role: UserRole, 
+  printerCategory?: string,
+  printerSubCategory?: string
+): Order[] {
+  return orders.filter(order => isUnassignedForRole(order, role, printerCategory, printerSubCategory));
 }
 
 /**
  * Filters orders to show active jobs for a role
  */
-export function filterActiveJobs(orders: Order[], role: UserRole, userId?: string, scope: 'mine' | 'all' = 'mine', printerCategory?: string): Order[] {
+export function filterActiveJobs(
+  orders: Order[], 
+  role: UserRole, 
+  userId?: string, 
+  scope: 'mine' | 'all' = 'mine', 
+  printerCategory?: string,
+  printerSubCategory?: string
+): Order[] {
   if (role === 'ACCOUNTANT') {
     return orders.filter(order => {
       const accountantStep = getStepForRole(order, 'ACCOUNTANT');
@@ -170,11 +220,11 @@ export function filterActiveJobs(orders: Order[], role: UserRole, userId?: strin
   }
 
   if (scope === 'all' || !userId) {
-    return orders.filter(order => isActiveJobForRole(order, role, printerCategory));
+    return orders.filter(order => isActiveJobForRole(order, role, printerCategory, printerSubCategory));
   }
 
   return orders.filter(order => {
-    if (!isActiveJobForRole(order, role, printerCategory)) return false;
+    if (!isActiveJobForRole(order, role, printerCategory, printerSubCategory)) return false;
 
     if (role === 'DESIGNER') {
       const designerStep = getStepForRole(order, 'DESIGNER');
@@ -194,13 +244,17 @@ export function filterActiveJobs(orders: Order[], role: UserRole, userId?: strin
 /**
  * Gets all orders relevant to a role's current workflow step
  */
-export function getOrdersForRoleWorkflow(orders: Order[], role: UserRole, printerCategory?: string): {
+export function getOrdersForRoleWorkflow(
+  orders: Order[], 
+  role: UserRole, 
+  printerCategory?: string,
+  printerSubCategory?: string
+): {
   unassigned: Order[];
   active: Order[];
 } {
   return {
-    unassigned: filterUnassignedBacklog(orders, role, printerCategory),
-    active: filterActiveJobs(orders, role, undefined, 'mine', printerCategory),
+    unassigned: filterUnassignedBacklog(orders, role, printerCategory, printerSubCategory),
+    active: filterActiveJobs(orders, role, undefined, 'mine', printerCategory, printerSubCategory),
   };
 }
-

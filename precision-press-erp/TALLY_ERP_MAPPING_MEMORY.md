@@ -2650,3 +2650,77 @@ flowchart TD
 ---
 *Memory Updated & Persisted on: 2026-09-21 (Section 79 - 100% Strict Role Restrictions for d, v, n Shortcuts and URL Access)*
 
+---
+
+## 80. Dynamic Printing Categories, Subcategories, Flow Creator, Rule 1/2 vs Rule 3 Isolation & Queue Stamping
+
+### A. Architectural Overview & Problem Statement
+- Previously, printer categories were hardcoded static enums (`SOLVENT_PRINT`, `ECO_SOLVENT`, `UV_PRINT`, etc.).
+- The business required:
+  1. An Admin-only **"Printing Categories & Flow Creator"** page to dynamically create and manage Printing Categories (e.g. *Solvent*, *Eco Solvent*, *UV Flatbed*) and optional Subcategories (e.g. *Frontlit*, *Backlit*, *Star Blackout*).
+  2. In Inventory Item Details (`/accounting/inventory/[id]`):
+     - **Rule 1 & Rule 2 items** (Width $\times$ Height / SQFT / Multiple Sizes): display a dedicated **"Printing & Production Routing"** section with dynamic Category and Subcategory dropdown selectors.
+     - **Rule 3 items** (Fixed unit goods with no dimensions, e.g. *Dorco Steel Cutter*, `NOS`, `PCS`): **completely hide** this section because they skip print and route directly `Accounts -> Dispatch -> Delivery`.
+  3. In Staff Management (`/admin/staff` and `/admin/staff/new`):
+     - When assigning role `PRINTER`, allow selecting **`Main Printer`** (sees all printing orders across all streams) or a specific dynamic category (and optional subcategory).
+  4. In Printer Queues / Dashboards (`WorkflowTaskQueue.tsx`, `RoleActiveJobs.tsx`, `RoleUnassignedBacklog.tsx`, `/printer/queue`):
+     - Orders for that category and subcategory must **only** appear on that specific printer's dashboard account (and Main Printer). 100% strict isolation.
+  5. Dedicated new database tables and columns without hacking into legacy fields.
+
+### B. Database Schema & Migration
+- Created migration `supabase/migrations/20260921000000_create_printing_categories.sql`:
+  - Table `printing_categories`: `id` (UUID PK), `name` (TEXT UNIQUE), `code` (TEXT UNIQUE), `has_subcategories` (BOOLEAN), `is_active` (BOOLEAN), `created_at`, `updated_at`.
+  - Table `printing_subcategories`: `id` (UUID PK), `category_id` (UUID FK -> `printing_categories.id`), `name` (TEXT), `code` (TEXT), `is_active` (BOOLEAN), `created_at`.
+  - Added dedicated columns to `inventory_item`: `printing_category_id` (UUID), `printing_category_name` (TEXT), `printing_subcategory_id` (UUID), `printing_subcategory_name` (TEXT).
+  - Added dedicated columns to `profiles`: `printing_category_id` (UUID), `printing_category_name` (TEXT), `printing_subcategory_id` (UUID), `printing_subcategory_name` (TEXT).
+
+### C. Server Actions & Admin Protection
+1. **Server Actions (`src/lib/actions/printing-categories.ts`)**:
+   - Implements `getPrintingCategories(includeInactive?)`, `createPrintingCategory(...)`, `updatePrintingCategory(...)`, `deletePrintingCategory(id)`.
+   - Supports atomic creation/updating of parent categories with nested subcategories.
+2. **Server Middleware & Route Guards**:
+   - In `src/middleware.ts`, registered `{ prefix: '/admin/printing-categories', allowed: ['ADMIN', 'SUPER_ADMIN'] }`.
+   - In `src/app/(dashboard)/admin/printing-categories/page.tsx`, wrapped UI in `<RoleGuard allowedRoles={['ADMIN', 'SUPER_ADMIN']}>`.
+3. **Navigation Config (`src/config/navigation.ts`)**:
+   - Added **Print Categories** link under Admin navigation items with `Printer` icon.
+
+### D. Inventory Item Details & Rule 1/2 vs Rule 3 Separation
+- In `src/app/(dashboard)/accounting/inventory/[id]/page.tsx`:
+  - Defined `isPrintableItem = isRule1 || isRule2`.
+  - For printable items: rendered a dedicated **"Printing & Production Routing"** section.
+  - Dynamically fetches available categories from `getPrintingCategories()`.
+  - If selected category has subcategories, renders the subcategory selector dynamically.
+  - For Rule 3 items (`NOS`, `PCS`, fixed non-dimension goods): section is completely omitted from the DOM.
+- In `src/app/api/v1/inventory/[id]/route.ts` & Drizzle schema:
+  - Validates and saves `printingCategoryId`, `printingCategoryName`, `printingSubcategoryId`, and `printingSubcategoryName` directly into `inventory_item` columns and mirrors into `metadata`.
+
+### E. Staff Management & Dynamic Assignment
+- In `src/app/(dashboard)/admin/staff/new/page.tsx` & `src/app/(dashboard)/admin/staff/page.tsx`:
+  - When role `PRINTER` is toggled, admins can select **Main Printer (Supervisor – Sees All Jobs)** or any dynamic category created in Print Categories.
+  - If category has subcategories, an optional subcategory picker lets admins narrow down to a specific subcategory (e.g. *Solvent › Frontlit*).
+  - Badges display the machine stream clearly: `Main Printer` or `Category › Subcategory`.
+  - `updateStaffRoles` in `src/lib/actions/staff.ts` stores both `printerCategory` and `printerSubCategory` in Firestore and Supabase `profiles`.
+
+### F. Order Stamping & 100% Strict Printer Queue Isolation
+1. **Order Creation Stamping (`src/lib/workflow.ts`)**:
+   - When orders are placed (Counter, ACDEMA, Web), items look up the inventory item's `printing_category_name` and `printing_subcategory_name`.
+   - Stamped onto parent order and each child order as `printerCategory`, `printerSubCategory`, `printing_category_name`, and `printing_subcategory_name`.
+2. **Centralized Matching (`src/lib/role-workflow-utils.ts`)**:
+   - Implemented `matchesPrinterStream(order, userCategory, userSubCategory)`.
+   - If user is `MAIN_PRINTER` or has no category assigned: full supervisor visibility across all streams.
+   - If user has a category assigned: strictly filters matching orders (with case/punctuation normalization and legacy aliases).
+   - If user has a subcategory assigned: strictly filters only orders for that subcategory.
+3. **Queue Enforcement**:
+   - Applied `matchesPrinterStream` across:
+     - `WorkflowTaskQueue.tsx`
+     - `RoleActiveJobs.tsx`
+     - `RoleUnassignedBacklog.tsx`
+     - `/printer/queue/page.tsx`
+     - `/printer/page.tsx`
+     - `/printer/unassigned/page.tsx`
+     - `/printer/assign/page.tsx`
+
+---
+*Memory Updated & Persisted on: 2026-09-21 (Section 80 - Dynamic Printing Categories, Subcategories, Flow Creator, Rule 1/2 vs Rule 3 Isolation & Queue Stamping)*
+
+

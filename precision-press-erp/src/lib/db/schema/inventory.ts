@@ -125,6 +125,11 @@ export const inventoryItem = pgTable(
     defaultWidthUnit: text("default_width_unit").default("FT"),
     defaultLengthUnit: text("default_length_unit").default("FT"),
     defaultSizeName: text("default_size_name"),
+    // Dynamic Printing Production Routing fields
+    printingCategoryId: uuid("printing_category_id"),
+    printingCategoryName: text("printing_category_name"),
+    printingSubcategoryId: uuid("printing_subcategory_id"),
+    printingSubcategoryName: text("printing_subcategory_name"),
     createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date" }).defaultNow().notNull(),
     deletedAt: timestamp("deleted_at", { mode: "date" }),

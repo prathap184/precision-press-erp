@@ -41,6 +41,7 @@ export default function PrinterUnassignedPage() {
         <RoleUnassignedBacklog 
           role="PRINTER" 
           printerCategory={profile?.printerCategory}
+          printerSubCategory={profile?.printerSubCategory}
           maxHeight="none" 
         />
       </div>

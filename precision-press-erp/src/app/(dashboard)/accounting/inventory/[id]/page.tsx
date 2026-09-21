@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Trash2, Save, Loader2, Warehouse, Printer, Scale, Package } from "lucide-react";
+import { getPrintingCategories, PrintingCategory } from "@/lib/actions/printing-categories";
 import { cn } from "@/lib/utils";
 import { Section } from "@/components/dashboard/section";
 import { Button } from "@/components/ui/button";
@@ -53,6 +54,18 @@ export default function InventoryItemDetailsPage() {
   const [metadata, setMetadata] = useState<any>((item as any).metadata || {});
   const [workflowSteps, setWorkflowSteps] = useState<any[]>((item as any).workflowSteps || []);
   const [warehouseStocks, setWarehouseStocks] = useState<WarehouseStockEntry[]>([]);
+  const [availablePrintingCategories, setAvailablePrintingCategories] = useState<PrintingCategory[]>([]);
+  const [printingCategoryId, setPrintingCategoryId] = useState<string>("");
+  const [printingCategoryName, setPrintingCategoryName] = useState<string>("");
+  const [printingSubcategoryId, setPrintingSubcategoryId] = useState<string>("");
+  const [printingSubcategoryName, setPrintingSubcategoryName] = useState<string>("");
+
+  useEffect(() => {
+    getPrintingCategories(false)
+      .then((data) => setAvailablePrintingCategories(data))
+      .catch((err) => console.error("Failed to load printing categories", err));
+  }, []);
+
   // "Revalue stock" sheet: set the book value directly (mark-to-market) without
   // changing the count.
   const [revalueOpen, setRevalueOpen] = useState(false);
@@ -92,6 +105,16 @@ export default function InventoryItemDetailsPage() {
       if ((item as any).workflowSteps && Array.isArray((item as any).workflowSteps)) {
         setWorkflowSteps((item as any).workflowSteps);
       }
+
+      const pCatId = (item as any).printingCategoryId || (item as any)?.metadata?.printingCategoryId || "";
+      const pCatName = (item as any).printingCategoryName || (item as any)?.metadata?.printingCategory || (item as any)?.printerCategory || "";
+      const pSubId = (item as any).printingSubcategoryId || (item as any)?.metadata?.printingSubcategoryId || "";
+      const pSubName = (item as any).printingSubcategoryName || (item as any)?.metadata?.printingSubcategory || "";
+
+      setPrintingCategoryId(pCatId);
+      setPrintingCategoryName(pCatName);
+      setPrintingSubcategoryId(pSubId);
+      setPrintingSubcategoryName(pSubName);
     }
   }, [item]);
 
@@ -104,6 +127,19 @@ export default function InventoryItemDetailsPage() {
       .then((r) => r.json())
       .then((data) => setWarehouseStocks(data.data || []));
   }, [id, orgId]);
+
+  const selectedPrintingCategory = useMemo(() => {
+    return availablePrintingCategories.find(
+      (c) => c.id === printingCategoryId || (printingCategoryName && c.name.toLowerCase() === printingCategoryName.toLowerCase())
+    );
+  }, [availablePrintingCategories, printingCategoryId, printingCategoryName]);
+
+  const isRule1 = Boolean((item as any)?.hasMultipleSizes);
+  const isRule2 = Boolean(
+    ((item as any)?.defaultWidth && (item as any)?.defaultLength) ||
+    (unitOfMeasure && unitOfMeasure.toLowerCase() === "sqft")
+  );
+  const isPrintableItem = isRule1 || isRule2;
 
   const updateMetadata = (category: string, key: string, value: any) => {
     setMetadata((prev: any) => ({
@@ -142,6 +178,10 @@ export default function InventoryItemDetailsPage() {
           unitOfMeasure: unitOfMeasure.toLowerCase() === "sqft" ? "sqft" : unitOfMeasure,
           tallyUom: unitOfMeasure,
           tallyBillingMode,
+          printingCategoryId: printingCategoryId || null,
+          printingCategoryName: printingCategoryName || null,
+          printingSubcategoryId: printingSubcategoryId || null,
+          printingSubcategoryName: printingSubcategoryName || null,
           metadata: {
             ...(metadata || {}),
             hsn: hsnCode,
@@ -150,6 +190,11 @@ export default function InventoryItemDetailsPage() {
             calcType: unitOfMeasure.toLowerCase() === "sqft" ? "SQFT" : "QTY",
             billingMode: tallyBillingMode,
             baseRate: parseFloat(invSalePrice || "0"),
+            printingCategoryId: printingCategoryId || null,
+            printingCategory: printingCategoryName || null,
+            printerCategory: printingCategoryName || null,
+            printingSubcategoryId: printingSubcategoryId || null,
+            printingSubcategory: printingSubcategoryName || null,
           },
           workflowSteps,
         }),
@@ -498,6 +543,98 @@ export default function InventoryItemDetailsPage() {
             </div>
           </div>
         </Section>
+
+        {isPrintableItem && (
+          <>
+            <div className="h-px bg-border" />
+            <Section
+              title="Printing & Production Routing"
+              description="Assign the machine printing stream and subcategory for this item. Orders will route to matching printer queues."
+            >
+              <div className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs" htmlFor="printingCategory">
+                      Printing Category
+                    </Label>
+                    <select
+                      id="printingCategory"
+                      value={printingCategoryId}
+                      onChange={(e) => {
+                        const catId = e.target.value;
+                        setPrintingCategoryId(catId);
+                        const found = availablePrintingCategories.find((c) => c.id === catId);
+                        setPrintingCategoryName(found ? found.name : "");
+                        // Reset subcategory if category changes
+                        setPrintingSubcategoryId("");
+                        setPrintingSubcategoryName("");
+                      }}
+                      className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">Select Printing Category...</option>
+                      {availablePrintingCategories.map((cat) => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-[11px] text-muted-foreground">
+                      Controls which printer operator stream receives orders for this item.
+                    </p>
+                  </div>
+
+                  {selectedPrintingCategory?.has_subcategories && (selectedPrintingCategory.subcategories?.length || 0) > 0 && (
+                    <div className="space-y-1.5 animate-in fade-in duration-200">
+                      <Label className="text-xs" htmlFor="printingSubcategory">
+                        Printing Sub-category
+                      </Label>
+                      <select
+                        id="printingSubcategory"
+                        value={printingSubcategoryId}
+                        onChange={(e) => {
+                          const subId = e.target.value;
+                          setPrintingSubcategoryId(subId);
+                          const foundSub = selectedPrintingCategory.subcategories?.find((s) => s.id === subId);
+                          setPrintingSubcategoryName(foundSub ? foundSub.name : "");
+                        }}
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      >
+                        <option value="">Select Sub-category...</option>
+                        {selectedPrintingCategory.subcategories?.map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-muted-foreground">
+                        Specific media or machine tier under {selectedPrintingCategory.name}.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-lg border border-purple-200 bg-purple-50/60 dark:border-purple-900/60 dark:bg-purple-950/30 p-3 flex items-center justify-between text-xs text-purple-900 dark:text-purple-200">
+                  <div className="flex items-center gap-2">
+                    <Printer className="size-4 text-purple-600 dark:text-purple-400 shrink-0" />
+                    <span>
+                      {printingCategoryName
+                        ? `Routed to: ${printingCategoryName}${printingSubcategoryName ? ` › ${printingSubcategoryName}` : ""}`
+                        : "No printing category assigned. Will route to Main Printer."}
+                    </span>
+                  </div>
+                  <a
+                    href="/admin/printing-categories"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium underline hover:text-purple-700 dark:hover:text-purple-300 text-[11px]"
+                  >
+                    Manage Categories ↗
+                  </a>
+                </div>
+              </div>
+            </Section>
+          </>
+        )}
 
         <div className="h-px bg-border" />
 

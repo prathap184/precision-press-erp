@@ -155,6 +155,7 @@ export class AuthService {
     role: string;
     name: string;
     printerCategory?: string;
+    printerSubCategory?: string;
     companyName?: string;
     contactPerson?: string;
     alternateMobile?: string;

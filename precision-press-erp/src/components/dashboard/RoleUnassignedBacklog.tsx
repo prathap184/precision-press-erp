@@ -21,6 +21,7 @@ import { useRouter } from 'next/navigation';
 interface RoleUnassignedBacklogProps {
   role: UserRole;
   printerCategory?: string;
+  printerSubCategory?: string;
   onOrdersUpdate?: (orders: Order[]) => void;
   maxHeight?: string;
   orderHrefBuilder?: (order: Order) => string;
@@ -29,6 +30,7 @@ interface RoleUnassignedBacklogProps {
 export function RoleUnassignedBacklog({ 
   role, 
   printerCategory,
+  printerSubCategory,
   onOrdersUpdate,
   maxHeight = '160px',
   orderHrefBuilder
@@ -50,14 +52,14 @@ export function RoleUnassignedBacklog({
       const allOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
       
       // Filter for this role's unassigned backlog
-      const filtered = filterUnassignedBacklog(allOrders, role, printerCategory);
+      const filtered = filterUnassignedBacklog(allOrders, role, printerCategory, printerSubCategory);
       setUnassignedOrders(filtered);
       onOrdersUpdate?.(filtered);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [role, printerCategory, onOrdersUpdate]);
+  }, [role, printerCategory, printerSubCategory, onOrdersUpdate]);
 
   const formatDate = (value: unknown) => {
     if (!value) return '—';

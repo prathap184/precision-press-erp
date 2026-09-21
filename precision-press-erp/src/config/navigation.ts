@@ -97,6 +97,7 @@ export const NAVIGATION_ITEMS: NavItem[] = [
 
   // ── Admin / Super Admin ─────────────────────────────────────────────
   { label: 'Staff Management',     href: '/admin/staff',            icon: Users,                roles: ['ADMIN', 'SUPER_ADMIN', 'ACDEMA'],                                     group: 'main' },
+  { label: 'Print Categories',     href: '/admin/printing-categories', icon: Printer,              roles: ['ADMIN', 'SUPER_ADMIN'],                                               group: 'main' },
   { label: 'GST PAGE',             href: '#gst-page',               icon: FileSpreadsheet,      roles: ['ADMIN', 'SUPER_ADMIN', 'ACDEMA'],                                     group: 'main', subItems: [
     { label: 'HSN Master', href: '/admin/hsn-master' },
     { label: 'GST & Invoice Settings', href: '/admin/settings/gst-invoice' },

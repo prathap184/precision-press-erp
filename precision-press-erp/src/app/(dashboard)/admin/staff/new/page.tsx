@@ -1,18 +1,17 @@
 'use client';
 export const dynamic = 'force-dynamic';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { RoleGuard } from '@/lib/role-guard';
 import { AuthService } from '@/services/auth';
 import { 
   ALL_STAFF_ROLES, 
   ROLE_META, 
-  ALL_PRINTER_CATEGORIES, 
-  PRINTER_CATEGORY_META,
   StaffRole
 } from '@/types/roles';
-import { ArrowLeft, UserPlus, Mail, Lock, User, Shield, Printer } from 'lucide-react';
+import { getPrintingCategories, PrintingCategory } from '@/lib/actions/printing-categories';
+import { ArrowLeft, UserPlus, Mail, Lock, User, Shield, Printer, Tag } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CreateStaffPage() {
@@ -22,10 +21,24 @@ export default function CreateStaffPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<StaffRole>('MANAGER');
-  const [printerCategory, setPrinterCategory] = useState<string>('');
+  const [printerCategory, setPrinterCategory] = useState<string>('MAIN_PRINTER');
+  const [printerSubCategory, setPrinterSubCategory] = useState<string>('');
+  const [availableCategories, setAvailableCategories] = useState<PrintingCategory[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    getPrintingCategories(false)
+      .then((data) => setAvailableCategories(data))
+      .catch((err) => console.error('Failed to load printing categories:', err));
+  }, []);
+
+  const selectedCategoryObj = useMemo(() => {
+    return availableCategories.find(
+      (c) => c.name.toLowerCase() === printerCategory.toLowerCase() || c.id === printerCategory
+    );
+  }, [availableCategories, printerCategory]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +51,8 @@ export default function CreateStaffPage() {
         password,
         name,
         role,
-        printerCategory: role === 'PRINTER' ? printerCategory : undefined,
+        printerCategory: role === 'PRINTER' ? (printerCategory || 'MAIN_PRINTER') : undefined,
+        printerSubCategory: role === 'PRINTER' && printerSubCategory ? printerSubCategory : undefined,
       });
       
       // Successfully created staff, go back to staff list
@@ -173,37 +187,107 @@ export default function CreateStaffPage() {
 
               {/* Printer Category (If Role is Printer) */}
               {role === 'PRINTER' && (
-                <div className="space-y-2 col-span-2 border-t border-slate-100 pt-6 mt-2 animate-in fade-in zoom-in-95">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                    <Printer size={12} /> Printer Machine Category
-                  </label>
-                  <p className="text-[11px] font-medium text-slate-400 mb-3">Which orders can this printer access?</p>
+                <div className="space-y-4 col-span-2 border-t border-slate-100 pt-6 mt-2 animate-in fade-in zoom-in-95">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                      <Printer size={12} /> Printer Machine Category
+                    </label>
+                    <p className="text-[11px] font-medium text-slate-400 mb-3">Which machine stream or orders can this printer access?</p>
+                  </div>
+
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {ALL_PRINTER_CATEGORIES.map((cat) => {
-                      const meta = PRINTER_CATEGORY_META[cat];
-                      if (!meta) return null;
-                      const isSelected = printerCategory === cat;
+                    {/* Main Printer Option */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPrinterCategory('MAIN_PRINTER');
+                        setPrinterSubCategory('');
+                      }}
+                      className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
+                        printerCategory === 'MAIN_PRINTER'
+                          ? 'border-indigo-500 bg-indigo-50 shadow-sm ring-1 ring-indigo-500'
+                          : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 bg-white'
+                      }`}
+                    >
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider mb-1.5 bg-indigo-100 text-indigo-700">
+                        Main Printer (All Jobs)
+                      </span>
+                      <span className="text-[11px] text-slate-500">Sees all printing streams</span>
+                    </button>
+
+                    {/* Dynamic Categories */}
+                    {availableCategories.map((cat) => {
+                      const isSelected = printerCategory === cat.name;
                       return (
                         <button
-                          key={cat}
+                          key={cat.id}
                           type="button"
-                          onClick={() => setPrinterCategory(cat)}
+                          onClick={() => {
+                            setPrinterCategory(cat.name);
+                            setPrinterSubCategory('');
+                          }}
                           className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all ${
-                            isSelected 
-                              ? 'border-indigo-500 bg-indigo-50 shadow-sm ring-1 ring-indigo-500' 
+                            isSelected
+                              ? 'border-purple-500 bg-purple-50 shadow-sm ring-1 ring-purple-500'
                               : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50 bg-white'
                           }`}
                         >
-                          <span 
-                            className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider mb-1.5"
-                            style={{ color: meta.color, background: meta.bg }}
-                          >
-                            {meta.label}
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider mb-1.5 bg-purple-100 text-purple-700">
+                            {cat.name}
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            {cat.has_subcategories && cat.subcategories?.length
+                              ? `${cat.subcategories.length} sub-tiers`
+                              : 'Dedicated stream'}
                           </span>
                         </button>
                       );
                     })}
                   </div>
+
+                  {/* Subcategory selector if chosen category has subcategories */}
+                  {selectedCategoryObj?.has_subcategories && (selectedCategoryObj.subcategories?.length || 0) > 0 && (
+                    <div className="p-3.5 bg-purple-50/60 rounded-xl border border-purple-200 space-y-2 animate-in fade-in duration-200">
+                      <label className="text-[10px] font-bold text-purple-800 uppercase tracking-wider flex items-center gap-1">
+                        <Tag size={12} /> Assign Specific Sub-category (Optional)
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setPrinterSubCategory('')}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            !printerSubCategory
+                              ? 'bg-purple-600 text-white shadow-sm'
+                              : 'bg-white text-purple-700 border border-purple-200 hover:bg-purple-100'
+                          }`}
+                        >
+                          All {selectedCategoryObj.name} Subcategories
+                        </button>
+                        {selectedCategoryObj.subcategories?.map((sub) => {
+                          const isSubSelected = printerSubCategory === sub.name;
+                          return (
+                            <button
+                              key={sub.id}
+                              type="button"
+                              onClick={() => setPrinterSubCategory(sub.name)}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                isSubSelected
+                                  ? 'bg-purple-600 text-white shadow-sm'
+                                  : 'bg-white text-purple-700 border border-purple-200 hover:bg-purple-100'
+                              }`}
+                            >
+                              {sub.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p className="text-[11px] text-purple-600">
+                        {printerSubCategory
+                          ? `This printer operator will strictly see orders for ${selectedCategoryObj.name} › ${printerSubCategory}.`
+                          : `This printer operator will see all orders under ${selectedCategoryObj.name}.`}
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

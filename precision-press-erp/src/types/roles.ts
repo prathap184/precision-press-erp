@@ -180,7 +180,8 @@ export interface StaffUser {
   email: string;
   roles: StaffRole[];
   status: StaffStatus;
-  printerCategory?: PrinterCategory;
+  printerCategory?: PrinterCategory | string;
+  printerSubCategory?: string;
   assignedBy?: string;
   assignedAt?: any;
   updatedAt?: any;

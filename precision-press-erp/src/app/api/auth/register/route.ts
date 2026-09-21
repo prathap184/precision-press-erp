@@ -8,6 +8,7 @@ type RegisterBody = {
   role?: string;
   name?: string;
   printerCategory?: string;
+  printerSubCategory?: string;
   companyName?: string;
   contactPerson?: string;
   alternateMobile?: string;
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
 
     const name = body.name?.trim() || 'User';
     const printerCategory = role === 'PRINTER' ? (body.printerCategory?.trim() || undefined) : undefined;
+    const printerSubCategory = role === 'PRINTER' ? (body.printerSubCategory?.trim() || undefined) : undefined;
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Missing email or password.' }, { status: 400 });
@@ -148,7 +150,8 @@ export async function POST(request: Request) {
           displayName: name,
           role,
           roles: [role],
-          ...(printerCategory ? { printerCategory } : {}),
+          ...(printerCategory ? { printerCategory, printing_category_name: printerCategory } : {}),
+          ...(printerSubCategory ? { printerSubCategory, printing_subcategory_name: printerSubCategory } : {}),
           ...(isCustomer ? {
             company_name: body.companyName?.trim() || body.businessName?.trim() || name,
             contact_person: body.contactPerson?.trim() || name,

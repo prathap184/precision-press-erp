@@ -28,6 +28,10 @@ const updateSchema = z.object({
   unitOfMeasure: z.string().nullable().optional(),
   tallyUom: z.string().nullable().optional(),
   tallyBillingMode: z.string().nullable().optional(),
+  printingCategoryId: z.string().uuid().nullable().optional(),
+  printingCategoryName: z.string().nullable().optional(),
+  printingSubcategoryId: z.string().uuid().nullable().optional(),
+  printingSubcategoryName: z.string().nullable().optional(),
   metadata: z.any().optional(),
   workflowSteps: z.any().optional(),
 });
@@ -97,6 +101,14 @@ export async function PATCH(
     let metadataToSave = parsed.metadata !== undefined ? parsed.metadata : (existing as any).metadata;
     if (parsed.salePrice !== undefined && metadataToSave) {
       metadataToSave = { ...metadataToSave, baseRate: parsed.salePrice / 100 };
+    }
+    if (parsed.printingCategoryName !== undefined && metadataToSave) {
+      metadataToSave = {
+        ...metadataToSave,
+        printerCategory: parsed.printingCategoryName,
+        printingCategory: parsed.printingCategoryName,
+        printingSubcategory: parsed.printingSubcategoryName || null,
+      };
     }
 
     const [updated] = await db

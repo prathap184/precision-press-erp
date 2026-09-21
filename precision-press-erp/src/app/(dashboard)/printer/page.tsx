@@ -166,8 +166,16 @@ export default function PrinterDashboard() {
 
         {showRoleAwareSections && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <RoleUnassignedBacklog role="PRINTER" printerCategory={profile?.printerCategory} />
-            <RoleActiveJobs role="PRINTER" printerCategory={profile?.printerCategory} />
+            <RoleUnassignedBacklog 
+              role="PRINTER" 
+              printerCategory={profile?.printerCategory} 
+              printerSubCategory={profile?.printerSubCategory} 
+            />
+            <RoleActiveJobs 
+              role="PRINTER" 
+              printerCategory={profile?.printerCategory} 
+              printerSubCategory={profile?.printerSubCategory} 
+            />
           </div>
         )}
 
@@ -181,6 +189,7 @@ export default function PrinterDashboard() {
               highlightOrderId={highlightOrderId}
               orderHrefBuilder={(order) => `/printer/orders/${order.id}?returnTo=${encodeURIComponent('/admin/orders?highlight=' + order.id)}`}
               printerCategory={profile?.printerCategory}
+              printerSubCategory={profile?.printerSubCategory}
               renderActions={(order: Order, isProcessing: boolean) => {
                 const currentStep = order.workflowSnapshot?.steps[order.workflowSnapshot.currentStepIndex];
                 const printWorkflow = resolvePrintWorkflow(order);

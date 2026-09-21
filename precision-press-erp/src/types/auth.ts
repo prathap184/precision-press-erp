@@ -48,6 +48,7 @@ export interface UserProfile {
 
   // PRINTER sub-category — only set when role === 'PRINTER'
   printerCategory?: string;
+  printerSubCategory?: string;
 
   // Staff-only status. Customers remain ACTIVE implicitly.
   status: 'ACTIVE' | 'BLOCKED' | StaffStatus;

@@ -8,10 +8,10 @@ import { RoleGuard } from '@/lib/role-guard';
 import { 
   Printer, 
   CheckCircle, 
-  Loader2,
-  Package,
-  ChevronRight,
-  FileType
+  Loader2, 
+  Package, 
+  ChevronRight, 
+  FileType 
 } from 'lucide-react';
 import { OrderThumbnail } from '@/components/orders/OrderThumbnail';
 import { db } from '@/lib/firebase';
@@ -20,11 +20,11 @@ import {
   query, 
   where, 
   onSnapshot, 
-  orderBy,
+  orderBy, 
   limit 
 } from '@/lib/supabase-firestore-shim';
 import { Order } from '@/types/models';
-import { } from '@/lib/workflow';
+import { matchesPrinterStream } from '@/lib/role-workflow-utils';
 import { STATUS_LABELS, STATUS_COLORS } from '@/types/workflow';
 import { resolvePrintWorkflow } from '@/lib/tiff-utils';
 
@@ -53,37 +53,9 @@ export default function PrinterDashboard() {
       })) as Order[];
 
       orders = orders.filter(o => {
-        // Normalize categories to handle ECOSOLVENT vs ECO_SOLVENT mismatches
-        const normalizeCat = (cat?: string | null) => {
-          let c = (cat || '').toUpperCase().replace(/[^A-Z_]/g, '').replace('ECOSOLVENT', 'ECO_SOLVENT');
-          if (c === 'IDCARDS' || c === 'ID_CARDS') return 'ID_CARDS';
-    if (c === 'DIGITAL' || c === 'DIGITAL_PRINT') return 'DIGITAL_PRINT';
-          return c;
-        };
-
-        // Must match printer category if set (strict check)
-        if (profile?.printerCategory && profile.printerCategory !== 'MAIN_PRINTER') {
-          const userCat = normalizeCat(profile.printerCategory);
-          const orderCat = normalizeCat(o.printerCategory);
-          
-          // If the order has a category, it must match.
-          // If it doesn't have a category, we still need to filter it out if the user is a specific printer, 
-          // but we can try to guess from paper type as a fallback.
-          let finalOrderCat = orderCat;
-          const firstItem = o.items?.[0] as any;
-          const firstItemName = firstItem?.productName || firstItem?.name;
-          if (!finalOrderCat && firstItemName) {
-             const itemName = firstItemName.toLowerCase();
-             if (itemName.includes('eco')) finalOrderCat = 'ECO_SOLVENT';
-             else if (itemName.includes('uv')) finalOrderCat = 'UV_PRINT';
-             else if (itemName.includes('sol') || itemName.includes('solvent')) finalOrderCat = 'SOLVENT_PRINT';
-             else if (itemName.includes('latex')) finalOrderCat = 'LATEX_PRINT';
-             else if (itemName.includes('id card') || itemName.includes('visitor pass') || itemName.includes('membership') || itemName.includes('loyalty') || itemName.includes('access card') || itemName.includes('proximity') || itemName.includes('lanyard') || itemName.includes('holder') || itemName.includes('yo-yo')) finalOrderCat = 'ID_CARDS';
-        else if (itemName.includes('dig') || itemName.includes('digital') || itemName.includes('vinyl') || itemName.includes('art paper') || itemName.includes('art card') || itemName.includes('sticker paper') || itemName.includes('envelope') || itemName.includes('invitation card') || itemName.includes('menu card') || itemName.includes('calendar sheet')) finalOrderCat = 'DIGITAL_PRINT';
-        else if (itemName.includes('flex')) finalOrderCat = 'FLEX_PRINT';
-          }
-
-          if (finalOrderCat !== userCat) return false;
+        // Must match printer category and subcategory stream (strict check)
+        if (!matchesPrinterStream(o, profile?.printerCategory, profile?.printerSubCategory)) {
+          return false;
         }
         
         // It's a job for the printer if the current role is PRINTER or status dictates it
@@ -101,7 +73,7 @@ export default function PrinterDashboard() {
     });
 
     return () => unsubscribe();
-  }, [user, profile?.printerCategory]);
+  }, [user, profile?.printerCategory, profile?.printerSubCategory]);
 
   return (
     <RoleGuard allowedRoles={['PRINTER', 'MANAGER', 'ADMIN', 'SUPER_ADMIN']}>
@@ -187,6 +159,3 @@ export default function PrinterDashboard() {
     </RoleGuard>
   );
 }
-
-
-

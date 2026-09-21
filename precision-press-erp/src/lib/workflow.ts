@@ -849,6 +849,7 @@ async function executeOrderPlacementTx(
     productionNotes?: string;
     workflowSnapshot?: OrderWorkflowSnapshot;
     printerCategory?: string;
+    printerSubCategory?: string;
     idOverride?: string;
     discount?: number;
     voucherDiscount?: number;
@@ -1039,11 +1040,17 @@ async function executeOrderPlacementTx(
 
   // Printer Category routing
   let derivedCategory = payload.printerCategory || null;
-  if (!derivedCategory && payload.items[0]) {
+  let derivedSubCategory = payload.printerSubCategory || null;
+  if (payload.items[0]) {
     const firstItem = payload.items[0];
     const firstProduct = products.find(p => p.id === String(firstItem.productId || firstItem.id || '').trim());
     if (firstProduct) {
-      derivedCategory = firstProduct.printerCategory || null;
+      if (!derivedCategory) {
+        derivedCategory = firstProduct.printing_category_name || firstProduct.printingCategoryName || firstProduct.printer_category_name || firstProduct.printerCategory || null;
+      }
+      if (!derivedSubCategory) {
+        derivedSubCategory = firstProduct.printing_subcategory_name || firstProduct.printingSubcategoryName || firstProduct.printer_subcategory_name || firstProduct.printerSubCategory || null;
+      }
     }
     if (!derivedCategory) {
       const prodName = (firstItem.productName || firstItem.name || '').toLowerCase();
@@ -1086,6 +1093,9 @@ async function executeOrderPlacementTx(
     createdByRole: user.role,
     proxyExecutor: payload.proxyExecutor || null,
     printerCategory: derivedCategory,
+    printerSubCategory: derivedSubCategory,
+    printing_category_name: derivedCategory,
+    printing_subcategory_name: derivedSubCategory,
     amounts: totals,
     cgst_percentage: payload.items.length === 1 ? (resolvedIsInterstate ? 0 : (firstProduct?.gst_rate ? firstProduct.gst_rate / 2 : 9)) : null,
     cgst_amount: Number(totals.cgst.toFixed(2)),
@@ -1159,10 +1169,16 @@ async function executeOrderPlacementTx(
           uploadedBy: customerData.id
         }));
 
-      let childCategory = item.printerCategory || null;
-      if (!childCategory) {
-        const matchingProduct = products.find(p => p.id === String(item.productId || item.id || '').trim());
-        if (matchingProduct) childCategory = matchingProduct.printerCategory || null;
+      let childCategory = item.printerCategory || item.printing_category_name || null;
+      let childSubCategory = item.printerSubCategory || item.printing_subcategory_name || null;
+      const matchingProduct = products.find(p => p.id === String(item.productId || item.id || '').trim());
+      if (matchingProduct) {
+        if (!childCategory) {
+          childCategory = matchingProduct.printing_category_name || matchingProduct.printingCategoryName || matchingProduct.printer_category_name || matchingProduct.printerCategory || null;
+        }
+        if (!childSubCategory) {
+          childSubCategory = matchingProduct.printing_subcategory_name || matchingProduct.printingSubcategoryName || matchingProduct.printer_subcategory_name || matchingProduct.printerSubCategory || null;
+        }
       }
 
       // Calculate proportional financial values for child orders
@@ -1226,6 +1242,9 @@ async function executeOrderPlacementTx(
         createdByRole: user.role,
         proxyExecutor: payload.proxyExecutor || null,
         printerCategory: childCategory || derivedCategory,
+        printerSubCategory: childSubCategory || derivedSubCategory,
+        printing_category_name: childCategory || derivedCategory,
+        printing_subcategory_name: childSubCategory || derivedSubCategory,
         amounts: childTotals,
         // Immutable financial snapshot
         cgst_percentage,
@@ -1304,7 +1323,11 @@ async function executeOrderPlacementTx(
         discount: item.discount || 0,
         taxable_value: item.taxable_value || item.subTotal || 0,
 
-        category: item.category || childCategory,
+        category: item.category || childCategory || derivedCategory,
+        printerCategory: childCategory || derivedCategory,
+        printerSubCategory: childSubCategory || derivedSubCategory,
+        printing_category_name: childCategory || derivedCategory,
+        printing_subcategory_name: childSubCategory || derivedSubCategory,
         description: item.description || item.projectName || '',
         projectName: item.projectName || item.description || '',
         notes: item.description || item.notes || '',
@@ -1360,6 +1383,10 @@ async function executeOrderPlacementTx(
       taxable_value: item.taxable_value || item.subTotal || 0,
 
       category: item.category || derivedCategory,
+      printerCategory: derivedCategory,
+      printerSubCategory: derivedSubCategory,
+      printing_category_name: derivedCategory,
+      printing_subcategory_name: derivedSubCategory,
       description: item.description || item.projectName || '',
       projectName: item.projectName || item.description || '',
       notes: item.description || item.notes || '',
