@@ -57,6 +57,8 @@ export function getRoleGlobalOrdersUrl(roleOrModule?: string | null, workspacePa
     case 'finishing': return '/finishing/orders';
     case 'dispatch': return '/dispatch/orders';
     case 'support': return '/support/orders';
+    case 'delivery':
+    case 'delivarypartner': return '/delivarypartner/orders';
     case 'accountant': return '/accountant/orders';
     case 'manager': return '/manager/orders';
     case 'acdema': return '/acdema/orders';

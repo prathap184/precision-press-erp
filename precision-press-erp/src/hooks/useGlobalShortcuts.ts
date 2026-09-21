@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { getRoleGlobalOrdersUrl } from '@/config/navigation';
 
 export type MenuState = null | 'VOUCHERS' | 'DISPLAY_REPORTS' | 'DAY_REPORT' | 'ACCOUNT_BOOKS' | 'LEDGERS' | 'ALL_SHORTCUTS';
 
@@ -187,12 +188,8 @@ export function useGlobalShortcuts() {
           router.push('/proxy-order');
         } else if (key === 'g') {
           e.preventDefault();
-          const roleMatch = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : '';
           const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
-          const ws = urlParams.get('workspace') || roleMatch;
-          const target = ['designer', 'printer', 'pasting', 'finishing', 'dispatch', 'support', 'accountant', 'manager', 'acdema'].includes(ws)
-            ? `/${ws}/orders`
-            : '/admin/orders';
+          const target = getRoleGlobalOrdersUrl(profile?.role, urlParams.get('workspace'));
           router.push(target);
         } else if (key === 'z') {
           e.preventDefault();

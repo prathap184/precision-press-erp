@@ -8,6 +8,7 @@ import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
 import { ItemDescriptionModal } from '@/components/dashboard/ItemDescriptionModal';
+import { getRoleGlobalOrdersUrl } from '@/config/navigation';
 
 function isoToDisplayDate(iso: string): string {
   if (!iso) return '';
@@ -531,12 +532,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         if (e.key === 'g' || e.key === 'G') {
           e.preventDefault();
           e.stopPropagation();
-          const roleMatch = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : '';
           const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
-          const ws = urlParams.get('workspace') || roleMatch;
-          const target = ['designer', 'printer', 'pasting', 'finishing', 'dispatch', 'support', 'accountant', 'manager', 'acdema'].includes(ws)
-            ? `/${ws}/orders`
-            : '/admin/orders';
+          const activeRole = vm?.profile?.role || vm?.roles?.[0] || '';
+          const target = getRoleGlobalOrdersUrl(activeRole, urlParams.get('workspace'));
           router.push(target);
           return;
         }
@@ -661,9 +659,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
       if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') {
         e.preventDefault();
         e.stopPropagation();
+        const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+        const activeRole = vm?.profile?.role || vm?.roles?.[0] || '';
+        const roleOrdersPath = getRoleGlobalOrdersUrl(activeRole, urlParams.get('workspace'));
         const targetUrl = process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL
-          ? `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}/admin/orders`
-          : '/admin/orders';
+          ? `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}${roleOrdersPath}`
+          : roleOrdersPath;
         if (targetUrl.startsWith('http')) {
           window.location.href = targetUrl;
         } else {
@@ -4017,9 +4018,12 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                     type="button"
                     autoFocus
                     onClick={() => {
+                      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+                      const activeRole = vm?.profile?.role || vm?.roles?.[0] || '';
+                      const roleOrdersPath = getRoleGlobalOrdersUrl(activeRole, urlParams.get('workspace'));
                       const targetUrl = process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL
-                        ? `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}/admin/orders`
-                        : '/admin/orders';
+                        ? `${process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL}${roleOrdersPath}`
+                        : roleOrdersPath;
                       if (targetUrl.startsWith('http')) {
                         window.location.href = targetUrl;
                       } else {

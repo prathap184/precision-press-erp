@@ -2592,3 +2592,34 @@ flowchart TD
 
 ---
 *Memory Updated & Persisted on: 2026-09-21 (Section 77 - Default Logistics PICKUP & Customer Enter Refocus)*
+
+---
+
+## 78. Universal Dynamic Staff Role Routing for Global Orders Shortcut (<kbd>g</kbd>) & Exit Modal
+
+### A. Problem Statement
+- Previously, pressing **`g`** on the Proxy Order page (`/proxy-order`) tried to extract the role by reading the URL: `window.location.pathname.split('/')[1]`.
+- Because the page was `/proxy-order`, the check failed to match any role string and fell back to hardcoded `/admin/orders`.
+- As a result, when an **ACDEMA**, **Designer**, **Printer**, or other staff member pressed **`g`**, they were incorrectly redirected to `/admin/orders` (changing their dashboard header to `Executive Control` / `You are now ADMIN`), instead of their own role's orders page (`/acdema/orders` with `ACDEMA Hub` / `You are now ACDEMA`).
+
+### B. Universal Dynamic Solution
+1. **Navigation Function (`getRoleGlobalOrdersUrl`)**:
+   - In [`src/config/navigation.ts`](file:///c:/Users/jprat/OneDrive/Desktop/Hindustan%20Enterprices/precision-press-erp/src/config/navigation.ts), mapped all staff roles dynamically:
+     - `ACDEMA` $\rightarrow$ `/acdema/orders`
+     - `DESIGNER` $\rightarrow$ `/designer/orders`
+     - `PRINTER` $\rightarrow$ `/printer/orders`
+     - `PASTING` $\rightarrow$ `/pasting/orders`
+     - `FINISHING` $\rightarrow$ `/finishing/orders`
+     - `DISPATCH` $\rightarrow$ `/dispatch/orders`
+     - `DELIVERY` / `DELIVARYPARTNER` $\rightarrow$ `/delivarypartner/orders`
+     - `ACCOUNTANT` $\rightarrow$ `/accountant/orders`
+     - `MANAGER` $\rightarrow$ `/manager/orders`
+     - `ADMIN` / `SUPER_ADMIN` $\rightarrow$ `/admin/orders`
+2. **`ProxyOrderBuilderView.tsx`**:
+   - Updated `g` key shortcut handler to use `getRoleGlobalOrdersUrl(vm?.profile?.role || vm?.roles?.[0])`.
+   - Updated Exit Modal ("Yes, Go Back") and top-left back button to return to the active staff role's own orders hub rather than hardcoded `/admin/orders`.
+3. **`useGlobalShortcuts.ts` & `use-global-shortcuts.ts`**:
+   - Replaced path-guessing logic with `getRoleGlobalOrdersUrl(profile?.role, urlParams.get('workspace'))`.
+
+---
+*Memory Updated & Persisted on: 2026-09-21 (Section 78 - Universal Dynamic Staff Role Routing for g & Exit)*
