@@ -2667,12 +2667,33 @@ flowchart TD
      - Orders for that category and subcategory must **only** appear on that specific printer's dashboard account (and Main Printer). 100% strict isolation.
   5. Dedicated new database tables and columns without hacking into legacy fields.
 
-### B. Database Schema & Migration
-- Created migration `supabase/migrations/20260921000000_create_printing_categories.sql`:
-  - Table `printing_categories`: `id` (UUID PK), `name` (TEXT UNIQUE), `code` (TEXT UNIQUE), `has_subcategories` (BOOLEAN), `is_active` (BOOLEAN), `created_at`, `updated_at`.
-  - Table `printing_subcategories`: `id` (UUID PK), `category_id` (UUID FK -> `printing_categories.id`), `name` (TEXT), `code` (TEXT), `is_active` (BOOLEAN), `created_at`.
-  - Added dedicated columns to `inventory_item`: `printing_category_id` (UUID), `printing_category_name` (TEXT), `printing_subcategory_id` (UUID), `printing_subcategory_name` (TEXT).
-  - Added dedicated columns to `profiles`: `printing_category_id` (UUID), `printing_category_name` (TEXT), `printing_subcategory_id` (UUID), `printing_subcategory_name` (TEXT).
+### B. Database Schema, Seeded Categories & Migration
+- **Created Migration**: `supabase/migrations/20260921000000_create_printing_categories.sql`
+- **Tables**:
+  - `printing_categories` (`id`, `name`, `code`, `has_subcategories`, `is_active`, `created_at`, `updated_at`)
+  - `printing_subcategories` (`id`, `category_id`, `name`, `code`, `is_active`, `created_at`)
+- **New Columns (Non-conflicting)**:
+  - `inventory_item`: `printing_category_id`, `printing_category_name`, `printing_subcategory_id`, `printing_subcategory_name`
+  - `profiles`: `printing_category_id`, `printing_category_name`, `printing_subcategory_id`, `printing_subcategory_name`
+- **Standard Printing Streams Seeded**:
+  1. `Solvent Printing` (`SOLVENT`):
+     - `Solvent Vinyl`, `Black Back / Grey Back Vinyl`, `Frontlit Flex`, `Backlit Flex`, `Star Flex (Black / White)`, `Banner & Hoardings`
+  2. `Eco-Solvent Printing` (`ECO_SOLVENT`):
+     - `Glossy & Matt Vinyl`, `Black Back / Grey Back Vinyl`, `Mutoh High-Res Vinyl`, `Clear & Frosted Film`, `Translite / Backlit Film`, `Wallpaper & Canvas`
+  3. `UV Printing (Flatbed & Roll)` (`UV_PRINTING`):
+     - `UV Roll (Vinyl / Translite / Wallpaper)`, `UV Flatbed (Sunboard / Acrylic / ACP)`, `UV Backlit Fabric`
+  4. `Fabric & Soft Signage` (`FABRIC_SIGNAGE`):
+     - `Satin Banner & Cloth`, `Backlit Fabric`, `HD Fabric`
+  5. `Rigid Boards & Flatbed Mounting` (`RIGID_BOARDS`):
+     - `Sunboard (3mm / 4mm / 5mm)`, `Sun Pack`, `Acrylic & ACP Sheet`, `Pasting & Mounting`
+- **Item Assignment Results**:
+  - 220 Rule 1 & Rule 2 items successfully classified and linked to their respective dynamic printing categories and subcategories.
+  - 115 Rule 3 items confirmed with `NULL` printing category (they bypass the print floor entirely and route `Accounts -> Dispatch -> Delivery`).
+- **Staff Stream Isolation & Supervisor**:
+  - Staff users assigned role `PRINTER` can be designated as `Main Printer (All Streams)` or assigned to a specific dynamic category + subcategory.
+  - Central filter `matchesPrinterStream(order, profile.printerCategory, profile.printerSubCategory)` isolates queues across `WorkflowTaskQueue`, `RoleActiveJobs`, `RoleUnassignedBacklog`, and all `/printer` queue pages.
+  - `MAIN_PRINTER` accounts see all orders across all printing streams. Specific printers only see jobs matching their assigned stream.
+- **Strict Role Security**: Admin page `/admin/printing-categories` is locked to `ADMIN` and `SUPER_ADMIN`.
 
 ### C. Server Actions & Admin Protection
 1. **Server Actions (`src/lib/actions/printing-categories.ts`)**:
