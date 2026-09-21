@@ -4,22 +4,26 @@ import type { NextRequest } from 'next/server';
 const ROLE_HOME: Record<string, string> = {
   SUPER_ADMIN: '/admin/orders',
   ADMIN: '/admin/orders',
-  MANAGER: '/manager/dashboard',
+  MANAGER: '/manager/orders',
   ACDEMA: '/acdema/orders',
-  ACCOUNTANT: '/accountant/payments',
-  DESIGNER: '/designer',
-  PRINTER: '/printer/queue',
-  PASTING: '/pasting',
-  FINISHING: '/finishing',
-  DISPATCH: '/dispatch',
-  DELIVERY: '/delivarypartner',
-  SUPPORT: '/support',
+  ACCOUNTANT: '/accountant/orders',
+  DESIGNER: '/designer/orders',
+  PRINTER: '/printer/orders',
+  PASTING: '/pasting/orders',
+  FINISHING: '/finishing/orders',
+  DISPATCH: '/dispatch/orders',
+  DELIVERY: '/delivarypartner/orders',
+  SUPPORT: '/support/orders',
   CUSTOMER: '/customer',
 };
 
 // Strict RBAC route definitions. Most specific paths appear first!
 const ROUTE_PERMISSIONS: { prefix: string; allowed: string[] }[] = [
   { prefix: '/super-admin', allowed: ['SUPER_ADMIN'] },
+  // ── Proxy Order, Quotation Builder & Reports: STRICTLY Management / Sales ──
+  { prefix: '/proxy-order', allowed: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'] },
+  { prefix: '/quotation-builder', allowed: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'] },
+  { prefix: '/reports', allowed: ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'] },
   // ── Role-scoped Global Orders pages (must come BEFORE generic role prefix) ──
   { prefix: '/designer/orders',  allowed: ['DESIGNER',  'ADMIN', 'SUPER_ADMIN'] },
   { prefix: '/printer/orders',   allowed: ['PRINTER',   'ADMIN', 'SUPER_ADMIN'] },
@@ -135,6 +139,9 @@ export const config = {
     '/super-admin/:path*',
     '/admin/:path*',
     '/acdema/:path*',
+    '/proxy-order/:path*',
+    '/quotation-builder/:path*',
+    '/reports/:path*',
     // Role-scoped orders pages (must be listed before generic role paths)
     '/designer/orders/:path*',
     '/printer/orders/:path*',

@@ -15,6 +15,7 @@ import { createStandaloneQuotation, getNextQuotationIdAction } from '@/lib/actio
 import { refreshAuthTokenCookie } from '@/lib/refresh-auth-token';
 import { ProxyOrderBuilderView } from '@/components/acdema/ProxyOrderBuilderView';
 import { isInterstateOrder } from '@/lib/company-config';
+import { getRoleGlobalOrdersUrl } from '@/config/navigation';
 
 type PaymentMode = 'HAND_CASH' | 'COD' | 'UPI' | 'CREDIT';
 type DeliveryType = 'selfPickup' | 'door' | 'courier' | 'transport';
@@ -66,7 +67,21 @@ const makeRow = (product?: Product): AcdemaRow => {
 
 export function QuotationBuilder() {
   const router = useRouter();
-  const { profile, roles } = useAuth();
+  const { profile, roles, loading: authLoading } = useAuth();
+
+  const userRoles = useMemo(() => {
+    return [profile?.role, ...(roles || [])].filter(Boolean).map(r => String(r).toUpperCase());
+  }, [profile?.role, roles]);
+  const allowedManagementRoles = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'];
+  const hasManagementAccess = userRoles.some(r => allowedManagementRoles.includes(r));
+
+  useEffect(() => {
+    if (!authLoading && profile && !hasManagementAccess) {
+      toast.error('Access restricted to management. Redirecting to your orders hub...');
+      const target = getRoleGlobalOrdersUrl(profile.role);
+      router.replace(target);
+    }
+  }, [authLoading, profile, hasManagementAccess, router]);
 
   const [loading, setLoading] = useState(false);
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
@@ -717,6 +732,15 @@ export function QuotationBuilder() {
     verifyingGst,
     handleVerifyGst,
   };
+
+  if (!authLoading && profile && !hasManagementAccess) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3 text-center">
+        <p className="text-sm font-semibold text-red-600">Access Restricted</p>
+        <p className="text-xs text-muted-foreground">Redirecting to your orders hub...</p>
+      </div>
+    );
+  }
 
   return <ProxyOrderBuilderView vm={viewModel} />;
 }

@@ -171,6 +171,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
   const [rowUploading, setRowUploading] = useState<Record<string, boolean>>({});
   const [activeDescRowId, setActiveDescRowId] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const userRoles = [profile?.role, ...(roles || [])].filter(Boolean).map((r: any) => String(r).toUpperCase());
+  const allowedManagementRoles = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'];
+  const hasManagementAccess = userRoles.some(r => allowedManagementRoles.includes(r));
 
   const tallyNaturalCompare = (aStr: any, bStr: any) => {
     return String(aStr || '').trim().localeCompare(String(bStr || '').trim(), undefined, { numeric: true, sensitivity: 'base' });
@@ -541,6 +544,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
         // v / V -> Open Vouchers Menu
         if (e.key === 'v' || e.key === 'V') {
+          if (!hasManagementAccess) return;
           e.preventDefault();
           e.stopPropagation();
           window.dispatchEvent(new CustomEvent('set-shortcut-menu', { detail: 'VOUCHERS' }));
@@ -549,6 +553,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
 
         // d / D -> Open Display Reports Menu
         if (e.key === 'd' || e.key === 'D') {
+          if (!hasManagementAccess) return;
           e.preventDefault();
           e.stopPropagation();
           window.dispatchEvent(new CustomEvent('set-shortcut-menu', { detail: 'DISPLAY_REPORTS' }));

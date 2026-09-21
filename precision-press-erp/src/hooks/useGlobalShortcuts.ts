@@ -55,9 +55,16 @@ export function getParentRoute(pathname: string): string {
 export function useGlobalShortcuts() {
   const [menuState, setMenuState] = useState<MenuState>(null);
   const router = useRouter();
-  const { profile } = useAuth();
+  const { profile, roles } = useAuth();
 
   const closeMenu = useCallback(() => setMenuState(null), []);
+
+  const userRoles = [profile?.role, ...(roles || [])]
+    .filter(Boolean)
+    .map((r) => String(r).toUpperCase());
+  const hasManagementAccess = userRoles.some((r) =>
+    ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'].includes(r)
+  );
 
   useEffect(() => {
     const handleCustomMenu = (e: Event) => {
@@ -71,13 +78,10 @@ export function useGlobalShortcuts() {
   }, []);
 
   useEffect(() => {
-    const allowedRoles = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'];
-    if (!profile || !allowedRoles.includes(profile.role)) {
-      return;
-    }
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle All Shortcuts modal on Alt + S (works globally anywhere, including inside input fields and search boxes)
+      // Toggle All Shortcuts modal on Alt + S (restricted to management)
       if ((e.altKey || e.metaKey) && (e.key === 's' || e.key === 'S' || e.code === 'KeyS')) {
+        if (!hasManagementAccess) return;
         e.preventDefault();
         e.stopPropagation();
         setMenuState((prev) => (prev === 'ALL_SHORTCUTS' ? null : 'ALL_SHORTCUTS'));
@@ -178,12 +182,15 @@ export function useGlobalShortcuts() {
       if (menuState === null) {
         const key = e.key.toLowerCase();
         if (key === 'v') {
+          if (!hasManagementAccess) return;
           e.preventDefault();
           setMenuState('VOUCHERS');
         } else if (key === 'd') {
+          if (!hasManagementAccess) return;
           e.preventDefault();
           setMenuState('DISPLAY_REPORTS');
         } else if (key === 'n') {
+          if (!hasManagementAccess) return;
           e.preventDefault();
           router.push('/proxy-order');
         } else if (key === 'g') {
@@ -192,9 +199,11 @@ export function useGlobalShortcuts() {
           const target = getRoleGlobalOrdersUrl(profile?.role, urlParams.get('workspace'));
           router.push(target);
         } else if (key === 'z') {
+          if (!hasManagementAccess) return;
           e.preventDefault();
           router.push('/accounting-redirect');
         } else if (key === 'c') {
+          if (!hasManagementAccess) return;
           e.preventDefault();
           window.location.href = `${process.env.NEXT_PUBLIC_DUBBL_URL || 'http://localhost:3001'}/sales/receipts`;
         }

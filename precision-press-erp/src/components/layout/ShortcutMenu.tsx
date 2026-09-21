@@ -19,15 +19,25 @@ interface ShortcutItemDef {
 export function ShortcutMenu({}: ShortcutMenuProps) {
   const { menuState, closeMenu, setMenuState } = useGlobalShortcuts();
   const { open: openDrawer } = useCreateDrawer();
-  const { profile } = useAuth();
+  const { profile, roles } = useAuth();
   const router = useRouter();
   const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
 
   const allowedRoles = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'];
 
+  const userRoles = React.useMemo(() => {
+    return [profile?.role, ...(roles || [])]
+      .filter(Boolean)
+      .map((r) => String(r).toUpperCase());
+  }, [profile?.role, roles]);
+
+  const hasAccess = React.useMemo(() => {
+    return userRoles.some((r) => allowedRoles.includes(r));
+  }, [userRoles]);
+
   // Prefetch routes in the background
   React.useEffect(() => {
-    if (menuState !== null && profile && allowedRoles.includes(profile.role)) {
+    if (menuState !== null && profile && hasAccess) {
       const routesToPrefetch = [
         '/sales-register', '/quotation-register', '/receipt-register', 
         '/payment-entry', '/admin/treasury', '/admin/journal-transfers', 
@@ -143,7 +153,7 @@ export function ShortcutMenu({}: ShortcutMenuProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [menuState, router, closeMenu]);
 
-  if (!profile || !allowedRoles.includes(profile.role)) {
+  if (!profile || !hasAccess) {
     return null;
   }
 

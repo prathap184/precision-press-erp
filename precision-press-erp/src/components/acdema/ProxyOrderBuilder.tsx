@@ -17,6 +17,7 @@ import { ProxyOrderBuilderView } from '@/components/acdema/ProxyOrderBuilderView
 import { getQuotationById, createStandaloneQuotation } from '@/lib/actions/quotations';
 import { supabase } from '@/lib/supabase';
 import { isInterstateOrder } from '@/lib/company-config';
+import { getRoleGlobalOrdersUrl } from '@/config/navigation';
 
 type PaymentMode = 'HAND_CASH' | 'COD' | 'CREDIT';
 type DeliveryType = 'selfPickup' | 'door' | 'courier' | 'transport';
@@ -69,7 +70,21 @@ const makeRow = (product?: Product): AcdemaRow => {
 
 export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId?: string, mode?: 'order' | 'quotation' }) {
   const router = useRouter();
-  const { profile, roles } = useAuth();
+  const { profile, roles, loading: authLoading } = useAuth();
+
+  const userRoles = useMemo(() => {
+    return [profile?.role, ...(roles || [])].filter(Boolean).map(r => String(r).toUpperCase());
+  }, [profile?.role, roles]);
+  const allowedManagementRoles = ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA'];
+  const hasManagementAccess = userRoles.some(r => allowedManagementRoles.includes(r));
+
+  useEffect(() => {
+    if (!authLoading && profile && !hasManagementAccess) {
+      toast.error('Access restricted to management. Redirecting to your orders hub...');
+      const target = getRoleGlobalOrdersUrl(profile.role);
+      router.replace(target);
+    }
+  }, [authLoading, profile, hasManagementAccess, router]);
 
   const [loading, setLoading] = useState(false);
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
@@ -947,6 +962,15 @@ ${parts.join(', ')}`;
     setUtr,
     mode,
   };
+
+  if (!authLoading && profile && !hasManagementAccess) {
+    return React.createElement(
+      'div',
+      { className: 'flex flex-col items-center justify-center min-h-[50vh] gap-3 text-center' },
+      React.createElement('p', { className: 'text-sm font-semibold text-red-600' }, 'Access Restricted'),
+      React.createElement('p', { className: 'text-xs text-muted-foreground' }, 'Redirecting to your orders hub...')
+    );
+  }
 
   if (bootstrapLoading) {
     return React.createElement('div', { className: 'flex min-h-[50vh] items-center justify-center' }, 'Loading...');

@@ -2623,3 +2623,30 @@ flowchart TD
 
 ---
 *Memory Updated & Persisted on: 2026-09-21 (Section 78 - Universal Dynamic Staff Role Routing for g & Exit)*
+
+---
+
+## 79. 100% Strict Role Restrictions for Shortcuts (<kbd>d</kbd>, <kbd>v</kbd>, <kbd>n</kbd>, <kbd>Alt+S</kbd>) and Direct URL Access
+
+### A. Architectural Overview & Requirements
+- Shortcuts **`d`** (Display Reports Menu), **`v`** (Vouchers Menu), **`n`** (New Order / `/proxy-order`), **`z`**, **`c`**, and **`Alt+S`** (All Shortcuts Modal) are strictly restricted to management roles:
+  - **`ADMIN`** / **`SUPER_ADMIN`**
+  - **`MANAGER`**
+  - **`ACCOUNTANT`**
+  - **`ACDEMA`**
+- Shop-floor roles (**`DESIGNER`**, **`PRINTER`**, **`PASTING`**, **`FINISHING`**, **`DISPATCH`**, **`DELIVERY`**, **`SUPPORT`**, **`CUSTOMER`**) must have NO access to these shortcuts and must NEVER see the shortcut menu modals.
+- **Dynamic Multi-Role Support**: Checks compute `userRoles = [profile?.role, ...(roles || [])].filter(Boolean).map(r => String(r).toUpperCase())`. When an Admin assigns an additional role (e.g., Designer + Manager), the user immediately gains access. If the Admin removes that role, access is instantly revoked.
+- **Direct URL Entry Protection**:
+  1. **Server Middleware (`src/middleware.ts`)**:
+     - Route permissions registered for `/proxy-order`, `/quotation-builder`, and `/reports` restricted to `['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'ACCOUNTANT', 'ACDEMA']`.
+     - Unauthorized attempts redirect immediately to the user's role-scoped global orders hub (`/designer/orders`, `/printer/orders`, etc.).
+  2. **Client-Side Defense-in-Depth (`ProxyOrderBuilder.tsx` & `QuotationBuilder.tsx`)**:
+     - Evaluates `hasManagementAccess` on mount and profile update.
+     - Unauthorized client-side navigations trigger a notification and redirect to `getRoleGlobalOrdersUrl(profile.role)`.
+  3. **Global Shortcuts Hooks & View Listeners**:
+     - `src/hooks/useGlobalShortcuts.ts`, `src/hooks/use-global-shortcuts.ts`, `src/components/layout/ShortcutMenu.tsx`, and `src/components/acdema/ProxyOrderBuilderView.tsx` guard `d`, `v`, `n`, `z`, `c`, and `Alt+S` with `hasManagementAccess`.
+     - Global order navigation shortcut **`g`**, **`Escape`**, and **`Alt+Q`** remain fully functional for all staff members across the system.
+
+---
+*Memory Updated & Persisted on: 2026-09-21 (Section 79 - 100% Strict Role Restrictions for d, v, n Shortcuts and URL Access)*
+
