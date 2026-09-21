@@ -2570,3 +2570,25 @@ flowchart TD
 
 ---
 *Memory Updated & Persisted on: 2026-09-21 (Section 76 - In-Memory Zero-Latency Catalog & Contact Architecture)*
+
+---
+
+## 77. Default Logistics (PICKUP) & Customer Enter Refocus Restoration
+
+### A. Default Logistics Mode
+- **File**: [`src/components/acdema/ProxyOrderBuilder.tsx`](file:///c:/Users/jprat/OneDrive/Desktop/Hindustan%20Enterprices/precision-press-erp/src/components/acdema/ProxyOrderBuilder.tsx)
+- Initial state of `deliveryType` changed from `'door'` to `'selfPickup'`.
+- On page load / refresh, **P PICKUP (Self Collection at Store)** is selected by default with ₹0 delivery charge.
+
+### B. Customer Unpoint & Enter Restoration
+- **File**: [`src/components/acdema/ProxyOrderBuilderView.tsx`](file:///c:/Users/jprat/OneDrive/Desktop/Hindustan%20Enterprices/precision-press-erp/src/components/acdema/ProxyOrderBuilderView.tsx)
+- **Problem**: When user pressed <kbd>Alt</kbd>+<kbd>Q</kbd> to unpoint the customer search box, `isCustomerExplicitlyBlurredRef.current` was set to `true`. In `handleGlobalFocusRestore`, a check `if (isCustomerExplicitlyBlurredRef.current) return;` was blocking <kbd>Enter</kbd> from restoring focus. Width, Quantity, Rate, and other row inputs were already working because their `isCustomerExplicitlyBlurredRef` was false.
+- **Solution**:
+  1. Updated the check: `if (isCustomerExplicitlyBlurredRef.current && e.key !== 'Enter') return;` — keeping global shortcuts (`g`, `v`, `d`) completely protected from focus hijacking, while allowing <kbd>Enter</kbd> to restore focus.
+  2. When <kbd>Enter</kbd> restores focus to `proxy-customer-search-input`:
+     - Resets `isCustomerExplicitlyBlurredRef.current = false`.
+     - Calls `setCustomerDropdownOpen(true)` to immediately reopen the customer ledger accounts dropdown table.
+  3. All other table fields (Width, Quantity, Rate, etc.) remain 100% untouched and continue to restore focus on Enter exactly as before.
+
+---
+*Memory Updated & Persisted on: 2026-09-21 (Section 77 - Default Logistics PICKUP & Customer Enter Refocus)*

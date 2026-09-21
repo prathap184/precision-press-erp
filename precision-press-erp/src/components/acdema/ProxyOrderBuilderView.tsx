@@ -784,8 +784,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         return;
       }
 
-      // If customer search or view was explicitly blurred / unselected, do not hijack focus
-      if (isCustomerExplicitlyBlurredRef.current) {
+      // If customer search or view was explicitly blurred / unselected, do not hijack focus on normal typing/shortcuts,
+      // but allow Enter to restore focus back to the customer box!
+      if (isCustomerExplicitlyBlurredRef.current && e.key !== 'Enter') {
         return;
       }
 
@@ -809,6 +810,10 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
         }
 
         if (targetEl) {
+          if (targetEl.id === 'proxy-customer-search-input') {
+            isCustomerExplicitlyBlurredRef.current = false;
+            setCustomerDropdownOpen(true);
+          }
           targetEl.focus();
           if (targetEl instanceof HTMLInputElement || targetEl instanceof HTMLTextAreaElement) {
             try {

@@ -79,7 +79,7 @@ export function ProxyOrderBuilder({ quotationId, mode = 'order' }: { quotationId
   const [customerSearch, setCustomerSearch] = useState('');
   const [rows, setRows] = useState<AcdemaRow[]>([]);
   const [paymentMode, setPaymentMode] = useState<PaymentMode>('HAND_CASH');
-  const [deliveryType, setDeliveryType] = useState<DeliveryType>('door');
+  const [deliveryType, setDeliveryType] = useState<DeliveryType>('selfPickup');
   const [shippingAddress, setShippingAddress] = useState('');
   const [orderNumber, setOrderNumber] = useState('');
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().split('T')[0]);
