@@ -954,6 +954,17 @@ export function InvoiceFormView() {
   const isCustomerExplicitlyBlurredRef = useRef(false);
   const lastFocusedElementIdRef = useRef<string | null>(null);
   const unitBlurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const customerBlurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Stable refs so the keyboard handler never needs to be torn down / re-registered
+  const customerDropdownOpenRef = useRef(false);
+  const openRowIdRef = useRef<string | null>(null);
+  const logisticsDropdownOpenRef = useRef(false);
+  const customerSearchRef = useRef("");
+  const rowsRef = useRef<InvoiceRow[]>([]);
+  const setCustomerSearchRef = useRef<((v: string) => void) | null>(null);
+  const handleSubmitRef = useRef<(() => void) | null>(null);
+  const openDrawerRef = useRef<((type: any, initialData?: any) => void) | null>(null);
 
   // Keep track of the last active input/select/button on the page
   useEffect(() => {
@@ -972,6 +983,15 @@ export function InvoiceFormView() {
     document.addEventListener("focusin", handleFocusIn);
     return () => document.removeEventListener("focusin", handleFocusIn);
   }, []);
+
+  // Keep stable refs in sync with state — so the keyboard handler (registered once) always reads latest values
+  customerDropdownOpenRef.current = customerDropdownOpen;
+  openRowIdRef.current = openRowId;
+  logisticsDropdownOpenRef.current = logisticsDropdownOpen;
+  customerSearchRef.current = customerSearch;
+  rowsRef.current = rows;
+  setCustomerSearchRef.current = setCustomerSearch;
+  openDrawerRef.current = openDrawer;
 
   // Keyboard shortcut: Alt + Q, F2, Ctrl + Enter, Alt + C, Escape & Smart Enter Recovery
   useEffect(() => {
@@ -1009,27 +1029,18 @@ export function InvoiceFormView() {
 
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
-        handleSubmit();
+        handleSubmitRef.current?.();
         return;
       } else if (e.altKey && (e.key === "c" || e.key === "C")) {
         e.preventDefault();
-        openDrawer("contact");
+        openDrawerRef.current?.("contact");
         return;
       }
 
       // Check if user is actively focused in an input / textarea / select element
       const activeEl = document.activeElement as HTMLElement | null;
-      const isInputActive = activeEl && (
-        activeEl.tagName === "INPUT" ||
-        activeEl.tagName === "TEXTAREA" ||
-        activeEl.tagName === "SELECT" ||
-        activeEl.isContentEditable ||
-        activeEl.getAttribute("role") === "textbox" ||
-        activeEl.getAttribute("role") === "searchbox" ||
-        activeEl.getAttribute("role") === "combobox"
-      );
 
-      // Escape key handling
+      // Escape key handling — reads from refs so never needs re-registration
       if (e.key === "Escape") {
         const isShortcutModalOpen = Boolean(document.querySelector('[data-shortcut-modal="true"]'));
         if (isShortcutModalOpen) {
@@ -1041,8 +1052,8 @@ export function InvoiceFormView() {
         if (isCustomerInput) {
           e.preventDefault();
           e.stopPropagation();
-          if (customerSearch !== "") {
-            setCustomerSearch("");
+          if (customerSearchRef.current !== "") {
+            setCustomerSearchRef.current?.("");
           }
           setCustomerDropdownOpen(false);
           isCustomerExplicitlyBlurredRef.current = true;
@@ -1050,7 +1061,7 @@ export function InvoiceFormView() {
           return;
         }
 
-        if (customerDropdownOpen) {
+        if (customerDropdownOpenRef.current) {
           e.preventDefault();
           e.stopPropagation();
           setCustomerDropdownOpen(false);
@@ -1059,14 +1070,14 @@ export function InvoiceFormView() {
           return;
         }
 
-        if (openRowId) {
+        if (openRowIdRef.current) {
           e.preventDefault();
           e.stopPropagation();
           setOpenRowId(null);
           return;
         }
 
-        if (logisticsDropdownOpen) {
+        if (logisticsDropdownOpenRef.current) {
           e.preventDefault();
           e.stopPropagation();
           setLogisticsDropdownOpen(false);
@@ -1098,8 +1109,9 @@ export function InvoiceFormView() {
         let targetEl = targetId ? document.getElementById(targetId) : null;
 
         if (!targetEl) {
-          if (rows && rows.length > 0) {
-            targetEl = document.getElementById(`row-${rows[0].id}-product-input`);
+          const currentRows = rowsRef.current;
+          if (currentRows && currentRows.length > 0) {
+            targetEl = document.getElementById(`row-${currentRows[0].id}-product-input`);
           }
           if (!targetEl) {
             targetEl = document.getElementById("invoice-customer-search-input");
@@ -1121,30 +1133,11 @@ export function InvoiceFormView() {
         }
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    selectedCustomerId,
-    selectedCustomer,
-    refType,
-    selectedCreditId,
-    calculatedRows,
-    rows,
-    issueDate,
-    dueDate,
-    reference,
-    notes,
-    deliveryType,
-    shippingAddress,
-    forApproval,
-    isDepositRetainer,
-    depositPercent,
-    customerDropdownOpen,
-    openRowId,
-    logisticsDropdownOpen,
-    customerSearch,
-    setCustomerSearch,
-  ]);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
 
   const handleSubmit = async () => {
     if (saving) return;
@@ -1414,6 +1407,11 @@ export function InvoiceFormView() {
                         setHighlightCustomerIndex(0);
                       }}
                       onFocus={(e) => {
+                        isCustomerExplicitlyBlurredRef.current = false;
+                        if (customerBlurTimerRef.current) {
+                          clearTimeout(customerBlurTimerRef.current);
+                          customerBlurTimerRef.current = null;
+                        }
                         setCustomerDropdownOpen(true);
                         const target = e.currentTarget;
                         if (selectedCustomer) {
@@ -1495,17 +1493,38 @@ export function InvoiceFormView() {
                             const row0Input = document.getElementById(`row-${rows[0]?.id || 0}-product-input`);
                             if (row0Input) row0Input.focus();
                           }
+                        } else if (e.key === "Backspace") {
+                          const val = e.currentTarget.value || '';
+                          const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                          if (customerSearch === '' || val === '' || isAllSelected || (!customerSearch && !selectedCustomer)) {
+                            e.preventDefault();
+                            if (isAllSelected && selectedCustomer) {
+                              setSelectedCustomerId('');
+                              setCustomerSearch('');
+                            }
+                            setCustomerDropdownOpen(false);
+                            const dateInput = document.getElementById('invoice-date-input') || document.getElementById('invoice-reference-input');
+                            if (dateInput) {
+                              dateInput.focus();
+                              try { (dateInput as HTMLInputElement).select(); } catch {}
+                            }
+                          }
                         } else if (e.key === "Escape") {
                           e.preventDefault();
                           e.stopPropagation();
+                          if (customerSearch !== "") {
+                            setCustomerSearch("");
+                          }
                           setCustomerDropdownOpen(false);
                           isCustomerExplicitlyBlurredRef.current = true;
                           e.currentTarget.blur();
                         }
                       }}
                       onBlur={() => {
-                        setTimeout(() => {
+                        if (customerBlurTimerRef.current) clearTimeout(customerBlurTimerRef.current);
+                        customerBlurTimerRef.current = setTimeout(() => {
                           setCustomerDropdownOpen(false);
+                          setCustomerSearch("");
                         }, 200);
                       }}
                       className="h-full w-full border-0 focus:ring-0 p-0 bg-transparent text-sm font-bold text-slate-800 outline-none placeholder-slate-400"

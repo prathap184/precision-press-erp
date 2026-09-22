@@ -40,7 +40,7 @@ export function useGlobalShortcuts() {
           activeEl?.blur();
         } else {
           const searchInput = document.querySelector<HTMLInputElement>(
-            'input[placeholder*="Search" i], input[type="search"], #global-search-input, input:not([type="hidden"]):not([disabled])'
+            '#invoice-customer-search-input, #proxy-customer-search-input, #global-search-input, input[type="search"], input[placeholder*="Search" i]'
           );
           if (searchInput) {
             searchInput.focus();
