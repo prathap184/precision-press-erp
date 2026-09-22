@@ -4,7 +4,7 @@ import { randomUUID } from 'crypto';
 import { supabaseServer } from '@/lib/supabase-server';
 import { adminDb } from '@/lib/firebase-admin';
 import * as admin from '@/lib/firebase-admin';
-import { StaffRole, StaffStatus, RoleHistoryEntry, StaffUser } from '@/types/roles';
+import { StaffRole, StaffStatus, RoleHistoryEntry, StaffUser, ROLE_META } from '@/types/roles';
 import { getEffectiveRoles, UserProfile } from '@/types/auth';
 import { verifyToken } from '@/lib/verifyToken';
 import { cookies } from 'next/headers';
@@ -151,8 +151,8 @@ export async function updateStaffRoles(
   targetUid: string,
   newRoles: StaffRole[],
   reason?: string,
-  printerCategory?: string,
-  printerSubCategory?: string
+  printerCategory?: string | string[],
+  printerSubCategory?: string | string[]
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const cookieStore = await cookies();
@@ -189,40 +189,51 @@ export async function updateStaffRoles(
     const adminProfileSnap = await adminDb.collection('profiles').doc(claims.uid as string).get();
     const adminName = adminProfileSnap.exists ? adminProfileSnap.data()?.name : 'Admin';
 
-    // Determine printer stream details
+    // Normalize printer categories & subcategories into arrays
     const nowIso = new Date().toISOString();
-    let pCat = printerCategory || 'MAIN_PRINTER';
-    let pSub = printerSubCategory || null;
+    const isPrinter = finalRoles.includes('PRINTER');
+
+    const categoriesArray: string[] = Array.isArray(printerCategory)
+      ? printerCategory.filter(Boolean)
+      : (printerCategory ? printerCategory.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+    const subCategoriesArray: string[] = Array.isArray(printerSubCategory)
+      ? printerSubCategory.filter(Boolean)
+      : (printerSubCategory ? printerSubCategory.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+    const isMainPrinter = categoriesArray.includes('MAIN_PRINTER') || (!categoriesArray.length && printerCategory === 'MAIN_PRINTER');
+    const pCat = isMainPrinter ? 'MAIN_PRINTER' : (categoriesArray.length > 0 ? categoriesArray.join(', ') : 'MAIN_PRINTER');
+    const pSub = subCategoriesArray.length > 0 ? subCategoriesArray.join(', ') : null;
+
     let printingCategoryId: string | null = null;
     let printingSubcategoryId: string | null = null;
 
-    const isPrinter = finalRoles.includes('PRINTER');
-
-    if (isPrinter && pCat && pCat !== 'MAIN_PRINTER') {
-      const isCatUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pCat);
+    if (isPrinter && !isMainPrinter && categoriesArray.length > 0) {
+      // Find category ID for the primary selected category
+      const firstCat = categoriesArray[0];
+      const isCatUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(firstCat);
       const catQuery = supabaseServer.from('printing_categories').select('id, name');
       const { data: catRecord } = isCatUuid
-        ? await catQuery.eq('id', pCat).maybeSingle()
-        : await catQuery.ilike('name', pCat).maybeSingle();
+        ? await catQuery.eq('id', firstCat).maybeSingle()
+        : await catQuery.ilike('name', firstCat).maybeSingle();
 
       if (catRecord) {
         printingCategoryId = catRecord.id;
-        pCat = catRecord.name;
 
-        if (pSub) {
-          const isSubUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pSub);
+        if (subCategoriesArray.length > 0) {
+          const firstSub = subCategoriesArray[0];
+          const isSubUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(firstSub);
           const subQuery = supabaseServer
             .from('printing_subcategories')
             .select('id, name')
             .eq('category_id', catRecord.id);
 
           const { data: subRecord } = isSubUuid
-            ? await subQuery.eq('id', pSub).maybeSingle()
-            : await subQuery.ilike('name', pSub).maybeSingle();
+            ? await subQuery.eq('id', firstSub).maybeSingle()
+            : await subQuery.ilike('name', firstSub).maybeSingle();
 
           if (subRecord) {
             printingSubcategoryId = subRecord.id;
-            pSub = subRecord.name;
           }
         }
       }
@@ -280,7 +291,9 @@ export async function updateStaffRoles(
         assigned_at: nowIso,
         metadata: isPrinter ? {
           printer_category: pCat,
+          printer_categories: categoriesArray,
           printer_sub_category: pSub,
+          printer_sub_categories: subCategoriesArray,
           printing_category_id: printingCategoryId,
           printing_subcategory_id: printingSubcategoryId,
         } : null,
@@ -428,7 +441,9 @@ export async function getStaffList(): Promise<StaffUser[]> {
           roles: profileRoles,
           status: (staffRow.status as StaffStatus) || (profile.status as StaffStatus) || 'ACTIVE',
           printerCategory: profile.printerCategory || profile.printing_category_name || staffMeta.printer_category || staffRow.printer_category || undefined,
+          printerCategories: staffMeta.printer_categories || (profile.printing_category_name ? profile.printing_category_name.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined),
           printerSubCategory: profile.printing_subcategory_name || profile.printerSubCategory || staffMeta.printer_sub_category || staffRow.printer_sub_category || undefined,
+          printerSubCategories: staffMeta.printer_sub_categories || (profile.printing_subcategory_name ? profile.printing_subcategory_name.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined),
           assignedBy: staffRow.assigned_by,
           assignedAt: toPlain(staffRow.assigned_at),
           updatedAt: toPlain(staffRow.updated_at ?? profile.updatedAt),
@@ -495,6 +510,159 @@ export async function getRoleHistory(userId?: string): Promise<RoleHistoryEntry[
   } catch (e: any) {
     console.error('[getRoleHistory] Detailed Error:', e);
     return [];
+  }
+}
+
+// ─── Comprehensive Staff Activity ─────────────────────────────────────────────
+export interface StaffActivityEvent {
+  id: string;
+  type: 'ROLE_CHANGE' | 'STATUS_CHANGE' | 'ORDER_PROCESSED' | 'ORDER_CREATED';
+  title: string;
+  description: string;
+  actorId?: string;
+  actorName?: string;
+  timestamp: string;
+  metadata?: Record<string, any>;
+  badges?: Array<{ label: string; color?: string; bg?: string }>;
+}
+
+export async function getComprehensiveStaffActivity(userId: string): Promise<{
+  staff: StaffUser | null;
+  events: StaffActivityEvent[];
+}> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('token')?.value;
+    if (!token) return { staff: null, events: [] };
+
+    const claims = await verifyToken(token);
+    if (!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(claims?.role as string)) {
+      return { staff: null, events: [] };
+    }
+
+    // 1. Fetch user profile & staff metadata
+    const { data: profile } = await supabaseServer
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const { data: staffRow } = await supabaseServer
+      .from('staff_users')
+      .select('*')
+      .or(`id.eq.${userId},uid.eq.${userId}`)
+      .maybeSingle();
+
+    const staffMeta = (staffRow?.metadata && typeof staffRow.metadata === 'object') ? staffRow.metadata : {};
+    const staffData: StaffUser | null = profile ? {
+      uid: profile.id,
+      name: profile.name || profile.displayName || 'Unknown',
+      email: profile.email || '',
+      roles: Array.isArray(staffRow?.roles) && staffRow.roles.length > 0 ? staffRow.roles : getEffectiveRoles(profile as UserProfile),
+      status: (staffRow?.status as StaffStatus) || (profile.status as StaffStatus) || 'ACTIVE',
+      printerCategory: profile.printerCategory || profile.printing_category_name || staffMeta.printer_category,
+      printerCategories: staffMeta.printer_categories || (profile.printing_category_name ? profile.printing_category_name.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined),
+      printerSubCategory: profile.printing_subcategory_name || profile.printerSubCategory || staffMeta.printer_sub_category,
+      printerSubCategories: staffMeta.printer_sub_categories || (profile.printing_subcategory_name ? profile.printing_subcategory_name.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined),
+      assignedBy: staffRow?.assigned_by,
+      assignedAt: toPlain(staffRow?.assigned_at),
+      updatedAt: toPlain(staffRow?.updated_at ?? profile.updatedAt),
+      suspendedAt: toPlain(staffRow?.suspended_at),
+      lastLoginAt: toPlain(staffRow?.last_login_at ?? profile.lastLogin),
+    } : null;
+
+    const events: StaffActivityEvent[] = [];
+
+    // 2. Fetch role audit history
+    const { data: roleHistoryRows } = await supabaseServer
+      .from('role_history')
+      .select('*')
+      .or(`userId.eq.${userId},user_id.eq.${userId}`)
+      .order('changedAt', { ascending: false });
+
+    (roleHistoryRows || []).forEach((row: any) => {
+      const action = String(row.action || 'UPDATE').toUpperCase();
+      const isStatusChange = ['ACTIVATE', 'SUSPEND', 'DISABLE'].includes(action);
+      events.push({
+        id: row.id,
+        type: isStatusChange ? 'STATUS_CHANGE' : 'ROLE_CHANGE',
+        title: isStatusChange ? `Account ${action}D` : `Roles ${action}D`,
+        description: row.reason ? `Reason: "${row.reason}"` : (action === 'UPDATE' ? 'Updated role permissions or production streams' : `Account was ${action.toLowerCase()}d`),
+        actorId: row.changed_by || row.changedBy,
+        actorName: row.changed_by_name || row.changedByName || 'Admin',
+        timestamp: row.changed_at || row.changedAt,
+        badges: (row.new_roles || row.newRoles || []).map((r: string) => ({
+          label: r,
+          color: ROLE_META[r as StaffRole]?.color || '#475569',
+          bg: ROLE_META[r as StaffRole]?.bg || '#f1f5f9',
+        })),
+        metadata: {
+          oldRoles: row.old_roles || row.oldRoles,
+          newRoles: row.new_roles || row.newRoles,
+        }
+      });
+    });
+
+    // 3. Fetch orders created by this staff user (e.g. Proxy order creation)
+    const { data: createdOrders } = await supabaseServer
+      .from('orders')
+      .select('id, customerName, amounts, createdAt, status')
+      .eq('createdBy', userId)
+      .order('createdAt', { ascending: false })
+      .limit(100);
+
+    (createdOrders || []).forEach((o: any) => {
+      const amt = o.amounts?.grandTotal ?? 0;
+      events.push({
+        id: `created_${o.id}`,
+        type: 'ORDER_CREATED',
+        title: `Placed Proxy Order #${o.id.replace('ORD-', '')}`,
+        description: `Created order for ${o.customerName || 'Customer'} (Total: ₹${Number(amt).toLocaleString()}) - Status: ${o.status}`,
+        actorId: userId,
+        actorName: staffData?.name || 'Staff',
+        timestamp: o.createdAt,
+        metadata: { orderId: o.id, amount: amt },
+        badges: [{ label: 'Proxy Order', color: '#0f766e', bg: '#ccfbf1' }]
+      });
+    });
+
+    // 4. Fetch orders where this user executed/completed workflow steps
+    const { data: recentOrders } = await supabaseServer
+      .from('orders')
+      .select('id, customerName, workflowSnapshot, updatedAt')
+      .order('updatedAt', { ascending: false })
+      .limit(200);
+
+    (recentOrders || []).forEach((ord: any) => {
+      const steps = ord.workflowSnapshot?.steps || [];
+      steps.forEach((step: any, stepIdx: number) => {
+        if (step.completedBy === userId || (step.completedBy && step.completedBy === staffData?.name)) {
+          events.push({
+            id: `step_${ord.id}_${stepIdx}`,
+            type: 'ORDER_PROCESSED',
+            title: `Completed ${step.label || step.role} Stage`,
+            description: `Finished stage for Order #${ord.id.replace('ORD-', '')} (${ord.customerName || 'Customer'})${step.notes ? ` - "${step.notes}"` : ''}`,
+            actorId: userId,
+            actorName: staffData?.name || 'Staff',
+            timestamp: step.completedAt || ord.updatedAt,
+            metadata: { orderId: ord.id, stepRole: step.role, stepLabel: step.label },
+            badges: [{
+              label: step.label || step.role,
+              color: ROLE_META[step.role as StaffRole]?.color || '#2563eb',
+              bg: ROLE_META[step.role as StaffRole]?.bg || '#dbeafe'
+            }]
+          });
+        }
+      });
+    });
+
+    // Sort all events newest first
+    events.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    return { staff: staffData, events };
+  } catch (e: any) {
+    console.error('[getComprehensiveStaffActivity] error:', e);
+    return { staff: null, events: [] };
   }
 }
 

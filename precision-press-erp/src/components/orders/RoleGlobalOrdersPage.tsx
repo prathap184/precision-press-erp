@@ -223,8 +223,12 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
   // "All Stages" dropdown options — show ALL stages for admin/super-admin,
   // only the viewer's assigned roles for everyone else
   const isViewerAdmin = viewerRoles.includes('ADMIN') || viewerRoles.includes('SUPER_ADMIN');
-  const printerCategory = auth?.profile?.printerCategory;
-  const printerSubCategory = auth?.profile?.printerSubCategory;
+  const printerCategory = (auth?.profile?.printerCategories && auth.profile.printerCategories.length > 0)
+    ? auth.profile.printerCategories
+    : auth?.profile?.printerCategory;
+  const printerSubCategory = (auth?.profile?.printerSubCategories && auth.profile.printerSubCategories.length > 0)
+    ? auth.profile.printerSubCategories
+    : auth?.profile?.printerSubCategory;
 
   const orderMatchesViewer = React.useCallback((order: Order): boolean => {
     if (!order) return false;

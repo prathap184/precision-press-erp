@@ -44,15 +44,24 @@ export function normalizeCategoryString(str?: string | null): string {
  */
 export function matchesPrinterStream(
   order: Order | null,
-  printerCategory?: string,
-  printerSubCategory?: string
+  printerCategory?: string | string[],
+  printerSubCategory?: string | string[]
 ): boolean {
   if (!order) return false;
-  // If no category specified or user is MAIN_PRINTER, supervisor sees everything
-  if (!printerCategory || printerCategory === 'MAIN_PRINTER') return true;
 
-  const targetCatNorm = normalizeCategoryString(printerCategory);
-  
+  // Convert categories to array
+  const rawCategories: string[] = Array.isArray(printerCategory)
+    ? printerCategory
+    : (printerCategory ? printerCategory.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+  // If no category specified or user has MAIN_PRINTER, supervisor sees everything
+  if (rawCategories.length === 0 || rawCategories.includes('MAIN_PRINTER')) return true;
+
+  // Convert subcategories to array
+  const rawSubCategories: string[] = Array.isArray(printerSubCategory)
+    ? printerSubCategory
+    : (printerSubCategory ? printerSubCategory.split(',').map(s => s.trim()).filter(Boolean) : []);
+
   // Extract order category
   let orderCat = order.printerCategory || (order as any).printing_category_name || '';
   if (!orderCat && order.items?.length) {
@@ -72,49 +81,59 @@ export function matchesPrinterStream(
 
   const orderCatNorm = normalizeCategoryString(orderCat);
 
-  // If order category does not match user category, reject immediately
-  if (orderCatNorm !== targetCatNorm) {
-    // Also check standard aliases (e.g. "SOLVENT" vs "SOLVENT_PRINT", "ECOSOLVENT" vs "ECO_SOLVENT")
-    const simplifiedTarget = targetCatNorm.replace('print', '');
+  // Helper to match an order category to a target category
+  const matchCategory = (target: string): boolean => {
+    const targetNorm = normalizeCategoryString(target);
+    if (!targetNorm) return false;
+    if (orderCatNorm === targetNorm) return true;
+    const simplifiedTarget = targetNorm.replace('print', '');
     const simplifiedOrder = orderCatNorm.replace('print', '');
-    if (!simplifiedTarget || simplifiedTarget !== simplifiedOrder) {
-      return false;
-    }
+    return simplifiedTarget.length > 0 && simplifiedTarget === simplifiedOrder;
+  };
+
+  // Check if order category matches ANY of the user's assigned categories
+  const matchedTargetCategory = rawCategories.find(matchCategory);
+  if (!matchedTargetCategory) {
+    return false;
   }
 
-  // Category matched! Now check subcategory if assigned to this printer
-  const targetSubNorm = normalizeCategoryString(printerSubCategory);
-  if (!targetSubNorm) {
-    // Printer handles all subcategories of this category
+  // If no subcategories assigned to printer, printer handles ALL subcategories
+  if (rawSubCategories.length === 0) {
     return true;
   }
 
-  // Extract order subcategory
+  // Extract order subcategories
   const orderSubCat = (order as any).printerSubCategory || (order as any).printing_subcategory_name || '';
-  if (orderSubCat && normalizeCategoryString(orderSubCat) === targetSubNorm) {
-    return true;
-  }
+  const orderSubNorm = normalizeCategoryString(orderSubCat);
 
-  if (order.items?.length) {
-    return order.items.some((item: any) => {
-      const itemSub = item.printerSubCategory || item.printing_subcategory_name || item.printingSubcategoryName || '';
-      if (itemSub && normalizeCategoryString(itemSub) === targetSubNorm) {
-        return true;
-      }
-      // Smart fallback: check product name / code for subcategory hints
-      const pName = (item.productName || item.name || '').toLowerCase();
-      const pCode = (item.productId || item.code || item.sku || '').toLowerCase();
-      if (targetSubNorm.includes('mutoh') && (pName.includes('( mu )') || pName.includes('(mu)') || pName.includes('mutoh') || pCode.startsWith('mut-'))) {
-        return true;
-      }
-      if (targetSubNorm.includes('blackgrey') && (pName.includes('black back') || pName.includes('grey back') || pName.includes('gray back'))) {
-        return true;
-      }
-      return false;
-    });
-  }
+  const matchSubcategory = (targetSub: string): boolean => {
+    const targetSubNorm = normalizeCategoryString(targetSub);
+    if (!targetSubNorm) return false;
+    if (orderSubNorm && orderSubNorm === targetSubNorm) return true;
 
-  return false;
+    if (order.items?.length) {
+      return order.items.some((item: any) => {
+        const itemSub = item.printerSubCategory || item.printing_subcategory_name || item.printingSubcategoryName || '';
+        if (itemSub && normalizeCategoryString(itemSub) === targetSubNorm) return true;
+
+        // Smart fallback: check product name / code for subcategory hints
+        const pName = (item.productName || item.name || '').toLowerCase();
+        const pCode = (item.productId || item.code || item.sku || '').toLowerCase();
+        if (targetSubNorm.includes('mutoh') && (pName.includes('( mu )') || pName.includes('(mu)') || pName.includes('mutoh') || pCode.startsWith('mut-'))) {
+          return true;
+        }
+        if (targetSubNorm.includes('blackgrey') && (pName.includes('black back') || pName.includes('grey back') || pName.includes('gray back'))) {
+          return true;
+        }
+        return false;
+      });
+    }
+
+    return false;
+  };
+
+  // Check if order matches ANY of the user's assigned subcategories
+  return rawSubCategories.some(matchSubcategory);
 }
 
 /**

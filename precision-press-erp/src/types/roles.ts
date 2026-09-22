@@ -181,7 +181,9 @@ export interface StaffUser {
   roles: StaffRole[];
   status: StaffStatus;
   printerCategory?: PrinterCategory | string;
+  printerCategories?: string[];
   printerSubCategory?: string;
+  printerSubCategories?: string[];
   assignedBy?: string;
   assignedAt?: any;
   updatedAt?: any;

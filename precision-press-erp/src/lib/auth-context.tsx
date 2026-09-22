@@ -127,7 +127,13 @@ function normalizeProfile(row: Record<string, any> | null, sessionUser: Supabase
     voucherType: profileRow.voucherType ?? undefined,
     membership: profileRow.membership ?? undefined,
     printerCategory: profileRow.printing_category_name ?? profileRow.printerCategory ?? profileRow.printer_category ?? undefined,
+    printerCategories: Array.isArray(profileRow.printerCategories)
+      ? profileRow.printerCategories
+      : (profileRow.printing_category_name ? profileRow.printing_category_name.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined),
     printerSubCategory: profileRow.printing_subcategory_name ?? profileRow.printerSubCategory ?? profileRow.printer_sub_category ?? undefined,
+    printerSubCategories: Array.isArray(profileRow.printerSubCategories)
+      ? profileRow.printerSubCategories
+      : (profileRow.printing_subcategory_name ? profileRow.printing_subcategory_name.split(',').map((s: string) => s.trim()).filter(Boolean) : undefined),
     billing_address_line1: profileRow.billing_address_line1 ?? undefined,
     billing_address_line2: profileRow.billing_address_line2 ?? undefined,
     billing_city: profileRow.billing_city ?? undefined,

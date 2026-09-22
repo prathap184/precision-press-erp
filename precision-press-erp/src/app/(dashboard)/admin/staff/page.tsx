@@ -132,20 +132,28 @@ const StaffRow = ({
   availableCategories?: PrintingCategory[];
 }) => {
   const [expanded, setExpanded] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   // Filter out deleted roles (PASTING, FINISHING, FIXING) when initializing
   const validRoles = staff.roles.filter(r => ROLE_META[r]);
   const [pendingRoles, setPendingRoles] = useState<StaffRole[]>(validRoles);
-  const matchedInitialCat = availableCategories.find(c => 
-    c.name === staff.printerCategory || 
-    c.id === staff.printerCategory ||
-    c.name.toLowerCase() === staff.printerCategory?.toLowerCase() ||
-    c.name.toUpperCase().replace(/[^A-Z0-9]/g, '_').includes(staff.printerCategory?.toUpperCase() || '___')
-  );
-  const initialCategory = matchedInitialCat?.name || staff.printerCategory;
 
-  const [pendingPrinterCategory, setPendingPrinterCategory] = useState<string | undefined>(initialCategory);
-  const [pendingPrinterSubCategory, setPendingPrinterSubCategory] = useState<string | undefined>(staff.printerSubCategory);
+  const initialCategories: string[] = (staff.printerCategories && staff.printerCategories.length > 0)
+    ? staff.printerCategories
+    : (staff.printerCategory ? staff.printerCategory.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+  const initialSubCategories: string[] = (staff.printerSubCategories && staff.printerSubCategories.length > 0)
+    ? staff.printerSubCategories
+    : (staff.printerSubCategory ? staff.printerSubCategory.split(',').map(s => s.trim()).filter(Boolean) : []);
+
+  const initialIsMain = initialCategories.includes('MAIN_PRINTER') || (!initialCategories.length && staff.printerCategory === 'MAIN_PRINTER');
+
+  const [isMainPrinter, setIsMainPrinter] = useState<boolean>(initialIsMain);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    initialIsMain ? [] : initialCategories.filter(c => c !== 'MAIN_PRINTER')
+  );
+  const [selectedSubCategories, setSelectedSubCategories] = useState<string[]>(
+    initialIsMain ? [] : initialSubCategories
+  );
+
   const [reason, setReason] = useState('');
   const [confirm, setConfirm] = useState<null | { title: string; message: string; action: () => void; danger?: boolean }>(null);
   const [isPending, startTransition] = useTransition();
@@ -155,21 +163,57 @@ const StaffRow = ({
 
   const isRolesDirty = JSON.stringify(pendingRoles.slice().sort()) !== JSON.stringify(staff.roles.slice().sort());
   const isPrinterDirty = pendingRoles.includes('PRINTER') && (
-    (pendingPrinterCategory || 'MAIN_PRINTER') !== (initialCategory || 'MAIN_PRINTER') ||
-    (pendingPrinterSubCategory || '') !== (staff.printerSubCategory || '')
+    isMainPrinter !== initialIsMain ||
+    JSON.stringify(selectedCategories.slice().sort()) !== JSON.stringify(initialCategories.filter(c => c !== 'MAIN_PRINTER').slice().sort()) ||
+    JSON.stringify(selectedSubCategories.slice().sort()) !== JSON.stringify(initialSubCategories.slice().sort())
   );
   const isDirty = isRolesDirty || isPrinterDirty;
-
-  const selectedCategoryObj = availableCategories.find(c => 
-    c.name === pendingPrinterCategory || 
-    c.id === pendingPrinterCategory ||
-    c.name.toLowerCase() === pendingPrinterCategory?.toLowerCase()
-  );
 
   const handleToggleRole = (role: StaffRole) => {
     setPendingRoles(prev =>
       prev.includes(role) ? prev.filter(r => r !== role) : [...prev, role]
     );
+  };
+
+  const handleToggleCategory = (catName: string) => {
+    setIsMainPrinter(false);
+    setSelectedCategories(prev => {
+      const exists = prev.includes(catName);
+      if (exists) {
+        // Also remove any subcategories belonging to this category
+        const catObj = availableCategories.find(c => c.name === catName || c.id === catName);
+        const subNames = (catObj?.subcategories || []).map(s => s.name);
+        setSelectedSubCategories(sPrev => sPrev.filter(sn => !subNames.includes(sn)));
+        return prev.filter(c => c !== catName);
+      } else {
+        return [...prev, catName];
+      }
+    });
+  };
+
+  const handleToggleSubCategory = (subName: string, parentCatName: string) => {
+    setIsMainPrinter(false);
+    // Ensure parent category is also selected
+    if (!selectedCategories.includes(parentCatName)) {
+      setSelectedCategories(prev => [...prev, parentCatName]);
+    }
+    setSelectedSubCategories(prev =>
+      prev.includes(subName) ? prev.filter(s => s !== subName) : [...prev, subName]
+    );
+  };
+
+  const handleSelectAllSubCategories = (parentCat: PrintingCategory) => {
+    setIsMainPrinter(false);
+    if (!selectedCategories.includes(parentCat.name)) {
+      setSelectedCategories(prev => [...prev, parentCat.name]);
+    }
+    const subNames = (parentCat.subcategories || []).map(s => s.name);
+    setSelectedSubCategories(prev => Array.from(new Set([...prev, ...subNames])));
+  };
+
+  const handleClearSubCategories = (parentCat: PrintingCategory) => {
+    const subNames = (parentCat.subcategories || []).map(s => s.name);
+    setSelectedSubCategories(prev => prev.filter(s => !subNames.includes(s)));
   };
 
   const handleSaveRoles = () => {
@@ -182,12 +226,14 @@ const StaffRow = ({
       message: `Assign [${pendingRoles.map(r => ROLE_META[r]?.label || r).join(', ')}] to ${staff.name}? This takes effect immediately.`,
       action: () => {
         startTransition(async () => {
+          const targetCategories = isMainPrinter ? ['MAIN_PRINTER'] : selectedCategories;
+          const targetSubCategories = isMainPrinter ? [] : selectedSubCategories;
           const res = await updateStaffRoles(
             staff.uid, 
             pendingRoles, 
             reason || undefined,
-            pendingRoles.includes('PRINTER') ? pendingPrinterCategory : undefined,
-            pendingRoles.includes('PRINTER') ? pendingPrinterSubCategory : undefined
+            pendingRoles.includes('PRINTER') ? targetCategories : undefined,
+            pendingRoles.includes('PRINTER') ? targetSubCategories : undefined
           );
           if (res.success) { showToast('✅ Roles updated'); onRefresh(); }
           else showToast(`❌ ${res.error}`);
@@ -239,37 +285,61 @@ const StaffRow = ({
         </div>
       )}
 
-      {/* Main Row */}
-      <div className={`bg-white rounded-2xl border transition-all duration-200 ${expanded ? 'border-slate-300 shadow-lg' : 'border-slate-100 hover:border-slate-200 hover:shadow-sm'}`}>
-        <div className="flex items-center gap-4 p-4 cursor-pointer" onClick={() => setExpanded(v => !v)}>
-
-          {/* Avatar */}
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center flex-shrink-0">
-            <span className="text-sm font-black text-slate-500">{staff.name.charAt(0).toUpperCase()}</span>
+      <div className="border border-slate-200/80 rounded-2xl bg-white shadow-xs overflow-hidden transition-all hover:border-slate-300">
+        {/* Summary row */}
+        <div
+          onClick={() => setExpanded(v => !v)}
+          className="p-4 flex items-center justify-between gap-4 cursor-pointer select-none hover:bg-slate-50/60 transition"
+        >
+          {/* Avatar / Name */}
+          <div className="w-10 h-10 rounded-2xl bg-slate-100 flex items-center justify-center font-bold text-slate-700 text-sm flex-shrink-0">
+            {staff.name.charAt(0).toUpperCase()}
           </div>
 
-          {/* Info */}
-          <div className="flex-1 min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <p className="text-sm font-black text-slate-800 truncate">{staff.name}</p>
+              <span className="font-bold text-slate-900 text-sm">{staff.name}</span>
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: statusCfg.color, background: statusCfg.bg }}
               >
-                <StatusIcon size={9} />
+                <StatusIcon size={10} />
                 {statusCfg.label}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 truncate mt-0.5">{staff.email}</p>
             <div className="flex flex-wrap gap-1 mt-1.5">
               {staff.roles.map(r => <RoleBadge key={r} role={r} />)}
-              {staff.roles.includes('PRINTER') && (staff.printerCategory || staff.printerSubCategory) && (
-                <span
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border border-orange-200 bg-orange-50 text-orange-700"
-                >
-                  {staff.printerCategory === 'MAIN_PRINTER' ? 'Main Printer' : (staff.printerCategory || 'Main Printer')}
-                  {staff.printerSubCategory ? ` › ${staff.printerSubCategory}` : ''}
-                </span>
+              {staff.roles.includes('PRINTER') && (
+                <div className="flex flex-wrap gap-1 items-center">
+                  {staff.printerCategories && staff.printerCategories.length > 0 ? (
+                    staff.printerCategories.map(cat => (
+                      <span
+                        key={cat}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border border-orange-200 bg-orange-50 text-orange-700"
+                      >
+                        {cat === 'MAIN_PRINTER' ? 'Main Printer (All)' : cat}
+                      </span>
+                    ))
+                  ) : (staff.printerCategory ? (
+                    <span
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border border-orange-200 bg-orange-50 text-orange-700"
+                    >
+                      {staff.printerCategory === 'MAIN_PRINTER' ? 'Main Printer' : staff.printerCategory}
+                      {staff.printerSubCategory ? ` › ${staff.printerSubCategory}` : ''}
+                    </span>
+                  ) : null)}
+                  {staff.printerSubCategories && staff.printerSubCategories.length > 0 && (
+                    staff.printerSubCategories.map(sub => (
+                      <span
+                        key={sub}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border border-purple-200 bg-purple-50 text-purple-700"
+                      >
+                        › {sub}
+                      </span>
+                    ))
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -293,15 +363,16 @@ const StaffRow = ({
             {/* Role assignment */}
             <div>
               <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2">Assign Roles</p>
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex flex-wrap gap-1.5 mb-3">
                 {ALL_STAFF_ROLES.map(role => {
                   const meta = ROLE_META[role];
+                  if (!meta) return null;
                   const active = pendingRoles.includes(role);
                   return (
                     <button
                       key={role}
                       onClick={() => handleToggleRole(role)}
-                      className="px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wide border-2 transition-all"
+                      className="px-3 py-1.5 rounded-xl text-[11px] font-bold uppercase tracking-wide border-2 transition-all cursor-pointer"
                       style={active
                         ? { borderColor: meta.color, background: meta.bg, color: meta.color }
                         : { borderColor: '#e2e8f0', background: 'white', color: '#94a3b8' }
@@ -313,52 +384,127 @@ const StaffRow = ({
                 })}
               </div>
 
-              {/* Printer Category & Subcategory Selection */}
+              {/* Multi-Category & Multi-Subcategory Checkbox Boxes */}
               {pendingRoles.includes('PRINTER') && (
-                <div className="mb-4 p-4 rounded-xl border border-orange-200 bg-orange-50/40 space-y-3">
+                <div className="mb-4 p-4 rounded-2xl border border-orange-200 bg-orange-50/40 space-y-4">
                   <div>
-                    <p className="text-[10px] font-black uppercase tracking-wider text-orange-600 mb-0.5">Printer Machine Stream</p>
-                    <p className="text-[11px] text-slate-500">Select which machine or production stream this printer handles:</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] font-black uppercase tracking-wider text-orange-700">Printer Machine Stream Assignments</p>
+                      <span className="text-[10px] text-orange-600 font-semibold bg-orange-100 px-2 py-0.5 rounded-full">Multi-Selection Enabled</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Select all production streams and subcategories this printer operator is authorized to handle:</p>
                   </div>
 
-                  <select
-                    value={pendingPrinterCategory || 'MAIN_PRINTER'}
-                    onChange={(e) => {
-                      setPendingPrinterCategory(e.target.value);
-                      setPendingPrinterSubCategory('');
-                    }}
-                    className="w-full text-xs font-bold text-slate-700 border-2 border-orange-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:border-orange-400 transition-colors"
-                  >
-                    <option value="MAIN_PRINTER">Main Printer (Supervisor – Sees All Orders)</option>
-                    {availableCategories.length > 0 ? (
-                      availableCategories.map(cat => (
-                        <option key={cat.id} value={cat.name}>
-                          {cat.name} {cat.has_subcategories && cat.subcategories?.length ? `(${cat.subcategories.length} sub-tiers)` : ''}
-                        </option>
-                      ))
-                    ) : (
-                      ALL_PRINTER_CATEGORIES.filter(c => c !== 'MAIN_PRINTER').map(cat => (
-                        <option key={cat} value={cat}>{PRINTER_CATEGORY_META[cat]?.label || cat}</option>
-                      ))
-                    )}
-                  </select>
+                  {/* Main Printer Checkbox */}
+                  <label className="flex items-center gap-3 p-3 rounded-xl border-2 border-purple-200 bg-white hover:bg-purple-50/40 cursor-pointer transition shadow-2xs">
+                    <input
+                      type="checkbox"
+                      checked={isMainPrinter}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setIsMainPrinter(checked);
+                        if (checked) {
+                          setSelectedCategories([]);
+                          setSelectedSubCategories([]);
+                        }
+                      }}
+                      className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <div>
+                      <p className="text-xs font-bold text-purple-900">★ Main Printer (Supervisor – Sees All Orders)</p>
+                      <p className="text-[10px] text-slate-400">Enables full unrestricted visibility across all machine streams and all categories.</p>
+                    </div>
+                  </label>
 
-                  {/* Subcategory dropdown if selected category has subcategories */}
-                  {selectedCategoryObj?.has_subcategories && (selectedCategoryObj.subcategories?.length || 0) > 0 && (
-                    <div className="pt-2 border-t border-orange-200/60">
-                      <p className="text-[10px] font-black uppercase tracking-wider text-purple-700 mb-1">
-                        Assigned Subcategory (Optional)
-                      </p>
-                      <select
-                        value={pendingPrinterSubCategory || ''}
-                        onChange={(e) => setPendingPrinterSubCategory(e.target.value || undefined)}
-                        className="w-full text-xs font-semibold text-slate-700 border border-purple-200 bg-white rounded-xl px-3 py-2 focus:outline-none focus:border-purple-400 transition-colors"
-                      >
-                        <option value="">All {selectedCategoryObj.name} Subcategories</option>
-                        {selectedCategoryObj.subcategories?.map(sub => (
-                          <option key={sub.id} value={sub.name}>{sub.name}</option>
-                        ))}
-                      </select>
+                  {/* Specific Categories & Subcategories with Checkboxes */}
+                  {!isMainPrinter && (
+                    <div className="space-y-3 pt-2">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-slate-500">Available Production Streams</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {availableCategories.map(cat => {
+                          const isCatChecked = selectedCategories.includes(cat.name);
+                          const subcats = cat.subcategories || [];
+                          const hasSubs = cat.has_subcategories && subcats.length > 0;
+                          const selectedSubsCount = subcats.filter(s => selectedSubCategories.includes(s.name)).length;
+
+                          return (
+                            <div
+                              key={cat.id}
+                              className={`p-3 rounded-xl border-2 transition-all ${
+                                isCatChecked ? 'border-orange-300 bg-white shadow-sm' : 'border-slate-200 bg-slate-50/60'
+                              }`}
+                            >
+                              {/* Category Checkbox Header */}
+                              <div className="flex items-center justify-between">
+                                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                                  <input
+                                    type="checkbox"
+                                    checked={isCatChecked}
+                                    onChange={() => handleToggleCategory(cat.name)}
+                                    className="w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                                  />
+                                  <span className={`text-xs font-bold ${isCatChecked ? 'text-slate-900' : 'text-slate-600'}`}>
+                                    {cat.name}
+                                  </span>
+                                </label>
+                                {hasSubs && (
+                                  <span className="text-[10px] font-semibold text-slate-400 font-mono">
+                                    {selectedSubsCount > 0 ? `${selectedSubsCount}/${subcats.length}` : `${subcats.length} sub-tiers`}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Subcategories Checkboxes */}
+                              {hasSubs && isCatChecked && (
+                                <div className="mt-2.5 pl-6 pt-2 border-t border-slate-100 space-y-1.5 animate-in fade-in duration-150">
+                                  <div className="flex items-center justify-between pb-1">
+                                    <span className="text-[9px] font-black uppercase tracking-wider text-purple-700">Subcategories</span>
+                                    <div className="flex gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleSelectAllSubCategories(cat)}
+                                        className="text-[9px] font-bold text-indigo-600 hover:underline cursor-pointer"
+                                      >
+                                        Select All
+                                      </button>
+                                      <span className="text-[9px] text-slate-300">·</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleClearSubCategories(cat)}
+                                        className="text-[9px] font-bold text-slate-400 hover:underline cursor-pointer"
+                                      >
+                                        Clear
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-1">
+                                    {subcats.map(sub => {
+                                      const isSubChecked = selectedSubCategories.includes(sub.name);
+                                      return (
+                                        <label
+                                          key={sub.id}
+                                          className="flex items-center gap-2 py-0.5 cursor-pointer select-none hover:text-indigo-600 transition-colors"
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={isSubChecked}
+                                            onChange={() => handleToggleSubCategory(sub.name, cat.name)}
+                                            className="w-3.5 h-3.5 rounded border-slate-300 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                                          />
+                                          <span className={`text-[11px] ${isSubChecked ? 'font-bold text-purple-950' : 'text-slate-600'}`}>
+                                            {sub.name}
+                                          </span>
+                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -373,7 +519,7 @@ const StaffRow = ({
               <button
                 onClick={handleSaveRoles}
                 disabled={!isDirty || isPending}
-                className="flex items-center gap-2 px-4 h-11 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition"
+                className="flex items-center gap-2 px-4 h-11 bg-blue-500 hover:bg-blue-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-lg transition cursor-pointer"
               >
                 {isPending ? <Loader2 size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
                 Save Roles
@@ -386,35 +532,34 @@ const StaffRow = ({
               <div className="flex flex-wrap gap-2">
                 {staff.status !== 'ACTIVE' && (
                   <button onClick={() => handleStatus('ACTIVE')} disabled={isPending}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-bold transition">
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-xl text-xs font-bold transition cursor-pointer">
                     <UserCheck size={12} /> Activate
                   </button>
                 )}
                 {staff.status !== 'SUSPENDED' && (
                   <button onClick={() => handleStatus('SUSPENDED')} disabled={isPending}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 rounded-xl text-xs font-bold transition">
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 rounded-xl text-xs font-bold transition cursor-pointer">
                     <AlertTriangle size={12} /> Suspend
                   </button>
                 )}
                 {staff.status !== 'DISABLED' && (
                   <button onClick={() => handleStatus('DISABLED')} disabled={isPending}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-xl text-xs font-bold transition">
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 rounded-xl text-xs font-bold transition cursor-pointer">
                     <UserX size={12} /> Disable
                   </button>
                 )}
               </div>
             </div>
 
-            {/* Audit history */}
-            <div>
-              <button
-                onClick={() => setShowHistory(v => !v)}
-                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 hover:text-slate-600 transition"
+            {/* Dedicated Activity Page Link */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <Link
+                href={`/admin/staff/${staff.uid}/activity`}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition shadow-sm hover:shadow-md cursor-pointer"
               >
-                <History size={12} />
-                {showHistory ? 'Hide' : 'Show'} Activity History
-              </button>
-              {showHistory && <HistoryPanel userId={staff.uid} />}
+                <History size={14} className="text-amber-400" />
+                View Full Account Activity History →
+              </Link>
             </div>
 
           </div>
