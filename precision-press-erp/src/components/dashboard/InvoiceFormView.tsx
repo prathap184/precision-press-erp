@@ -300,20 +300,27 @@ export function InvoiceFormView() {
           const pd = await prodRes.json();
           const pList = (pd.data || []).map((row: any) => {
             const meta = row.metadata || {};
-            const hasSingleDefaultSize = Boolean(
-              row.has_single_default_size ??
-              meta.has_single_default_size ??
-              (Number(row.default_width || row.defaultWidth) > 0 && Number(row.default_length || row.defaultLength) > 0)
-            );
-            const hasMultipleSizes = Boolean(
+            const isMultiSize =
               row.has_multiple_sizes !== null && row.has_multiple_sizes !== undefined
                 ? Boolean(row.has_multiple_sizes)
                 : row.hasMultipleSizes !== undefined
                 ? Boolean(row.hasMultipleSizes)
                 : meta.hasMultipleSizes !== undefined
                 ? Boolean(meta.hasMultipleSizes)
-                : false
+                : meta.has_multiple_sizes !== undefined
+                ? Boolean(meta.has_multiple_sizes)
+                : false;
+
+            const hasSingleDefaultSize = Boolean(
+              row.has_single_default_size !== null && row.has_single_default_size !== undefined
+                ? Boolean(row.has_single_default_size)
+                : meta.hasSingleDefaultSize !== undefined
+                ? Boolean(meta.hasSingleDefaultSize)
+                : meta.has_single_default_size !== undefined
+                ? Boolean(meta.has_single_default_size)
+                : (Number(row.default_width || row.defaultWidth) > 0 && Number(row.default_length || row.defaultLength) > 0)
             );
+
             const defaultMode: "A" | "B" =
               row.tally_billing_mode === "A" || meta.billingMode === "A" ? "A" : "B";
 
@@ -332,10 +339,14 @@ export function InvoiceFormView() {
               hsn_code: row.hsn_code || row.hsnCode || "",
               gst_rate: row.gst_rate || 18,
               unit_of_measure: row.unit_of_measure || row.unitOfMeasure || meta.uom || "NOS",
+              tally_uom: row.tally_uom || row.unit_of_measure || row.unitOfMeasure || meta.uom || "NOS",
               tally_billing_mode: (row.tally_billing_mode as any) || defaultMode,
-              has_multiple_sizes: hasMultipleSizes,
-              default_width: row.default_width != null ? Number(row.default_width) : 1,
-              default_length: row.default_length != null ? Number(row.default_length) : 1,
+              has_multiple_sizes: isMultiSize,
+              hasMultipleSizes: isMultiSize,
+              has_single_default_size: hasSingleDefaultSize,
+              hasSingleDefaultSize: hasSingleDefaultSize,
+              default_width: row.default_width != null ? Number(row.default_width) : (meta.defaultWidth != null ? Number(meta.defaultWidth) : (meta.default_width != null ? Number(meta.default_width) : undefined)),
+              default_length: row.default_length != null ? Number(row.default_length) : (meta.defaultLength != null ? Number(meta.defaultLength) : (meta.default_length != null ? Number(meta.default_length) : undefined)),
             };
           });
           setProducts(pList);
@@ -866,7 +877,13 @@ export function InvoiceFormView() {
     return rows.map((row) => {
       const prod = products.find((p) => p.id === row.productId || p.code === row.productId);
       const hasMultipleSizes = Boolean((prod as any)?.has_multiple_sizes ?? (prod as any)?.hasMultipleSizes);
-      const hasSingleDefaultSize = Boolean((prod as any)?.has_single_default_size ?? (prod as any)?.metadata?.has_single_default_size ?? (Number((prod as any)?.default_width) > 0 && Number((prod as any)?.default_length) > 0));
+      const hasSingleDefaultSize = Boolean(
+        (prod as any)?.has_single_default_size !== undefined
+          ? (prod as any)?.has_single_default_size
+          : ((prod as any)?.hasSingleDefaultSize !== undefined
+              ? (prod as any)?.hasSingleDefaultSize
+              : ((prod as any)?.metadata?.has_single_default_size ?? (Number((prod as any)?.default_width) > 0 && Number((prod as any)?.default_length) > 0)))
+      );
       const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
       const isSqft = isSizeInputActive;
       const isDirect = !isSqft;
@@ -1660,10 +1677,16 @@ export function InvoiceFormView() {
                                         });
                                       } else if (e.key === " " && !searchQuery.trim() && isOpen && visibleProducts.length > 0 && highlightProductIndex >= 0) {
                                         e.preventDefault();
-                                        const p = visibleProducts[highlightProductIndex];
+                                        const p = visibleProducts[highlightProductIndex] || visibleProducts[0];
                                         if (p) {
                                           const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || "B";
-                                          const hasSingleDefault = Boolean((p as any)?.has_single_default_size ?? (p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0));
+                                          const hasSingleDefault = Boolean(
+                                            (p as any)?.has_single_default_size !== undefined
+                                              ? (p as any)?.has_single_default_size
+                                              : ((p as any)?.hasSingleDefaultSize !== undefined
+                                                  ? (p as any)?.hasSingleDefaultSize
+                                                  : ((p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0)))
+                                          );
                                           updateRow(row.id, {
                                             productId: p.id,
                                             productName: p.name,
@@ -1691,7 +1714,13 @@ export function InvoiceFormView() {
                                           const p = visibleProducts[highlightProductIndex] || visibleProducts[0];
                                           if (p) {
                                             const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || "B";
-                                            const hasSingleDefault = Boolean((p as any)?.has_single_default_size ?? (p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0));
+                                            const hasSingleDefault = Boolean(
+                                              (p as any)?.has_single_default_size !== undefined
+                                                ? (p as any)?.has_single_default_size
+                                                : ((p as any)?.hasSingleDefaultSize !== undefined
+                                                    ? (p as any)?.hasSingleDefaultSize
+                                                    : ((p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0)))
+                                            );
                                             updateRow(row.id, {
                                               productId: p.id,
                                               productName: p.name,
@@ -2101,7 +2130,7 @@ export function InvoiceFormView() {
                           {/* Sq. Ft. */}
                           <td className="py-1 px-1 text-center tabular-nums align-top">
                             <div className="h-10 flex items-center justify-center text-xs font-bold text-slate-700">
-                              {row.sqft > 0 ? row.sqft.toFixed(2) : "—"}
+                              {row.isSizeInputActive && row.sqft > 0 ? row.sqft.toFixed(2) : "—"}
                             </div>
                           </td>
 
@@ -3358,7 +3387,13 @@ export function InvoiceFormView() {
                             onMouseDown={(e) => {
                               e.preventDefault();
                               const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || "B";
-                              const hasSingleDefault = Boolean((p as any)?.has_single_default_size ?? (p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0));
+                              const hasSingleDefault = Boolean(
+                                (p as any)?.has_single_default_size !== undefined
+                                  ? (p as any)?.has_single_default_size
+                                  : ((p as any)?.hasSingleDefaultSize !== undefined
+                                      ? (p as any)?.hasSingleDefaultSize
+                                      : ((p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0)))
+                              );
                               updateRow(openRowId, {
                                 productId: p.id,
                                 productName: p.name,
