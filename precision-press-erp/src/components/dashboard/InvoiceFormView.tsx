@@ -889,6 +889,7 @@ export function InvoiceFormView() {
     };
   }, [calculatedRows]);
 
+  const isCustomerExplicitlyBlurredRef = useRef(false);
   const lastFocusedElementIdRef = useRef<string | null>(null);
 
   // Keep track of the last active input/select/button on the page
@@ -900,14 +901,39 @@ export function InvoiceFormView() {
           lastFocusedElementIdRef.current = target.id;
         }
       }
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target?.isContentEditable) {
+        isCustomerExplicitlyBlurredRef.current = false;
+      }
     };
     document.addEventListener("focusin", handleFocusIn);
     return () => document.removeEventListener("focusin", handleFocusIn);
   }, []);
 
-  // Keyboard shortcut: Ctrl + Enter & Alt + C for Create Customer
+  // Keyboard shortcut: Alt + Q, F2, Ctrl + Enter, Alt + C, Escape & Smart Enter Recovery
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // 1. Alt + Q: Toggle Customer Search Focus / Unselect
+      if ((e.key === "q" || e.key === "Q") && e.altKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        const custInput = document.getElementById("invoice-customer-search-input") as HTMLInputElement;
+        const isCurrentlyFocused = document.activeElement === custInput;
+        if (isCurrentlyFocused) {
+          isCustomerExplicitlyBlurredRef.current = true;
+          custInput?.blur();
+          setCustomerDropdownOpen(false);
+        } else {
+          isCustomerExplicitlyBlurredRef.current = false;
+          if (custInput) {
+            custInput.focus();
+            try { custInput.select(); } catch {}
+          }
+          setCustomerDropdownOpen(true);
+        }
+        return;
+      }
+
       if (e.key === "F2") {
         e.preventDefault();
         e.stopPropagation();
@@ -917,22 +943,81 @@ export function InvoiceFormView() {
         }
         return;
       }
+
       if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
         e.preventDefault();
         handleSubmit();
+        return;
       } else if (e.altKey && (e.key === "c" || e.key === "C")) {
         e.preventDefault();
         openDrawer("contact");
-      } else if (e.key === "Escape") {
-        if (customerDropdownOpen) setCustomerDropdownOpen(false);
-        if (openRowId) setOpenRowId(null);
-        if (logisticsDropdownOpen) setLogisticsDropdownOpen(false);
+        return;
+      }
+
+      // Check if user is actively focused in an input / textarea / select element
+      const activeEl = document.activeElement as HTMLElement | null;
+      const isInputActive = activeEl && (
+        activeEl.tagName === "INPUT" ||
+        activeEl.tagName === "TEXTAREA" ||
+        activeEl.tagName === "SELECT" ||
+        activeEl.isContentEditable ||
+        activeEl.getAttribute("role") === "textbox" ||
+        activeEl.getAttribute("role") === "searchbox" ||
+        activeEl.getAttribute("role") === "combobox"
+      );
+
+      // Escape key handling
+      if (e.key === "Escape") {
+        const isShortcutModalOpen = Boolean(document.querySelector('[data-shortcut-modal="true"]'));
+        if (isShortcutModalOpen) {
+          return;
+        }
+
+        // Inside Customer Search: unselect, clear search, close dropdown, blur
+        const isCustomerInput = document.activeElement?.id === "invoice-customer-search-input";
+        if (isCustomerInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (customerSearch !== "") {
+            setCustomerSearch("");
+          }
+          setCustomerDropdownOpen(false);
+          isCustomerExplicitlyBlurredRef.current = true;
+          (document.activeElement as HTMLElement)?.blur();
+          return;
+        }
+
+        if (customerDropdownOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+          setCustomerDropdownOpen(false);
+          isCustomerExplicitlyBlurredRef.current = true;
+          (document.activeElement as HTMLElement)?.blur();
+          return;
+        }
+
+        if (openRowId) {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpenRowId(null);
+          return;
+        }
+
+        if (logisticsDropdownOpen) {
+          e.preventDefault();
+          e.stopPropagation();
+          setLogisticsDropdownOpen(false);
+          return;
+        }
         return;
       }
 
       // Smart Focus Recovery: If user clicks outside and focus lands on body / background,
       // pressing Enter, Backspace, Arrow keys, or typing instantly restores focus to their last active box!
-      const activeEl = document.activeElement;
+      if (isCustomerExplicitlyBlurredRef.current && e.key !== "Enter") {
+        return;
+      }
+
       const isBodyOrBg =
         !activeEl ||
         activeEl === document.body ||
@@ -942,7 +1027,8 @@ export function InvoiceFormView() {
         (activeEl.tagName === "DIV" && !activeEl.getAttribute("tabindex"));
 
       if (isBodyOrBg) {
-        if (["Control", "Alt", "Shift", "Meta", "F12", "F5"].includes(e.key)) return;
+        const globalShortcutKeys = ["g", "G", "v", "V", "d", "D", "n", "N", "z", "Z", "c", "C", "s", "S", "q", "Q", "Escape"];
+        if (["Control", "Alt", "Shift", "Meta", "F12", "F5", ...globalShortcutKeys].includes(e.key)) return;
 
         const targetId = lastFocusedElementIdRef.current;
         let targetEl = targetId ? document.getElementById(targetId) : null;
@@ -957,6 +1043,10 @@ export function InvoiceFormView() {
         }
 
         if (targetEl) {
+          if (targetEl.id === "invoice-customer-search-input") {
+            isCustomerExplicitlyBlurredRef.current = false;
+            setCustomerDropdownOpen(true);
+          }
           targetEl.focus();
           if (targetEl instanceof HTMLInputElement || targetEl instanceof HTMLTextAreaElement) {
             try {
@@ -988,6 +1078,8 @@ export function InvoiceFormView() {
     customerDropdownOpen,
     openRowId,
     logisticsDropdownOpen,
+    customerSearch,
+    setCustomerSearch,
   ]);
 
   const handleSubmit = async () => {
@@ -1249,7 +1341,7 @@ export function InvoiceFormView() {
                           ? customerSearch
                           : selectedCustomer?.displayName || selectedCustomer?.name || ""
                       }
-                      placeholder="Search customer by name, phone, GSTIN..."
+                      placeholder="Search customer by name, phone, GSTIN... (Alt+Q)"
                       data-dropdown-open={customerDropdownOpen ? "true" : "false"}
                       onChange={(e) => {
                         setCustomerDropdownOpen(true);
@@ -1339,7 +1431,11 @@ export function InvoiceFormView() {
                             if (row0Input) row0Input.focus();
                           }
                         } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setCustomerDropdownOpen(false);
+                          isCustomerExplicitlyBlurredRef.current = true;
+                          e.currentTarget.blur();
                         }
                       }}
                       onBlur={() => {
