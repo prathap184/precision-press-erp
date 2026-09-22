@@ -136,7 +136,15 @@ const StaffRow = ({
   // Filter out deleted roles (PASTING, FINISHING, FIXING) when initializing
   const validRoles = staff.roles.filter(r => ROLE_META[r]);
   const [pendingRoles, setPendingRoles] = useState<StaffRole[]>(validRoles);
-  const [pendingPrinterCategory, setPendingPrinterCategory] = useState<string | undefined>(staff.printerCategory);
+  const matchedInitialCat = availableCategories.find(c => 
+    c.name === staff.printerCategory || 
+    c.id === staff.printerCategory ||
+    c.name.toLowerCase() === staff.printerCategory?.toLowerCase() ||
+    c.name.toUpperCase().replace(/[^A-Z0-9]/g, '_').includes(staff.printerCategory?.toUpperCase() || '___')
+  );
+  const initialCategory = matchedInitialCat?.name || staff.printerCategory;
+
+  const [pendingPrinterCategory, setPendingPrinterCategory] = useState<string | undefined>(initialCategory);
   const [pendingPrinterSubCategory, setPendingPrinterSubCategory] = useState<string | undefined>(staff.printerSubCategory);
   const [reason, setReason] = useState('');
   const [confirm, setConfirm] = useState<null | { title: string; message: string; action: () => void; danger?: boolean }>(null);
@@ -145,13 +153,18 @@ const StaffRow = ({
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
-  const isDirty = JSON.stringify(pendingRoles.sort()) !== JSON.stringify(staff.roles.sort()) || 
-                  (pendingRoles.includes('PRINTER') && (
-                    pendingPrinterCategory !== staff.printerCategory || 
-                    pendingPrinterSubCategory !== staff.printerSubCategory
-                  ));
+  const isRolesDirty = JSON.stringify(pendingRoles.slice().sort()) !== JSON.stringify(staff.roles.slice().sort());
+  const isPrinterDirty = pendingRoles.includes('PRINTER') && (
+    (pendingPrinterCategory || 'MAIN_PRINTER') !== (initialCategory || 'MAIN_PRINTER') ||
+    (pendingPrinterSubCategory || '') !== (staff.printerSubCategory || '')
+  );
+  const isDirty = isRolesDirty || isPrinterDirty;
 
-  const selectedCategoryObj = availableCategories.find(c => c.name === pendingPrinterCategory);
+  const selectedCategoryObj = availableCategories.find(c => 
+    c.name === pendingPrinterCategory || 
+    c.id === pendingPrinterCategory ||
+    c.name.toLowerCase() === pendingPrinterCategory?.toLowerCase()
+  );
 
   const handleToggleRole = (role: StaffRole) => {
     setPendingRoles(prev =>

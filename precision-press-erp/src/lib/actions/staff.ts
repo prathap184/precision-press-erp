@@ -184,29 +184,56 @@ export async function updateStaffRoles(
     const adminProfileSnap = await adminDb.collection('profiles').doc(claims.uid as string).get();
     const adminName = adminProfileSnap.exists ? adminProfileSnap.data()?.name : 'Admin';
 
-    // Update both collections atomically
-    const now = admin.firestore.FieldValue.serverTimestamp();
+    // Determine printer stream details
+    const nowIso = new Date().toISOString();
+    let pCat = printerCategory || 'MAIN_PRINTER';
+    let pSub = printerSubCategory || null;
+    let printingCategoryId: string | null = null;
+    let printingSubcategoryId: string | null = null;
 
-    const pCat = printerCategory || 'MAIN_PRINTER';
-    const pSub = printerSubCategory || null;
+    const isPrinter = finalRoles.includes('PRINTER');
 
-    // Update profiles collection (primary, used by auth-context realtime listener)
+    if (isPrinter && pCat && pCat !== 'MAIN_PRINTER') {
+      const isCatUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pCat);
+      const catQuery = supabaseServer.from('printing_categories').select('id, name');
+      const { data: catRecord } = isCatUuid
+        ? await catQuery.eq('id', pCat).maybeSingle()
+        : await catQuery.ilike('name', pCat).maybeSingle();
+
+      if (catRecord) {
+        printingCategoryId = catRecord.id;
+        pCat = catRecord.name;
+
+        if (pSub) {
+          const isSubUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pSub);
+          const subQuery = supabaseServer
+            .from('printing_subcategories')
+            .select('id, name')
+            .eq('category_id', catRecord.id);
+
+          const { data: subRecord } = isSubUuid
+            ? await subQuery.eq('id', pSub).maybeSingle()
+            : await subQuery.ilike('name', pSub).maybeSingle();
+
+          if (subRecord) {
+            printingSubcategoryId = subRecord.id;
+            pSub = subRecord.name;
+          }
+        }
+      }
+    }
+
+    // Update profiles collection (only use columns that actually exist on profiles)
     const profileUpdate: Record<string, any> = {
       role: primaryRole,
       roles: finalRoles,
+      updatedAt: nowIso,
+      printerCategory: isPrinter ? pCat : null,
+      printing_category_name: isPrinter ? pCat : null,
+      printing_category_id: isPrinter ? printingCategoryId : null,
+      printing_subcategory_name: isPrinter ? pSub : null,
+      printing_subcategory_id: isPrinter ? printingSubcategoryId : null,
     };
-    // Save printerCategory and subcategory only for PRINTER role; clear it for other roles
-    if (newRoles.includes('PRINTER')) {
-      profileUpdate.printerCategory = pCat;
-      profileUpdate.printerSubCategory = pSub;
-      profileUpdate.printing_category_name = pCat;
-      profileUpdate.printing_subcategory_name = pSub;
-    } else {
-      profileUpdate.printerCategory = null;
-      profileUpdate.printerSubCategory = null;
-      profileUpdate.printing_category_name = null;
-      profileUpdate.printing_subcategory_name = null;
-    }
     
     try {
       await profileRef.update(profileUpdate);
@@ -219,42 +246,62 @@ export async function updateStaffRoles(
       const supaProfileUpdate: Record<string, any> = {
         role: primaryRole,
         roles: JSON.stringify(finalRoles),
-        printerCategory: newRoles.includes('PRINTER') ? pCat : null,
-        printing_category_name: newRoles.includes('PRINTER') ? pCat : null,
-        printing_subcategory_name: newRoles.includes('PRINTER') ? pSub : null,
+        updatedAt: nowIso,
+        printerCategory: isPrinter ? pCat : null,
+        printing_category_name: isPrinter ? pCat : null,
+        printing_category_id: isPrinter ? printingCategoryId : null,
+        printing_subcategory_name: isPrinter ? pSub : null,
+        printing_subcategory_id: isPrinter ? printingSubcategoryId : null,
       };
       const { error: supaErr } = await supabaseServer
         .from('profiles')
         .update(supaProfileUpdate)
         .or(`id.eq.${targetUid},uid.eq.${targetUid}`);
       if (supaErr) {
-        console.error('[updateStaffRoles] supabaseServer profile update error:', supaErr);
+        console.warn('[updateStaffRoles] supabaseServer profile update warning:', supaErr);
       }
     } catch (supaErr: any) {
       console.warn('[updateStaffRoles] supabaseServer profile update warning:', supaErr?.message);
     }
 
-    // Update staff_users collection (RBAC collection)
-    const staffRef = adminDb.collection('staff_users').doc(targetUid);
-    const staffPayload: Record<string, any> = {
-      uid: targetUid,
-      roles: finalRoles,
-      updated_at: now,
-      assigned_by: claims.uid,
-      assigned_at: now,
-    };
-    if (newRoles.includes('PRINTER')) {
-      staffPayload.printer_category = pCat;
-      staffPayload.printer_sub_category = pSub;
-    }
-
+    // Update staff_users collection safely
+    // Note: staff_users has metadata JSONB for arbitrary printer details
     try {
-      await staffRef.set(staffPayload, { merge: true });
+      const staffPayload: Record<string, any> = {
+        uid: targetUid,
+        roles: finalRoles,
+        updated_at: nowIso,
+        assigned_by: claims.uid,
+        assigned_at: nowIso,
+        metadata: isPrinter ? {
+          printer_category: pCat,
+          printer_sub_category: pSub,
+          printing_category_id: printingCategoryId,
+          printing_subcategory_id: printingSubcategoryId,
+        } : null,
+      };
+
+      const { data: existingStaff } = await supabaseServer
+        .from('staff_users')
+        .select('id, uid')
+        .or(`id.eq.${targetUid},uid.eq.${targetUid}`)
+        .maybeSingle();
+
+      if (existingStaff) {
+        await supabaseServer
+          .from('staff_users')
+          .update(staffPayload)
+          .eq('id', existingStaff.id);
+      } else {
+        await supabaseServer
+          .from('staff_users')
+          .insert({
+            id: targetUid,
+            ...staffPayload,
+          });
+      }
     } catch (staffErr: any) {
-      console.warn('[updateStaffRoles] staffRef set error, attempting fallback without printer_category:', staffErr?.message);
-      delete staffPayload.printer_category;
-      delete staffPayload.printerCategory;
-      await staffRef.set(staffPayload, { merge: true });
+      console.warn('[updateStaffRoles] staff_users sync warning (non-fatal):', staffErr?.message);
     }
 
     // Audit log
@@ -364,6 +411,7 @@ export async function getStaffList(): Promise<StaffUser[]> {
         const profile = row as Record<string, any>;
         const profileId = profile.uid || profile.id;
         const staffRow = staffRowsById.get(profileId) || {};
+        const staffMeta = (staffRow.metadata && typeof staffRow.metadata === 'object') ? staffRow.metadata : {};
         const profileRoles = Array.isArray(staffRow.roles) && staffRow.roles.length > 0
           ? staffRow.roles
           : getEffectiveRoles(profile as UserProfile);
@@ -374,8 +422,8 @@ export async function getStaffList(): Promise<StaffUser[]> {
           email: profile.email || '',
           roles: profileRoles,
           status: (staffRow.status as StaffStatus) || (profile.status as StaffStatus) || 'ACTIVE',
-          printerCategory: staffRow.printerCategory || staffRow.printer_category || profile.printerCategory || undefined,
-          printerSubCategory: staffRow.printerSubCategory || staffRow.printer_sub_category || profile.printerSubCategory || undefined,
+          printerCategory: profile.printerCategory || profile.printing_category_name || staffMeta.printer_category || staffRow.printer_category || undefined,
+          printerSubCategory: profile.printing_subcategory_name || profile.printerSubCategory || staffMeta.printer_sub_category || staffRow.printer_sub_category || undefined,
           assignedBy: staffRow.assigned_by,
           assignedAt: toPlain(staffRow.assigned_at),
           updatedAt: toPlain(staffRow.updated_at ?? profile.updatedAt),
