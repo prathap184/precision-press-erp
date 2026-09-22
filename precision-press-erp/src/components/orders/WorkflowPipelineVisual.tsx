@@ -73,7 +73,7 @@ export function WorkflowPipelineVisual({
 
   const defaultAcdemaRoles: StaffRole[] = ['ACCOUNTANT', 'DESIGNER', 'MANAGER'];
   const effectiveRolesSet = new Set<StaffRole>(roles);
-  if (roles.includes('ACDEMA' as StaffRole)) {
+  if (roles.includes('ACDEMA' as StaffRole) || role === 'ACDEMA') {
     defaultAcdemaRoles.forEach((r) => effectiveRolesSet.add(r));
   }
   const effectiveRoles = Array.from(effectiveRolesSet);
@@ -114,22 +114,33 @@ export function WorkflowPipelineVisual({
   }
 
   const canNavigateToStage = (step: typeof stepsToRender[0]): boolean => {
+    const isAcdemaUser = roles.includes('ACDEMA' as StaffRole) || role === 'ACDEMA' || effectiveRoles.includes('ACDEMA' as StaffRole);
+    const acdemaManagedRoles: StaffRole[] = ['ACCOUNTANT', 'DESIGNER', 'MANAGER'];
+    const isAdmin = roles.includes('SUPER_ADMIN' as StaffRole) || roles.includes('ADMIN' as StaffRole);
+
     // If lockedToRoles is provided, ONLY allow clicking steps that match the viewer's role(s)
     if (lockedToRoles && lockedToRoles.length > 0) {
       const allowedSet = new Set<StaffRole>(lockedToRoles);
-      if (allowedSet.has('ACDEMA' as StaffRole) || roles.includes('ACDEMA' as StaffRole)) {
+      if (allowedSet.has('ACDEMA' as StaffRole) || isAcdemaUser) {
         allowedSet.add('ACCOUNTANT' as StaffRole);
         allowedSet.add('DESIGNER' as StaffRole);
         allowedSet.add('MANAGER' as StaffRole);
       }
       return allowedSet.has(step.role as StaffRole);
     }
-    const isAdmin = roles.includes('SUPER_ADMIN' as StaffRole) || roles.includes('ADMIN' as StaffRole);
+
+    if (isAdmin) return true;
+
+    // ACDEMA has permanent open access to its triad stages (Accounts, Design, Manager)
+    if (isAcdemaUser && acdemaManagedRoles.includes(step.role)) {
+      return true;
+    }
+
     if (step.isCurrent) {
-      return isAdmin || effectiveRoles.includes(step.role);
+      return effectiveRoles.includes(step.role);
     }
     if (step.isCompleted) {
-      return isAdmin;
+      return effectiveRoles.includes(step.role);
     }
     return false;
   };
