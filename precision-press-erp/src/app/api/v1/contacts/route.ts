@@ -53,14 +53,23 @@ export async function GET(request: Request) {
     ];
 
     if (search) {
-      conditions.push(
-        or(
-          ilike(contact.name, `%${search}%`),
-          ilike(contact.email, `%${search}%`),
-          ilike(contact.phone, `%${search}%`),
-          ilike(contact.taxNumber, `%${search}%`)
-        )!
-      );
+      const cleanSearch = search.replace(/[\s\-_\/\\.,;:()\[\]{}'"`+*&^%$#@!~?<>|=]+/g, '');
+      const searchClauses = [
+        ilike(contact.name, `%${search}%`),
+        ilike(contact.email, `%${search}%`),
+        ilike(contact.phone, `%${search}%`),
+        ilike(contact.taxNumber, `%${search}%`),
+      ];
+
+      if (cleanSearch && cleanSearch.length >= 2) {
+        searchClauses.push(
+          sql`regexp_replace(${contact.name}, '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+          sql`regexp_replace(coalesce(${contact.phone}, ''), '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+          sql`regexp_replace(coalesce(${contact.taxNumber}, ''), '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`
+        );
+      }
+
+      conditions.push(or(...searchClauses)!);
     }
     if (type && ["customer", "supplier", "both"].includes(type)) {
       if (type === "customer") {

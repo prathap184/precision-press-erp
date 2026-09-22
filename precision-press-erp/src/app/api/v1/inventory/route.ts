@@ -68,13 +68,22 @@ export async function GET(request: Request) {
     ];
 
     if (search) {
-      conditions.push(
-        or(
-          ilike(inventoryItem.name, `%${search}%`),
-          ilike(inventoryItem.code, `%${search}%`),
-          ilike(inventoryItem.sku, `%${search}%`)
-        )!
-      );
+      const cleanSearch = search.replace(/[\s\-_\/\\.,;:()\[\]{}'"`+*&^%$#@!~?<>|=]+/g, '');
+      const searchClauses = [
+        ilike(inventoryItem.name, `%${search}%`),
+        ilike(inventoryItem.code, `%${search}%`),
+        ilike(inventoryItem.sku, `%${search}%`),
+      ];
+
+      if (cleanSearch && cleanSearch.length >= 2) {
+        searchClauses.push(
+          sql`regexp_replace(${inventoryItem.name}, '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+          sql`regexp_replace(coalesce(${inventoryItem.code}, ''), '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+          sql`regexp_replace(coalesce(${inventoryItem.sku}, ''), '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`
+        );
+      }
+
+      conditions.push(or(...searchClauses)!);
     }
 
     if (categoryId) {

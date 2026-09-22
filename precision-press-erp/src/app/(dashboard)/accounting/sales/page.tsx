@@ -27,6 +27,7 @@ import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ErrorState } from "@/components/dashboard/error-state";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { TallyPeriodModal } from "@/components/dashboard/TallyPeriodModal";
+import { fuzzyMatch } from "@/lib/search-utils";
 
 interface Invoice {
   id: string;
@@ -418,11 +419,11 @@ export default function InvoicesPage() {
   const [searchKey, setSearchKey] = useState(0);
   const filteredInvoices = useMemo(() => {
     if (!debouncedSearch) return invoices;
-    const q = debouncedSearch.toLowerCase();
+    const q = debouncedSearch.trim();
     return invoices.filter(
       (i) =>
-        i.invoiceNumber.toLowerCase().includes(q) ||
-        (i.contact?.name || "").toLowerCase().includes(q)
+        fuzzyMatch(i.invoiceNumber, q) ||
+        fuzzyMatch(i.contact?.name, q)
     );
   }, [invoices, debouncedSearch]);
 

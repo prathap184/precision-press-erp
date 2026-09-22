@@ -7,6 +7,7 @@ import { INDIAN_STATES } from '@/lib/constants';
 import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
 import { ItemDescriptionModal } from '@/components/dashboard/ItemDescriptionModal';
+import { fuzzyMatch, normalizeSearchTerm } from '@/lib/search-utils';
 
 export function QuotationBuilderView({ vm }: { vm: any }) {
   const {
@@ -112,44 +113,43 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
         });
     }
 
-    // Standard token search
-    const qTokens = qTrim.split(/\s+/).filter(Boolean);
+    // Standard fuzzy & token search
     return catFiltered
       .filter((p: any) => {
         const aliases = Array.isArray(p.metadata?.aliases) ? p.metadata.aliases.join(' ') : '';
-        const target = `${p.name || ''} ${p.id || ''} ${p.code || ''} ${p.sku || ''} ${p.category || ''} ${aliases}`.toLowerCase();
-        return qTokens.every(tok => target.includes(tok));
+        const target = `${p.name || ''} ${p.id || ''} ${p.code || ''} ${p.sku || ''} ${p.category || ''} ${aliases}`;
+        return fuzzyMatch(target, qTrim);
       })
       .sort((a: any, b: any) => {
         const aName = (a.name || '').toLowerCase();
         const bName = (b.name || '').toLowerCase();
+        const aNorm = normalizeSearchTerm(aName);
+        const bNorm = normalizeSearchTerm(bName);
+        const qNorm = normalizeSearchTerm(qTrim);
+
         const aAliases: string[] = Array.isArray(a.metadata?.aliases) ? a.metadata.aliases.map((al: string) => al.toLowerCase()) : [];
         const bAliases: string[] = Array.isArray(b.metadata?.aliases) ? b.metadata.aliases.map((al: string) => al.toLowerCase()) : [];
 
         // 0. Exact alias match gets top priority (e.g. typing "A2")
-        const aAliasExact = aAliases.includes(qTrim);
-        const bAliasExact = bAliases.includes(qTrim);
+        const aAliasExact = aAliases.includes(qTrim) || aAliases.some(al => normalizeSearchTerm(al) === qNorm);
+        const bAliasExact = bAliases.includes(qTrim) || bAliases.some(al => normalizeSearchTerm(al) === qNorm);
         if (aAliasExact && !bAliasExact) return -1;
         if (bAliasExact && !aAliasExact) return 1;
 
-        // 1. Exact match gets highest priority
-        if (aName === qTrim && bName !== qTrim) return -1;
-        if (bName === qTrim && aName !== qTrim) return 1;
+        // 1. Exact match gets highest priority (including normalized exact match)
+        if ((aName === qTrim || aNorm === qNorm) && (bName !== qTrim && bNorm !== qNorm)) return -1;
+        if ((bName === qTrim || bNorm === qNorm) && (aName !== qTrim && aNorm !== qNorm)) return 1;
         // 2. Name starts with query
-        const aStarts = aName.startsWith(qTrim);
-        const bStarts = bName.startsWith(qTrim);
+        const aStarts = aName.startsWith(qTrim) || aNorm.startsWith(qNorm);
+        const bStarts = bName.startsWith(qTrim) || bNorm.startsWith(qNorm);
         if (aStarts && !bStarts) return -1;
         if (bStarts && !aStarts) return 1;
         // 3. Name contains query vs only category contains
-        const aInName = aName.includes(qTrim);
-        const bInName = bName.includes(qTrim);
+        const aInName = aName.includes(qTrim) || aNorm.includes(qNorm);
+        const bInName = bName.includes(qTrim) || bNorm.includes(qNorm);
         if (aInName && !bInName) return -1;
         if (bInName && !aInName) return 1;
-        // 4. All tokens match in name
-        const aTokensInName = qTokens.every(tok => aName.includes(tok));
-        const bTokensInName = qTokens.every(tok => bName.includes(tok));
-        if (aTokensInName && !bTokensInName) return -1;
-        if (bTokensInName && !aTokensInName) return 1;
+
         return tallyNaturalCompare(a.name, b.name);
       });
   };
@@ -166,13 +166,17 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
         tallyNaturalCompare(a.displayName || a.name, b.displayName || b.name)
       );
     }
+    const termNorm = normalizeSearchTerm(term);
     return list.sort((a: any, b: any) => {
       const aName = String(a.displayName || a.name || '').toLowerCase();
       const bName = String(b.displayName || b.name || '').toLowerCase();
-      if (aName === term && bName !== term) return -1;
-      if (bName === term && aName !== term) return 1;
-      if (aName.startsWith(term) && !bName.startsWith(term)) return -1;
-      if (bName.startsWith(term) && !aName.startsWith(term)) return 1;
+      const aNorm = normalizeSearchTerm(aName);
+      const bNorm = normalizeSearchTerm(bName);
+
+      if ((aName === term || aNorm === termNorm) && (bName !== term && bNorm !== termNorm)) return -1;
+      if ((bName === term || bNorm === termNorm) && (aName !== term && aNorm !== termNorm)) return 1;
+      if ((aName.startsWith(term) || aNorm.startsWith(termNorm)) && (!bName.startsWith(term) && !bNorm.startsWith(termNorm))) return -1;
+      if ((bName.startsWith(term) || bNorm.startsWith(termNorm)) && (!aName.startsWith(term) && !aNorm.startsWith(termNorm))) return 1;
       return tallyNaturalCompare(a.displayName || a.name, b.displayName || b.name);
     });
   }, [filteredCustomers, customerSearch]);

@@ -16,6 +16,7 @@ import { refreshAuthTokenCookie } from '@/lib/refresh-auth-token';
 import { ProxyOrderBuilderView } from '@/components/acdema/ProxyOrderBuilderView';
 import { isInterstateOrder } from '@/lib/company-config';
 import { getRoleGlobalOrdersUrl } from '@/config/navigation';
+import { fuzzyMatch } from '@/lib/search-utils';
 
 type PaymentMode = 'HAND_CASH' | 'COD' | 'UPI' | 'CREDIT';
 type DeliveryType = 'selfPickup' | 'door' | 'courier' | 'transport';
@@ -204,11 +205,11 @@ export function QuotationBuilder() {
   const customerSearching = false;
 
   const filteredCustomers = useMemo(() => {
-    const term = customerSearch.trim().toLowerCase();
+    const term = customerSearch.trim();
     if (!term) return customers;
     return customers.filter((customer) => {
       const c = customer as any;
-      return [
+      const combined = [
         customer.name,
         customer.displayName,
         customer.phone,
@@ -222,7 +223,8 @@ export function QuotationBuilder() {
         c.taxNumber,
       ]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(term));
+        .join(' ');
+      return fuzzyMatch(combined, term);
     });
   }, [customerSearch, customers]);
 

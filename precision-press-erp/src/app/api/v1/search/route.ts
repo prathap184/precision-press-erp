@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { invoice, bill, contact, document } from "@/lib/db/schema";
-import { and, eq, or, ilike, desc } from "drizzle-orm";
+import { and, eq, or, ilike, desc, sql } from "drizzle-orm";
 import { getAuthContext } from "@/lib/api/auth-context";
 import { handleError } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
@@ -36,6 +36,7 @@ export async function GET(request: Request) {
     }
 
     const term = `%${q}%`;
+    const cleanSearch = q.replace(/[\s\-_\/\\.,;:()\[\]{}'"`+*&^%$#@!~?<>|=]+/g, '');
 
     const [invoices, bills, contacts, documents] = await Promise.all([
       // Invoices: match by number or reference. Linked to a contact for subtitle.
@@ -43,7 +44,16 @@ export async function GET(request: Request) {
         where: and(
           eq(invoice.organizationId, ctx.organizationId),
           notDeleted(invoice.deletedAt),
-          or(ilike(invoice.invoiceNumber, term), ilike(invoice.reference, term))
+          or(
+            ilike(invoice.invoiceNumber, term),
+            ilike(invoice.reference, term),
+            ...(cleanSearch.length >= 2
+              ? [
+                  sql`regexp_replace(${invoice.invoiceNumber}, '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+                  sql`regexp_replace(coalesce(${invoice.reference}, ''), '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+                ]
+              : [])
+          )
         ),
         orderBy: desc(invoice.createdAt),
         limit: PER_TYPE,
@@ -55,7 +65,16 @@ export async function GET(request: Request) {
         where: and(
           eq(bill.organizationId, ctx.organizationId),
           notDeleted(bill.deletedAt),
-          or(ilike(bill.billNumber, term), ilike(bill.reference, term))
+          or(
+            ilike(bill.billNumber, term),
+            ilike(bill.reference, term),
+            ...(cleanSearch.length >= 2
+              ? [
+                  sql`regexp_replace(${bill.billNumber}, '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+                  sql`regexp_replace(coalesce(${bill.reference}, ''), '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+                ]
+              : [])
+          )
         ),
         orderBy: desc(bill.createdAt),
         limit: PER_TYPE,
@@ -70,7 +89,13 @@ export async function GET(request: Request) {
           or(
             ilike(contact.name, term),
             ilike(contact.email, term),
-            ilike(contact.taxNumber, term)
+            ilike(contact.taxNumber, term),
+            ...(cleanSearch.length >= 2
+              ? [
+                  sql`regexp_replace(${contact.name}, '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+                  sql`regexp_replace(coalesce(${contact.taxNumber}, ''), '[\\s\\-_/\\\\.,;:()\\[\\]{}\''"\`+*&^%$#@!~?<>|=]+', '', 'g') ILIKE ${'%' + cleanSearch + '%'}`,
+                ]
+              : [])
           )
         ),
         orderBy: desc(contact.createdAt),

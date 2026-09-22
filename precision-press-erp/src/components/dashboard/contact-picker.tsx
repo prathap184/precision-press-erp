@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Check, Search, Plus, Loader2, ChevronDown, X } from "lucide-react";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { formatMoney } from "@/lib/money";
+import { fuzzyMatch, normalizeSearchTerm, createHighlightRegex } from "@/lib/search-utils";
 
 export interface Contact {
   id: string;
@@ -48,17 +49,16 @@ function HighlightMatch({ text, query, isHighlighted }: { text: string; query: s
   const q = (query || "").trim();
   if (!q) return <>{text}</>;
 
-  const tokens = q.split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return <>{text}</>;
+  const regex = createHighlightRegex(q);
+  if (!regex) return <>{text}</>;
 
-  const escapedTokens = tokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-  const regex = new RegExp(`(${escapedTokens.join("|")})`, "gi");
   const parts = text.split(regex);
 
   return (
     <>
       {parts.map((part, i) => {
-        const isMatch = tokens.some((t) => t.toLowerCase() === part.toLowerCase());
+        const isMatch = regex.test(part);
+        regex.lastIndex = 0;
         if (isMatch) {
           return (
             <mark
@@ -160,22 +160,26 @@ export function ContactPicker({
 
   // Filter contacts by name, phone, email, taxNumber (GSTIN)
   const filteredContacts = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = search.trim();
     if (!q) return contacts;
 
-    const tokens = q.split(/\s+/).filter(Boolean);
+    const qNorm = normalizeSearchTerm(q);
     return contacts
       .filter((c) => {
-        const target = `${c.name || ""} ${c.phone || ""} ${c.email || ""} ${c.taxNumber || ""}`.toLowerCase();
-        return tokens.every((tok) => target.includes(tok));
+        const target = `${c.name || ""} ${c.phone || ""} ${c.email || ""} ${c.taxNumber || ""}`;
+        return fuzzyMatch(target, q);
       })
       .sort((a, b) => {
         const aName = (a.name || "").toLowerCase();
         const bName = (b.name || "").toLowerCase();
-        if (aName === q && bName !== q) return -1;
-        if (bName === q && aName !== q) return 1;
-        if (aName.startsWith(q) && !bName.startsWith(q)) return -1;
-        if (bName.startsWith(q) && !aName.startsWith(q)) return 1;
+        const aNorm = normalizeSearchTerm(aName);
+        const bNorm = normalizeSearchTerm(bName);
+        const qLower = q.toLowerCase();
+
+        if ((aName === qLower || aNorm === qNorm) && (bName !== qLower && bNorm !== qNorm)) return -1;
+        if ((bName === qLower || bNorm === qNorm) && (aName !== qLower && aNorm !== qNorm)) return 1;
+        if ((aName.startsWith(qLower) || aNorm.startsWith(qNorm)) && (!bName.startsWith(qLower) && !bNorm.startsWith(qNorm))) return -1;
+        if ((bName.startsWith(qLower) || bNorm.startsWith(qNorm)) && (!aName.startsWith(qLower) && !aNorm.startsWith(qNorm))) return 1;
         return 0;
       });
   }, [contacts, search]);

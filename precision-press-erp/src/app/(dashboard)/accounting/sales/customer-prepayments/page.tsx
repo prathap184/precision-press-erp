@@ -25,6 +25,7 @@ import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { BrandLoader } from "@/components/dashboard/brand-loader";
 import { ContentReveal } from "@/components/ui/content-reveal";
 import { TallyPeriodModal } from "@/components/dashboard/TallyPeriodModal";
+import { fuzzyMatch } from "@/lib/search-utils";
 
 interface CustomerCredit {
   id: string;
@@ -384,11 +385,12 @@ export default function CustomerPrepaymentsPage() {
   const [searchKey, setSearchKey] = useState(0);
   const filteredCredits = useMemo(() => {
     if (!debouncedSearch) return credits;
-    const q = debouncedSearch.toLowerCase();
+    const q = debouncedSearch.trim();
     return credits.filter(
       (c) =>
-        (c.contact?.name || "").toLowerCase().includes(q) ||
-        (sourceLabels[c.sourceType] || c.sourceType).toLowerCase().includes(q)
+        fuzzyMatch(c.contact?.name, q) ||
+        fuzzyMatch(c.journalEntry?.reference || c.journalEntry?.entryNumber, q) ||
+        fuzzyMatch(sourceLabels[c.sourceType] || c.sourceType, q)
     );
   }, [credits, debouncedSearch]);
 

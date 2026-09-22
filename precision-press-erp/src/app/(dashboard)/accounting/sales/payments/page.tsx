@@ -24,6 +24,7 @@ import { ContentReveal } from "@/components/ui/content-reveal";
 import { useDocumentTitle } from "@/lib/hooks/use-document-title";
 import { formatMoney } from "@/lib/money";
 import { devDelay } from "@/lib/dev-delay";
+import { fuzzyMatch } from "@/lib/search-utils";
 
 interface Payment {
   id: string;
@@ -156,12 +157,12 @@ export default function PaymentsPage() {
     let result = payments;
 
     if (debouncedSearch) {
-      const q = debouncedSearch.toLowerCase();
+      const q = debouncedSearch.trim();
       result = result.filter(
         (p) =>
-          p.paymentNumber.toLowerCase().includes(q) ||
-          (p.contact?.name || "").toLowerCase().includes(q) ||
-          (p.reference || "").toLowerCase().includes(q)
+          fuzzyMatch(p.paymentNumber, q) ||
+          fuzzyMatch(p.contact?.name, q) ||
+          fuzzyMatch(p.reference, q)
       );
     }
 

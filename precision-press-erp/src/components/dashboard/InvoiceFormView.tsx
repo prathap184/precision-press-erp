@@ -28,6 +28,7 @@ import {
 import { RoleGuard } from "@/lib/role-guard";
 import { ItemDescriptionModal } from "@/components/dashboard/ItemDescriptionModal";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
+import { fuzzyMatch, normalizeSearchTerm } from "@/lib/search-utils";
 
 interface SavedAddress {
   label: string;
@@ -324,7 +325,7 @@ export function InvoiceFormView() {
                   : row.base_rate || 0,
               hsn_code: row.hsn_code || row.hsnCode || "",
               gst_rate: row.gst_rate || 18,
-              unit_of_measure: uom,
+              unit_of_measure: row.unit_of_measure || row.unitOfMeasure || meta.uom || "NOS",
               tally_billing_mode: (row.tally_billing_mode as any) || defaultMode,
               has_multiple_sizes: hasMultipleSizes,
               default_width: row.default_width != null ? Number(row.default_width) : 1,
@@ -558,31 +559,43 @@ export function InvoiceFormView() {
         });
     }
 
-    const qTokens = qTrim.split(/\s+/).filter(Boolean);
+    // Standard fuzzy & token search
     return catFiltered
       .filter((p: any) => {
         const aliases = Array.isArray(p.metadata?.aliases) ? p.metadata.aliases.join(" ") : "";
-        const target = `${p.name || ""} ${p.id || ""} ${p.code || ""} ${p.sku || ""} ${p.category || ""} ${aliases}`.toLowerCase();
-        return qTokens.every((tok) => target.includes(tok));
+        const target = `${p.name || ""} ${p.id || ""} ${p.code || ""} ${p.sku || ""} ${p.category || ""} ${aliases}`;
+        return fuzzyMatch(target, qTrim);
       })
       .sort((a: any, b: any) => {
         const aName = (a.name || "").toLowerCase();
         const bName = (b.name || "").toLowerCase();
+        const aNorm = normalizeSearchTerm(aName);
+        const bNorm = normalizeSearchTerm(bName);
+        const qNorm = normalizeSearchTerm(qTrim);
+
         const aAliases: string[] = Array.isArray(a.metadata?.aliases) ? a.metadata.aliases.map((al: string) => al.toLowerCase()) : [];
         const bAliases: string[] = Array.isArray(b.metadata?.aliases) ? b.metadata.aliases.map((al: string) => al.toLowerCase()) : [];
 
         // 0. Exact alias match gets top priority (e.g. typing "A2")
-        const aAliasExact = aAliases.includes(qTrim);
-        const bAliasExact = bAliases.includes(qTrim);
+        const aAliasExact = aAliases.includes(qTrim) || aAliases.some((al) => normalizeSearchTerm(al) === qNorm);
+        const bAliasExact = bAliases.includes(qTrim) || bAliases.some((al) => normalizeSearchTerm(al) === qNorm);
         if (aAliasExact && !bAliasExact) return -1;
         if (bAliasExact && !aAliasExact) return 1;
 
-        if (aName === qTrim && bName !== qTrim) return -1;
-        if (bName === qTrim && aName !== qTrim) return 1;
-        const aStarts = aName.startsWith(qTrim);
-        const bStarts = bName.startsWith(qTrim);
+        // 1. Exact match gets highest priority (including normalized exact)
+        if ((aName === qTrim || aNorm === qNorm) && (bName !== qTrim && bNorm !== qNorm)) return -1;
+        if ((bName === qTrim || bNorm === qNorm) && (aName !== qTrim && aNorm !== qNorm)) return 1;
+        // 2. Name starts with query
+        const aStarts = aName.startsWith(qTrim) || aNorm.startsWith(qNorm);
+        const bStarts = bName.startsWith(qTrim) || bNorm.startsWith(qNorm);
         if (aStarts && !bStarts) return -1;
         if (bStarts && !aStarts) return 1;
+        // 3. Name contains query vs only category contains
+        const aInName = aName.includes(qTrim) || aNorm.includes(qNorm);
+        const bInName = bName.includes(qTrim) || bNorm.includes(qNorm);
+        if (aInName && !bInName) return -1;
+        if (bInName && !aInName) return 1;
+
         return tallyNaturalCompare(a.name, b.name);
       });
   };
@@ -598,12 +611,24 @@ export function InvoiceFormView() {
     if (!term) {
       return list.sort((a, b) => tallyNaturalCompare(a.displayName || a.name, b.displayName || b.name));
     }
+    const termNorm = normalizeSearchTerm(term);
     return list
       .filter((c) => {
-        const target = `${c.displayName || c.name || ""} ${c.phone || ""} ${c.email || ""} ${c.taxNumber || ""} ${c.gstin || ""}`.toLowerCase();
-        return target.includes(term);
+        const target = `${c.displayName || c.name || ""} ${c.phone || ""} ${c.email || ""} ${c.taxNumber || ""} ${c.gstin || ""}`;
+        return fuzzyMatch(target, term);
       })
-      .sort((a, b) => tallyNaturalCompare(a.displayName || a.name, b.displayName || b.name));
+      .sort((a, b) => {
+        const aName = String(a.displayName || a.name || "").toLowerCase();
+        const bName = String(b.displayName || b.name || "").toLowerCase();
+        const aNorm = normalizeSearchTerm(aName);
+        const bNorm = normalizeSearchTerm(bName);
+
+        if ((aName === term || aNorm === termNorm) && (bName !== term && bNorm !== termNorm)) return -1;
+        if ((bName === term || bNorm === termNorm) && (aName !== term && aNorm !== termNorm)) return 1;
+        if ((aName.startsWith(term) || aNorm.startsWith(termNorm)) && (!bName.startsWith(term) && !bNorm.startsWith(termNorm))) return -1;
+        if ((bName.startsWith(term) || bNorm.startsWith(termNorm)) && (!aName.startsWith(term) && !aNorm.startsWith(termNorm))) return 1;
+        return tallyNaturalCompare(a.displayName || a.name, b.displayName || b.name);
+      });
   }, [customers, customerSearch]);
 
   // Ensure selected contact by ID is loaded if not in initial list

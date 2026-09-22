@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ArrowRight, Check, X } from "lucide-react";
+import { fuzzyMatch } from "@/lib/search-utils";
 
 interface BankAccountOption {
   id: string;
@@ -862,8 +863,8 @@ export function ReceiptForm() {
 
   const filteredCustomers = customers.filter(
     (c) =>
-      c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-      (c.phone && c.phone.includes(customerSearch))
+      fuzzyMatch(c.name, customerSearch) ||
+      (c.phone && fuzzyMatch(c.phone, customerSearch))
   );
 
   const { dateDisplay, dayDisplay } = formatTallyDate(date);
