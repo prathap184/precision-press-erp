@@ -222,10 +222,53 @@ export default function DispatchFinalizationPage() {
   );
 
   const dispatchStep = order?.workflowSnapshot?.steps?.find((s) => s.role === 'DISPATCH');
+  const dispatchStepIndex = order?.workflowSnapshot?.steps?.findIndex((s) => s.role === 'DISPATCH') ?? -1;
+  const currentStepIndex = order?.workflowSnapshot?.currentStepIndex ?? 0;
+  const currentStep = order?.workflowSnapshot?.steps?.[currentStepIndex];
   const isAlreadyDispatched = Boolean(order && (['DISPATCHED', 'IN_TRANSIT', 'DELIVERED'].includes(order.status) || dispatchStep?.status === 'COMPLETED'));
+  const isNotReadyForDispatch = dispatchStepIndex > currentStepIndex && !isAlreadyDispatched;
 
   const dispatchProofUrl = (order?.workflow as any)?.dispatchProofUrl || null;
   const customerName = order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Customer';
+
+  if (isNotReadyForDispatch) {
+    return (
+      <RoleGuard allowedRoles={['DISPATCH', 'ADMIN', 'SUPER_ADMIN', 'MANAGER']}>
+        <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-3xl border border-slate-200 shadow-xl text-center space-y-5">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
+            <AlertCircle size={32} />
+          </div>
+          <div className="space-y-2">
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-800">
+              Dispatch Locked
+            </span>
+            <h1 className="text-xl font-black text-slate-900">
+              Previous Stages Incomplete
+            </h1>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              Order #{order.id.replace('ORD-', '')} is currently at the{' '}
+              <strong className="text-slate-900">{currentStep?.label || currentStep?.role || 'earlier'}</strong> stage.
+              All preceding production steps must be completed before dispatching can take place.
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => router.back()}
+              className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              Go Back
+            </button>
+            <button
+              onClick={() => router.push('/dispatch')}
+              className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Dispatch Dashboard
+            </button>
+          </div>
+        </div>
+      </RoleGuard>
+    );
+  }
 
   return (
     <RoleGuard allowedRoles={['DISPATCH', 'ADMIN', 'SUPER_ADMIN', 'MANAGER']}>

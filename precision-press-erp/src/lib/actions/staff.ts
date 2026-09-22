@@ -531,31 +531,60 @@ export async function getComprehensiveStaffActivity(userId: string): Promise<{
   events: StaffActivityEvent[];
 }> {
   try {
+    const cleanUserId = decodeURIComponent(userId || '').trim();
+    if (!cleanUserId) return { staff: null, events: [] };
+
     const cookieStore = await cookies();
     const token = cookieStore.get('token')?.value;
-    if (!token) return { staff: null, events: [] };
+    let claims: any = null;
+    if (token) {
+      try {
+        claims = await verifyToken(token);
+      } catch (err) {
+        console.warn('[getComprehensiveStaffActivity] token warn:', err);
+      }
+    }
 
-    const claims = await verifyToken(token);
-    if (!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(claims?.role as string)) {
-      return { staff: null, events: [] };
+    const isAdmin = await isCallerAdmin(claims, cookieStore);
+    const roleCookie = cookieStore.get('role')?.value?.toUpperCase();
+    const isManager = (claims && ['MANAGER'].includes(String(claims.role || '').toUpperCase())) ||
+      (claims && (claims.roles || []).some((r: string) => String(r).toUpperCase() === 'MANAGER')) ||
+      roleCookie === 'MANAGER';
+
+    if (!isAdmin && !isManager) {
+      const directRole = String(claims?.role || '').toUpperCase();
+      if (!['ADMIN', 'SUPER_ADMIN', 'MANAGER'].includes(directRole)) {
+        console.warn('[getComprehensiveStaffActivity] Forbidden access');
+        return { staff: null, events: [] };
+      }
     }
 
     // 1. Fetch user profile & staff metadata
-    const { data: profile } = await supabaseServer
+    const { data: profileRow } = await supabaseServer
       .from('profiles')
       .select('*')
-      .eq('id', userId)
+      .or(`id.eq.${cleanUserId},uid.eq.${cleanUserId}`)
       .maybeSingle();
+
+    let profile = profileRow;
+    if (!profile) {
+      try {
+        const fireSnap = await adminDb.collection('profiles').doc(cleanUserId).get();
+        if (fireSnap.exists) {
+          profile = { id: fireSnap.id, ...fireSnap.data() };
+        }
+      } catch {}
+    }
 
     const { data: staffRow } = await supabaseServer
       .from('staff_users')
       .select('*')
-      .or(`id.eq.${userId},uid.eq.${userId}`)
+      .or(`id.eq.${cleanUserId},uid.eq.${cleanUserId}`)
       .maybeSingle();
 
     const staffMeta = (staffRow?.metadata && typeof staffRow.metadata === 'object') ? staffRow.metadata : {};
     const staffData: StaffUser | null = profile ? {
-      uid: profile.id,
+      uid: profile.id || profile.uid || cleanUserId,
       name: profile.name || profile.displayName || 'Unknown',
       email: profile.email || '',
       roles: Array.isArray(staffRow?.roles) && staffRow.roles.length > 0 ? staffRow.roles : getEffectiveRoles(profile as UserProfile),
@@ -573,12 +602,16 @@ export async function getComprehensiveStaffActivity(userId: string): Promise<{
 
     const events: StaffActivityEvent[] = [];
 
-    // 2. Fetch role audit history
-    const { data: roleHistoryRows } = await supabaseServer
+    // 2. Fetch role audit history from role_history table (Postgres column is userId)
+    const { data: roleHistoryRows, error: rhErr } = await supabaseServer
       .from('role_history')
       .select('*')
-      .or(`userId.eq.${userId},user_id.eq.${userId}`)
+      .eq('userId', cleanUserId)
       .order('changedAt', { ascending: false });
+
+    if (rhErr) {
+      console.warn('[getComprehensiveStaffActivity] role_history query note:', rhErr.message);
+    }
 
     (roleHistoryRows || []).forEach((row: any) => {
       const action = String(row.action || 'UPDATE').toUpperCase();
@@ -606,8 +639,8 @@ export async function getComprehensiveStaffActivity(userId: string): Promise<{
     // 3. Fetch orders created by this staff user (e.g. Proxy order creation)
     const { data: createdOrders } = await supabaseServer
       .from('orders')
-      .select('id, customerName, amounts, createdAt, status')
-      .eq('createdBy', userId)
+      .select('id, customerName, amounts, createdAt, status, createdBy, proxyExecutor')
+      .or(`createdBy.eq.${cleanUserId},proxyExecutor.ilike.%${cleanUserId}%`)
       .order('createdAt', { ascending: false })
       .limit(100);
 
@@ -618,7 +651,7 @@ export async function getComprehensiveStaffActivity(userId: string): Promise<{
         type: 'ORDER_CREATED',
         title: `Placed Proxy Order #${o.id.replace('ORD-', '')}`,
         description: `Created order for ${o.customerName || 'Customer'} (Total: ₹${Number(amt).toLocaleString()}) - Status: ${o.status}`,
-        actorId: userId,
+        actorId: cleanUserId,
         actorName: staffData?.name || 'Staff',
         timestamp: o.createdAt,
         metadata: { orderId: o.id, amount: amt },
@@ -633,17 +666,20 @@ export async function getComprehensiveStaffActivity(userId: string): Promise<{
       .order('updatedAt', { ascending: false })
       .limit(200);
 
+    const userName = staffData?.name;
     (recentOrders || []).forEach((ord: any) => {
       const steps = ord.workflowSnapshot?.steps || [];
       steps.forEach((step: any, stepIdx: number) => {
-        if (step.completedBy === userId || (step.completedBy && step.completedBy === staffData?.name)) {
+        const matchesUid = step.completedBy === cleanUserId;
+        const matchesName = userName && step.completedBy && String(step.completedBy).toLowerCase() === userName.toLowerCase();
+        if (matchesUid || matchesName) {
           events.push({
             id: `step_${ord.id}_${stepIdx}`,
             type: 'ORDER_PROCESSED',
             title: `Completed ${step.label || step.role} Stage`,
             description: `Finished stage for Order #${ord.id.replace('ORD-', '')} (${ord.customerName || 'Customer'})${step.notes ? ` - "${step.notes}"` : ''}`,
-            actorId: userId,
-            actorName: staffData?.name || 'Staff',
+            actorId: cleanUserId,
+            actorName: userName || 'Staff',
             timestamp: step.completedAt || ord.updatedAt,
             metadata: { orderId: ord.id, stepRole: step.role, stepLabel: step.label },
             badges: [{

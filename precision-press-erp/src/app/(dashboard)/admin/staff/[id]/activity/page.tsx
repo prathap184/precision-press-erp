@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RoleGuard } from '@/lib/role-guard';
 import { StaffUser, StaffRole, ROLE_META, StaffStatus } from '@/types/roles';
-import { getComprehensiveStaffActivity, StaffActivityEvent } from '@/lib/actions/staff';
+import { getComprehensiveStaffActivity, getStaffList, StaffActivityEvent } from '@/lib/actions/staff';
 import {
   ArrowLeft,
   Calendar,
@@ -86,7 +86,8 @@ const STATUS_CONFIG: Record<StaffStatus, { label: string; color: string; bg: str
 export default function StaffActivityPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
-  const userId = params?.id;
+  const rawId = params?.id;
+  const userId = rawId ? decodeURIComponent(rawId).trim() : '';
 
   const [loading, setLoading] = useState(true);
   const [staff, setStaff] = useState<StaffUser | null>(null);
@@ -101,8 +102,15 @@ export default function StaffActivityPage() {
     setLoading(true);
     try {
       const res = await getComprehensiveStaffActivity(userId);
-      setStaff(res.staff);
-      setEvents(res.events);
+      let staffObj = res.staff;
+      if (!staffObj) {
+        try {
+          const list = await getStaffList();
+          staffObj = list.find(s => s.uid === userId || s.uid.toLowerCase() === userId.toLowerCase()) || null;
+        } catch {}
+      }
+      setStaff(staffObj);
+      setEvents(res.events || []);
     } catch (err) {
       console.error('Failed to load staff activity:', err);
     } finally {

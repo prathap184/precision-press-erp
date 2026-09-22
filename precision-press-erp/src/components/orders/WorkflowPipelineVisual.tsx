@@ -114,6 +114,12 @@ export function WorkflowPipelineVisual({
   }
 
   const canNavigateToStage = (step: typeof stepsToRender[0]): boolean => {
+    // COMPULSORY: If a step is neither current nor completed, it is a future/pending stage.
+    // Preceding stages must be completed first; future stages cannot be opened by anyone.
+    if (!step.isCurrent && !step.isCompleted) {
+      return false;
+    }
+
     const isAcdemaUser = roles.includes('ACDEMA' as StaffRole) || role === 'ACDEMA' || effectiveRoles.includes('ACDEMA' as StaffRole);
     const acdemaManagedRoles: StaffRole[] = ['ACCOUNTANT', 'DESIGNER', 'MANAGER'];
     const isAdmin = roles.includes('SUPER_ADMIN' as StaffRole) || roles.includes('ADMIN' as StaffRole);
