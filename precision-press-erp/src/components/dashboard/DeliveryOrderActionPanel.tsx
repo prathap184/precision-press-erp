@@ -13,6 +13,7 @@ import { OrderDetailsPanel } from '@/components/orders/OrderDetailsPanel';
 import { WorkflowTimeline } from '@/components/orders/WorkflowTimeline';
 import { toast } from 'sonner';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useStageWorkspaceGuard } from '@/lib/useStageWorkspaceGuard';
 
 function formatDate(value: any) {
   if (!value) return '—';
@@ -31,6 +32,8 @@ export function DeliveryOrderActionPanel({ orderId }: { orderId: string }) {
   const searchParams = useSearchParams();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const guard = useStageWorkspaceGuard('DELIVERY', order, loading);
+
   const [actionLoading, setActionLoading] = useState<'START' | 'DELIVER' | null>(null);
   const [notes, setNotes] = useState('');
   const [proofUrl, setProofUrl] = useState<string | null>(null);
@@ -40,9 +43,27 @@ export function DeliveryOrderActionPanel({ orderId }: { orderId: string }) {
   useEffect(() => {
     if (!orderId) return;
 
-    const ref = doc(db, 'orders', orderId);
-    const unsubscribe = onSnapshot(ref, (snap) => {
+    const candIds = Array.from(
+      new Set(
+        [
+          orderId,
+          orderId.trim(),
+          orderId.replace(/-item\d+$/i, ''),
+          orderId.includes('-item') ? orderId.split('-item')[0] : '',
+        ].filter(Boolean)
+      )
+    );
+
+    const ref = doc(db, 'orders', candIds[0]);
+    const unsubscribe = onSnapshot(ref, async (snap) => {
       if (!snap.exists()) {
+        let resolved: Order | null = null;
+        for (const cand of candIds) {
+          try {
+            const fbSnap = await doc(db, 'orders', cand);
+            // check
+          } catch { /* continue */ }
+        }
         setOrder(null);
         setLoading(false);
         return;
@@ -137,7 +158,7 @@ export function DeliveryOrderActionPanel({ orderId }: { orderId: string }) {
         toast.success('Order marked as delivered successfully.');
         const returnTo = searchParams.get('returnTo');
         setTimeout(() => {
-          router.push(returnTo || '/admin/orders');
+          router.push(returnTo || guard.fallbackUrl || '/delivarypartner/global-orders');
         }, 800);
         return;
       }
@@ -154,6 +175,32 @@ export function DeliveryOrderActionPanel({ orderId }: { orderId: string }) {
     return (
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 flex items-center justify-center">
         <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
+      </div>
+    );
+  }
+
+  if (!guard.allowed) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center space-y-4 max-w-md mx-auto">
+        <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-800">
+          Access Restricted
+        </span>
+        <h2 className="text-xl font-black text-slate-900">
+          {guard.errorReason === 'ADMIN_ONLY'
+            ? 'Admin URL Restricted'
+            : guard.errorReason === 'ROLE_UNAUTHORIZED'
+            ? 'Role Not Assigned'
+            : 'Previous Stages Incomplete'}
+        </h2>
+        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+          {guard.errorMessage}
+        </p>
+        <button
+          onClick={() => router.push(guard.fallbackUrl)}
+          className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
+        >
+          Go to Global Orders
+        </button>
       </div>
     );
   }

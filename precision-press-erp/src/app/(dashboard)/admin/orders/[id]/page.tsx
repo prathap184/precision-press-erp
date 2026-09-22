@@ -12,7 +12,7 @@ export default function AdminOrderDetailsPage() {
   const orderId = String(Array.isArray(params.id) ? params.id[0] : params.id || '');
 
   return (
-    <RoleGuard allowedRoles={['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'SUPPORT', 'PRINTER', 'DESIGNER']}>
+    <RoleGuard allowedRoles={['ADMIN', 'SUPER_ADMIN']}>
       <PrinterOrderWorkspace
         orderId={orderId}
         backHref="/admin/orders"

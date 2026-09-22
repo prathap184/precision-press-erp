@@ -1,16 +1,16 @@
 'use client';
 import { RoleGuard } from '@/lib/role-guard';
-import { usePathname } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
+import { getFallbackOrdersUrl } from '@/lib/useStageWorkspaceGuard';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  // /admin/orders is the global orders operational hub accessible by staff
-  const isGlobalOrders = pathname?.startsWith('/admin/orders');
+  const { roles, role } = useAuth();
+  const fallbackUrl = getFallbackOrdersUrl(roles, role);
 
   return (
     <RoleGuard 
-      allowedRoles={isGlobalOrders ? ['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'DESIGNER', 'PRINTER', 'DISPATCH', 'ACCOUNTANT', 'SUPPORT'] : ['ADMIN', 'SUPER_ADMIN']}
-      redirectTo="/staff"
+      allowedRoles={['ADMIN', 'SUPER_ADMIN']}
+      redirectTo={fallbackUrl}
     >
       <div className='w-full min-h-full'>
         {children}

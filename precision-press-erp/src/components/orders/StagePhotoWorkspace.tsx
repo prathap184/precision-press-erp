@@ -14,6 +14,7 @@ import { fastCompleteProductionStage, startWorkflowStep } from '@/lib/workflow';
 import { OrderDetailsPanel } from '@/components/orders/OrderDetailsPanel';
 import { WorkflowTimeline } from '@/components/orders/WorkflowTimeline';
 import { getWorkspaceMode } from '@/lib/workspaceAccess';
+import { useStageWorkspaceGuard } from '@/lib/useStageWorkspaceGuard';
 
 interface StagePhotoWorkspaceProps {
   orderId: string;
@@ -63,21 +64,41 @@ export function StagePhotoWorkspace({
 
       try {
         let resolvedOrder: Order | null = null;
+        const candidateIds = Array.from(
+          new Set(
+            [
+              orderId,
+              orderId.trim(),
+              orderId.replace(/-item\d+$/i, ''),
+              orderId.includes('-item') ? orderId.split('-item')[0] : '',
+            ].filter(Boolean)
+          )
+        );
 
-        try {
-          const directSnap = await getDoc(doc(db, 'orders', orderId));
-          if (directSnap.exists()) {
-            resolvedOrder = { id: directSnap.id, ...directSnap.data() } as Order;
+        for (const cand of candidateIds) {
+          try {
+            const directSnap = await getDoc(doc(db, 'orders', cand));
+            if (directSnap.exists()) {
+              resolvedOrder = { id: directSnap.id, ...directSnap.data() } as Order;
+              break;
+            }
+          } catch (err) {
+            console.error(`Failed direct ${role.toLowerCase()} order lookup:`, err);
           }
-        } catch (err) {
-          console.error(`Failed direct ${role.toLowerCase()} order lookup:`, err);
         }
 
         if (!resolvedOrder) {
-          const fallbackSnap = await getDocs(query(collection(db, 'orders'), where('id', '==', orderId), limit(1)));
-          if (!fallbackSnap.empty) {
-            const docSnap = fallbackSnap.docs[0];
-            resolvedOrder = { id: docSnap.id, ...docSnap.data() } as Order;
+          for (const cand of candidateIds) {
+            try {
+              const fallbackSnap = await getDocs(query(collection(db, 'orders'), where('id', '==', cand), limit(1)));
+              if (!fallbackSnap.empty) {
+                const docSnap = fallbackSnap.docs[0];
+                resolvedOrder = { id: docSnap.id, ...docSnap.data() } as Order;
+                break;
+              }
+            } catch (err) {
+              console.error(`Failed fallback ${role.toLowerCase()} lookup:`, err);
+            }
           }
         }
 
@@ -133,6 +154,7 @@ export function StagePhotoWorkspace({
 
   const currentStep = order?.workflowSnapshot?.steps?.[order.workflowSnapshot?.currentStepIndex ?? -1];
   const mode = getWorkspaceMode(role, order?.workflowSnapshot);
+  const guard = useStageWorkspaceGuard(role, order, loading);
 
   const handlePhotoUpload = async (file: File) => {
     setPhotoUploading(true);
@@ -189,7 +211,7 @@ export function StagePhotoWorkspace({
       toast.success(`${stageLabel} work completed.`);
       const returnTo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('returnTo') : null;
       try {
-        const url = new URL(returnTo || completionHref || '/admin/orders', window.location.origin);
+        const url = new URL(returnTo || completionHref || guard.fallbackUrl, window.location.origin);
         if (order?.id) {
           if (url.pathname.includes('/orders')) {
             url.searchParams.set('highlight', order.id);
@@ -199,7 +221,7 @@ export function StagePhotoWorkspace({
         }
         setTimeout(() => router.push(url.pathname + url.search), 700);
       } catch (e) {
-        setTimeout(() => router.push(returnTo || completionHref || '/admin/orders'), 700);
+        setTimeout(() => router.push(returnTo || completionHref || guard.fallbackUrl), 700);
       }
     } catch (err) {
       console.error(`${stageLabel} work done failed:`, err);
@@ -220,6 +242,41 @@ export function StagePhotoWorkspace({
     );
   }
 
+  if (!guard.allowed) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
+        <div className="max-w-md space-y-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-xl">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
+            <Lock size={30} />
+          </div>
+          <div className="space-y-2">
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-800">
+              Access Restricted
+            </span>
+            <h1 className="text-xl font-black text-slate-900">
+              {guard.errorReason === 'ADMIN_ONLY'
+                ? 'Admin URL Restricted'
+                : guard.errorReason === 'ROLE_UNAUTHORIZED'
+                ? 'Role Not Assigned'
+                : 'Previous Stages Incomplete'}
+            </h1>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              {guard.errorMessage}
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => router.push(guard.fallbackUrl)}
+              className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Go to Global Orders
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (!order) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center px-4 text-center">
@@ -232,51 +289,12 @@ export function StagePhotoWorkspace({
             <p className="text-sm text-slate-500">{photoError || 'This order could not be loaded.'}</p>
           </div>
           <div className="flex items-center justify-center gap-3">
-            <Link href={backHref} className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-xs font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50">
+            <button onClick={() => router.push(guard.fallbackUrl)} className="rounded-xl border border-slate-200 bg-white px-5 py-3 text-xs font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50">
               {backLabel}
-            </Link>
-            <Link href={dashboardHref} className="rounded-xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-blue-700">
+            </button>
+            <button onClick={() => router.push(guard.fallbackUrl)} className="rounded-xl bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-blue-700">
               {dashboardLabel}
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (mode === 'LOCKED') {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
-        <div className="max-w-md space-y-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-xl">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
-            <Lock size={30} />
-          </div>
-          <div className="space-y-2">
-            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-800">
-              Stage Locked
-            </span>
-            <h1 className="text-xl font-black text-slate-900">
-              Previous Stages Incomplete
-            </h1>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Order #{order.id.replace('ORD-', '')} is currently at the{' '}
-              <strong className="text-slate-900">{currentStep?.label || currentStep?.role || 'earlier'}</strong> stage.
-              All preceding production steps must be completed before the {stageLabel.toLowerCase()} stage can be opened.
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <Link
-              href={backHref}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              {backLabel}
-            </Link>
-            <Link
-              href={dashboardHref}
-              className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              {dashboardLabel}
-            </Link>
+            </button>
           </div>
         </div>
       </div>

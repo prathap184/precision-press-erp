@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, where } from '@/lib/supabase-firestore-shim';
-import { Loader2, Printer, ExternalLink, Play, CheckCircle, ChevronLeft, Package, FileType, Copy, FileText, AlertTriangle, Clock, X, Eye } from 'lucide-react';
+import { Loader2, Printer, ExternalLink, Play, CheckCircle, ChevronLeft, Package, FileType, Copy, FileText, AlertTriangle, Clock, X, Eye, Lock } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 import { db } from '@/lib/firebase';
@@ -17,6 +17,7 @@ import { completeTiffPrint, markTiffOpened, pauseJob, resumeJob, startTiffPrint 
 import { openTiffInSystem, resolvePrintWorkflow, getFileNameFromPath, inspectTiffPath, isValidTiffPath, normalizeTiffPathToFileUrl, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { OrderDetailsPanel } from '@/components/orders/OrderDetailsPanel';
 import { WorkflowTimeline } from '@/components/orders/WorkflowTimeline';
+import { useStageWorkspaceGuard } from '@/lib/useStageWorkspaceGuard';
 
 interface PrinterOrderWorkspaceProps {
   orderId: string;
@@ -69,21 +70,41 @@ export function PrinterOrderWorkspace({
 
       try {
         let resolvedOrder: Order | null = null;
+        const candidateIds = Array.from(
+          new Set(
+            [
+              orderId,
+              orderId.trim(),
+              orderId.replace(/-item\d+$/i, ''),
+              orderId.includes('-item') ? orderId.split('-item')[0] : '',
+            ].filter(Boolean)
+          )
+        );
 
-        try {
-          const directSnap = await getDoc(doc(db, 'orders', orderId));
-          if (directSnap.exists()) {
-            resolvedOrder = { id: directSnap.id, ...directSnap.data() } as Order;
+        for (const cand of candidateIds) {
+          try {
+            const directSnap = await getDoc(doc(db, 'orders', cand));
+            if (directSnap.exists()) {
+              resolvedOrder = { id: directSnap.id, ...directSnap.data() } as Order;
+              break;
+            }
+          } catch (err) {
+            console.error('Failed direct printer order lookup:', err);
           }
-        } catch (err) {
-          console.error('Failed direct printer order lookup:', err);
         }
 
         if (!resolvedOrder) {
-          const fallbackSnap = await getDocs(query(collection(db, 'orders'), where('id', '==', orderId), limit(1)));
-          if (!fallbackSnap.empty) {
-            const docSnap = fallbackSnap.docs[0];
-            resolvedOrder = { id: docSnap.id, ...docSnap.data() } as Order;
+          for (const cand of candidateIds) {
+            try {
+              const fallbackSnap = await getDocs(query(collection(db, 'orders'), where('id', '==', cand), limit(1)));
+              if (!fallbackSnap.empty) {
+                const docSnap = fallbackSnap.docs[0];
+                resolvedOrder = { id: docSnap.id, ...docSnap.data() } as Order;
+                break;
+              }
+            } catch (err) {
+              console.error('Failed fallback printer order lookup:', err);
+            }
           }
         }
 
@@ -135,6 +156,7 @@ export function PrinterOrderWorkspace({
 
   const currentStep = order?.workflowSnapshot?.steps?.[order.workflowSnapshot?.currentStepIndex ?? -1];
   const mode = getWorkspaceMode('PRINTER', order?.workflowSnapshot);
+  const guard = useStageWorkspaceGuard('PRINTER', order, loading);
   const printWorkflow = useMemo(() => resolvePrintWorkflow(order), [order]);
   const tiffPath = printWorkflow?.tiffPath || '';
   const tiffInfo = tiffPath ? inspectTiffPath(tiffPath) : null;
@@ -380,6 +402,41 @@ export function PrinterOrderWorkspace({
     );
   }
 
+  if (!guard.allowed) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center px-4 text-center">
+        <div className="max-w-md space-y-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-xl">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
+            <Lock size={30} />
+          </div>
+          <div className="space-y-2">
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-800">
+              Access Restricted
+            </span>
+            <h1 className="text-xl font-black text-slate-900">
+              {guard.errorReason === 'ADMIN_ONLY'
+                ? 'Admin URL Restricted'
+                : guard.errorReason === 'ROLE_UNAUTHORIZED'
+                ? 'Role Not Assigned'
+                : 'Previous Stages Incomplete'}
+            </h1>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              {guard.errorMessage}
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => router.push(guard.fallbackUrl)}
+              className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Go to Global Orders
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (error || !order) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center px-4 text-center">
@@ -392,9 +449,9 @@ export function PrinterOrderWorkspace({
             <p className="text-[15px] text-slate-500 font-medium">{error || 'This order could not be loaded.'}</p>
           </div>
           <div className="flex items-center justify-center gap-3">
-            <Link href={backHref} className="rounded-full border border-slate-200 bg-white px-5 py-3 text-[14px] font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50 shadow-sm">
+            <button onClick={() => router.push(guard.fallbackUrl)} className="rounded-full border border-slate-200 bg-white px-5 py-3 text-[14px] font-black uppercase tracking-widest text-slate-700 transition-colors hover:bg-slate-50 shadow-sm">
               {backLabel}
-            </Link>
+            </button>
             {secondaryHref && secondaryLabel && (
               <Link href={secondaryHref} className="rounded-full bg-primary px-5 py-3 text-[14px] font-black uppercase tracking-widest text-white transition-colors hover:bg-black shadow-sm">
                 {secondaryLabel}

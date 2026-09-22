@@ -88,6 +88,7 @@ export function WorkflowPipelineVisual({
   }
 
   const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes((deliveryChoice || '').toLowerCase());
+  const isAdmin = roles.includes('SUPER_ADMIN' as StaffRole) || roles.includes('ADMIN' as StaffRole);
 
   let stepsToRender = snapshot.steps.map((step, index) => ({
     ...step,
@@ -96,7 +97,7 @@ export function WorkflowPipelineVisual({
     isCompleted: index < snapshot.currentStepIndex || step.status === 'COMPLETED',
   }));
 
-  if (filterByRoles && roles.length > 0 && !roles.includes('SUPER_ADMIN' as StaffRole) && !roles.includes('ADMIN' as StaffRole)) {
+  if (filterByRoles && roles.length > 0 && !isAdmin) {
     stepsToRender = stepsToRender.filter((s) => effectiveRoles.includes(s.role));
   }
 
@@ -122,7 +123,11 @@ export function WorkflowPipelineVisual({
 
     const isAcdemaUser = roles.includes('ACDEMA' as StaffRole) || role === 'ACDEMA' || effectiveRoles.includes('ACDEMA' as StaffRole);
     const acdemaManagedRoles: StaffRole[] = ['ACCOUNTANT', 'DESIGNER', 'MANAGER'];
-    const isAdmin = roles.includes('SUPER_ADMIN' as StaffRole) || roles.includes('ADMIN' as StaffRole);
+
+    // If stage is neither completed nor current, preceding stages are not completed -> strictly locked
+    if (!step.isCompleted && !step.isCurrent) {
+      return false;
+    }
 
     // If lockedToRoles is provided, ONLY allow clicking steps that match the viewer's role(s)
     if (lockedToRoles && lockedToRoles.length > 0) {
@@ -177,9 +182,7 @@ export function WorkflowPipelineVisual({
     }
 
     if (step.role === 'PRINTER') {
-      const pPath = pathname.startsWith('/printer')
-        ? `/printer/orders/${orderId}`
-        : `/admin/orders/${orderId}`;
+      const pPath = isAdmin ? `/admin/orders/${orderId}` : `/printer/orders/${orderId}`;
       return `${pPath}${returnParam}`;
     }
 

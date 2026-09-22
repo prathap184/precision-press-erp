@@ -152,6 +152,10 @@ export const SUPERUSER_ROLES: StaffRole[] = ['ADMIN', 'SUPER_ADMIN'];
 /** Returns true if any of the user's roles grant access to the required roles */
 export function hasAnyRole(userRoles: StaffRole[], requiredRoles: StaffRole[]): boolean {
   if (userRoles.some(r => SUPERUSER_ROLES.includes(r))) return true;
+  // ACDEMA has default access to DESIGNER, MANAGER, and ACCOUNTANT roles
+  if (userRoles.includes('ACDEMA') && requiredRoles.some(r => r === 'ACDEMA' || r === 'DESIGNER' || r === 'MANAGER' || r === 'ACCOUNTANT')) {
+    return true;
+  }
   return requiredRoles.some(r => userRoles.includes(r));
 }
 

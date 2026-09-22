@@ -25,7 +25,8 @@ import { toast } from 'react-hot-toast';
 
 import { getWorkspaceMode } from '@/lib/workspaceAccess';
 import { db } from '@/lib/firebase';
-import { collection, doc, onSnapshot, getDocs, query, where, limit } from '@/lib/supabase-firestore-shim';
+import { collection, doc, onSnapshot, getDocs, query, where, limit, getDoc } from '@/lib/supabase-firestore-shim';
+import { useStageWorkspaceGuard } from '@/lib/useStageWorkspaceGuard';
 import { Order, OrderItem, UserProfile } from '@/types/models';
 import { assignPrinter, assignTiffToPrinter, assignItemTiffToPrinter, advanceOrderWorkflow } from '@/lib/workflow';
 import { getFileNameFromPath, inspectTiffPath, isValidTiffPath, normalizeTiffPathToFileUrl, resolvePrintWorkflow, openTiffInSystem } from '@/lib/tiff-utils';
@@ -44,6 +45,8 @@ export function ManagerOrderWorkspace({ orderId }: ManagerOrderWorkspaceProps) {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [printers, setPrinters] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const guard = useStageWorkspaceGuard('MANAGER', order, loading);
+
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingItemKey, setProcessingItemKey] = useState<string | null>(null);
 
@@ -55,12 +58,33 @@ export function ManagerOrderWorkspace({ orderId }: ManagerOrderWorkspaceProps) {
   useEffect(() => {
     if (!orderId) return;
 
+    const candIds = Array.from(
+      new Set(
+        [
+          orderId,
+          orderId.trim(),
+          orderId.replace(/-item\d+$/i, ''),
+          orderId.includes('-item') ? orderId.split('-item')[0] : '',
+        ].filter(Boolean)
+      )
+    );
+
     // Listen to order
-    const unsubOrder = onSnapshot(doc(db, 'orders', orderId), (snapshot) => {
+    const unsubOrder = onSnapshot(doc(db, 'orders', candIds[0]), async (snapshot) => {
       if (snapshot.exists()) {
         setOrder({ id: snapshot.id, ...snapshot.data() } as Order);
       } else {
-        setOrder(null);
+        let resolved: Order | null = null;
+        for (const cand of candIds) {
+          try {
+            const snap = await getDoc(doc(db, 'orders', cand));
+            if (snap.exists()) {
+              resolved = { id: snap.id, ...snap.data() } as Order;
+              break;
+            }
+          } catch { /* continue */ }
+        }
+        setOrder(resolved);
       }
       setLoading(false);
     }, (err) => {
@@ -69,7 +93,7 @@ export function ManagerOrderWorkspace({ orderId }: ManagerOrderWorkspaceProps) {
     });
 
     // Listen to items
-    const unsubItems = onSnapshot(collection(db, 'orders', orderId, 'items'), (snapshot) => {
+    const unsubItems = onSnapshot(collection(db, 'orders', candIds[0], 'items'), (snapshot) => {
       setItems(snapshot.docs.map((d) => ({ ...d.data(), id: d.id } as OrderItem)));
     });
 
@@ -93,9 +117,9 @@ export function ManagerOrderWorkspace({ orderId }: ManagerOrderWorkspaceProps) {
   }, [orderId]);
 
   const handleReturnRedirect = () => {
-    const returnTo = searchParams.get('returnTo') || '/admin/orders';
+    const returnTo = searchParams.get('returnTo');
     try {
-      const url = new URL(returnTo, window.location.origin);
+      const url = new URL(returnTo || guard.fallbackUrl, window.location.origin);
       if (orderId) {
         if (url.pathname.includes('/orders')) {
           url.searchParams.set('highlight', orderId);
@@ -105,7 +129,7 @@ export function ManagerOrderWorkspace({ orderId }: ManagerOrderWorkspaceProps) {
       }
       router.push(url.pathname + url.search);
     } catch (e) {
-      router.push(returnTo);
+      router.push(returnTo || guard.fallbackUrl);
     }
   };
 
@@ -301,6 +325,41 @@ export function ManagerOrderWorkspace({ orderId }: ManagerOrderWorkspaceProps) {
         <div className="text-center space-y-4">
           <Loader2 className="mx-auto animate-spin text-indigo-600" size={40} />
           <p className="text-[13px] font-black uppercase tracking-[0.4em] text-indigo-600/40">Loading manager workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!guard.allowed) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center px-4 text-center">
+        <div className="max-w-md space-y-5 bg-white p-8 rounded-3xl border border-slate-200 shadow-xl">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
+            <AlertTriangle size={30} />
+          </div>
+          <div className="space-y-2">
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-800">
+              Access Restricted
+            </span>
+            <h1 className="text-xl font-black text-slate-900">
+              {guard.errorReason === 'ADMIN_ONLY'
+                ? 'Admin URL Restricted'
+                : guard.errorReason === 'ROLE_UNAUTHORIZED'
+                ? 'Role Not Assigned'
+                : 'Previous Stages Incomplete'}
+            </h1>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              {guard.errorMessage}
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => router.push(guard.fallbackUrl)}
+              className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Go to Global Orders
+            </button>
+          </div>
         </div>
       </div>
     );

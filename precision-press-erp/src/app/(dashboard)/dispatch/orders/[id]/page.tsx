@@ -16,6 +16,7 @@ import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import { WorkflowTimeline } from '@/components/orders/WorkflowTimeline';
 import { OrderDetailsPanel } from '@/components/orders/OrderDetailsPanel';
+import { useStageWorkspaceGuard } from '@/lib/useStageWorkspaceGuard';
 
 function InputField({ label, value, onChange, type = 'text', placeholder, required = false }: {
   label: string; value: string; onChange: (v: string) => void;
@@ -46,6 +47,8 @@ export default function DispatchFinalizationPage() {
 
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
+  const guard = useStageWorkspaceGuard('DISPATCH', order, loading);
+
   const [submitting, setSubmitting] = useState(false);
   const submittingRef = React.useRef(false);
   const [success, setSuccess] = useState(false);
@@ -75,22 +78,63 @@ export default function DispatchFinalizationPage() {
   useEffect(() => {
     if (!id) return;
     let unsub: (() => void) | undefined;
-    const ref = doc(db, 'orders', id);
-    unsub = onSnapshot(ref, async snap => {
-      if (!snap.exists()) {
-        try {
-          const q = query(collection(db, 'orders'), where('id', '==', id), limit(1));
-          const qs = await getDocs(q);
-          if (qs.docs.length > 0) setOrder({ id: qs.docs[0].id, ...(qs.docs[0].data() as any) } as Order);
-          else setOrder(null);
-        } catch { setOrder(null); }
-      } else {
-        setOrder({ id: snap.id, ...(snap.data() as any) } as Order);
-      }
-      setLoading(false);
-    }, () => setLoading(false));
+    let cancelled = false;
 
-    return () => { if (unsub) unsub(); };
+    const candIds = Array.from(
+      new Set(
+        [
+          id,
+          id.trim(),
+          id.replace(/-item\d+$/i, ''),
+          id.includes('-item') ? id.split('-item')[0] : '',
+        ].filter(Boolean)
+      )
+    );
+
+    (async () => {
+      let resolvedId = id;
+      for (const cand of candIds) {
+        try {
+          const snap = await doc(db, 'orders', cand);
+          // Check onSnapshot on first candidate
+          resolvedId = cand;
+          break;
+        } catch {
+          // continue
+        }
+      }
+
+      const ref = doc(db, 'orders', resolvedId);
+      unsub = onSnapshot(ref, async snap => {
+        if (cancelled) return;
+        if (!snap.exists()) {
+          // Try other candidate IDs
+          let found = false;
+          for (const cand of candIds) {
+            try {
+              const q = query(collection(db, 'orders'), where('id', '==', cand), limit(1));
+              const qs = await getDocs(q);
+              if (qs.docs.length > 0) {
+                setOrder({ id: qs.docs[0].id, ...(qs.docs[0].data() as any) } as Order);
+                found = true;
+                break;
+              }
+            } catch { /* continue */ }
+          }
+          if (!found) setOrder(null);
+        } else {
+          setOrder({ id: snap.id, ...(snap.data() as any) } as Order);
+        }
+        setLoading(false);
+      }, () => {
+        if (!cancelled) setLoading(false);
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, [id]);
 
   // Pre-fill form from existing dispatch details
@@ -183,8 +227,7 @@ export default function DispatchFinalizationPage() {
 
       setSuccess(true);
       setTimeout(() => {
-        const returnTo = searchParams.get('returnTo');
-        router.push(returnTo || '/dispatch');
+        router.push(guard.fallbackUrl || '/dispatch/orders');
       }, 2000);
 
     } catch (err: any) {
@@ -201,10 +244,45 @@ export default function DispatchFinalizationPage() {
     </div>
   );
 
+  if (!guard.allowed) {
+    return (
+      <RoleGuard allowedRoles={['DISPATCH', 'ADMIN', 'SUPER_ADMIN', 'MANAGER']}>
+        <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-3xl border border-slate-200 shadow-xl text-center space-y-5">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
+            <AlertCircle size={32} />
+          </div>
+          <div className="space-y-2">
+            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-800">
+              Access Restricted
+            </span>
+            <h1 className="text-xl font-black text-slate-900">
+              {guard.errorReason === 'ADMIN_ONLY'
+                ? 'Admin URL Restricted'
+                : guard.errorReason === 'ROLE_UNAUTHORIZED'
+                ? 'Role Not Assigned'
+                : 'Previous Stages Incomplete'}
+            </h1>
+            <p className="text-xs text-slate-500 font-medium leading-relaxed">
+              {guard.errorMessage}
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => router.push(guard.fallbackUrl)}
+              className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              Go to Global Orders
+            </button>
+          </div>
+        </div>
+      </RoleGuard>
+    );
+  }
+
   if (!order) return (
     <div className="p-8 text-center">
       <p className="text-slate-500 font-bold">Order not found.</p>
-      <button onClick={() => router.back()} className="mt-4 text-indigo-600 font-bold text-sm underline">Go Back</button>
+      <button onClick={() => router.push(guard.fallbackUrl)} className="mt-4 text-indigo-600 font-bold text-sm underline">Go Back</button>
     </div>
   );
 
@@ -221,54 +299,9 @@ export default function DispatchFinalizationPage() {
     </div>
   );
 
-  const dispatchStep = order?.workflowSnapshot?.steps?.find((s) => s.role === 'DISPATCH');
-  const dispatchStepIndex = order?.workflowSnapshot?.steps?.findIndex((s) => s.role === 'DISPATCH') ?? -1;
-  const currentStepIndex = order?.workflowSnapshot?.currentStepIndex ?? 0;
-  const currentStep = order?.workflowSnapshot?.steps?.[currentStepIndex];
-  const isAlreadyDispatched = Boolean(order && (['DISPATCHED', 'IN_TRANSIT', 'DELIVERED'].includes(order.status) || dispatchStep?.status === 'COMPLETED'));
-  const isNotReadyForDispatch = dispatchStepIndex > currentStepIndex && !isAlreadyDispatched;
-
   const dispatchProofUrl = (order?.workflow as any)?.dispatchProofUrl || null;
-  const customerName = order.customerSnapshot?.displayName || order.customerSnapshot?.name || 'Customer';
-
-  if (isNotReadyForDispatch) {
-    return (
-      <RoleGuard allowedRoles={['DISPATCH', 'ADMIN', 'SUPER_ADMIN', 'MANAGER']}>
-        <div className="max-w-md mx-auto my-12 p-8 bg-white rounded-3xl border border-slate-200 shadow-xl text-center space-y-5">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-600 border border-amber-200">
-            <AlertCircle size={32} />
-          </div>
-          <div className="space-y-2">
-            <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-800">
-              Dispatch Locked
-            </span>
-            <h1 className="text-xl font-black text-slate-900">
-              Previous Stages Incomplete
-            </h1>
-            <p className="text-xs text-slate-500 font-medium leading-relaxed">
-              Order #{order.id.replace('ORD-', '')} is currently at the{' '}
-              <strong className="text-slate-900">{currentStep?.label || currentStep?.role || 'earlier'}</strong> stage.
-              All preceding production steps must be completed before dispatching can take place.
-            </p>
-          </div>
-          <div className="flex items-center justify-center gap-3 pt-2">
-            <button
-              onClick={() => router.back()}
-              className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-            >
-              Go Back
-            </button>
-            <button
-              onClick={() => router.push('/dispatch')}
-              className="rounded-xl bg-slate-900 px-5 py-2.5 text-xs font-bold text-white hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              Dispatch Dashboard
-            </button>
-          </div>
-        </div>
-      </RoleGuard>
-    );
-  }
+  const customerName = order?.customerSnapshot?.displayName || order?.customerSnapshot?.name || 'Customer';
+  const isAlreadyDispatched = Boolean(order && (order.status === 'DISPATCHED' || order.status === 'DELIVERED' || order.status === 'COMPLETED' || order.workflowSnapshot?.steps?.find(s => s.role === 'DISPATCH')?.status === 'COMPLETED'));
 
   return (
     <RoleGuard allowedRoles={['DISPATCH', 'ADMIN', 'SUPER_ADMIN', 'MANAGER']}>
