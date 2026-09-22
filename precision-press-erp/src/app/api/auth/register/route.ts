@@ -53,6 +53,18 @@ async function findProfileByEmail(email: string) {
   return data ?? null;
 }
 
+function parseCookies(cookieHeader: string | null): Record<string, string> {
+  if (!cookieHeader) return {};
+  const cookies: Record<string, string> = {};
+  for (const part of cookieHeader.split(';')) {
+    const [k, v] = part.trim().split('=');
+    if (k && v) {
+      cookies[k] = decodeURIComponent(v);
+    }
+  }
+  return cookies;
+}
+
 export async function POST(request: Request) {
   try {
     const rateLimit = await checkRateLimit('auth_register', 10, 60);
@@ -65,34 +77,85 @@ export async function POST(request: Request) {
     const password = body.password?.trim();
     const requestedRole = body.role?.trim() || 'CUSTOMER';
     
-    // Default to CUSTOMER for public signups
+    // Default to CUSTOMER for public signups unless caller is verified Admin
     let role = 'CUSTOMER';
+    let callerIsAdmin = false;
     
-    // If an authorization token is provided, check if an Admin is making this request
-    const authHeader = request.headers.get('Authorization');
-    if (authHeader?.startsWith('Bearer ')) {
+    // 1. Check cookies for Admin role
+    const cookieMap = parseCookies(request.headers.get('cookie'));
+    const roleCookie = (cookieMap['role'] || '').toUpperCase();
+    const rolesCookie = cookieMap['roles'] || '';
+    if (roleCookie === 'ADMIN' || roleCookie === 'SUPER_ADMIN') {
+      callerIsAdmin = true;
+    } else if (rolesCookie) {
       try {
-        // Need to import adminAuth from '@/lib/firebase-admin' for this to work
-        const { adminAuth } = await import('@/lib/firebase-admin');
-        const idToken = authHeader.split('Bearer ')[1];
-        const decoded = await adminAuth.verifyIdToken(idToken);
-        
-        // Securely fetch caller's true role from DB
-        const { supabaseAdmin } = await import('@/lib/supabase-admin');
-        const { data: caller } = await supabaseAdmin.from('profiles').select('role').eq('id', decoded.uid).single();
-        
-        if (caller?.role === 'ADMIN' || caller?.role === 'SUPER_ADMIN' || caller?.role === 'OWNER') {
-          // Caller is an admin creating an account, allow the requested role
-          role = requestedRole;
+        const parsed = JSON.parse(rolesCookie);
+        if (Array.isArray(parsed) && (parsed.includes('ADMIN') || parsed.includes('SUPER_ADMIN'))) {
+          callerIsAdmin = true;
+        }
+      } catch {}
+    }
+
+    // 2. Check Authorization Bearer token (Supabase access token)
+    const authHeader = request.headers.get('Authorization');
+    if (!callerIsAdmin && authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split('Bearer ')[1];
+        const { data: authData } = await supabaseServer.auth.getUser(token);
+        if (authData?.user) {
+          const { data: callerProfile } = await supabaseServer
+            .from('profiles')
+            .select('role, roles')
+            .eq('id', authData.user.id)
+            .maybeSingle();
+
+          const cr = [callerProfile?.role, ...(Array.isArray(callerProfile?.roles) ? callerProfile.roles : [])]
+            .map(r => String(r).toUpperCase());
+          if (cr.includes('ADMIN') || cr.includes('SUPER_ADMIN') || cr.includes('OWNER')) {
+            callerIsAdmin = true;
+          }
         }
       } catch (e) {
-        // Ignore auth error, just treat as a public signup (forces CUSTOMER role)
+        // Fall through
       }
     }
 
+    if (callerIsAdmin) {
+      role = requestedRole;
+    }
+
     const name = body.name?.trim() || 'User';
-    const printerCategory = role === 'PRINTER' ? (body.printerCategory?.trim() || undefined) : undefined;
-    const printerSubCategory = role === 'PRINTER' ? (body.printerSubCategory?.trim() || undefined) : undefined;
+    let printerCategory = role === 'PRINTER' ? (body.printerCategory?.trim() || undefined) : undefined;
+    let printerSubCategory = role === 'PRINTER' ? (body.printerSubCategory?.trim() || undefined) : undefined;
+    let printingCategoryId: string | null = null;
+    let printingSubcategoryId: string | null = null;
+
+    if (role === 'PRINTER' && printerCategory && printerCategory !== 'MAIN_PRINTER') {
+      const { data: catRecord } = await supabaseServer
+        .from('printing_categories')
+        .select('id, name')
+        .or(`id.eq.${printerCategory},name.ilike.${printerCategory}`)
+        .maybeSingle();
+
+      if (catRecord) {
+        printingCategoryId = catRecord.id;
+        printerCategory = catRecord.name;
+
+        if (printerSubCategory) {
+          const { data: subRecord } = await supabaseServer
+            .from('printing_subcategories')
+            .select('id, name')
+            .eq('category_id', catRecord.id)
+            .or(`id.eq.${printerSubCategory},name.ilike.${printerSubCategory}`)
+            .maybeSingle();
+
+          if (subRecord) {
+            printingSubcategoryId = subRecord.id;
+            printerSubCategory = subRecord.name;
+          }
+        }
+      }
+    }
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Missing email or password.' }, { status: 400 });
@@ -133,84 +196,64 @@ export async function POST(request: Request) {
     // Customer specific fields
     const isCustomer = role === 'CUSTOMER';
     const customerType = isCustomer ? (body.customerType || 'CASH') : 'CASH';
-    const creditStatus = isCustomer && customerType === 'CREDIT' ? 'PENDING_APPROVAL' : 'APPROVED';
 
-    const profilePayload = existingProfile
-      ? {
-          ...existingProfile,
-          role: existingProfile.role ?? role,
-          roles: existingProfile.roles ?? [existingProfile.role ?? role],
-          uid: existingProfile.uid ?? existingProfile.id,
-        }
-      : {
-          id: authUser!.id,
-          uid: authUser!.id,
-          email,
-          name,
-          displayName: name,
-          role,
-          roles: [role],
-          ...(printerCategory ? { printerCategory, printing_category_name: printerCategory } : {}),
-          ...(printerSubCategory ? { printerSubCategory, printing_subcategory_name: printerSubCategory } : {}),
-          ...(isCustomer ? {
-            company_name: body.companyName?.trim() || body.businessName?.trim() || name,
-            contact_person: body.contactPerson?.trim() || name,
-            alternate_mobile: body.alternateMobile?.trim() || '',
-            pan_number: body.panNumber?.trim() || '',
-            businessName: body.businessName?.trim() || name,
-            phone: body.phone?.trim(),
-            address: body.address?.trim(),
-            houseNumber: body.houseNumber?.trim() || '',
-            roadName: body.roadName?.trim() || body.address?.trim() || '',
-            city: body.city?.trim() || '',
-            state: body.state?.trim(),
-            country: body.country?.trim() || 'India',
-            pincode: body.pincode?.trim(),
-            billing_address_line1: body.billingAddressLine1?.trim() || body.houseNumber?.trim() || '',
-            billing_address_line2: body.billingAddressLine2?.trim() || body.roadName?.trim() || body.address?.trim() || '',
-            billing_area: body.billingArea?.trim() || '',
-            billing_city: body.city?.trim() || '',
-            billing_district: body.billingDistrict?.trim() || body.city?.trim() || '',
-            billing_state: body.state?.trim() || '',
-            billing_state_code: body.billingStateCode?.trim() || '',
-            billing_pincode: body.pincode?.trim() || '',
-            billing_country: body.country?.trim() || 'India',
-            shipping_same_as_billing: true,
-            gstType: body.gstType || 'Unregistered',
-            gst_registered: body.gstType !== 'Unregistered',
-            gstin: body.gstType !== 'Unregistered' ? body.gstNumber?.trim() : undefined,
-            gstNumber: body.gstType !== 'Unregistered' ? body.gstNumber?.trim() : undefined,
-            gstVerified: body.gstType !== 'Unregistered' ? body.gstVerified || false : false,
-            gstDetails: body.gstType !== 'Unregistered' ? body.gstDetails || null : null,
-            customerType,
-            creditLimit: customerType === 'CREDIT' ? (body.creditLimit || 0) : 0,
-            voucherType: body.voucherType || 'Type 0',
-            creditStatus,
-            addresses: (body.houseNumber || body.roadName || body.pincode || body.address) ? [{
-              id: Date.now().toString(),
-              houseNumber: body.houseNumber?.trim() || '',
-              roadName: body.roadName?.trim() || body.address?.trim() || '',
-              city: body.city?.trim() || '',
-              state: body.state?.trim() || '',
-              pincode: body.pincode?.trim() || '',
-              isDefault: true
-            }] : [],
-            defaultAddressId: (body.houseNumber || body.roadName || body.pincode || body.address) ? Date.now().toString() : undefined,
-          } : {
-            customerType: 'CASH',
-            creditLimit: 0,
-            status: 'ACTIVE',
-          }),
-          usedCredit: 0,
-          status: 'ACTIVE',
-          createdAt: new Date().toISOString(),
-        };
+    const profilePayload: Record<string, any> = {
+      id: authUser!.id,
+      uid: authUser!.id,
+      email,
+      name,
+      displayName: name,
+      role,
+      roles: [role],
+      customerType,
+      creditLimit: (isCustomer && customerType === 'CREDIT') ? (body.creditLimit || 0) : 0,
+      usedCredit: existingProfile?.usedCredit ?? 0,
+      status: 'ACTIVE',
+      createdAt: existingProfile?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...(role === 'PRINTER' ? {
+        printerCategory: printerCategory || 'MAIN_PRINTER',
+        printing_category_name: printerCategory || 'MAIN_PRINTER',
+        printing_category_id: printingCategoryId,
+        printing_subcategory_name: printerSubCategory || null,
+        printing_subcategory_id: printingSubcategoryId,
+      } : {}),
+      ...(isCustomer ? {
+        businessName: body.businessName?.trim() || body.companyName?.trim() || name,
+        phone: body.phone?.trim() || null,
+        state: body.state?.trim() || null,
+        country: body.country?.trim() || 'India',
+        pincode: body.pincode?.trim() || null,
+        gstType: body.gstType || 'Unregistered',
+        gst_registered: body.gstType !== 'Unregistered',
+        gstNumber: body.gstType !== 'Unregistered' ? body.gstNumber?.trim() : null,
+        gstVerified: body.gstType !== 'Unregistered' ? body.gstVerified || false : false,
+        voucherType: body.voucherType || 'Type 0',
+        billing_address_line1: body.billingAddressLine1?.trim() || body.houseNumber?.trim() || null,
+        billing_address_line2: body.billingAddressLine2?.trim() || body.roadName?.trim() || body.address?.trim() || null,
+        billing_city: body.city?.trim() || null,
+        billing_state: body.state?.trim() || null,
+        billing_pincode: body.pincode?.trim() || null,
+        billing_country: body.country?.trim() || 'India',
+        shipping_same_as_billing: true,
+        shipping_country: body.country?.trim() || 'India',
+        addresses: (body.houseNumber || body.roadName || body.pincode || body.address) ? [{
+          id: Date.now().toString(),
+          houseNumber: body.houseNumber?.trim() || '',
+          roadName: body.roadName?.trim() || body.address?.trim() || '',
+          city: body.city?.trim() || '',
+          state: body.state?.trim() || '',
+          pincode: body.pincode?.trim() || '',
+          isDefault: true
+        }] : [],
+        defaultAddressId: (body.houseNumber || body.roadName || body.pincode || body.address) ? Date.now().toString() : null,
+      } : {}),
+    };
 
-    if (!existingProfile) {
-      const { error: profileError } = await supabaseServer.from('profiles').upsert(profilePayload, { onConflict: 'id' });
-      if (profileError) {
-        return NextResponse.json({ error: profileError.message }, { status: 400 });
-      }
+    const { error: profileError } = await supabaseServer.from('profiles').upsert(profilePayload, { onConflict: 'id' });
+    if (profileError) {
+      console.error('[auth/register] profiles upsert error:', profileError);
+      return NextResponse.json({ error: profileError.message }, { status: 400 });
     }
 
     return NextResponse.json({ user: authUser, profile: profilePayload });

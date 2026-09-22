@@ -33,7 +33,8 @@ function normalizeProfile(row: ProfileRow, fallbackEmail?: string | null): UserP
     photoURL: row.photoURL ?? undefined,
     role: row.role ?? 'CUSTOMER',
     roles: roles.length > 0 ? (roles as StaffRole[]) : undefined,
-    printerCategory: row.printerCategory ?? row.printer_category ?? undefined,
+    printerCategory: row.printing_category_name ?? row.printerCategory ?? row.printer_category ?? undefined,
+    printerSubCategory: row.printing_subcategory_name ?? row.printerSubCategory ?? row.printer_sub_category ?? undefined,
     status: row.status ?? 'ACTIVE',
     customerType: row.customerType ?? 'CASH',
     creditLimit: Number(row.creditLimit ?? 0),
@@ -182,9 +183,16 @@ export class AuthService {
     creditLimit?: number;
     voucherType?: 'Type 0' | 'Type 1';
   }): Promise<UserProfile> {
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes.data?.session?.access_token;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     const response = await fetch('/api/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload),
     });
 

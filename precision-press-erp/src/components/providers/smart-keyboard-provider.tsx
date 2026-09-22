@@ -188,35 +188,30 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
 
       // 1. TALLY-STYLE DUAL BACKSPACE HANDLER:
       if (e.key === "Backspace" && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        if (target.getAttribute("data-no-smart-backspace") === "true") {
+          return;
+        }
+
         let shouldNavigateBack = false;
 
         if (tagName === "input") {
           const input = target as HTMLInputElement;
           const val = input.value ?? "";
-          const start = input.selectionStart ?? 0;
-          const end = input.selectionEnd ?? 0;
           const isEmpty = val.length === 0;
-          const isAtBeginning = start === 0 && end === 0;
-          const isFullSelected = start === 0 && end === val.length && val.length > 0;
 
-          // If box is empty, at beginning 0, or all text is selected:
-          // -> Jump directly to previous field!
-          if (isEmpty || isAtBeginning || isFullSelected) {
+          // Only jump to previous field if the input is ALREADY completely empty!
+          // When text exists (or text is selected), let the browser delete normally.
+          if (isEmpty) {
             shouldNavigateBack = true;
           } else {
-            // User is typing or cursor is at end/inside text (after pressing End): allow character deletion
             return;
           }
         } else if (tagName === "textarea") {
           const textarea = target as HTMLTextAreaElement;
           const val = textarea.value ?? "";
-          const start = textarea.selectionStart ?? 0;
-          const end = textarea.selectionEnd ?? 0;
           const isEmpty = val.length === 0;
-          const isAtBeginning = start === 0 && end === 0;
-          const isFullSelected = start === 0 && end === val.length && val.length > 0;
 
-          if (isEmpty || isAtBeginning || isFullSelected) {
+          if (isEmpty) {
             shouldNavigateBack = true;
           } else {
             return;

@@ -107,6 +107,7 @@ export default function CreateStaffPage() {
                   <input
                     type="text"
                     required
+                    data-no-smart-backspace="true"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. John Doe"
@@ -123,6 +124,7 @@ export default function CreateStaffPage() {
                   <input
                     type="email"
                     required
+                    data-no-smart-backspace="true"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="john@example.com"
@@ -140,6 +142,7 @@ export default function CreateStaffPage() {
                     type="password"
                     required
                     minLength={6}
+                    data-no-smart-backspace="true"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Min 6 characters"
