@@ -28,7 +28,7 @@ import {
 import { RoleGuard } from "@/lib/role-guard";
 import { ItemDescriptionModal } from "@/components/dashboard/ItemDescriptionModal";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
-import { fuzzyMatch, normalizeSearchTerm } from "@/lib/search-utils";
+import { fuzzyMatch, normalizeSearchTerm, createHighlightRegex } from "@/lib/search-utils";
 
 interface SavedAddress {
   label: string;
@@ -159,20 +159,16 @@ function HighlightMatch({ text, query, isHighlighted }: { text: string; query: s
   const q = (query || '').trim();
   if (!q) return <>{text}</>;
 
-  const cleanQ = q.replace(/^ct[:\s\-\/]?\s*/i, '').trim();
-  if (!cleanQ) return <>{text}</>;
+  const regex = createHighlightRegex(q);
+  if (!regex) return <>{text}</>;
 
-  const tokens = cleanQ.split(/\s+/).filter(Boolean);
-  if (tokens.length === 0) return <>{text}</>;
-
-  const escapedTokens = tokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const regex = new RegExp(`(${escapedTokens.join('|')})`, 'gi');
   const parts = text.split(regex);
 
   return (
     <>
       {parts.map((part, i) => {
-        const isMatch = tokens.some((t) => t.toLowerCase() === part.toLowerCase());
+        const isMatch = regex.test(part);
+        regex.lastIndex = 0;
         if (isMatch) {
           return (
             <mark

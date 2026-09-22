@@ -7,7 +7,42 @@ import { INDIAN_STATES } from '@/lib/constants';
 import { openTiffInSystem, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { toast } from 'react-hot-toast';
 import { ItemDescriptionModal } from '@/components/dashboard/ItemDescriptionModal';
-import { fuzzyMatch, normalizeSearchTerm } from '@/lib/search-utils';
+import { fuzzyMatch, normalizeSearchTerm, createHighlightRegex } from '@/lib/search-utils';
+
+function HighlightMatch({ text, query, isHighlighted }: { text: string; query: string; isHighlighted?: boolean }) {
+  if (!text) return null;
+  const q = (query || '').trim();
+  if (!q) return <>{text}</>;
+
+  const regex = createHighlightRegex(q);
+  if (!regex) return <>{text}</>;
+
+  const parts = text.split(regex);
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        const isMatch = regex.test(part);
+        regex.lastIndex = 0;
+        if (isMatch) {
+          return (
+            <mark
+              key={i}
+              className={
+                isHighlighted
+                  ? 'bg-black text-amber-300 font-extrabold px-0.5 rounded-xs underline decoration-amber-400'
+                  : 'bg-amber-300/90 text-amber-950 font-extrabold px-0.5 rounded-xs shadow-2xs'
+              }
+            >
+              {part}
+            </mark>
+          );
+        }
+        return <React.Fragment key={i}>{part}</React.Fragment>;
+      })}
+    </>
+  );
+}
 
 export function QuotationBuilderView({ vm }: { vm: any }) {
   const {
@@ -2351,19 +2386,19 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                           >
                             <div className="flex-1 min-w-0 pr-3">
                               <div className="truncate font-bold text-xs leading-tight">
-                                {c.displayName || c.name}
+                                <HighlightMatch text={c.displayName || c.name} query={customerSearch} isHighlighted={isHighlighted} />
                               </div>
                               {c.phone && (
                                 <div className={`text-[10px] ${isHighlighted ? 'text-black/80' : 'text-slate-500'}`}>
-                                  {c.phone}
+                                  <HighlightMatch text={c.phone} query={customerSearch} isHighlighted={isHighlighted} />
                                 </div>
                               )}
                             </div>
                             <div className={`w-48 text-left truncate text-[11px] shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
-                              {[c.billing_city || c.city, c.billing_area || c.area].filter(Boolean).join(', ') || '—'}
+                              <HighlightMatch text={[c.billing_city || c.city, c.billing_area || c.area].filter(Boolean).join(', ') || '—'} query={customerSearch} isHighlighted={isHighlighted} />
                             </div>
                             <div className={`w-44 text-center font-mono text-[11px] truncate shrink-0 ${isHighlighted ? 'text-black font-bold' : 'text-slate-600'}`}>
-                              {c.gstin || '—'}
+                              <HighlightMatch text={c.gstin || '—'} query={customerSearch} isHighlighted={isHighlighted} />
                             </div>
                             <div className={`w-32 text-right font-bold text-[11px] shrink-0 ${isHighlighted ? 'text-black' : 'text-slate-800'}`}>
                               {c.credit_balance !== undefined ? `₹${Number(c.credit_balance || 0).toLocaleString()}` : '—'}
@@ -2554,7 +2589,9 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                               >
                                 <div className="flex-1 min-w-0 pr-3">
                                   <div className="truncate font-bold leading-tight flex items-center gap-2">
-                                    <span className="truncate text-xs">{p.name}</span>
+                                    <span className="truncate text-xs">
+                                      <HighlightMatch text={p.name} query={searchQuery} isHighlighted={isHighlighted} />
+                                    </span>
                                     {p.category && (
                                       <button
                                         type="button"
@@ -2574,7 +2611,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                               : 'bg-blue-100 text-blue-800 hover:bg-blue-200 border border-blue-200'
                                         }`}
                                       >
-                                        {p.category}
+                                        <HighlightMatch text={p.category} query={searchQuery} isHighlighted={isHighlighted} />
                                       </button>
                                     )}
                                   </div>
