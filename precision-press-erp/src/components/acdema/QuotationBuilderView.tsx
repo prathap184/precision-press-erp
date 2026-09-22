@@ -765,6 +765,14 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                 requestAnimationFrame(focusItem);
                               }
                             }
+                          } else if (e.key === "Backspace") {
+                            const val = e.currentTarget.value || '';
+                            const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                            const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                            if (customerSearch === '' || val === '' || isAllSelected || isAtStart || (!customerSearch && !selectedCustomer)) {
+                              e.preventDefault();
+                              setCustomerDropdownOpen(false);
+                            }
                           } else if (e.key === "Escape") {
                             e.preventDefault();
                             e.stopPropagation();
@@ -1088,6 +1096,7 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                                                      const custInput = document.getElementById('quotation-customer-search-input') || document.getElementById('proxy-customer-search-input') || document.getElementById('order-number-input');
                                                      if (custInput) {
                                                        custInput.focus();
+                                                       try { (custInput as HTMLInputElement).select(); } catch {}
                                                      }
                                                    } else {
                                                      const prevRow = rows[index - 1];

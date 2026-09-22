@@ -68,6 +68,7 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
     }
 
     function handleKeyDown(e: KeyboardEvent) {
+      if (e.defaultPrevented) return;
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (typeof document !== 'undefined' && document.querySelector('[data-shortcut-modal="true"]')) {
         return;
@@ -198,10 +199,14 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           const input = target as HTMLInputElement;
           const val = input.value ?? "";
           const isEmpty = val.length === 0;
+          let isAllSelected = false;
+          try {
+            isAllSelected = input.selectionStart === 0 && input.selectionEnd === val.length;
+          } catch {}
 
-          // Only jump to previous field if the input is ALREADY completely empty!
-          // When text exists (or text is selected), let the browser delete normally.
-          if (isEmpty) {
+          // Tally ERP: Jump back to previous field if empty OR all text is selected (without deleting)
+          // Normal character deletion only happens when cursor is placed via End / Arrow keys
+          if (isEmpty || isAllSelected) {
             shouldNavigateBack = true;
           } else {
             return;
@@ -210,8 +215,12 @@ export function SmartKeyboardProvider({ children }: { children: React.ReactNode 
           const textarea = target as HTMLTextAreaElement;
           const val = textarea.value ?? "";
           const isEmpty = val.length === 0;
+          let isAllSelected = false;
+          try {
+            isAllSelected = textarea.selectionStart === 0 && textarea.selectionEnd === val.length;
+          } catch {}
 
-          if (isEmpty) {
+          if (isEmpty || isAllSelected) {
             shouldNavigateBack = true;
           } else {
             return;

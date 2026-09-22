@@ -1341,6 +1341,19 @@ export function InvoiceFormView() {
                       type="text"
                       value={reference}
                       onChange={(e) => setReference(e.target.value)}
+                      onFocus={(e) => {
+                        try { e.currentTarget.select(); } catch {}
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const dateInput = document.getElementById("invoice-date-input");
+                          if (dateInput) {
+                            dateInput.focus();
+                            try { (dateInput as HTMLInputElement).select(); } catch {}
+                          }
+                        }
+                      }}
                       placeholder="e.g. PO-8842"
                       className="h-10 w-32 bg-slate-50 text-slate-800 font-mono font-black text-xs px-3 rounded-xl border-2 border-slate-200 focus:border-blue-600 focus:bg-white outline-none"
                     />
@@ -1359,19 +1372,44 @@ export function InvoiceFormView() {
                       inputMode="numeric"
                       value={dateDisplayInput}
                       onChange={(e) => setDateDisplayInput(e.target.value)}
+                      onFocus={(e) => {
+                        try { e.currentTarget.select(); } catch {}
+                      }}
                       onBlur={() => {
                         const parsed = parseTallyDate(dateDisplayInput, issueDate);
                         setIssueDate(parsed);
                         setDateDisplayInput(isoToDisplayDate(parsed));
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                        if (e.key === "End") {
+                          e.preventDefault();
+                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                          e.currentTarget.setSelectionRange(len, len);
+                        } else if (e.key === "Home") {
+                          e.preventDefault();
+                          e.currentTarget.setSelectionRange(0, 0);
+                        } else if (e.key === "Enter") {
                           e.preventDefault();
                           const parsed = parseTallyDate(dateDisplayInput, issueDate);
                           setIssueDate(parsed);
                           setDateDisplayInput(isoToDisplayDate(parsed));
                           const custInput = document.getElementById("invoice-customer-search-input");
-                          if (custInput) custInput.focus();
+                          if (custInput) {
+                            custInput.focus();
+                            try { (custInput as HTMLInputElement).select(); } catch {}
+                          }
+                        } else if (e.key === "Backspace") {
+                          const val = e.currentTarget.value || "";
+                          const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                          const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                          if (val.length === 0 || isAllSelected || isAtStart) {
+                            e.preventDefault();
+                            const refInput = document.getElementById("invoice-reference-input");
+                            if (refInput) {
+                              refInput.focus();
+                              try { (refInput as HTMLInputElement).select(); } catch {}
+                            }
+                          }
                         }
                       }}
                       placeholder="DD-MM-YYYY"
@@ -1433,15 +1471,14 @@ export function InvoiceFormView() {
                         const target = e.currentTarget;
                         if (selectedCustomer) {
                           setCustomerSearch(selectedCustomer.displayName || selectedCustomer.name || "");
-                          setTimeout(() => {
-                            try {
-                              const len = target.value ? target.value.length : 0;
-                              target.setSelectionRange(len, len);
-                            } catch {}
-                          }, 20);
                         } else {
                           setCustomerSearch("");
                         }
+                        setTimeout(() => {
+                          try {
+                            target.select();
+                          } catch {}
+                        }, 20);
                         setHighlightCustomerIndex(0);
                       }}
                       onKeyDown={(e) => {
@@ -1513,12 +1550,9 @@ export function InvoiceFormView() {
                         } else if (e.key === "Backspace") {
                           const val = e.currentTarget.value || '';
                           const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
-                          if (customerSearch === '' || val === '' || isAllSelected || (!customerSearch && !selectedCustomer)) {
+                          const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                          if (customerSearch === '' || val === '' || isAllSelected || isAtStart || (!customerSearch && !selectedCustomer)) {
                             e.preventDefault();
-                            if (isAllSelected && selectedCustomer) {
-                              setSelectedCustomerId('');
-                              setCustomerSearch('');
-                            }
                             setCustomerDropdownOpen(false);
                             const dateInput = document.getElementById('invoice-date-input') || document.getElementById('invoice-reference-input');
                             if (dateInput) {
@@ -1653,8 +1687,7 @@ export function InvoiceFormView() {
                                       setTimeout(() => {
                                         try {
                                           const el = e.target as HTMLInputElement;
-                                          const len = el.value ? el.value.length : 0;
-                                          el.setSelectionRange(len, len);
+                                          el.select();
                                         } catch {}
                                       }, 10);
                                     }}
@@ -1783,8 +1816,7 @@ export function InvoiceFormView() {
                                               if (custInput) {
                                                 custInput.focus();
                                                 try {
-                                                  const len = (custInput as HTMLInputElement).value ? (custInput as HTMLInputElement).value.length : 0;
-                                                  (custInput as HTMLInputElement).setSelectionRange(len, len);
+                                                  (custInput as HTMLInputElement).select();
                                                 } catch {}
                                               }
                                             } else {
@@ -1885,6 +1917,9 @@ export function InvoiceFormView() {
                                     id={`row-${row.id}-width`}
                                     value={row.width !== undefined ? row.width : (row.hasSingleDefaultSize && prod?.default_width ? String(prod.default_width) : "")}
                                     onChange={(e) => updateRow(row.id, { width: e.target.value })}
+                                    onFocus={(e) => {
+                                      try { e.currentTarget.select(); } catch {}
+                                    }}
                                     onKeyDown={(e) => {
                                       if (e.key === "End") {
                                         e.preventDefault();
@@ -1901,12 +1936,17 @@ export function InvoiceFormView() {
                                           const hEl = document.getElementById(`row-${row.id}-height`);
                                           if (hEl) hEl.focus();
                                         }
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setOpenRowId(row.id);
-                                        const itemInput = document.getElementById(`row-${row.id}-product-input`);
-                                        if (itemInput) itemInput.focus();
+                                      } else {
+                                        const val = e.currentTarget.value || "";
+                                        const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                                        const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                                        if ((e.key === "Backspace" && (val.length === 0 || isAtStart || isAllSelected)) || (e.key === "ArrowLeft" && (val.length === 0 || isAtStart))) {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          setOpenRowId(row.id);
+                                          const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                          if (itemInput) itemInput.focus();
+                                        }
                                       }
                                     }}
                                     className="w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0"
@@ -2001,6 +2041,9 @@ export function InvoiceFormView() {
                                     id={`row-${row.id}-height`}
                                     value={row.height !== undefined ? row.height : (row.hasSingleDefaultSize && prod?.default_length ? String(prod.default_length) : "")}
                                     onChange={(e) => updateRow(row.id, { height: e.target.value })}
+                                    onFocus={(e) => {
+                                      try { e.currentTarget.select(); } catch {}
+                                    }}
                                     onKeyDown={(e) => {
                                       if (e.key === "End") {
                                         e.preventDefault();
@@ -2020,13 +2063,18 @@ export function InvoiceFormView() {
                                           const qtyEl = document.getElementById(`row-${row.id}-quantity`);
                                           if (qtyEl) qtyEl.focus();
                                         }
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        const wUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
-                                        if (wUnitBtn) wUnitBtn.focus();
-                                        else {
-                                          const wEl = document.getElementById(`row-${row.id}-width`);
-                                          if (wEl) wEl.focus();
+                                      } else {
+                                        const val = e.currentTarget.value || "";
+                                        const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                                        const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                                        if ((e.key === "Backspace" && (val.length === 0 || isAtStart || isAllSelected)) || (e.key === "ArrowLeft" && (val.length === 0 || isAtStart))) {
+                                          e.preventDefault();
+                                          const wUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                          if (wUnitBtn) wUnitBtn.focus();
+                                          else {
+                                            const wEl = document.getElementById(`row-${row.id}-width`);
+                                            if (wEl) wEl.focus();
+                                          }
                                         }
                                       }
                                     }}
@@ -2154,13 +2202,18 @@ export function InvoiceFormView() {
                                       e.preventDefault();
                                       const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
                                       if (rateInput) rateInput.focus();
-                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
-                                      e.preventDefault();
-                                      const hUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
-                                      if (hUnitBtn) hUnitBtn.focus();
-                                      else {
-                                        const hEl = document.getElementById(`row-${row.id}-height`);
-                                        if (hEl) hEl.focus();
+                                    } else {
+                                      const val = e.currentTarget.value || "";
+                                      const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                                      const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                                      if ((e.key === "Backspace" && (val.length === 0 || isAtStart || isAllSelected)) || (e.key === "ArrowLeft" && (val.length === 0 || isAtStart))) {
+                                        e.preventDefault();
+                                        const hUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                        if (hUnitBtn) hUnitBtn.focus();
+                                        else {
+                                          const hEl = document.getElementById(`row-${row.id}-height`);
+                                          if (hEl) hEl.focus();
+                                        }
                                       }
                                     }
                                   }}
@@ -2185,8 +2238,7 @@ export function InvoiceFormView() {
                                     value={row.quantity !== undefined ? row.quantity : "1"}
                                     onFocus={(e) => {
                                       try {
-                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
-                                        e.currentTarget.setSelectionRange(len, len);
+                                        e.currentTarget.select();
                                       } catch {}
                                     }}
                                     onChange={(e) => updateRow(row.id, { quantity: e.target.value })}
@@ -2207,20 +2259,25 @@ export function InvoiceFormView() {
                                         } else if (rateUnit) {
                                           rateUnit.focus();
                                         }
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        if (row.isSizeInputActive) {
-                                          const hUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
-                                          if (hUnitBtn) hUnitBtn.focus();
-                                          else {
-                                            const hEl = document.getElementById(`row-${row.id}-height`);
-                                            if (hEl) hEl.focus();
+                                      } else {
+                                        const val = e.currentTarget.value || "";
+                                        const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                                        const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                                        if ((e.key === "Backspace" && (val.length === 0 || isAtStart || isAllSelected)) || (e.key === "ArrowLeft" && (val.length === 0 || isAtStart))) {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          if (row.isSizeInputActive) {
+                                            const hUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                            if (hUnitBtn) hUnitBtn.focus();
+                                            else {
+                                              const hEl = document.getElementById(`row-${row.id}-height`);
+                                              if (hEl) hEl.focus();
+                                            }
+                                          } else {
+                                            setOpenRowId(row.id);
+                                            const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                            if (itemInput) itemInput.focus();
                                           }
-                                        } else {
-                                          setOpenRowId(row.id);
-                                          const itemInput = document.getElementById(`row-${row.id}-product-input`);
-                                          if (itemInput) itemInput.focus();
                                         }
                                       }
                                     }}
@@ -2243,8 +2300,7 @@ export function InvoiceFormView() {
                                   onChange={(e) => updateRow(row.id, { manualRate: e.target.value })}
                                   onFocus={(e) => {
                                     try {
-                                      const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
-                                      e.currentTarget.setSelectionRange(len, len);
+                                      e.currentTarget.select();
                                     } catch {}
                                   }}
                                   onKeyDown={(e) => {
@@ -2265,10 +2321,15 @@ export function InvoiceFormView() {
                                         if (fileInput) fileInput.focus();
                                         else handleRowFinalEnter(index);
                                       }
-                                    } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
-                                      e.preventDefault();
-                                      const qtyInput = document.getElementById(`row-${row.id}-quantity`);
-                                      if (qtyInput) qtyInput.focus();
+                                    } else {
+                                      const val = e.currentTarget.value || "";
+                                      const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                                      const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                                      if ((e.key === "Backspace" && (val.length === 0 || isAtStart || isAllSelected)) || (e.key === "ArrowLeft" && (val.length === 0 || isAtStart))) {
+                                        e.preventDefault();
+                                        const qtyInput = document.getElementById(`row-${row.id}-quantity`);
+                                        if (qtyInput) qtyInput.focus();
+                                      }
                                     }
                                   }}
                                   placeholder="0.00"
@@ -2297,8 +2358,7 @@ export function InvoiceFormView() {
                                     onChange={(e) => updateRow(row.id, { manualRate: e.target.value })}
                                     onFocus={(e) => {
                                       try {
-                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
-                                        e.currentTarget.setSelectionRange(len, len);
+                                        e.currentTarget.select();
                                       } catch {}
                                     }}
                                     onKeyDown={(e) => {
@@ -2319,20 +2379,25 @@ export function InvoiceFormView() {
                                           if (fileInput) fileInput.focus();
                                           else handleRowFinalEnter(index);
                                         }
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        if (row.isSizeInputActive && row.isModeB) {
-                                          const pcsInput = document.getElementById(`row-${row.id}-pcs`);
-                                          if (pcsInput) {
-                                            pcsInput.focus();
-                                            return;
+                                      } else {
+                                        const val = e.currentTarget.value || "";
+                                        const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                                        const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                                        if ((e.key === "Backspace" && (val.length === 0 || isAtStart || isAllSelected)) || (e.key === "ArrowLeft" && (val.length === 0 || isAtStart))) {
+                                          e.preventDefault();
+                                          if (row.isSizeInputActive && row.isModeB) {
+                                            const pcsInput = document.getElementById(`row-${row.id}-pcs`);
+                                            if (pcsInput) {
+                                              pcsInput.focus();
+                                              return;
+                                            }
                                           }
-                                        }
-                                        const qtyInput = document.getElementById(`row-${row.id}-quantity`);
-                                        if (qtyInput) qtyInput.focus();
-                                        else {
-                                          const itemInput = document.getElementById(`row-${row.id}-product-input`);
-                                          if (itemInput) itemInput.focus();
+                                          const qtyInput = document.getElementById(`row-${row.id}-quantity`);
+                                          if (qtyInput) qtyInput.focus();
+                                          else {
+                                            const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                            if (itemInput) itemInput.focus();
+                                          }
                                         }
                                       }
                                     }}
@@ -2406,8 +2471,7 @@ export function InvoiceFormView() {
                                     value={row.fileName || row.tiffPath || ""}
                                     onFocus={(e) => {
                                       try {
-                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
-                                        e.currentTarget.setSelectionRange(len, len);
+                                        e.currentTarget.select();
                                       } catch {}
                                     }}
                                     onChange={(e) => {
@@ -2418,21 +2482,26 @@ export function InvoiceFormView() {
                                       if (e.key === "Enter") {
                                         e.preventDefault();
                                         handleRowFinalEnter(index);
-                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
-                                        e.preventDefault();
-                                        const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
-                                        if (finishSelect && !row.isDirect) {
-                                          finishSelect.focus();
-                                        } else {
-                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
-                                          const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
-                                          if (rateSqft && row.hasMultipleSizes && row.isModeA) {
-                                            rateSqft.focus();
-                                          } else if (rateUnit) {
-                                            rateUnit.focus();
+                                      } else {
+                                        const val = e.currentTarget.value || "";
+                                        const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+                                        const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                                        if ((e.key === "Backspace" && (val.length === 0 || isAtStart || isAllSelected)) || (e.key === "ArrowLeft" && (val.length === 0 || isAtStart))) {
+                                          e.preventDefault();
+                                          const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                          if (finishSelect && !row.isDirect) {
+                                            finishSelect.focus();
                                           } else {
-                                            const qtyInput = document.getElementById(`row-${row.id}-quantity`);
-                                            if (qtyInput) qtyInput.focus();
+                                            const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                            const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                            if (rateSqft && row.hasMultipleSizes && row.isModeA) {
+                                              rateSqft.focus();
+                                            } else if (rateUnit) {
+                                              rateUnit.focus();
+                                            } else {
+                                              const qtyInput = document.getElementById(`row-${row.id}-quantity`);
+                                              if (qtyInput) qtyInput.focus();
+                                            }
                                           }
                                         }
                                       }

@@ -1289,8 +1289,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                       onChange={(e) => setDateDisplayInput(e.target.value)}
                       onFocus={(e) => {
                         try {
-                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
-                          e.currentTarget.setSelectionRange(len, len);
+                          e.currentTarget.select();
                         } catch {}
                       }}
                       onBlur={() => {
@@ -1299,13 +1298,23 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                         setDateDisplayInput(isoToDisplayDate(parsed));
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter") {
+                        if (e.key === "End") {
+                          e.preventDefault();
+                          const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                          e.currentTarget.setSelectionRange(len, len);
+                        } else if (e.key === "Home") {
+                          e.preventDefault();
+                          e.currentTarget.setSelectionRange(0, 0);
+                        } else if (e.key === "Enter") {
                           e.preventDefault();
                           const parsed = parseTallyDate(dateDisplayInput, orderDate);
                           setOrderDate(parsed);
                           setDateDisplayInput(isoToDisplayDate(parsed));
                           const custInput = document.getElementById('proxy-customer-search-input');
-                          if (custInput) custInput.focus();
+                          if (custInput) {
+                            custInput.focus();
+                            try { (custInput as HTMLInputElement).select(); } catch {}
+                          }
                         }
                       }}
                       placeholder="DD-MM-YYYY"
@@ -1451,12 +1460,9 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                           } else if (e.key === "Backspace") {
                             const val = e.currentTarget.value || '';
                             const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
-                            if (customerSearch === '' || val === '' || isAllSelected || (!customerSearch && !selectedCustomer)) {
+                            const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+                            if (customerSearch === '' || val === '' || isAllSelected || isAtStart || (!customerSearch && !selectedCustomer)) {
                               e.preventDefault();
-                              if (isAllSelected && selectedCustomer) {
-                                setSelectedCustomerId('');
-                                setCustomerSearch('');
-                              }
                               setCustomerDropdownOpen(false);
                               const dateInput = document.getElementById('order-date-input');
                               if (dateInput) {
@@ -1724,8 +1730,7 @@ export function ProxyOrderBuilderView({ vm }: { vm: any }) {
                                                       if (custInput) {
                                                         custInput.focus();
                                                         try {
-                                                          const len = (custInput as HTMLInputElement).value ? (custInput as HTMLInputElement).value.length : 0;
-                                                          (custInput as HTMLInputElement).setSelectionRange(len, len);
+                                                          (custInput as HTMLInputElement).select();
                                                         } catch {}
                                                       }
                                                     } else {

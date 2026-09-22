@@ -321,9 +321,14 @@ export function ContactPicker({
                 e.currentTarget.setSelectionRange(0, 0);
                 return;
               }
-            } else if (e.key === "Backspace" && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
-              e.preventDefault();
-              return;
+            } else if (e.key === "Backspace") {
+              const val = e.currentTarget.value || '';
+              const isAllSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === val.length;
+              const isAtStart = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0;
+              if (val.length === 0 || isAtStart || isAllSelected) {
+                e.preventDefault();
+                return;
+              }
             }
 
             if (e.key === "ArrowDown") {
