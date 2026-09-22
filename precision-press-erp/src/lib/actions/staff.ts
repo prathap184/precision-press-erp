@@ -175,6 +175,11 @@ export async function updateStaffRoles(
 
     // Exact roles requested by Admin
     const finalRoles = Array.from(new Set(newRoles));
+    if (finalRoles.includes('ACDEMA')) {
+      if (!finalRoles.includes('ACCOUNTANT')) finalRoles.push('ACCOUNTANT');
+      if (!finalRoles.includes('DESIGNER')) finalRoles.push('DESIGNER');
+      if (!finalRoles.includes('MANAGER')) finalRoles.push('MANAGER');
+    }
     // Determine primary role: keep currentProfile.role if it's still in newRoles, else use newRoles[0]
     const primaryRole = finalRoles.includes(currentProfile.role as StaffRole)
       ? (currentProfile.role as StaffRole)

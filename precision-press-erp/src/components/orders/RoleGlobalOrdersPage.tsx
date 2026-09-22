@@ -97,8 +97,16 @@ interface RoleGlobalOrdersPageProps {
 
 export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps) {
   const auth = useAuth();
-  // All roles this staff member has (from admin staff assignment)
-  const viewerRoles: StaffRole[] = (auth?.roles?.length ? auth.roles : [primaryRole]) as StaffRole[];
+  const rawViewerRoles: StaffRole[] = (auth?.roles?.length ? auth.roles : [primaryRole]) as StaffRole[];
+  const isAcdema = rawViewerRoles.includes('ACDEMA' as StaffRole) || primaryRole === 'ACDEMA';
+  const viewerRolesSet = new Set<StaffRole>(rawViewerRoles);
+  if (isAcdema) {
+    viewerRolesSet.add('ACDEMA' as StaffRole);
+    viewerRolesSet.add('ACCOUNTANT' as StaffRole);
+    viewerRolesSet.add('DESIGNER' as StaffRole);
+    viewerRolesSet.add('MANAGER' as StaffRole);
+  }
+  const viewerRoles: StaffRole[] = Array.from(viewerRolesSet);
   const viewerUid = auth?.profile?.uid || auth?.user?.uid || '';
 
   // Operational roles (exclude admin/super-admin for filtering logic)
@@ -768,9 +776,9 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
             Viewing all orders in the pipeline.{' '}
             Only{' '}
             <span className="font-bold text-amber-900">
-              {effectiveLockedRoles.length ? effectiveLockedRoles.join(' & ') : 'your assigned'}
+              {isAcdema ? 'Accounts, Design & Manager' : (effectiveLockedRoles.length ? effectiveLockedRoles.join(' & ') : 'your assigned')}
             </span>{' '}
-            stage{effectiveLockedRoles.length !== 1 ? 's are' : ' is'} clickable — all others are locked.
+            stage{(!isAcdema && effectiveLockedRoles.length === 1) ? ' is' : 's are'} clickable — all others are locked.
           </span>
         </div>
 

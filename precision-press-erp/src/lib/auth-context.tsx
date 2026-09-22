@@ -75,13 +75,22 @@ function normalizeProfile(row: Record<string, any> | null, sessionUser: Supabase
     usedCredit: 0,
   };
 
-  const roles = Array.isArray(profileRow.roles)
+  const rawRoles: StaffRole[] = Array.isArray(profileRow.roles)
     ? profileRow.roles
     : typeof profileRow.roles === 'string'
       ? (() => { try { return JSON.parse(profileRow.roles); } catch { return []; } })()
       : profileRow.role && profileRow.role !== 'CUSTOMER'
         ? [profileRow.role]
         : [];
+
+  const rolesSet = new Set<StaffRole>(rawRoles);
+  if (profileRow.role === 'ACDEMA' || rolesSet.has('ACDEMA' as StaffRole)) {
+    rolesSet.add('ACDEMA' as StaffRole);
+    rolesSet.add('ACCOUNTANT' as StaffRole);
+    rolesSet.add('DESIGNER' as StaffRole);
+    rolesSet.add('MANAGER' as StaffRole);
+  }
+  const roles: StaffRole[] = Array.from(rolesSet);
 
   const parsedAddresses = Array.isArray(profileRow.addresses)
     ? profileRow.addresses
