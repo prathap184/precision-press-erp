@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     ];
 
     if (search) {
-      const cleanSearch = search.replace(/[\s\-_\/\\.,;:()\[\]{}'"`+*&^%$#@!~?<>|=]+/g, '');
+      const cleanSearch = search.replace(/[\s\p{P}\p{S}]+/gu, '');
       const searchClauses = [
         ilike(inventoryItem.name, `%${search}%`),
         ilike(inventoryItem.code, `%${search}%`),

@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     ];
 
     if (search) {
-      const cleanSearch = search.replace(/[\s\-_\/\\.,;:()\[\]{}'"`+*&^%$#@!~?<>|=]+/g, '');
+      const cleanSearch = search.replace(/[\s\p{P}\p{S}]+/gu, '');
       const searchClauses = [
         ilike(contact.name, `%${search}%`),
         ilike(contact.email, `%${search}%`),

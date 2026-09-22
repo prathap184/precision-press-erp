@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     }
 
     const term = `%${q}%`;
-    const cleanSearch = q.replace(/[\s\-_\/\\.,;:()\[\]{}'"`+*&^%$#@!~?<>|=]+/g, '');
+    const cleanSearch = q.replace(/[\s\p{P}\p{S}]+/gu, '');
 
     const [invoices, bills, contacts, documents] = await Promise.all([
       // Invoices: match by number or reference. Linked to a contact for subtitle.
