@@ -24,11 +24,13 @@ import {
   ShieldCheck,
   Check,
   Upload,
+  Copy,
 } from "lucide-react";
 import { RoleGuard } from "@/lib/role-guard";
 import { ItemDescriptionModal } from "@/components/dashboard/ItemDescriptionModal";
 import { useCreateDrawer } from "@/components/dashboard/create-drawer";
 import { fuzzyMatch, normalizeSearchTerm, createHighlightRegex } from "@/lib/search-utils";
+import { sanitizeTiffPath } from "@/lib/tiff-utils";
 
 interface SavedAddress {
   label: string;
@@ -50,6 +52,10 @@ interface InvoiceRow {
   quantity: string;
   manualRate?: string;
   finishAmount?: string;
+  eyeletType?: "NONE" | "METAL" | "PLASTIC";
+  tiffPath?: string;
+  fileName?: string;
+  blobUrl?: string;
   gstRate: number;
   accountId?: string;
   taxRateId?: string;
@@ -64,13 +70,17 @@ const makeRow = (): InvoiceRow => ({
   hsnCode: "",
   billingMode: "B",
   pcsNo: "1",
-  width: "1",
+  width: "",
   widthUnit: "FT",
-  height: "1",
+  height: "",
   heightUnit: "FT",
   quantity: "1",
   manualRate: "",
   finishAmount: "0.00",
+  eyeletType: "NONE",
+  tiffPath: "",
+  fileName: "",
+  blobUrl: "",
   gstRate: 18,
 });
 
@@ -731,6 +741,37 @@ export function InvoiceFormView() {
     setRows((prev) => prev.map((r) => (r.id === rowId ? { ...r, ...patch } : r)));
   };
 
+  const [rowUploading, setRowUploading] = useState<{ [key: string]: boolean }>({});
+
+  const handleRowFileSelect = async (rowId: string, file: File) => {
+    const blobUrl = URL.createObjectURL(file);
+    updateRow(rowId, { tiffPath: file.name, fileName: file.name, blobUrl });
+
+    setRowUploading((prev) => ({ ...prev, [rowId]: true }));
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('folder', `order_files/${rowId}`);
+
+      const res = await fetch('/api/designs/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.success && data?.fileUrl) {
+        updateRow(rowId, { tiffPath: data.fileUrl, fileName: file.name, blobUrl });
+        toast.success(`File saved to server: ${file.name}`);
+      } else {
+        toast.success(`Selected: ${file.name}`);
+      }
+    } catch {
+      toast.success(`Selected: ${file.name}`);
+    } finally {
+      setRowUploading((prev) => ({ ...prev, [rowId]: false }));
+    }
+  };
+
   const handleSaveDescAndAdvance = (rowId: string, text: string) => {
     updateRow(rowId, { description: text });
     setActiveDescRowId(null);
@@ -824,15 +865,21 @@ export function InvoiceFormView() {
   const calculatedRows = useMemo(() => {
     return rows.map((row) => {
       const prod = products.find((p) => p.id === row.productId || p.code === row.productId);
-      const isSqft = prod ? Boolean(prod.has_multiple_sizes) : false;
-      const isModeA = row.billingMode === "A";
-      const isModeB = !isModeA;
+      const hasMultipleSizes = Boolean((prod as any)?.has_multiple_sizes ?? (prod as any)?.hasMultipleSizes);
+      const hasSingleDefaultSize = Boolean((prod as any)?.has_single_default_size ?? (prod as any)?.metadata?.has_single_default_size ?? (Number((prod as any)?.default_width) > 0 && Number((prod as any)?.default_length) > 0));
+      const isSizeInputActive = hasMultipleSizes || hasSingleDefaultSize;
+      const isSqft = isSizeInputActive;
+      const isDirect = !isSqft;
+      const currentMode = (prod as any)?.tally_billing_mode || (prod as any)?.tallyBillingMode || row.billingMode || "B";
+      const isModeA = currentMode === "A";
+      const isModeB = currentMode === "B";
+      const displayUnit = (prod as any)?.tally_uom || (prod as any)?.unit_of_measure || "N";
 
-      const w = Number(row.width || (prod?.default_width ?? 1)) || 0;
-      const h = Number(row.height || (prod?.default_length ?? 1)) || 0;
+      const w = Number(row.width !== undefined && row.width !== "" ? row.width : (hasSingleDefaultSize ? (prod?.default_width || 0) : 0)) || 0;
+      const h = Number(row.height !== undefined && row.height !== "" ? row.height : (hasSingleDefaultSize ? (prod?.default_length || 0) : 0)) || 0;
       const wFt = row.widthUnit === "IN" ? w / 12 : (row.widthUnit === "MTR" ? w * 3.28084 : w);
       const hFt = row.heightUnit === "IN" ? h / 12 : (row.heightUnit === "MTR" ? h * 3.28084 : h);
-      const sqft = isSqft ? (wFt > 0 && hFt > 0 ? wFt * hFt : 0) : 0;
+      const sqft = isSizeInputActive ? ((wFt > 0 && hFt > 0) ? (wFt * hFt) : 0) : 0;
       const pcs = Math.max(1, Number(row.pcsNo || "1"));
       const totalBilledSqft = sqft * pcs;
 
@@ -840,18 +887,24 @@ export function InvoiceFormView() {
         row.manualRate !== undefined && row.manualRate !== ""
           ? Number(row.manualRate) || 0
           : 0;
-      const finish = Number(row.finishAmount || "0") || 0;
+      const eyeletRate = row.eyeletType === "METAL"
+        ? (prod as any)?.eyeletPricing?.metal || 0
+        : row.eyeletType === "PLASTIC"
+          ? (prod as any)?.eyeletPricing?.plastic || 0
+          : 0;
+      const finish = Number(row.finishAmount || "0") || (row.eyeletType !== "NONE" ? (isModeA ? eyeletRate : eyeletRate * pcs) : 0);
 
       const qtyNum =
-        Number(row.quantity !== undefined && row.quantity !== "" ? row.quantity : isModeB ? totalBilledSqft : 1) || 1;
+        Number(row.quantity !== undefined && row.quantity !== "" ? row.quantity : (isDirect ? 1 : (isModeB ? totalBilledSqft : 1))) || 1;
+      const calculatedRatePerUnit = isDirect ? baseRate : (isModeA ? (sqft * baseRate) : baseRate);
 
       let lineAmount = 0;
-      if (!isSqft) {
-        lineAmount = qtyNum * baseRate + finish;
+      if (isDirect) {
+        lineAmount = qtyNum * baseRate + (row.eyeletType !== "NONE" ? eyeletRate : 0);
       } else if (isModeA) {
-        lineAmount = qtyNum * (sqft * baseRate) + finish;
+        lineAmount = qtyNum * calculatedRatePerUnit + (row.eyeletType !== "NONE" ? eyeletRate : 0);
       } else {
-        lineAmount = totalBilledSqft * baseRate + finish * pcs;
+        lineAmount = totalBilledSqft * baseRate + (row.eyeletType !== "NONE" ? eyeletRate * pcs : 0);
       }
 
       const gst = prod?.gst_rate || 18;
@@ -859,9 +912,18 @@ export function InvoiceFormView() {
 
       return {
         ...row,
+        hasMultipleSizes,
+        hasSingleDefaultSize,
+        isSizeInputActive,
+        isDirect,
+        currentMode,
+        isModeA,
+        isModeB,
+        displayUnit,
         sqft,
         totalBilledSqft,
         baseRate,
+        calculatedRatePerUnit,
         lineAmount: Number(lineAmount.toFixed(2)),
         taxAmount: Number(taxAmount.toFixed(2)),
         totalWithTax: Number((lineAmount + taxAmount).toFixed(2)),
@@ -891,6 +953,7 @@ export function InvoiceFormView() {
 
   const isCustomerExplicitlyBlurredRef = useRef(false);
   const lastFocusedElementIdRef = useRef<string | null>(null);
+  const unitBlurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep track of the last active input/select/button on the page
   useEffect(() => {
@@ -1027,6 +1090,7 @@ export function InvoiceFormView() {
         (activeEl.tagName === "DIV" && !activeEl.getAttribute("tabindex"));
 
       if (isBodyOrBg) {
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
         const globalShortcutKeys = ["g", "G", "v", "V", "d", "D", "n", "N", "z", "Z", "c", "C", "s", "S", "q", "Q", "Escape"];
         if (["Control", "Alt", "Shift", "Meta", "F12", "F5", ...globalShortcutKeys].includes(e.key)) return;
 
@@ -1156,6 +1220,8 @@ export function InvoiceFormView() {
             length: parseFloat(l.height || "0") || null,
             sqFt: l.sqft || null,
             finishAmount: parseFloat(l.finishAmount || "0") || null,
+            eyeletType: l.eyeletType || null,
+            tiffPath: l.tiffPath || null,
             deliveryMode: deliveryType || null,
             deliveryAmount: null,
           })),
@@ -1335,7 +1401,6 @@ export function InvoiceFormView() {
                     />
                     <input
                       id="invoice-customer-search-input"
-                      autoFocus
                       value={
                         customerSearch !== ""
                           ? customerSearch
@@ -1501,6 +1566,7 @@ export function InvoiceFormView() {
                       <th className="py-1.5 px-1 w-[90px] text-center">Rate/SqFt</th>
                       <th className="py-1.5 px-1 w-[105px] text-center">Rate per</th>
                       <th className="py-1.5 px-1 w-[90px] text-center">Finish</th>
+                      <th className="py-1.5 px-2 min-w-[210px] text-left">File Path <span className="normal-case font-normal text-slate-400 tracking-normal italic">(optional)</span></th>
                       <th className="py-1.5 px-2 w-[95px] text-right">Amount</th>
                       <th className="py-1.5 px-1 w-9 text-center">×</th>
                     </tr>
@@ -1508,9 +1574,6 @@ export function InvoiceFormView() {
                   <tbody className="divide-y divide-slate-100">
                     {calculatedRows.map((row, index) => {
                       const prod = products.find((p) => p.id === row.productId || p.code === row.productId);
-                      const isSqft = prod ? Boolean(prod.has_multiple_sizes) : false;
-                      const isModeA = row.billingMode === "A";
-                      const isModeB = !isModeA;
                       const isOpen = openRowId === row.id && !activeDescRowId;
 
                       return (
@@ -1576,9 +1639,31 @@ export function InvoiceFormView() {
                                           if (prev <= 0 && !searchQuery.trim()) return -1;
                                           return Math.max(prev - 1, 0);
                                         });
+                                      } else if (e.key === " " && !searchQuery.trim() && isOpen && visibleProducts.length > 0 && highlightProductIndex >= 0) {
+                                        e.preventDefault();
+                                        const p = visibleProducts[highlightProductIndex];
+                                        if (p) {
+                                          const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || "B";
+                                          const hasSingleDefault = Boolean((p as any)?.has_single_default_size ?? (p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0));
+                                          updateRow(row.id, {
+                                            productId: p.id,
+                                            productName: p.name,
+                                            hsnCode: p.hsn_code || "",
+                                            billingMode: prodMode,
+                                            gstRate: p.gst_rate || 18,
+                                            manualRate: "",
+                                            width: hasSingleDefault && p.default_width ? String(p.default_width) : "",
+                                            height: hasSingleDefault && p.default_length ? String(p.default_length) : "",
+                                          });
+                                          setOpenRowId(null);
+                                          setSearchQuery("");
+                                          setHighlightProductIndex(0);
+                                          setTimeout(() => {
+                                            setActiveDescRowId(row.id);
+                                          }, 50);
+                                        }
                                       } else if (e.key === "Enter") {
                                         e.preventDefault();
-                                        // End of list
                                         if (highlightProductIndex === -1) {
                                           handleEndOfList(row.id);
                                           return;
@@ -1586,13 +1671,17 @@ export function InvoiceFormView() {
                                         if (isOpen && visibleProducts.length > 0 && highlightProductIndex >= 0) {
                                           const p = visibleProducts[highlightProductIndex] || visibleProducts[0];
                                           if (p) {
+                                            const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || "B";
+                                            const hasSingleDefault = Boolean((p as any)?.has_single_default_size ?? (p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0));
                                             updateRow(row.id, {
                                               productId: p.id,
                                               productName: p.name,
                                               hsnCode: p.hsn_code || "",
-                                              billingMode: p.tally_billing_mode || "B",
+                                              billingMode: prodMode,
                                               gstRate: p.gst_rate || 18,
                                               manualRate: "",
+                                              width: hasSingleDefault && p.default_width ? String(p.default_width) : "",
+                                              height: hasSingleDefault && p.default_length ? String(p.default_length) : "",
                                             });
                                             setOpenRowId(null);
                                             setSearchQuery("");
@@ -1603,20 +1692,62 @@ export function InvoiceFormView() {
                                             return;
                                           }
                                         }
-                                        setOpenRowId(null);
-                                        setTimeout(() => {
-                                          setActiveDescRowId(row.id);
-                                        }, 50);
+                                        if (row.productId) {
+                                          setOpenRowId(null);
+                                          setTimeout(() => {
+                                            setActiveDescRowId(row.id);
+                                          }, 50);
+                                          return;
+                                        }
+                                        if (visibleProducts.length > 0) {
+                                          const p = visibleProducts[0];
+                                          const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || "B";
+                                          const hasSingleDefault = Boolean((p as any)?.has_single_default_size ?? (p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0));
+                                          updateRow(row.id, {
+                                            productId: p.id,
+                                            productName: p.name,
+                                            hsnCode: p.hsn_code || "",
+                                            billingMode: prodMode,
+                                            gstRate: p.gst_rate || 18,
+                                            manualRate: "",
+                                            width: hasSingleDefault && p.default_width ? String(p.default_width) : "",
+                                            height: hasSingleDefault && p.default_length ? String(p.default_length) : "",
+                                          });
+                                          setOpenRowId(null);
+                                          setSearchQuery("");
+                                          setHighlightProductIndex(0);
+                                          setTimeout(() => {
+                                            setActiveDescRowId(row.id);
+                                          }, 50);
+                                          return;
+                                        }
+                                        handleEndOfList(row.id);
                                       } else if (e.key === "Escape") {
                                         setOpenRowId(null);
                                       } else if (e.key === "Backspace") {
-                                        if (!searchQuery && !row.productId && index > 0) {
-                                          e.preventDefault();
-                                          removeRow(row.id);
-                                          const prevRow = calculatedRows[index - 1];
-                                          if (prevRow) {
-                                            const prevEl = document.getElementById(`row-${prevRow.id}-finish`);
-                                            if (prevEl) prevEl.focus();
+                                        const isFullSelected = e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === e.currentTarget.value.length;
+                                        if (!searchQuery.trim() || !row.productId || isFullSelected) {
+                                          if (!searchQuery.trim() || isFullSelected) {
+                                            e.preventDefault();
+                                            setOpenRowId(null);
+                                            if (index === 0) {
+                                              const custInput = document.getElementById("invoice-customer-search-input");
+                                              if (custInput) {
+                                                custInput.focus();
+                                                try {
+                                                  const len = (custInput as HTMLInputElement).value ? (custInput as HTMLInputElement).value.length : 0;
+                                                  (custInput as HTMLInputElement).setSelectionRange(len, len);
+                                                } catch {}
+                                              }
+                                            } else {
+                                              const prevRow = calculatedRows[index - 1];
+                                              if (prevRow) {
+                                                const prevTarget = document.getElementById(`row-${prevRow.id}-delete-btn`)
+                                                  || document.getElementById(`row-${prevRow.id}-browse-btn`)
+                                                  || document.getElementById(`row-${prevRow.id}-file`);
+                                                if (prevTarget) prevTarget.focus();
+                                              }
+                                            }
                                           }
                                         }
                                       }
@@ -1684,13 +1815,13 @@ export function InvoiceFormView() {
                             <div className="h-10 flex items-center justify-center">
                               <span
                                 className={`h-10 min-w-[36px] px-2.5 rounded-lg border-2 font-black text-xs inline-flex items-center justify-center shadow-sm select-none cursor-not-allowed ${
-                                  row.billingMode === "A"
+                                  row.currentMode === "A"
                                     ? "border-blue-600 bg-blue-600 text-white"
                                     : "border-emerald-600 bg-emerald-600 text-white"
                                 }`}
-                                title={`Mode ${row.billingMode} — Locked to Item Master`}
+                                title={`Mode ${row.currentMode} — Locked to Item Master`}
                               >
-                                {row.billingMode || "B"}
+                                {row.currentMode || "B"}
                               </span>
                             </div>
                           </td>
@@ -1698,13 +1829,13 @@ export function InvoiceFormView() {
                           {/* Width */}
                           <td className="py-1 px-1 tabular-nums align-top">
                             <div className="h-10 flex items-center justify-center">
-                              {!isSqft ? (
+                              {!row.isSizeInputActive ? (
                                 <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
                               ) : (
                                 <div className="flex h-10 w-[90px] items-center rounded-lg border-2 border-slate-200 bg-slate-50 px-1 focus-within:border-blue-600 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/20">
                                   <input
                                     id={`row-${row.id}-width`}
-                                    value={row.width}
+                                    value={row.width !== undefined ? row.width : (row.hasSingleDefaultSize && prod?.default_width ? String(prod.default_width) : "")}
                                     onChange={(e) => updateRow(row.id, { width: e.target.value })}
                                     onKeyDown={(e) => {
                                       if (e.key === "End") {
@@ -1716,18 +1847,18 @@ export function InvoiceFormView() {
                                         e.currentTarget.setSelectionRange(0, 0);
                                       } else if (e.key === "Enter") {
                                         e.preventDefault();
-                                        const hEl = document.getElementById(`row-${row.id}-height`);
-                                        if (hEl) {
-                                          hEl.focus();
+                                        const wUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                        if (wUnitBtn) wUnitBtn.focus();
+                                        else {
+                                          const hEl = document.getElementById(`row-${row.id}-height`);
+                                          if (hEl) hEl.focus();
                                         }
                                       } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
                                         e.stopPropagation();
                                         setOpenRowId(row.id);
                                         const itemInput = document.getElementById(`row-${row.id}-product-input`);
-                                        if (itemInput) {
-                                          itemInput.focus();
-                                        }
+                                        if (itemInput) itemInput.focus();
                                       }
                                     }}
                                     className="w-full border-0 bg-transparent p-0 text-center text-xs font-bold text-slate-800 outline-none focus:ring-0"
@@ -1735,14 +1866,48 @@ export function InvoiceFormView() {
                                   />
                                   <div className="relative shrink-0">
                                     <button
+                                      id={`row-${row.id}-width-unit`}
                                       type="button"
                                       onClick={() =>
                                         setOpenUnitPickerId(openUnitPickerId === `${row.id}-w` ? null : `${row.id}-w`)
                                       }
-                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200"
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          setOpenUnitPickerId(null);
+                                          const hEl = document.getElementById(`row-${row.id}-height`);
+                                          if (hEl) hEl.focus();
+                                        } else if (e.key === " " || e.key === "Spacebar") {
+                                          e.preventDefault();
+                                          const nextUnit = row.widthUnit === "FT" ? "IN" : row.widthUnit === "IN" ? "MTR" : "FT";
+                                          updateRow(row.id, { widthUnit: nextUnit });
+                                        } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                          e.preventDefault();
+                                          setOpenUnitPickerId(null);
+                                          const wInput = document.getElementById(`row-${row.id}-width`);
+                                          if (wInput) wInput.focus();
+                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                          e.preventDefault();
+                                          const nextUnit = row.widthUnit === "FT" ? "IN" : row.widthUnit === "IN" ? "MTR" : "FT";
+                                          updateRow(row.id, { widthUnit: nextUnit });
+                                        }
+                                      }}
+                                      onFocus={() => {
+                                        if (unitBlurTimerRef.current) {
+                                          clearTimeout(unitBlurTimerRef.current);
+                                          unitBlurTimerRef.current = null;
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        if (unitBlurTimerRef.current) clearTimeout(unitBlurTimerRef.current);
+                                        unitBlurTimerRef.current = setTimeout(() => {
+                                          setOpenUnitPickerId((curr) => (curr === `${row.id}-w` ? null : curr));
+                                        }, 150);
+                                      }}
+                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                                     >
                                       {row.widthUnit === "FT" ? "ft" : row.widthUnit === "IN" ? "in" : "m"}
-                                      <ChevronDown size={10} />
+                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
                                     </button>
                                     {openUnitPickerId === `${row.id}-w` && (
                                       <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
@@ -1750,11 +1915,17 @@ export function InvoiceFormView() {
                                           <button
                                             key={u}
                                             type="button"
-                                            onClick={() => {
+                                            tabIndex={-1}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
                                               updateRow(row.id, { widthUnit: u as any });
                                               setOpenUnitPickerId(null);
+                                              setTimeout(() => {
+                                                const heightInput = document.getElementById(`row-${row.id}-height`);
+                                                if (heightInput) heightInput.focus();
+                                              }, 50);
                                             }}
-                                            className={`w-full py-1.5 text-center text-[11px] font-black ${
+                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
                                               row.widthUnit === u
                                                 ? "bg-blue-600 text-white"
                                                 : "text-slate-600 hover:bg-slate-50"
@@ -1774,13 +1945,13 @@ export function InvoiceFormView() {
                           {/* Length */}
                           <td className="py-1 px-1 tabular-nums align-top">
                             <div className="h-10 flex items-center justify-center">
-                              {!isSqft ? (
+                              {!row.isSizeInputActive ? (
                                 <div className="h-10 w-[90px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">—</div>
                               ) : (
                                 <div className="flex h-10 w-[90px] items-center rounded-lg border-2 border-slate-200 bg-slate-50 px-1 focus-within:border-blue-600 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-500/20">
                                   <input
                                     id={`row-${row.id}-height`}
-                                    value={row.height}
+                                    value={row.height !== undefined ? row.height : (row.hasSingleDefaultSize && prod?.default_length ? String(prod.default_length) : "")}
                                     onChange={(e) => updateRow(row.id, { height: e.target.value })}
                                     onKeyDown={(e) => {
                                       if (e.key === "End") {
@@ -1792,22 +1963,22 @@ export function InvoiceFormView() {
                                         e.currentTarget.setSelectionRange(0, 0);
                                       } else if (e.key === "Enter") {
                                         e.preventDefault();
-                                        if (isModeB) {
+                                        const hUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                        if (hUnitBtn) hUnitBtn.focus();
+                                        else if (row.isModeB) {
                                           const pcsEl = document.getElementById(`row-${row.id}-pcs`);
-                                          if (pcsEl) {
-                                            pcsEl.focus();
-                                          }
+                                          if (pcsEl) pcsEl.focus();
                                         } else {
                                           const qtyEl = document.getElementById(`row-${row.id}-quantity`);
-                                          if (qtyEl) {
-                                            qtyEl.focus();
-                                          }
+                                          if (qtyEl) qtyEl.focus();
                                         }
                                       } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                         e.preventDefault();
-                                        const wEl = document.getElementById(`row-${row.id}-width`);
-                                        if (wEl) {
-                                          wEl.focus();
+                                        const wUnitBtn = document.getElementById(`row-${row.id}-width-unit`);
+                                        if (wUnitBtn) wUnitBtn.focus();
+                                        else {
+                                          const wEl = document.getElementById(`row-${row.id}-width`);
+                                          if (wEl) wEl.focus();
                                         }
                                       }
                                     }}
@@ -1816,14 +1987,53 @@ export function InvoiceFormView() {
                                   />
                                   <div className="relative shrink-0">
                                     <button
+                                      id={`row-${row.id}-height-unit`}
                                       type="button"
                                       onClick={() =>
                                         setOpenUnitPickerId(openUnitPickerId === `${row.id}-h` ? null : `${row.id}-h`)
                                       }
-                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200"
+                                      onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                          e.preventDefault();
+                                          setOpenUnitPickerId(null);
+                                          if (row.isModeB) {
+                                            const pcsEl = document.getElementById(`row-${row.id}-pcs`);
+                                            if (pcsEl) pcsEl.focus();
+                                          } else {
+                                            const qtyEl = document.getElementById(`row-${row.id}-quantity`);
+                                            if (qtyEl) qtyEl.focus();
+                                          }
+                                        } else if (e.key === " " || e.key === "Spacebar") {
+                                          e.preventDefault();
+                                          const nextUnit = row.heightUnit === "FT" ? "IN" : row.heightUnit === "IN" ? "MTR" : "FT";
+                                          updateRow(row.id, { heightUnit: nextUnit });
+                                        } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                          e.preventDefault();
+                                          setOpenUnitPickerId(null);
+                                          const hInput = document.getElementById(`row-${row.id}-height`);
+                                          if (hInput) hInput.focus();
+                                        } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                                          e.preventDefault();
+                                          const nextUnit = row.heightUnit === "FT" ? "IN" : row.heightUnit === "IN" ? "MTR" : "FT";
+                                          updateRow(row.id, { heightUnit: nextUnit });
+                                        }
+                                      }}
+                                      onFocus={() => {
+                                        if (unitBlurTimerRef.current) {
+                                          clearTimeout(unitBlurTimerRef.current);
+                                          unitBlurTimerRef.current = null;
+                                        }
+                                      }}
+                                      onBlur={() => {
+                                        if (unitBlurTimerRef.current) clearTimeout(unitBlurTimerRef.current);
+                                        unitBlurTimerRef.current = setTimeout(() => {
+                                          setOpenUnitPickerId((curr) => (curr === `${row.id}-h` ? null : curr));
+                                        }, 150);
+                                      }}
+                                      className="flex items-center gap-0.5 rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-black text-blue-700 hover:bg-blue-200 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                                     >
                                       {row.heightUnit === "FT" ? "ft" : row.heightUnit === "IN" ? "in" : "m"}
-                                      <ChevronDown size={10} />
+                                      <svg className="w-2.5 h-2.5 text-blue-500" viewBox="0 0 10 10" fill="currentColor"><path d="M5 7L1 3h8z"/></svg>
                                     </button>
                                     {openUnitPickerId === `${row.id}-h` && (
                                       <div className="absolute right-0 top-full mt-1 z-[9999] w-14 rounded-xl border-2 border-blue-600 bg-white shadow-2xl overflow-hidden">
@@ -1831,11 +2041,28 @@ export function InvoiceFormView() {
                                           <button
                                             key={u}
                                             type="button"
-                                            onClick={() => {
+                                            tabIndex={-1}
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
                                               updateRow(row.id, { heightUnit: u as any });
                                               setOpenUnitPickerId(null);
+                                              setTimeout(() => {
+                                                if (row.isModeB) {
+                                                  const pcsInput = document.getElementById(`row-${row.id}-pcs`);
+                                                  if (pcsInput) pcsInput.focus();
+                                                } else {
+                                                  const qtyInput = document.getElementById(`row-${row.id}-quantity`);
+                                                  if (qtyInput) {
+                                                    qtyInput.focus();
+                                                    try {
+                                                      const len = (qtyInput as HTMLInputElement).value ? (qtyInput as HTMLInputElement).value.length : 0;
+                                                      (qtyInput as HTMLInputElement).setSelectionRange(len, len);
+                                                    } catch {}
+                                                  }
+                                                }
+                                              }, 50);
                                             }}
-                                            className={`w-full py-1.5 text-center text-[11px] font-black ${
+                                            className={`w-full text-center py-2 text-[11px] font-black uppercase tracking-widest transition-colors ${
                                               row.heightUnit === u
                                                 ? "bg-blue-600 text-white"
                                                 : "text-slate-600 hover:bg-slate-50"
@@ -1862,7 +2089,7 @@ export function InvoiceFormView() {
                           {/* Pcs/No */}
                           <td className="py-1 px-1 tabular-nums text-center align-top">
                             <div className="h-10 flex items-center justify-center">
-                              {isSqft && isModeB ? (
+                              {row.isSizeInputActive && row.isModeB ? (
                                 <input
                                   id={`row-${row.id}-pcs`}
                                   value={row.pcsNo}
@@ -1877,38 +2104,101 @@ export function InvoiceFormView() {
                                       e.currentTarget.setSelectionRange(0, 0);
                                     } else if (e.key === "Enter") {
                                       e.preventDefault();
-                                      const rateEl = document.getElementById(`row-${row.id}-rate`);
-                                      if (rateEl) {
-                                        rateEl.focus();
-                                      }
+                                      const rateInput = document.getElementById(`row-${row.id}-rate-unit`);
+                                      if (rateInput) rateInput.focus();
                                     } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                       e.preventDefault();
-                                      const hEl = document.getElementById(`row-${row.id}-height`);
-                                      if (hEl) {
-                                        hEl.focus();
+                                      const hUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                      if (hUnitBtn) hUnitBtn.focus();
+                                      else {
+                                        const hEl = document.getElementById(`row-${row.id}-height`);
+                                        if (hEl) hEl.focus();
                                       }
                                     }
                                   }}
                                   className="h-10 w-[70px] bg-slate-50 border-2 border-slate-200 rounded-lg text-center text-xs font-bold focus:bg-white focus:border-blue-600 outline-none"
+                                  placeholder="Pcs"
                                 />
                               ) : (
-                                <div className="h-10 w-[70px] flex items-center justify-center text-xs text-slate-400 bg-slate-100 rounded-lg font-bold">1</div>
+                                <div className="h-10 w-[70px] flex items-center justify-center text-slate-300 font-bold">—</div>
                               )}
                             </div>
                           </td>
 
                           {/* Quantity */}
                           <td className="py-1 px-1 tabular-nums text-center align-top">
-                            <div className="h-10 flex items-center justify-center">
-                              {isSqft && isModeB ? (
-                                <div className="h-10 w-[100px] flex items-center justify-center text-xs font-bold font-mono text-slate-700 bg-slate-100 rounded-lg">
-                                  {row.totalBilledSqft.toFixed(2)}
-                                </div>
+                            <div className="h-10 flex items-center justify-center text-xs font-bold">
+                              {row.isSizeInputActive && row.isModeB ? (
+                                <span className="text-slate-800 font-bold font-mono">{row.totalBilledSqft > 0 ? `${row.totalBilledSqft.toFixed(3)} sqft` : "—"}</span>
                               ) : (
+                                <div className="inline-flex items-center justify-center gap-1">
+                                  <input
+                                    id={`row-${row.id}-quantity`}
+                                    value={row.quantity !== undefined ? row.quantity : "1"}
+                                    onFocus={(e) => {
+                                      try {
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } catch {}
+                                    }}
+                                    onChange={(e) => updateRow(row.id, { quantity: e.target.value })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                        const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                        if (rateSqft && row.isSizeInputActive && row.isModeA) {
+                                          rateSqft.focus();
+                                        } else if (rateUnit) {
+                                          rateUnit.focus();
+                                        }
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (row.isSizeInputActive) {
+                                          const hUnitBtn = document.getElementById(`row-${row.id}-height-unit`);
+                                          if (hUnitBtn) hUnitBtn.focus();
+                                          else {
+                                            const hEl = document.getElementById(`row-${row.id}-height`);
+                                            if (hEl) hEl.focus();
+                                          }
+                                        } else {
+                                          setOpenRowId(row.id);
+                                          const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                          if (itemInput) itemInput.focus();
+                                        }
+                                      }
+                                    }}
+                                    className="h-10 w-14 rounded-lg border-2 border-slate-200 bg-slate-50 text-center text-xs font-bold text-slate-800 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all shadow-xs"
+                                    placeholder="Qty"
+                                  />
+                                  <span className="text-[11px] font-black text-slate-500">{row.displayUnit}</span>
+                                </div>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Rate/SqFt Column — EDITABLE only in Mode A with Multiple Sizes */}
+                          <td className="py-1 px-1 text-center tabular-nums align-top">
+                            <div className="h-10 flex items-center justify-center">
+                              {row.isSizeInputActive && row.isModeA ? (
                                 <input
-                                  id={`row-${row.id}-quantity`}
-                                  value={row.quantity}
-                                  onChange={(e) => updateRow(row.id, { quantity: e.target.value })}
+                                  id={`row-${row.id}-rate-sqft`}
+                                  value={row.manualRate !== undefined ? row.manualRate : ""}
+                                  onChange={(e) => updateRow(row.id, { manualRate: e.target.value })}
+                                  onFocus={(e) => {
+                                    try {
+                                      const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                      e.currentTarget.setSelectionRange(len, len);
+                                    } catch {}
+                                  }}
                                   onKeyDown={(e) => {
                                     if (e.key === "End") {
                                       e.preventDefault();
@@ -1919,125 +2209,270 @@ export function InvoiceFormView() {
                                       e.currentTarget.setSelectionRange(0, 0);
                                     } else if (e.key === "Enter") {
                                       e.preventDefault();
-                                      const rateEl = document.getElementById(`row-${row.id}-rate`);
-                                      if (rateEl) {
-                                        rateEl.focus();
+                                      const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                      if (finishSelect && !row.isDirect) {
+                                        finishSelect.focus();
+                                      } else {
+                                        const fileInput = document.getElementById(`row-${row.id}-file`);
+                                        if (fileInput) fileInput.focus();
+                                        else handleRowFinalEnter(index);
                                       }
                                     } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
                                       e.preventDefault();
-                                      e.stopPropagation();
-                                      if (isSqft) {
-                                        const hEl = document.getElementById(`row-${row.id}-height`);
-                                        if (hEl) {
-                                          hEl.focus();
-                                        }
-                                      } else {
-                                        setOpenRowId(row.id);
-                                        const itemInput = document.getElementById(`row-${row.id}-product-input`);
-                                        if (itemInput) {
-                                          itemInput.focus();
-                                        }
-                                      }
+                                      const qtyInput = document.getElementById(`row-${row.id}-quantity`);
+                                      if (qtyInput) qtyInput.focus();
                                     }
                                   }}
-                                  className="h-10 w-[100px] bg-slate-50 border-2 border-slate-200 rounded-lg text-center text-xs font-bold focus:bg-white focus:border-blue-600 outline-none"
+                                  placeholder="0.00"
+                                  className="h-10 w-18 rounded-lg border-2 border-blue-300/60 bg-blue-50/50 text-center text-xs font-bold outline-none transition-all tabular-nums text-blue-900 focus:border-blue-600 focus:ring-4 focus:ring-blue-500/30 focus:bg-white shadow-xs"
+                                  title="Rate per sq.ft in Mode A — editable (like Tally)"
                                 />
+                              ) : (
+                                <div className="h-10 flex items-center justify-center text-slate-300 font-bold">—</div>
                               )}
                             </div>
                           </td>
 
-                          {/* Rate / SqFt */}
-                          <td className="py-1 px-1 align-top text-center">
+                          {/* Rate per (unit) Column — In Mode A: Shows Sq.Ft * Rate/SqFt. In Mode B & Direct: Editable */}
+                          <td className="py-1 px-1 text-center tabular-nums align-top">
                             <div className="h-10 flex items-center justify-center">
-                              <input
-                                id={`row-${row.id}-rate`}
-                                inputMode="decimal"
-                                value={row.manualRate !== undefined ? row.manualRate : ""}
-                                placeholder="0.00"
-                                onChange={(e) => updateRow(row.id, { manualRate: e.target.value })}
-                                onFocus={(e) => {
-                                  try {
-                                    const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
-                                    e.currentTarget.setSelectionRange(len, len);
-                                  } catch {}
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "End") {
-                                    e.preventDefault();
-                                    const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
-                                    e.currentTarget.setSelectionRange(len, len);
-                                  } else if (e.key === "Home") {
-                                    e.preventDefault();
-                                    e.currentTarget.setSelectionRange(0, 0);
-                                  } else if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    const finishEl = document.getElementById(`row-${row.id}-finish`);
-                                    if (finishEl) {
-                                      finishEl.focus();
-                                    }
-                                  } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    if (isSqft && isModeB) {
-                                      const pcsEl = document.getElementById(`row-${row.id}-pcs`);
-                                      if (pcsEl) {
-                                        pcsEl.focus();
-                                      }
-                                    } else {
-                                      const qtyEl = document.getElementById(`row-${row.id}-quantity`);
-                                      if (qtyEl) {
-                                        qtyEl.focus();
-                                      } else {
-                                        setOpenRowId(row.id);
-                                        const itemInput = document.getElementById(`row-${row.id}-product-input`);
-                                        if (itemInput) {
-                                          itemInput.focus();
+                              {row.isSizeInputActive && row.isModeA ? (
+                                <span className="inline-flex items-center gap-1 text-blue-900 font-bold text-xs bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-2xs font-mono">
+                                  {row.calculatedRatePerUnit.toFixed(2)}
+                                  <span className="text-[10px] text-blue-500 font-bold">{row.displayUnit}</span>
+                                </span>
+                              ) : (
+                                <div className="inline-flex items-center justify-center gap-1">
+                                  <input
+                                    id={`row-${row.id}-rate-unit`}
+                                    value={row.manualRate !== undefined ? row.manualRate : ""}
+                                    onChange={(e) => updateRow(row.id, { manualRate: e.target.value })}
+                                    onFocus={(e) => {
+                                      try {
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } catch {}
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "End") {
+                                        e.preventDefault();
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } else if (e.key === "Home") {
+                                        e.preventDefault();
+                                        e.currentTarget.setSelectionRange(0, 0);
+                                      } else if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                        if (finishSelect && !row.isDirect) {
+                                          finishSelect.focus();
+                                        } else {
+                                          const fileInput = document.getElementById(`row-${row.id}-file`);
+                                          if (fileInput) fileInput.focus();
+                                          else handleRowFinalEnter(index);
+                                        }
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        if (row.isSizeInputActive && row.isModeB) {
+                                          const pcsInput = document.getElementById(`row-${row.id}-pcs`);
+                                          if (pcsInput) {
+                                            pcsInput.focus();
+                                            return;
+                                          }
+                                        }
+                                        const qtyInput = document.getElementById(`row-${row.id}-quantity`);
+                                        if (qtyInput) qtyInput.focus();
+                                        else {
+                                          const itemInput = document.getElementById(`row-${row.id}-product-input`);
+                                          if (itemInput) itemInput.focus();
                                         }
                                       }
-                                    }
-                                  }
-                                }}
-                                className="h-10 w-[90px] text-center bg-slate-50 border-2 border-slate-200 rounded-lg text-xs font-mono font-bold focus:bg-white focus:border-blue-600 outline-none"
-                              />
+                                    }}
+                                    placeholder="0.00"
+                                    className="h-10 w-18 rounded-lg border-2 border-emerald-300/60 bg-emerald-50/50 text-center text-xs font-bold outline-none transition-all tabular-nums text-emerald-900 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-500/30 focus:bg-white shadow-xs"
+                                    title="Rate per unit — editable"
+                                  />
+                                  <span className="text-[10px] text-slate-500 font-bold">{row.displayUnit}</span>
+                                </div>
+                              )}
                             </div>
                           </td>
 
-                          {/* Rate Per Unit */}
-                          <td className="py-1 px-1 align-top text-center">
-                            <div className="h-10 flex items-center justify-center font-mono text-xs text-slate-500 font-bold">
-                              ₹{row.baseRate > 0 ? row.baseRate.toFixed(2) : "0.00"}
-                            </div>
-                          </td>
-
-                          {/* Finish Amount */}
-                          <td className="py-1 px-1 align-top text-center">
+                          {/* Finish Column */}
+                          <td className="py-1 px-1 text-center tabular-nums align-top">
                             <div className="h-10 flex items-center justify-center">
-                              <input
-                                id={`row-${row.id}-finish`}
-                                inputMode="decimal"
-                                value={row.finishAmount}
-                                onChange={(e) => updateRow(row.id, { finishAmount: e.target.value })}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    handleRowFinalEnter(index);
-                                  } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && (e.currentTarget.selectionStart === 0 || !e.currentTarget.value)) {
-                                    e.preventDefault();
-                                    const rateEl = document.getElementById(`row-${row.id}-rate`);
-                                    if (rateEl) {
-                                      rateEl.focus();
-                                    }
-                                  }
-                                }}
-                                className="h-10 w-[90px] text-center bg-slate-50 border-2 border-slate-200 rounded-lg text-xs font-mono font-medium focus:bg-white focus:border-blue-600 outline-none"
-                              />
+                              {row.isDirect ? (
+                                <div className="h-10 w-full min-w-[76px] flex items-center justify-center text-slate-400 bg-slate-100 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
+                                  —
+                                </div>
+                              ) : (
+                                <div className="relative w-full min-w-[76px]">
+                                  <select
+                                    id={`row-${row.id}-finish-select`}
+                                    value={row.eyeletType || "NONE"}
+                                    onChange={(e) => updateRow(row.id, { eyeletType: e.target.value as any })}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        const fileInput = document.getElementById(`row-${row.id}-file`);
+                                        if (fileInput) {
+                                          fileInput.focus();
+                                        } else {
+                                          const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                          if (browseBtn) browseBtn.focus();
+                                          else handleRowFinalEnter(index);
+                                        }
+                                      } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                        e.preventDefault();
+                                        const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                        const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                        if (rateSqft && row.hasMultipleSizes && row.isModeA) {
+                                          rateSqft.focus();
+                                        } else if (rateUnit) {
+                                          rateUnit.focus();
+                                        }
+                                      }
+                                    }}
+                                    className="h-10 w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all cursor-pointer shadow-xs"
+                                  >
+                                    <option value="NONE">None</option>
+                                    <option value="METAL">Metal</option>
+                                    <option value="PLASTIC">Plastic</option>
+                                  </select>
+                                </div>
+                              )}
                             </div>
+                          </td>
+
+                          {/* File Path Column */}
+                          <td className="py-1 px-2 tabular-nums align-top">
+                            {row.isDirect ? (
+                              <div className="h-10 w-full min-w-[210px] flex items-center justify-center text-slate-400 bg-slate-100 rounded-lg border border-dashed border-slate-200 text-xs font-bold font-mono">
+                                —
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5 min-w-[210px] h-10">
+                                <div className="relative flex-1">
+                                  <input
+                                    id={`row-${row.id}-file`}
+                                    value={row.fileName || row.tiffPath || ""}
+                                    onFocus={(e) => {
+                                      try {
+                                        const len = e.currentTarget.value ? e.currentTarget.value.length : 0;
+                                        e.currentTarget.setSelectionRange(len, len);
+                                      } catch {}
+                                    }}
+                                    onChange={(e) => {
+                                      const cleaned = sanitizeTiffPath(e.target.value);
+                                      updateRow(row.id, { tiffPath: cleaned, fileName: "" });
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        handleRowFinalEnter(index);
+                                      } else if ((e.key === "Backspace" || e.key === "ArrowLeft") && ((e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) || !e.currentTarget.value)) {
+                                        e.preventDefault();
+                                        const finishSelect = document.getElementById(`row-${row.id}-finish-select`);
+                                        if (finishSelect && !row.isDirect) {
+                                          finishSelect.focus();
+                                        } else {
+                                          const rateSqft = document.getElementById(`row-${row.id}-rate-sqft`);
+                                          const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                          if (rateSqft && row.hasMultipleSizes && row.isModeA) {
+                                            rateSqft.focus();
+                                          } else if (rateUnit) {
+                                            rateUnit.focus();
+                                          } else {
+                                            const qtyInput = document.getElementById(`row-${row.id}-quantity`);
+                                            if (qtyInput) qtyInput.focus();
+                                          }
+                                        }
+                                      }
+                                    }}
+                                    className="h-10 w-full rounded-lg border-2 border-slate-200 bg-slate-50 pl-2.5 pr-7 font-mono text-[10px] outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:bg-white transition-all text-slate-800 shadow-xs"
+                                    placeholder="Paste path or browse file..."
+                                  />
+                                  {row.tiffPath && (
+                                    <button
+                                      type="button"
+                                      tabIndex={-1}
+                                      onClick={async () => {
+                                        const cleanedPath = sanitizeTiffPath(row.tiffPath);
+                                        if (row.blobUrl) {
+                                          window.open(row.blobUrl, '_blank', 'noopener,noreferrer');
+                                        } else if (/^https?:\/\//i.test(cleanedPath) || cleanedPath?.startsWith('/') || cleanedPath?.startsWith('blob:')) {
+                                          window.open(cleanedPath, '_blank', 'noopener,noreferrer');
+                                        } else {
+                                          try {
+                                            await navigator.clipboard.writeText(cleanedPath);
+                                          } catch {}
+                                          toast.success("Path copied to clipboard");
+                                        }
+                                      }}
+                                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                      title="Copy Path"
+                                    >
+                                      <Copy size={12} />
+                                    </button>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  id={`row-${row.id}-browse-btn`}
+                                  onClick={() => {
+                                    const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
+                                    if (inputEl) inputEl.click();
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      if (calculatedRows.length > 1) {
+                                        const delBtn = document.getElementById(`row-${row.id}-delete-btn`);
+                                        if (delBtn) delBtn.focus();
+                                        else handleRowFinalEnter(index);
+                                      } else {
+                                        handleRowFinalEnter(index);
+                                      }
+                                    } else if (e.key === " " || e.key === "Spacebar") {
+                                      e.preventDefault();
+                                      const inputEl = document.getElementById(`row-${row.id}-file-input`) as HTMLInputElement;
+                                      if (inputEl) inputEl.click();
+                                    } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                      e.preventDefault();
+                                      const fileInput = document.getElementById(`row-${row.id}-file`);
+                                      if (fileInput) fileInput.focus();
+                                    }
+                                  }}
+                                  className={`flex items-center justify-center gap-1 h-10 px-2.5 rounded-lg border-2 text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer shrink-0 shadow-2xs outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 ${
+                                    row.tiffPath
+                                      ? "bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100"
+                                      : "bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-300 text-blue-600"
+                                  }`}
+                                  title="Browse file from computer"
+                                >
+                                  <Upload size={12} />
+                                  <span>{row.tiffPath ? "Change" : "Browse"}</span>
+                                  <input
+                                    id={`row-${row.id}-file-input`}
+                                    type="file"
+                                    tabIndex={-1}
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const f = e.target.files?.[0];
+                                      if (f) handleRowFileSelect(row.id, f);
+                                      e.target.value = "";
+                                    }}
+                                  />
+                                </button>
+                              </div>
+                            )}
                           </td>
 
                           {/* Line Total Amount */}
                           <td className="py-1 px-2 align-top text-right">
                             <div className="h-10 flex items-center justify-end font-mono font-black text-xs text-slate-900">
-                              ₹{row.lineAmount.toFixed(2)}
+                              ₹{row.lineAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </div>
                           </td>
 
@@ -2045,9 +2480,37 @@ export function InvoiceFormView() {
                           <td className="py-1 px-1 align-top text-center">
                             <div className="h-10 flex items-center justify-center">
                               <button
+                                id={`row-${row.id}-delete-btn`}
                                 type="button"
                                 disabled={calculatedRows.length <= 1}
                                 onClick={() => removeRow(row.id)}
+                                onKeyDown={(e) => {
+                                  if (e.key === " " || e.key === "Spacebar") {
+                                    e.preventDefault();
+                                    if (calculatedRows.length > 1) {
+                                      removeRow(row.id);
+                                      setTimeout(() => {
+                                        const targetRow = calculatedRows[Math.max(0, index - 1)];
+                                        if (targetRow) {
+                                          const el = document.getElementById(`row-${targetRow.id}-product-input`);
+                                          if (el) el.focus();
+                                        }
+                                      }, 60);
+                                    }
+                                  } else if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleRowFinalEnter(index);
+                                  } else if (e.key === "Backspace" || e.key === "ArrowLeft") {
+                                    e.preventDefault();
+                                    if (row.isDirect) {
+                                      const rateUnit = document.getElementById(`row-${row.id}-rate-unit`);
+                                      if (rateUnit) rateUnit.focus();
+                                    } else {
+                                      const browseBtn = document.getElementById(`row-${row.id}-browse-btn`);
+                                      if (browseBtn) browseBtn.focus();
+                                    }
+                                  }
+                                }}
                                 className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all ${
                                   calculatedRows.length <= 1
                                     ? "opacity-20 cursor-not-allowed text-slate-400 bg-slate-100"
@@ -2063,20 +2526,22 @@ export function InvoiceFormView() {
                       );
                     })}
 
-                    {/* Section Header: PRICING DETAILS (Vertical Layout like Proxy Order) */}
+                    {/* Section: SUB TOTAL */}
                     <tr className="border-t-2 border-slate-200 bg-slate-100/50">
                       <td className="py-1 px-2"></td>
-                      <td colSpan={12} className="py-1 px-2 text-[10px] font-black uppercase tracking-widest text-slate-700">
-                        PRICING DETAILS
+                      <td colSpan={13} className="py-1 px-2 text-[10px] font-black uppercase tracking-widest text-slate-700">
+                        SUB TOTAL
                       </td>
-                      <td className="py-1 px-2"></td>
+                      <td className="py-1 px-2 text-right font-black tabular-nums text-slate-900 text-xs font-mono">
+                        ₹{summary.subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
                       <td className="py-1 px-2"></td>
                     </tr>
 
                     {/* 1. SGST / CGST Ledger Rows */}
                     <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
                       <td className="py-0.5 px-2"></td>
-                      <td colSpan={12} className="py-0.5 px-2 font-bold text-slate-800">
+                      <td colSpan={13} className="py-0.5 px-2 font-bold text-slate-800">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span>SGST</span>
                           {calculatedRows.length > 1 && (
@@ -2094,7 +2559,7 @@ export function InvoiceFormView() {
 
                     <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
                       <td className="py-0.5 px-2"></td>
-                      <td colSpan={12} className="py-0.5 px-2 font-bold text-slate-800">
+                      <td colSpan={13} className="py-0.5 px-2 font-bold text-slate-800">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span>CGST</span>
                           {calculatedRows.length > 1 && (
@@ -2113,7 +2578,7 @@ export function InvoiceFormView() {
                     {/* 2. Round Off Ledger Row */}
                     <tr className="border-t border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-800">
                       <td className="py-0.5 px-2"></td>
-                      <td colSpan={12} className="py-0.5 px-2 font-bold text-slate-800">
+                      <td colSpan={13} className="py-0.5 px-2 font-bold text-slate-800">
                         Round Off
                       </td>
                       <td className="py-0.5 px-2 text-right font-bold tabular-nums text-slate-600 font-mono">
@@ -2131,7 +2596,7 @@ export function InvoiceFormView() {
                   <tfoot>
                     <tr className="border-t-2 border-b border-slate-200 bg-slate-50/80 text-xs font-black text-slate-900">
                       <td className="py-1.5 px-2 text-center"></td>
-                      <td colSpan={12} className="py-1.5 px-2 font-black uppercase tracking-wider text-slate-800">
+                      <td colSpan={13} className="py-1.5 px-2 font-black uppercase tracking-wider text-slate-800">
                         TOTAL
                       </td>
                       <td className="py-1.5 px-2 text-right font-black tabular-nums text-sm text-slate-950 font-mono">
@@ -2874,6 +3339,7 @@ export function InvoiceFormView() {
                             onMouseDown={(e) => {
                               e.preventDefault();
                               const prodMode = (p as any)?.tally_billing_mode || (p as any)?.tallyBillingMode || "B";
+                              const hasSingleDefault = Boolean((p as any)?.has_single_default_size ?? (p as any)?.metadata?.has_single_default_size ?? (Number((p as any)?.default_width) > 0 && Number((p as any)?.default_length) > 0));
                               updateRow(openRowId, {
                                 productId: p.id,
                                 productName: p.name,
@@ -2881,6 +3347,8 @@ export function InvoiceFormView() {
                                 billingMode: prodMode,
                                 gstRate: p.gst_rate || 18,
                                 manualRate: "",
+                                width: hasSingleDefault && p.default_width ? String(p.default_width) : "",
+                                height: hasSingleDefault && p.default_length ? String(p.default_length) : "",
                               });
                               setOpenRowId(null);
                               setSearchQuery("");
