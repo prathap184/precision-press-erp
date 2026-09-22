@@ -33,6 +33,7 @@ import { Order } from '@/types/models';
 import { sortOrdersNewestFirst } from '@/lib/order-sort';
 import { OrderThumbnail } from '@/components/orders/OrderThumbnail';
 import { WorkflowPipelineVisual } from '@/components/orders/WorkflowPipelineVisual';
+import { matchesPrinterStream } from '@/lib/role-workflow-utils';
 import {
   Activity,
   AlertCircle,
@@ -211,8 +212,47 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
   const router = useRouter();
 
   // "All Stages" dropdown options — show ALL stages for admin/super-admin,
+  // "All Stages" dropdown options — show ALL stages for admin/super-admin,
   // only the viewer's assigned roles for everyone else
   const isViewerAdmin = viewerRoles.includes('ADMIN') || viewerRoles.includes('SUPER_ADMIN');
+  const printerCategory = auth?.profile?.printerCategory;
+  const printerSubCategory = auth?.profile?.printerSubCategory;
+
+  const orderMatchesViewer = React.useCallback((order: Order): boolean => {
+    if (!order) return false;
+    if (isViewerAdmin) return true;
+
+    // Direct assignment or creator
+    if (viewerUid && (
+      order.workflow?.assignedTo === viewerUid || 
+      (order as any).proxyExecutor?.uid === viewerUid || 
+      order.createdBy === viewerUid
+    )) {
+      return true;
+    }
+
+    const steps = order.workflowSnapshot?.steps || [];
+    const stepRoles = new Set(steps.map(s => String(s.role || '').toUpperCase()));
+    const currentRole = String(order.currentWorkflowRole || steps[order.workflowSnapshot?.currentStepIndex ?? 0]?.role || '').toUpperCase();
+
+    // Check if order belongs to ANY of the viewer's active operational roles
+    for (const r of operationalRoles) {
+      const roleUpper = String(r).toUpperCase();
+      if (roleUpper === 'PRINTER') {
+        const hasPrinterStep = stepRoles.has('PRINTER') || currentRole === 'PRINTER';
+        if (hasPrinterStep && matchesPrinterStream(order, printerCategory, printerSubCategory)) {
+          return true;
+        }
+      } else {
+        if (stepRoles.has(roleUpper) || currentRole === roleUpper) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }, [isViewerAdmin, viewerUid, operationalRoles, printerCategory, printerSubCategory]);
+
   const roleFilterOptions = isViewerAdmin
     ? ALL_WORKFLOW_ROLES
     : ALL_WORKFLOW_ROLES.filter(r => viewerRoles.includes(r.id as any));
@@ -289,13 +329,14 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
         if (Array.isArray(wf?.groupOrderIds) && wf.groupOrderIds.length > 0) return false;
         return true;
       });
-      const sortedVisible = sortOrdersNewestFirst(visible);
+      const roleScoped = isViewerAdmin ? visible : visible.filter(orderMatchesViewer);
+      const sortedVisible = sortOrdersNewestFirst(roleScoped);
       setOrders(sortedVisible);
       setHasMore(snap.docs.length === limitCount);
       setLoading(false);
     });
     return () => unsub();
-  }, [limitCount, dateRange]);
+  }, [limitCount, dateRange, isViewerAdmin, orderMatchesViewer]);
 
   // ── Parent totals for child orders ────────────────────────────────────────
   useEffect(() => {
@@ -322,24 +363,30 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
       const step = order.workflowSnapshot?.steps?.[order.workflowSnapshot?.currentStepIndex ?? 0];
       if (!step || step.status === 'COMPLETED') return false;
       const cr = (order.currentWorkflowRole || step?.role || '').toUpperCase();
-      const byRole = effectiveLockedRoles.includes(cr as StaffRole);
+      let byRole = effectiveLockedRoles.includes(cr as StaffRole);
+      if (byRole && cr === 'PRINTER') {
+        byRole = matchesPrinterStream(order, printerCategory, printerSubCategory);
+      }
       const byAssign = viewerUid && order.workflow?.assignedTo === viewerUid;
       const byProxy = viewerUid && (order as any).proxyExecutor?.uid === viewerUid;
       return byRole || byAssign || byProxy;
-    }), [orders, viewerUid, effectiveLockedRoles]);
+    }), [orders, viewerUid, effectiveLockedRoles, printerCategory, printerSubCategory]);
 
   const completedStageOrders = React.useMemo(() =>
     orders.filter(order => {
       const completedByStep = (order.workflowSnapshot?.steps || []).some(s => {
         const byUser = s.completedBy === viewerUid || (s.history || []).some((h: any) => h.by === viewerUid && h.status === 'COMPLETED');
-        const byRole = s.status === 'COMPLETED' && operationalRoles.includes(s.role as any);
+        let byRole = s.status === 'COMPLETED' && operationalRoles.includes(s.role as any);
+        if (byRole && String(s.role).toUpperCase() === 'PRINTER') {
+          byRole = matchesPrinterStream(order, printerCategory, printerSubCategory);
+        }
         return byUser || byRole;
       });
       const completedCustom =
         (order as any).dispatchCompletedBy === viewerUid ||
         (order.dispatchInfo as any)?.dispatchedBy === viewerUid;
       return completedByStep || completedCustom;
-    }), [orders, viewerUid, operationalRoles]);
+    }), [orders, viewerUid, operationalRoles, printerCategory, printerSubCategory]);
 
   const completedByMeOrders = React.useMemo(() =>
     orders.filter(order => {
@@ -382,13 +429,13 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
   }, [orders, viewerUid]);
 
   const computedStats = React.useMemo(() => {
-    if (!orders.length) return totalStats;
+    if (!orders.length) return isViewerAdmin ? totalStats : { total: 0, active: 0, completed: 0 };
     const isCompleted = (o: Order) =>
       o.status === 'DELIVERED' ||
       (o.workflowSnapshot?.steps || []).every((s: any) => s.status === 'COMPLETED');
     const completed = orders.filter(isCompleted).length;
     return { total: orders.length, active: orders.length - completed, completed };
-  }, [orders, totalStats]);
+  }, [orders, totalStats, isViewerAdmin]);
 
   // Active orders for the selected tab
   const activeOrders = React.useMemo(() => {

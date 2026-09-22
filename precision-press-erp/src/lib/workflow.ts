@@ -1043,7 +1043,12 @@ async function executeOrderPlacementTx(
   let derivedSubCategory = payload.printerSubCategory || null;
   if (payload.items[0]) {
     const firstItem = payload.items[0];
-    const firstProduct = products.find(p => p.id === String(firstItem.productId || firstItem.id || '').trim());
+    const firstTargetId = String(firstItem.productId || firstItem.id || '').trim();
+    const firstTargetName = String(firstItem.productName || firstItem.name || '').trim().toLowerCase();
+    const firstProduct = products.find(p => 
+      (firstTargetId && (p.id === firstTargetId || p.sku === firstTargetId || p.code === firstTargetId || (p as any).rawId === firstTargetId)) ||
+      (firstTargetName && p.name && p.name.trim().toLowerCase() === firstTargetName)
+    );
     if (firstProduct) {
       if (!derivedCategory) {
         derivedCategory = firstProduct.printing_category_name || firstProduct.printingCategoryName || firstProduct.printer_category_name || firstProduct.printerCategory || null;
@@ -1065,6 +1070,27 @@ async function executeOrderPlacementTx(
       else if (checkString.includes('solvent')) derivedCategory = 'SOLVENT_PRINT';
       else derivedCategory = 'SOLVENT_PRINT';
     }
+
+    // Attach stream details directly to all items so child orders and database JSONB preserve them
+    payload.items.forEach((item: any) => {
+      const itemTargetId = String(item.productId || item.id || '').trim();
+      const itemTargetName = String(item.productName || item.name || '').trim().toLowerCase();
+      const itemProd = products.find(p => 
+        (itemTargetId && (p.id === itemTargetId || p.sku === itemTargetId || p.code === itemTargetId || (p as any).rawId === itemTargetId)) ||
+        (itemTargetName && p.name && p.name.trim().toLowerCase() === itemTargetName)
+      );
+      if (itemProd) {
+        item.printerCategory = item.printerCategory || itemProd.printing_category_name || itemProd.printerCategory || derivedCategory;
+        item.printing_category_name = item.printerCategory;
+        item.printerSubCategory = item.printerSubCategory || itemProd.printing_subcategory_name || itemProd.printerSubCategory || derivedSubCategory;
+        item.printing_subcategory_name = item.printerSubCategory;
+      } else {
+        item.printerCategory = item.printerCategory || derivedCategory;
+        item.printing_category_name = item.printerCategory;
+        item.printerSubCategory = item.printerSubCategory || derivedSubCategory;
+        item.printing_subcategory_name = item.printerSubCategory;
+      }
+    });
   }
 
   const resolvedIsInterstate = typeof payload.isInterstate === 'boolean'

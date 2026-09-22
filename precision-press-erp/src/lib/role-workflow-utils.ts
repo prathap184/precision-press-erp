@@ -90,14 +90,31 @@ export function matchesPrinterStream(
   }
 
   // Extract order subcategory
-  let orderSubCat = (order as any).printerSubCategory || (order as any).printing_subcategory_name || '';
-  if (!orderSubCat && order.items?.length) {
-    const firstItem = order.items[0] as any;
-    orderSubCat = firstItem.printerSubCategory || firstItem.printing_subcategory_name || firstItem.printingSubcategoryName || '';
+  const orderSubCat = (order as any).printerSubCategory || (order as any).printing_subcategory_name || '';
+  if (orderSubCat && normalizeCategoryString(orderSubCat) === targetSubNorm) {
+    return true;
   }
 
-  const orderSubNorm = normalizeCategoryString(orderSubCat);
-  return orderSubNorm === targetSubNorm;
+  if (order.items?.length) {
+    return order.items.some((item: any) => {
+      const itemSub = item.printerSubCategory || item.printing_subcategory_name || item.printingSubcategoryName || '';
+      if (itemSub && normalizeCategoryString(itemSub) === targetSubNorm) {
+        return true;
+      }
+      // Smart fallback: check product name / code for subcategory hints
+      const pName = (item.productName || item.name || '').toLowerCase();
+      const pCode = (item.productId || item.code || item.sku || '').toLowerCase();
+      if (targetSubNorm.includes('mutoh') && (pName.includes('( mu )') || pName.includes('(mu)') || pName.includes('mutoh') || pCode.startsWith('mut-'))) {
+        return true;
+      }
+      if (targetSubNorm.includes('blackgrey') && (pName.includes('black back') || pName.includes('grey back') || pName.includes('gray back'))) {
+        return true;
+      }
+      return false;
+    });
+  }
+
+  return false;
 }
 
 /**

@@ -17,11 +17,14 @@ export async function getCachedProduct(productId: string) {
   return getOrSetCache(
     CACHE_KEYS.PRODUCT(productId),
     async () => {
-      const { data: row, error } = await supabaseServer
-        .from('inventory_item')
-        .select('*')
-        .eq('sku', productId)
-        .single();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId);
+      let query = supabaseServer.from('inventory_item').select('*');
+      if (isUuid) {
+        query = query.or(`id.eq.${productId},sku.eq.${productId},code.eq.${productId}`);
+      } else {
+        query = query.or(`sku.eq.${productId},code.eq.${productId}`);
+      }
+      const { data: row, error } = await query.limit(1).maybeSingle();
         
       if (error || !row) return null;
       
@@ -29,6 +32,9 @@ export async function getCachedProduct(productId: string) {
       
       return {
         id: row.sku || row.code || row.id,
+        rawId: row.id,
+        sku: row.sku,
+        code: row.code,
         name: row.name,
         category: row.category,
         baseRate: meta.baseRate != null ? Number(meta.baseRate) : ((row.sale_price != null) ? (Number(row.sale_price) / 100) : (row.base_rate || 0)),
