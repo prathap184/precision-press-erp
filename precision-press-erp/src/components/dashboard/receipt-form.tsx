@@ -713,7 +713,7 @@ export function ReceiptForm() {
       setActiveRefType(defaultRef);
       setRefTypeHighlightIndex(defaultRef === "AGST_REF" ? 1 : 2);
       setCurrentLineAmount(voucherAmount && parseFloat(voucherAmount) > 0 ? voucherAmount : "");
-      setCurrentLineRefName(defaultRef === "NEW_REF" ? `REF-${voucherNo}` : defaultRef === "ADVANCE" ? `ADV-${voucherNo}` : "");
+      setCurrentLineRefName(defaultRef === "AGST_REF" ? "" : String(voucherNo));
       setCurrentLineDueDate(date);
       setCurrentLineInvoiceId(undefined);
     }
@@ -738,7 +738,7 @@ export function ReceiptForm() {
       const defaultRef: RefType = invoices.length > 0 ? "AGST_REF" : "NEW_REF";
       setActiveRefType(defaultRef);
       setCurrentLineAmount(voucherAmount && parseFloat(voucherAmount) > 0 ? voucherAmount : "");
-      setCurrentLineRefName(defaultRef === "NEW_REF" ? `ADV-${voucherNo}` : "");
+      setCurrentLineRefName(defaultRef === "AGST_REF" ? "" : String(voucherNo));
       setCurrentLineDueDate(date);
       setCurrentLineInvoiceId(undefined);
     }
@@ -765,7 +765,7 @@ export function ReceiptForm() {
       } else {
         toast.info("No pending invoices found for this customer. Use Advance or New Ref.");
         setActiveRefType("NEW_REF");
-        setCurrentLineRefName((prev) => (prev && prev !== "On Account" ? prev : `ADV-${voucherNo}`));
+        setCurrentLineRefName(String(voucherNo));
         setCurrentLineDueDate(date);
         setTimeout(() => {
           const el = document.getElementById("modal-ref-name-input") as HTMLInputElement;
@@ -773,18 +773,9 @@ export function ReceiptForm() {
           try { el?.select(); } catch {}
         }, 30);
       }
-    } else if (refType === "NEW_REF" || refType === "ADVANCE") {
+    } else if (refType === "NEW_REF" || refType === "ADVANCE" || refType === "ON_ACCOUNT") {
       setShowPendingBills(false);
-      setCurrentLineRefName((prev) => (prev && prev !== "On Account" ? prev : (refType === "ADVANCE" ? `ADV-${voucherNo}` : `REF-${voucherNo}`)));
-      if (!currentLineDueDate) setCurrentLineDueDate(date);
-      setTimeout(() => {
-        const el = document.getElementById("modal-ref-name-input") as HTMLInputElement;
-        el?.focus();
-        try { el?.select(); } catch {}
-      }, 30);
-    } else if (refType === "ON_ACCOUNT") {
-      setShowPendingBills(false);
-      setCurrentLineRefName("On Account");
+      setCurrentLineRefName(String(voucherNo));
       if (!currentLineDueDate) setCurrentLineDueDate(date);
       setTimeout(() => {
         const el = document.getElementById("modal-ref-name-input") as HTMLInputElement;
@@ -823,7 +814,7 @@ export function ReceiptForm() {
     const newLine: BillWiseLine = {
       id: Math.random().toString(36).substring(2, 9),
       refType: activeRefType,
-      refName: currentLineRefName || (activeRefType === "ON_ACCOUNT" ? "On Account" : `REF-${voucherNo}`),
+      refName: currentLineRefName || (activeRefType === "AGST_REF" ? "INV-REF" : String(voucherNo)),
       dueDate: currentLineDueDate || date,
       amount: numAmt,
       invoiceId: currentLineInvoiceId,
@@ -1505,7 +1496,7 @@ export function ReceiptForm() {
                             }
                           }
                         }}
-                        placeholder={activeRefType === "ON_ACCOUNT" ? "On Account" : "Ref / Bill No."}
+                        placeholder={activeRefType === "AGST_REF" ? "Invoice No..." : String(voucherNo)}
                         title="Reference / Bill / Invoice Number"
                         className="w-full bg-slate-50 border-2 border-slate-200 px-3 py-2 text-xs font-bold text-slate-900 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
                       />
