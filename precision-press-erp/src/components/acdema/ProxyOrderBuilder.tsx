@@ -908,18 +908,13 @@ ${parts.join(', ')}`;
 
         toast.success(`Proxy orders created successfully.`);
         
-        if (paymentMode !== 'COD' && paymentMode !== 'CREDIT') {
-          const custId = selectedCustomer?.uid || (selectedCustomer as any)?.id || '';
-          const custName = selectedCustomer?.displayName || selectedCustomer?.name || '';
-          const gTotal = summary.grandTotal.toFixed(2);
-          const orderNum = result.orderId || (result.orderIds?.length ? result.orderIds.join(', ') : '');
-          const receiptUrl = `/accounting/receipt/new?customerId=${encodeURIComponent(custId)}&customerName=${encodeURIComponent(custName)}&amount=${encodeURIComponent(gTotal)}&notes=${encodeURIComponent(`Receipt for Order ${orderNum}`)}`;
-          router.push(receiptUrl);
-        } else {
-          const highlightIds = result.orderIds?.length ? result.orderIds.join(',') : result.orderId;
-          const basePath = profile?.role === 'ACDEMA' ? '/acdema' : profile?.role === 'ADMIN' || profile?.role === 'SUPER_ADMIN' ? '/admin' : `/${profile?.role?.toLowerCase() || 'admin'}`;
-          router.push(`${basePath}/orders?highlight=${highlightIds}`);
-        }
+        const highlightIds = result.orderIds?.length ? result.orderIds.join(',') : result.orderId;
+        const activeRole = profile?.role || roles?.[0] || '';
+        const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+        const roleOrdersPath = getRoleGlobalOrdersUrl(activeRole, urlParams.get('workspace'));
+        const separator = roleOrdersPath.includes('?') ? '&' : '?';
+        const targetUrl = highlightIds ? `${roleOrdersPath}${separator}highlight=${encodeURIComponent(highlightIds)}` : roleOrdersPath;
+        router.push(targetUrl);
       }
     } catch (error: any) {
       console.error(error);
