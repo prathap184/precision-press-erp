@@ -554,6 +554,9 @@ export function ReceiptForm() {
             return;
           }
           if (e.key === "Enter" || e.key === "Tab") {
+            if (document.activeElement === customerInputRef.current) {
+              return;
+            }
             e.preventDefault();
             const selected = REF_TYPE_OPTIONS[refTypeHighlightIndex];
             if (selected) {
@@ -699,6 +702,8 @@ export function ReceiptForm() {
     if (billWiseLines.length > 0) {
       const prevLine = billWiseLines[0];
       setActiveRefType(prevLine.refType);
+      const prevIdx = REF_TYPE_OPTIONS.findIndex((o) => o.type === prevLine.refType);
+      setRefTypeHighlightIndex(prevIdx >= 0 ? prevIdx : 0);
       setCurrentLineAmount(String(prevLine.amount || voucherAmount || ""));
       setCurrentLineRefName(prevLine.refName || "");
       setCurrentLineDueDate(prevLine.dueDate || date);
@@ -708,14 +713,16 @@ export function ReceiptForm() {
       setActiveRefType(defaultRef);
       setRefTypeHighlightIndex(defaultRef === "AGST_REF" ? 1 : 2);
       setCurrentLineAmount(voucherAmount && parseFloat(voucherAmount) > 0 ? voucherAmount : "");
-      setCurrentLineRefName(defaultRef === "NEW_REF" ? `ADV-${voucherNo}` : "");
+      setCurrentLineRefName(defaultRef === "NEW_REF" ? `REF-${voucherNo}` : defaultRef === "ADVANCE" ? `ADV-${voucherNo}` : "");
       setCurrentLineDueDate(date);
       setCurrentLineInvoiceId(undefined);
     }
     setShowBillWiseModal(true);
     setShowPendingBills(false);
     setShowRefTypeMenu(true);
-    setTimeout(() => refTypeCellRef.current?.focus(), 30);
+    setTimeout(() => {
+      refTypeCellRef.current?.focus();
+    }, 60);
   };
 
   // Open Bill-wise details modal when jumping back from Narration with Backspace
@@ -1090,6 +1097,7 @@ export function ReceiptForm() {
                           setCustomerHighlightIndex((prev) => Math.max(prev - 1, 0));
                         } else if (e.key === "Enter") {
                           e.preventDefault();
+                          e.stopPropagation();
                           let chosenCust = selectedCustomer;
                           if (showCustomerDropdown && filteredCustomers[customerHighlightIndex]) {
                             chosenCust = filteredCustomers[customerHighlightIndex];
@@ -1097,7 +1105,9 @@ export function ReceiptForm() {
                             setCustomerSearch(chosenCust.name);
                           }
                           setShowCustomerDropdown(false);
-                          openBillWiseDetails(chosenCust || undefined);
+                          setTimeout(() => {
+                            openBillWiseDetails(chosenCust || undefined);
+                          }, 50);
                         } else if (e.key === "Escape") {
                           setShowCustomerDropdown(false);
                         } else if (e.key === "Backspace") {
@@ -1153,7 +1163,9 @@ export function ReceiptForm() {
                                   setSelectedCustomerId(c.id);
                                   setCustomerSearch(c.name);
                                   setShowCustomerDropdown(false);
-                                  openBillWiseDetails(c);
+                                  setTimeout(() => {
+                                    openBillWiseDetails(c);
+                                  }, 50);
                                 }}
                                 onMouseEnter={() => setCustomerHighlightIndex(idx)}
                                 className={`px-4 py-3 text-xs flex justify-between items-center cursor-pointer transition-colors ${
@@ -1339,7 +1351,7 @@ export function ReceiptForm() {
                 <thead className="bg-slate-100/70 border-b border-slate-200 text-slate-500 font-black uppercase text-[10px] tracking-wider">
                   <tr>
                     <th className="px-4 py-3 w-40">Type of Ref</th>
-                    <th className="px-4 py-3 min-w-[160px]">Name</th>
+                    <th className="px-4 py-3 min-w-[160px]">Name (Ref / Bill No)</th>
                     <th className="px-4 py-3 w-44">Due Date, or credit Days</th>
                     <th className="px-4 py-3 text-right w-36">Amount</th>
                     <th className="px-4 py-3 text-center w-16">Dr/Cr</th>
@@ -1493,7 +1505,8 @@ export function ReceiptForm() {
                             }
                           }
                         }}
-                        placeholder={activeRefType === "ON_ACCOUNT" ? "On Account" : "Ref Name..."}
+                        placeholder={activeRefType === "ON_ACCOUNT" ? "On Account" : "Ref / Bill No."}
+                        title="Reference / Bill / Invoice Number"
                         className="w-full bg-slate-50 border-2 border-slate-200 px-3 py-2 text-xs font-bold text-slate-900 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
                       />
                     </td>
