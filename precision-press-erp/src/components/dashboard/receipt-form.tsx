@@ -215,6 +215,14 @@ export function ReceiptForm() {
       .catch(() => {});
   }, []);
 
+  // Autofocus Account input on initial page load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      accountInputRef.current?.focus();
+    }, 60);
+    return () => clearTimeout(timer);
+  }, []);
+
   // Pre-fill from URL params or pending draft if navigated from other pages
   useEffect(() => {
     try {
@@ -691,17 +699,54 @@ export function ReceiptForm() {
       return;
     }
 
-    const defaultRef: RefType = invoices.length > 0 ? "AGST_REF" : "NEW_REF";
-    setActiveRefType(defaultRef);
-    setRefTypeHighlightIndex(defaultRef === "AGST_REF" ? 1 : 2);
-    setCurrentLineAmount(voucherAmount);
-    setCurrentLineRefName(defaultRef === "NEW_REF" ? `ADV-${voucherNo}` : "");
-    setCurrentLineDueDate(date);
-    setCurrentLineInvoiceId(undefined);
+    if (billWiseLines.length > 0) {
+      const prevLine = billWiseLines[0];
+      setActiveRefType(prevLine.refType);
+      setCurrentLineAmount(String(prevLine.amount || voucherAmount));
+      setCurrentLineRefName(prevLine.refName || "");
+      setCurrentLineDueDate(prevLine.dueDate || date);
+      setCurrentLineInvoiceId(prevLine.invoiceId);
+    } else {
+      const defaultRef: RefType = invoices.length > 0 ? "AGST_REF" : "NEW_REF";
+      setActiveRefType(defaultRef);
+      setRefTypeHighlightIndex(defaultRef === "AGST_REF" ? 1 : 2);
+      setCurrentLineAmount(voucherAmount);
+      setCurrentLineRefName(defaultRef === "NEW_REF" ? `ADV-${voucherNo}` : "");
+      setCurrentLineDueDate(date);
+      setCurrentLineInvoiceId(undefined);
+    }
     setShowBillWiseModal(true);
     setShowPendingBills(false);
     setShowRefTypeMenu(true);
     setTimeout(() => refTypeCellRef.current?.focus(), 30);
+  };
+
+  // Open Bill-wise details modal when jumping back from Narration with Backspace
+  const openBillWiseDetailsFromNarration = () => {
+    if (billWiseLines.length > 0) {
+      const prevLine = billWiseLines[0];
+      setActiveRefType(prevLine.refType);
+      setCurrentLineAmount(String(prevLine.amount || voucherAmount));
+      setCurrentLineRefName(prevLine.refName || "");
+      setCurrentLineDueDate(prevLine.dueDate || date);
+      setCurrentLineInvoiceId(prevLine.invoiceId);
+    } else {
+      const defaultRef: RefType = invoices.length > 0 ? "AGST_REF" : "NEW_REF";
+      setActiveRefType(defaultRef);
+      setCurrentLineAmount(voucherAmount);
+      setCurrentLineRefName(defaultRef === "NEW_REF" ? `ADV-${voucherNo}` : "");
+      setCurrentLineDueDate(date);
+      setCurrentLineInvoiceId(undefined);
+    }
+    setShowBillWiseModal(true);
+    setShowPendingBills(false);
+    setShowRefTypeMenu(false);
+    setTimeout(() => {
+      modalAmountInputRef.current?.focus();
+      try {
+        modalAmountInputRef.current?.select();
+      } catch {}
+    }, 50);
   };
 
   // Handle selecting Ref Type from Method of Adj popup
@@ -870,51 +915,56 @@ export function ReceiptForm() {
   const { dateDisplay, dayDisplay } = formatTallyDate(date);
 
   return (
-    <div className="w-full min-h-[calc(100vh-5rem)] flex flex-col bg-[#e8edf2] text-slate-900 font-sans p-2 sm:p-4 select-none">
-      {/* Full-Page Tally Terminal Container */}
-      <div className="w-full flex-1 flex flex-col bg-white border-2 border-slate-700 shadow-2xl rounded-sm overflow-visible">
-        {/* Top Tally Header Bar */}
-        <div className="bg-[#244b7a] text-white px-5 py-2 flex items-center justify-between text-xs font-bold tracking-wide border-b border-slate-600">
-          <div className="flex items-center gap-3">
-            <span className="bg-[#183253] px-2 py-0.5 rounded text-amber-300 font-mono text-xs">F6</span>
-            <span className="text-sm font-extrabold tracking-tight">Accounting Voucher Creation</span>
-          </div>
-          <div className="font-bold text-slate-100 text-sm tracking-wide">{orgName}</div>
+    <div className="font-sans text-slate-800 p-3 md:p-4 pt-2 md:pt-3 relative z-10 min-h-[calc(100vh-4rem)] rounded-none">
+      <div className="w-full">
+        {/* Ambient Soft Blue Mesh Gradient Background */}
+        <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none bg-[#e2ecf8]">
+          <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-15 mix-blend-overlay" />
+          <div className="absolute inset-0 bg-[radial-gradient(#bfdbfe_1px,transparent_1px)] [background-size:24px_24px] opacity-40" />
+          <div className="absolute -top-[15%] -right-[10%] w-[55vw] h-[55vw] rounded-full bg-sky-200/50 blur-[130px] pointer-events-none" />
+          <div className="absolute -bottom-[15%] -left-[10%] w-[55vw] h-[55vw] rounded-full bg-blue-200/40 blur-[130px] pointer-events-none" />
+          <div className="absolute top-[35%] left-[25%] w-[45vw] h-[45vw] rounded-full bg-sky-100/60 blur-[120px] pointer-events-none" />
         </div>
 
-        {/* Voucher Meta Subheader */}
-        <div className="bg-[#e8f0f8] border-b border-slate-300 px-6 py-2.5 flex items-center justify-between text-sm">
-          <div className="flex items-center gap-6">
-            <div className="font-extrabold text-[#1a3a60] text-lg tracking-tight">Receipt</div>
+        {/* Top Header Glass Card */}
+        <div className="flex items-center justify-between bg-white/60 backdrop-blur-2xl p-3.5 rounded-[1.75rem] border border-white/80 shadow-[0_8px_30px_rgb(0,0,0,0.03)] relative z-10 mb-4">
+          <div className="flex items-center gap-3">
+            <span className="bg-blue-600 text-white font-mono font-bold text-xs px-2.5 py-1 rounded-xl shadow-xs">F6</span>
+            <span className="text-sm font-black text-slate-800 tracking-tight">Accounting Voucher Creation</span>
+            <div className="h-4 w-px bg-slate-300" />
+            <span className="text-xs font-bold text-slate-500">{orgName}</span>
+          </div>
+
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-slate-600 font-bold">No.</span>
-              <span className="font-mono font-black text-slate-900 bg-white px-2.5 py-0.5 border border-slate-400 rounded text-sm shadow-xs">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Receipt No.</span>
+              <span className="font-mono font-black text-slate-900 bg-white/80 px-2.5 py-1 border border-slate-200 rounded-xl text-xs shadow-xs">
                 {voucherNo}
               </span>
             </div>
-          </div>
-          <div
-            onClick={() => {
-              setTempDate(date);
-              setShowF2Modal(true);
-            }}
-            className="flex items-center gap-2 cursor-pointer hover:bg-white/90 px-3 py-1 rounded border border-transparent hover:border-slate-300 transition-all"
-            title="Press F2 to change Date"
-          >
-            <span className="font-extrabold text-slate-900 text-sm">{dateDisplay}</span>
-            <span className="text-slate-600 text-xs font-semibold">{dayDisplay}</span>
-            <span className="text-[10px] font-mono bg-blue-100 text-blue-900 px-1.5 py-0.5 rounded font-black border border-blue-200">
-              F2
-            </span>
+            <div
+              onClick={() => {
+                setTempDate(date);
+                setShowF2Modal(true);
+              }}
+              className="flex items-center gap-2 cursor-pointer bg-white/80 hover:bg-white px-3 py-1.5 rounded-xl border border-slate-200 transition-all shadow-xs"
+              title="Press F2 to change Date"
+            >
+              <span className="font-black text-slate-800 text-xs">{dateDisplay}</span>
+              <span className="text-slate-500 text-xs font-semibold">{dayDisplay}</span>
+              <span className="text-[10px] font-mono bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-black border border-blue-200">
+                F2
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* Single-Entry Form Body */}
-        <div className="p-6 flex-1 flex flex-col justify-between space-y-6">
+        {/* Main Form Glass Card */}
+        <div className="relative z-10 rounded-[2rem] bg-white/50 p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-between space-y-6">
           <div className="space-y-6">
             {/* Account (Bank/Cash) Field */}
-            <div className="relative flex flex-col sm:flex-row sm:items-start gap-3 border-b border-slate-200 pb-4">
-              <div className="w-32 shrink-0 text-sm font-black text-slate-800 pt-1 flex items-center justify-between">
+            <div className="relative flex flex-col sm:flex-row sm:items-start gap-4 border-b border-slate-200/70 pb-5">
+              <div className="w-32 shrink-0 text-xs font-black uppercase tracking-wider text-slate-400 pt-2.5 flex items-center justify-between">
                 <span>Account</span>
                 <span>:</span>
               </div>
@@ -941,22 +991,23 @@ export function ReceiptForm() {
                       if (showBankDropdown && bankAccounts[bankHighlightIndex]) {
                         setSelectedBankId(bankAccounts[bankHighlightIndex].id);
                         setShowBankDropdown(false);
-                        customerInputRef.current?.focus();
                       } else {
-                        setShowBankDropdown(true);
+                        setShowBankDropdown(false);
                       }
+                      customerInputRef.current?.focus();
+                      try { customerInputRef.current?.select(); } catch {}
                     } else if (e.key === "Tab" || e.key === "Escape") {
                       setShowBankDropdown(false);
                     }
                   }}
-                  className="w-full bg-[#f8fafc] border-2 border-slate-400 font-black text-slate-900 px-3.5 py-2 text-sm rounded shadow-inner focus:bg-amber-50 focus:border-blue-600 focus:outline-none cursor-pointer"
+                  className="w-full bg-slate-50 border-2 border-slate-200 font-black text-slate-800 px-4 py-2.5 text-sm rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none cursor-pointer transition-all shadow-xs"
                 />
 
                 {/* Current Balance under Account */}
                 {selectedBank && (
-                  <div className="mt-1.5 text-xs text-slate-600 font-medium flex items-center gap-2">
-                    <span className="text-slate-500 italic">Current balance :</span>
-                    <span className="font-mono font-bold text-slate-800">
+                  <div className="mt-2 text-xs text-slate-500 font-medium flex items-center gap-2">
+                    <span className="text-slate-400">Current balance :</span>
+                    <span className="font-mono font-bold text-slate-700 bg-white/80 px-2 py-0.5 rounded-lg border border-slate-200 shadow-xs">
                       ₹ {((selectedBank.balance || 5000000) / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}{" "}
                       Dr
                     </span>
@@ -965,8 +1016,8 @@ export function ReceiptForm() {
 
                 {/* Bank Accounts Dropdown */}
                 {showBankDropdown && (
-                  <div ref={bankDropdownRef} className="absolute left-0 top-full mt-1 w-full bg-white border-2 border-blue-600 shadow-2xl z-50 rounded overflow-hidden">
-                    <div className="bg-[#244b7a] text-white text-xs font-bold px-3.5 py-1.5 flex justify-between">
+                  <div ref={bankDropdownRef} className="absolute left-0 top-full mt-1.5 w-full bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-2xl z-50 rounded-2xl overflow-hidden">
+                    <div className="bg-[#1e3a5f] text-white text-xs font-bold px-4 py-2 flex justify-between items-center">
                       <span>List of Ledger Accounts</span>
                       <span className="text-amber-300 font-mono text-[10px]">↑↓ Navigate · Enter Select</span>
                     </div>
@@ -979,10 +1030,11 @@ export function ReceiptForm() {
                             setSelectedBankId(b.id);
                             setShowBankDropdown(false);
                             customerInputRef.current?.focus();
+                            try { customerInputRef.current?.select(); } catch {}
                           }}
                           onMouseEnter={() => setBankHighlightIndex(idx)}
-                          className={`px-3.5 py-2.5 text-xs flex justify-between items-center cursor-pointer ${
-                            idx === bankHighlightIndex ? "bg-amber-100 font-bold text-blue-900" : "hover:bg-slate-50"
+                          className={`px-4 py-3 text-xs flex justify-between items-center cursor-pointer transition-colors ${
+                            idx === bankHighlightIndex ? "bg-blue-50 font-bold text-blue-900" : "hover:bg-slate-50 text-slate-800"
                           }`}
                         >
                           <span className="font-bold text-slate-900">{b.accountName}</span>
@@ -998,15 +1050,15 @@ export function ReceiptForm() {
             </div>
 
             {/* Voucher Table (Particulars & Amount) */}
-            <div className="border-2 border-slate-300 rounded overflow-visible">
+            <div className="rounded-2xl border border-slate-200/80 bg-white/60 backdrop-blur-md overflow-hidden shadow-xs">
               {/* Table Header */}
-              <div className="bg-[#f1f5f9] border-b-2 border-slate-300 px-4 py-2 flex justify-between text-xs font-black uppercase text-slate-700 tracking-wider">
+              <div className="bg-slate-100/70 border-b border-slate-200 px-5 py-3 flex justify-between text-xs font-black uppercase text-slate-400 tracking-widest">
                 <span className="w-2/3">Particulars</span>
                 <span className="w-1/3 text-right">Amount (₹)</span>
               </div>
 
               {/* Row 1: Customer Ledger */}
-              <div className="p-4 bg-white space-y-3">
+              <div className="p-5 space-y-3">
                 <div className="flex items-start justify-between gap-6">
                   {/* Particulars (Customer Search) */}
                   <div className="w-2/3 relative">
@@ -1041,24 +1093,33 @@ export function ReceiptForm() {
                             const c = filteredCustomers[customerHighlightIndex];
                             setSelectedCustomerId(c.id);
                             setCustomerSearch(c.name);
-                            setShowCustomerDropdown(false);
-                            amountInputRef.current?.focus();
-                            amountInputRef.current?.select();
-                          } else {
-                            amountInputRef.current?.focus();
                           }
+                          setShowCustomerDropdown(false);
+                          amountInputRef.current?.focus();
+                          try { amountInputRef.current?.select(); } catch {}
                         } else if (e.key === "Escape") {
                           setShowCustomerDropdown(false);
+                        } else if (e.key === "Backspace") {
+                          const len = customerSearch.length;
+                          const atStartOrSelected =
+                            !customerSearch ||
+                            (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) ||
+                            (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === len);
+                          if (atStartOrSelected) {
+                            e.preventDefault();
+                            setShowCustomerDropdown(false);
+                            accountInputRef.current?.focus();
+                          }
                         }
                       }}
-                      className="w-full bg-[#f8fafc] border-2 border-slate-400 font-black text-slate-900 px-3.5 py-2 text-sm rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                      className="w-full bg-slate-50 border-2 border-slate-200 font-bold text-slate-900 px-4 py-2.5 text-sm rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
                     />
 
                     {/* Customer Current Balance */}
                     {selectedCustomer && (
-                      <div className="mt-1.5 text-xs text-slate-600 font-medium flex items-center gap-2">
-                        <span className="text-slate-500 italic">Cur Bal :</span>
-                        <span className="font-mono font-bold text-slate-800">
+                      <div className="mt-2 text-xs text-slate-500 font-medium flex items-center gap-2">
+                        <span className="text-slate-400">Cur Bal :</span>
+                        <span className="font-mono font-bold text-slate-700 bg-white/80 px-2 py-0.5 rounded-lg border border-slate-200 shadow-xs">
                           ₹{" "}
                           {(Math.abs(selectedCustomer.owesYou || 40000) / 100).toLocaleString("en-IN", {
                             minimumFractionDigits: 2,
@@ -1070,8 +1131,8 @@ export function ReceiptForm() {
 
                     {/* Customer Dropdown */}
                     {showCustomerDropdown && (
-                      <div ref={customerDropdownRef} className="absolute left-0 top-full mt-1 w-full bg-white border-2 border-blue-600 shadow-2xl z-50 rounded overflow-hidden">
-                        <div className="bg-[#244b7a] text-white text-xs font-bold px-3.5 py-1.5 flex justify-between">
+                      <div ref={customerDropdownRef} className="absolute left-0 top-full mt-1.5 w-full bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-2xl z-50 rounded-2xl overflow-hidden">
+                        <div className="bg-[#1e3a5f] text-white text-xs font-bold px-4 py-2 flex justify-between items-center">
                           <span>List of Customer Ledgers</span>
                           <span className="text-amber-300 font-mono text-[10px]">↑↓ Navigate · Enter Select</span>
                         </div>
@@ -1088,13 +1149,13 @@ export function ReceiptForm() {
                                   setCustomerSearch(c.name);
                                   setShowCustomerDropdown(false);
                                   amountInputRef.current?.focus();
-                                  amountInputRef.current?.select();
+                                  try { amountInputRef.current?.select(); } catch {}
                                 }}
                                 onMouseEnter={() => setCustomerHighlightIndex(idx)}
-                                className={`px-3.5 py-2.5 text-xs flex justify-between items-center cursor-pointer ${
+                                className={`px-4 py-3 text-xs flex justify-between items-center cursor-pointer transition-colors ${
                                   idx === customerHighlightIndex
-                                    ? "bg-amber-100 font-bold text-blue-900"
-                                    : "hover:bg-slate-50"
+                                    ? "bg-blue-50 font-bold text-blue-900"
+                                    : "hover:bg-slate-50 text-slate-800"
                                 }`}
                               >
                                 <span className="font-bold text-slate-900">{c.name}</span>
@@ -1130,28 +1191,38 @@ export function ReceiptForm() {
                         if (e.key === "Enter") {
                           e.preventDefault();
                           openBillWiseDetails();
-                        } else if (e.key === "Backspace" && (!voucherAmount || voucherAmount === "0.00")) {
-                          customerInputRef.current?.focus();
+                        } else if (e.key === "Backspace") {
+                          const len = voucherAmount.length;
+                          const atStartOrSelected =
+                            !voucherAmount ||
+                            voucherAmount === "0.00" ||
+                            (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) ||
+                            (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === len);
+                          if (atStartOrSelected) {
+                            e.preventDefault();
+                            customerInputRef.current?.focus();
+                            try { customerInputRef.current?.select(); } catch {}
+                          }
                         }
                       }}
-                      className="w-full max-w-[200px] text-right bg-[#f8fafc] border-2 border-slate-400 font-mono font-black text-slate-900 px-3.5 py-2 text-base rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                      className="w-full max-w-[220px] text-right bg-slate-50 border-2 border-slate-200 font-mono font-black text-slate-900 px-4 py-2.5 text-base rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
                     />
-                    <span className="font-bold text-xs text-slate-700">Cr</span>
+                    <span className="font-black text-xs text-slate-500">Cr</span>
                   </div>
                 </div>
 
-                {/* Rendered Bill-wise Sub-lines under Customer (Matching Tally Screenshot 4 & 5) */}
+                {/* Rendered Bill-wise Sub-lines under Customer */}
                 {billWiseLines.length > 0 && (
                   <div className="pl-6 pt-2 space-y-1.5">
                     {billWiseLines.map((line) => (
                       <div
                         key={line.id}
                         onClick={openBillWiseDetails}
-                        className="flex items-center justify-between text-xs font-mono text-slate-800 bg-blue-50/80 border border-blue-200 px-3.5 py-1.5 rounded cursor-pointer hover:bg-blue-100 transition-colors"
+                        className="flex items-center justify-between text-xs font-mono text-slate-800 bg-blue-50/80 border border-blue-200/80 px-4 py-2 rounded-xl cursor-pointer hover:bg-blue-100/90 transition-all shadow-2xs"
                         title="Click or press Enter on amount to edit bill-wise details"
                       >
                         <div className="flex items-center gap-4">
-                          <span className="font-extrabold text-blue-900">
+                          <span className="font-extrabold text-blue-900 bg-blue-100/80 px-2 py-0.5 rounded-lg border border-blue-200">
                             {line.refType === "AGST_REF"
                               ? "Agst Ref"
                               : line.refType === "NEW_REF"
@@ -1160,12 +1231,12 @@ export function ReceiptForm() {
                               ? "Advance"
                               : "On Account"}
                           </span>
-                          <span className="text-slate-700">{line.refName}</span>
+                          <span className="font-bold text-slate-700">{line.refName}</span>
                           {line.dueDate && (
                             <span className="text-slate-500 text-[10px]">Due: {line.dueDate}</span>
                           )}
                         </div>
-                        <span className="font-bold text-slate-900">
+                        <span className="font-black text-slate-900">
                           ₹ {Number(line.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2 })} Cr
                         </span>
                       </div>
@@ -1175,8 +1246,8 @@ export function ReceiptForm() {
               </div>
 
               {/* Table Total Footer */}
-              <div className="bg-[#f8fafc] border-t-2 border-slate-300 px-6 py-2.5 flex justify-between items-center text-sm font-black">
-                <span className="text-slate-600 uppercase tracking-wide">Total</span>
+              <div className="bg-slate-100/60 border-t border-slate-200 px-6 py-3 flex justify-between items-center text-sm font-black">
+                <span className="text-slate-500 uppercase tracking-widest text-xs">Total</span>
                 <span className="font-mono text-slate-900 text-lg">
                   ₹ {parseFloat(voucherAmount || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </span>
@@ -1184,8 +1255,8 @@ export function ReceiptForm() {
             </div>
 
             {/* Narration Section */}
-            <div className="flex items-start gap-3 border-t border-slate-200 pt-4">
-              <div className="w-32 shrink-0 text-sm font-black text-slate-800 pt-1 flex items-center justify-between">
+            <div className="flex items-start gap-4 border-t border-slate-200/70 pt-5">
+              <div className="w-32 shrink-0 text-xs font-black uppercase tracking-wider text-slate-400 pt-2.5 flex items-center justify-between">
                 <span>Narration</span>
                 <span>:</span>
               </div>
@@ -1202,28 +1273,43 @@ export function ReceiptForm() {
                       if (validateBeforeAccept()) {
                         setShowAcceptDialog(true);
                       }
-                    } else if (e.key === "Backspace" && !narration) {
-                      amountInputRef.current?.focus();
+                    } else if (e.key === "Backspace") {
+                      const len = narration.length;
+                      const atStartOrSelected =
+                        !narration ||
+                        (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) ||
+                        (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === len);
+                      if (atStartOrSelected) {
+                        e.preventDefault();
+                        if (parseFloat(voucherAmount || "0") > 0) {
+                          openBillWiseDetailsFromNarration();
+                        } else {
+                          amountInputRef.current?.focus();
+                          try {
+                            amountInputRef.current?.select();
+                          } catch {}
+                        }
+                      }
                     }
                   }}
                   placeholder="Enter narration or press Enter to Accept..."
-                  className="w-full bg-[#f8fafc] border-2 border-slate-400 text-slate-900 px-3.5 py-2 text-sm rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                  className="w-full bg-slate-50 border-2 border-slate-200 text-slate-900 font-medium px-4 py-2.5 text-sm rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
                 />
               </div>
             </div>
           </div>
 
           {/* Bottom Action Hint Bar */}
-          <div className="border-t border-slate-200 pt-4 flex items-center justify-between text-xs text-slate-600">
-            <div className="flex items-center gap-4">
-              <span>
-                <kbd className="bg-slate-200 px-2 py-0.5 rounded font-black font-mono">F2</kbd> Date
+          <div className="border-t border-slate-200/70 pt-4 flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1.5 bg-white/70 px-2.5 py-1 rounded-xl border border-slate-200 font-medium">
+                <kbd className="bg-slate-100 text-blue-600 px-1.5 py-0.5 rounded font-black font-mono text-[10px]">F2</kbd> Date
               </span>
-              <span>
-                <kbd className="bg-slate-200 px-2 py-0.5 rounded font-black font-mono">Ctrl+A</kbd> Accept
+              <span className="flex items-center gap-1.5 bg-white/70 px-2.5 py-1 rounded-xl border border-slate-200 font-medium">
+                <kbd className="bg-slate-100 text-blue-600 px-1.5 py-0.5 rounded font-black font-mono text-[10px]">Ctrl+A</kbd> Accept
               </span>
-              <span>
-                <kbd className="bg-slate-200 px-2 py-0.5 rounded font-black font-mono">Esc</kbd> Cancel
+              <span className="flex items-center gap-1.5 bg-white/70 px-2.5 py-1 rounded-xl border border-slate-200 font-medium">
+                <kbd className="bg-slate-100 text-blue-600 px-1.5 py-0.5 rounded font-black font-mono text-[10px]">Esc</kbd> Cancel
               </span>
             </div>
             <button
@@ -1231,7 +1317,7 @@ export function ReceiptForm() {
               onClick={() => {
                 if (validateBeforeAccept()) setShowAcceptDialog(true);
               }}
-              className="bg-[#244b7a] hover:bg-[#1b385c] text-white font-extrabold px-6 py-2.5 rounded text-xs shadow-md transition-all flex items-center gap-2"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-black px-6 py-2.5 rounded-xl text-xs shadow-md transition-all flex items-center gap-2 cursor-pointer active:scale-95"
             >
               <span>Accept (Save)</span>
               <ArrowRight className="h-4 w-4" />
@@ -1241,33 +1327,43 @@ export function ReceiptForm() {
       </div>
 
       {/* ========================================================================= */}
-      {/* 1. BILL-WISE DETAILS MODAL (Matching Screenshot 1, 2, 3) */}
+      {/* 1. BILL-WISE DETAILS MODAL (Glassmorphic design matching Proxy Order) */}
       {/* ========================================================================= */}
       {showBillWiseModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-2 border-slate-800 shadow-2xl rounded-sm w-full max-w-3xl overflow-visible animate-in fade-in zoom-in-95 duration-100 relative">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-3xl border border-white/80 shadow-[0_25px_60px_rgba(0,0,0,0.18)] rounded-[2rem] w-full max-w-3xl overflow-visible animate-in fade-in zoom-in-95 duration-150 relative p-6 space-y-5">
             {/* Modal Header */}
-            <div className="bg-[#244b7a] text-white px-5 py-2.5 flex items-center justify-between text-xs font-extrabold tracking-wide">
-              <span>Bill-wise Details for : {selectedCustomer?.name || "Customer"}</span>
-              <span className="font-mono text-amber-300">Up to: ₹ {parseFloat(voucherAmount || "0").toFixed(2)} Cr</span>
+            <div className="bg-white/80 backdrop-blur-xl border border-slate-200/80 rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="text-xs font-black uppercase tracking-wider text-slate-500">Bill-wise Details for :</span>
+                <span className="bg-blue-50 text-blue-800 font-extrabold text-xs px-3 py-1 rounded-xl border border-blue-200/60 shadow-2xs">
+                  {selectedCustomer?.name || "Customer"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Up to:</span>
+                <span className="font-mono font-black text-xs bg-slate-900 text-white px-3 py-1 rounded-xl shadow-xs">
+                  ₹ {parseFloat(voucherAmount || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })} Cr
+                </span>
+              </div>
             </div>
 
             {/* Modal Table Body */}
-            <div className="p-5 space-y-5 overflow-visible">
-              <table className="w-full text-xs text-left border-2 border-slate-400 overflow-visible">
-                <thead className="bg-[#e8f0f8] text-slate-900 border-b-2 border-slate-400 font-extrabold uppercase">
+            <div className="rounded-2xl border border-slate-200/80 bg-white/70 backdrop-blur-md overflow-visible shadow-xs">
+              <table className="w-full text-xs text-left overflow-visible">
+                <thead className="bg-slate-100/70 border-b border-slate-200 text-slate-500 font-black uppercase text-[10px] tracking-wider">
                   <tr>
-                    <th className="px-3.5 py-2 border-r-2 border-slate-400 w-36">Type of Ref</th>
-                    <th className="px-3.5 py-2 border-r-2 border-slate-400 w-44">Name</th>
-                    <th className="px-3.5 py-2 border-r-2 border-slate-400 w-36">Due Date, or credit Days</th>
-                    <th className="px-3.5 py-2 border-r-2 border-slate-400 text-right w-32">Amount</th>
-                    <th className="px-3.5 py-2 text-center w-16">Dr/Cr</th>
+                    <th className="px-4 py-3 w-40">Type of Ref</th>
+                    <th className="px-4 py-3 min-w-[160px]">Name</th>
+                    <th className="px-4 py-3 w-44">Due Date, or credit Days</th>
+                    <th className="px-4 py-3 text-right w-36">Amount</th>
+                    <th className="px-4 py-3 text-center w-16">Dr/Cr</th>
                   </tr>
                 </thead>
-                <tbody className="overflow-visible">
-                  <tr className="bg-amber-50/50 border-b border-slate-300 overflow-visible">
+                <tbody className="overflow-visible divide-y divide-slate-100">
+                  <tr className="bg-blue-50/20 overflow-visible transition-colors">
                     {/* Type of Ref Cell */}
-                    <td className="px-3.5 py-2 border-r-2 border-slate-400 font-black text-blue-900 relative overflow-visible">
+                    <td className="px-4 py-3 font-black text-blue-900 relative overflow-visible">
                       <div
                         ref={refTypeCellRef}
                         tabIndex={0}
@@ -1292,8 +1388,10 @@ export function ReceiptForm() {
                               }
                             } else {
                               setShowPendingBills(false);
-                              setShowRefTypeMenu(true);
-                              setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === activeRefType));
+                              refNameInputRef.current?.focus();
+                              try {
+                                refNameInputRef.current?.select();
+                              } catch {}
                             }
                           } else if (e.key === "ArrowDown") {
                             e.preventDefault();
@@ -1317,12 +1415,14 @@ export function ReceiptForm() {
                             setShowPendingBills(false);
                             setShowBillWiseModal(false);
                             amountInputRef.current?.focus();
-                            amountInputRef.current?.select();
+                            try {
+                              amountInputRef.current?.select();
+                            } catch {}
                           }
                         }}
-                        className="cursor-pointer hover:underline flex items-center justify-between py-1 gap-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-amber-50 rounded px-1"
+                        className="cursor-pointer bg-white border-2 border-slate-200 hover:border-blue-500 flex items-center justify-between py-2 px-3 gap-2 focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 rounded-xl transition-all shadow-xs"
                       >
-                        <span>
+                        <span className="font-bold text-slate-900">
                           {activeRefType === "AGST_REF"
                             ? "Agst Ref"
                             : activeRefType === "NEW_REF"
@@ -1331,27 +1431,27 @@ export function ReceiptForm() {
                             ? "Advance"
                             : "On Account"}
                         </span>
-                        <span className="text-blue-400 text-[10px]">▾</span>
+                        <span className="text-blue-500 text-xs">▾</span>
                       </div>
 
-                      {/* Method of Adj. Floating Popup (Screenshot 1) */}
+                      {/* Method of Adj. Floating Popup */}
                       {showRefTypeMenu && (
-                        <div className="absolute left-0 top-full mt-1.5 w-48 bg-white border-2 border-blue-600 shadow-2xl z-[100] rounded overflow-hidden">
-                          <div className="bg-[#244b7a] text-white font-extrabold px-3.5 py-1.5 text-xs flex justify-between items-center">
+                        <div className="absolute left-4 top-full mt-2 w-52 bg-white/95 backdrop-blur-2xl border border-slate-200 shadow-2xl z-[100] rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                          <div className="bg-[#1e3a5f] text-white font-extrabold px-4 py-2.5 text-xs flex justify-between items-center">
                             <span>Method of Adj.</span>
                             <span className="text-amber-300 font-mono text-[10px] font-normal">↑↓ · Enter</span>
                           </div>
-                          <div className="divide-y divide-slate-100 text-xs font-semibold">
+                          <div className="divide-y divide-slate-100 text-xs font-semibold p-1">
                             {REF_TYPE_OPTIONS.map((opt, idx) => (
                               <div
                                 key={opt.type}
                                 id={`reftype-opt-${idx}`}
                                 onClick={() => handleSelectRefType(opt.type as RefType)}
                                 onMouseEnter={() => setRefTypeHighlightIndex(idx)}
-                                className={`px-3.5 py-2.5 cursor-pointer ${
+                                className={`px-3.5 py-2.5 rounded-xl cursor-pointer transition-colors ${
                                   idx === refTypeHighlightIndex
-                                    ? "bg-amber-100 font-black text-blue-900"
-                                    : "hover:bg-slate-50 text-slate-800"
+                                    ? "bg-blue-50 font-black text-blue-900"
+                                    : "hover:bg-slate-50 text-slate-700"
                                 }`}
                               >
                                 {opt.label}
@@ -1363,7 +1463,7 @@ export function ReceiptForm() {
                     </td>
 
                     {/* Reference Name Cell */}
-                    <td className="px-3.5 py-2 border-r-2 border-slate-400">
+                    <td className="px-4 py-3">
                       <input
                         id="modal-ref-name-input"
                         ref={refNameInputRef}
@@ -1381,22 +1481,31 @@ export function ReceiptForm() {
                           if (e.key === "Enter") {
                             e.preventDefault();
                             dueDateInputRef.current?.focus();
-                            dueDateInputRef.current?.select();
-                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !currentLineRefName)) {
-                            e.preventDefault();
-                            setShowPendingBills(false);
-                            setShowRefTypeMenu(true);
-                            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === activeRefType));
-                            setTimeout(() => refTypeCellRef.current?.focus(), 20);
+                            try {
+                              dueDateInputRef.current?.select();
+                            } catch {}
+                          } else if (e.key === "Backspace") {
+                            const len = currentLineRefName.length;
+                            const atStartOrSelected =
+                              !currentLineRefName ||
+                              (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) ||
+                              (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === len);
+                            if (atStartOrSelected) {
+                              e.preventDefault();
+                              setShowPendingBills(false);
+                              setShowRefTypeMenu(true);
+                              setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === activeRefType));
+                              setTimeout(() => refTypeCellRef.current?.focus(), 20);
+                            }
                           }
                         }}
                         placeholder={activeRefType === "ON_ACCOUNT" ? "On Account" : "Ref Name..."}
-                        className="w-full bg-white border border-slate-400 px-2.5 py-1 text-xs font-black rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                        className="w-full bg-slate-50 border-2 border-slate-200 px-3 py-2 text-xs font-bold text-slate-900 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
                       />
                     </td>
 
-                    {/* Due Date Cell (Interactive input for strict keyboard traversal) */}
-                    <td className="px-3.5 py-2 border-r-2 border-slate-400">
+                    {/* Due Date Cell */}
+                    <td className="px-4 py-3">
                       <input
                         id="modal-due-date-input"
                         ref={dueDateInputRef}
@@ -1414,23 +1523,31 @@ export function ReceiptForm() {
                           if (e.key === "Enter") {
                             e.preventDefault();
                             modalAmountInputRef.current?.focus();
-                            modalAmountInputRef.current?.select();
-                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !currentLineDueDate)) {
-                            e.preventDefault();
-                            refNameInputRef.current?.focus();
                             try {
-                              const len = refNameInputRef.current?.value.length || 0;
-                              refNameInputRef.current?.setSelectionRange(len, len);
+                              modalAmountInputRef.current?.select();
                             } catch {}
+                          } else if (e.key === "Backspace") {
+                            const len = currentLineDueDate.length;
+                            const atStartOrSelected =
+                              !currentLineDueDate ||
+                              (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) ||
+                              (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === len);
+                            if (atStartOrSelected) {
+                              e.preventDefault();
+                              refNameInputRef.current?.focus();
+                              try {
+                                refNameInputRef.current?.select();
+                              } catch {}
+                            }
                           }
                         }}
                         placeholder="Due date / days"
-                        className="w-full bg-white border border-slate-400 px-2.5 py-1 text-xs font-mono font-bold text-slate-800 rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                        className="w-full bg-slate-50 border-2 border-slate-200 px-3 py-2 text-xs font-mono font-bold text-slate-800 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
                       />
                     </td>
 
                     {/* Amount Cell */}
-                    <td className="px-3.5 py-2 border-r-2 border-slate-400 text-right">
+                    <td className="px-4 py-3 text-right">
                       <input
                         id="modal-amount-input"
                         ref={modalAmountInputRef}
@@ -1449,60 +1566,68 @@ export function ReceiptForm() {
                           if (e.key === "Enter") {
                             e.preventDefault();
                             handleConfirmBillWiseLine();
-                          } else if (e.key === "Backspace" && (e.currentTarget.selectionStart === 0 || !currentLineAmount)) {
-                            e.preventDefault();
-                            dueDateInputRef.current?.focus();
-                            try {
-                              const len = dueDateInputRef.current?.value.length || 0;
-                              dueDateInputRef.current?.setSelectionRange(len, len);
-                            } catch {}
+                          } else if (e.key === "Backspace") {
+                            const len = currentLineAmount.length;
+                            const atStartOrSelected =
+                              !currentLineAmount ||
+                              (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) ||
+                              (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === len);
+                            if (atStartOrSelected) {
+                              e.preventDefault();
+                              dueDateInputRef.current?.focus();
+                              try {
+                                dueDateInputRef.current?.select();
+                              } catch {}
+                            }
                           }
                         }}
-                        className="w-28 text-right bg-white border border-slate-400 px-2.5 py-1 text-xs font-mono font-black rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                        className="w-32 text-right bg-slate-50 border-2 border-slate-200 px-3 py-2 text-xs font-mono font-black text-slate-900 rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
                       />
                     </td>
 
                     {/* Dr/Cr Cell */}
-                    <td className="px-3.5 py-2 text-center font-black text-slate-800">Cr</td>
+                    <td className="px-4 py-3 text-center font-black text-slate-800">Cr</td>
                   </tr>
                 </tbody>
               </table>
-
-              {/* Modal Actions */}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowBillWiseModal(false)}
-                  className="px-5 py-2 border-2 border-slate-400 rounded text-xs font-bold text-slate-800 hover:bg-slate-100 transition-colors"
-                >
-                  Cancel (Esc)
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmBillWiseLine}
-                  className="px-6 py-2 bg-[#244b7a] hover:bg-[#1b385c] text-white rounded text-xs font-extrabold shadow transition-colors"
-                >
-                  Confirm (Enter)
-                </button>
-              </div>
             </div>
 
-            {/* ========================================================================= */}
-            {/* 2. PENDING BILLS POPUP (Matching Screenshot 2) */}
-            {/* ========================================================================= */}
+            {/* Modal Actions */}
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowBillWiseModal(false)}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all shadow-2xs cursor-pointer"
+              >
+                Cancel (Esc)
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmBillWiseLine}
+                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md transition-all active:scale-95 flex items-center gap-2 cursor-pointer"
+              >
+                <span>Confirm (Enter)</span>
+                <Check className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            {/* Pending Bills Popup */}
             {showPendingBills && (
-              <div className="absolute top-12 right-2 w-[420px] bg-white border-2 border-blue-600 shadow-2xl z-[100] rounded overflow-hidden">
-                <div className="bg-[#244b7a] text-white px-4 py-2 text-xs font-black flex justify-between items-center">
-                  <span>Pending Bills</span>
-                  <span className="text-[10px] text-amber-300 font-mono">↑↓ to navigate, Enter to pick</span>
+              <div className="absolute top-16 right-4 w-[460px] bg-white/95 backdrop-blur-3xl border border-slate-200 shadow-2xl z-[100] rounded-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                <div className="bg-[#1e3a5f] text-white px-4 py-3 text-xs font-black flex justify-between items-center">
+                  <span className="flex items-center gap-2">
+                    <span>Pending Bills</span>
+                    <span className="text-[10px] font-normal text-blue-200">({invoices.length} available)</span>
+                  </span>
+                  <span className="text-[10px] text-amber-300 font-mono">↑↓ to navigate · Enter pick</span>
                 </div>
                 <div className="max-h-72 overflow-y-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-100 text-slate-800 border-b border-slate-300 font-extrabold uppercase">
+                    <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-black uppercase text-[10px] tracking-wider">
                       <tr>
-                        <th className="px-3 py-1.5">Name</th>
-                        <th className="px-3 py-1.5">Date</th>
-                        <th className="px-3 py-1.5 text-right">Balance</th>
+                        <th className="px-4 py-2.5">Invoice #</th>
+                        <th className="px-4 py-2.5">Date</th>
+                        <th className="px-4 py-2.5 text-right">Balance Due</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -1519,16 +1644,16 @@ export function ReceiptForm() {
                             id={`bill-opt-${idx}`}
                             onClick={() => handleSelectPendingBill(inv)}
                             onMouseEnter={() => setPendingBillHighlightIndex(idx)}
-                            className={`cursor-pointer ${
+                            className={`cursor-pointer transition-colors ${
                               idx === pendingBillHighlightIndex
-                                ? "bg-amber-100 font-black text-blue-900"
+                                ? "bg-blue-50 font-black text-blue-900"
                                 : "hover:bg-slate-50 text-slate-800 font-medium"
                             }`}
                           >
-                            <td className="px-3 py-2 font-black">{inv.invoiceNumber}</td>
-                            <td className="px-3 py-2 text-slate-600 font-mono">{inv.issueDate || "-"}</td>
-                            <td className="px-3 py-2 text-right font-mono font-black text-emerald-700">
-                              ₹ {(inv.amountDue / 100).toFixed(2)} Dr
+                            <td className="px-4 py-2.5 font-black">{inv.invoiceNumber}</td>
+                            <td className="px-4 py-2.5 text-slate-600 font-mono">{inv.issueDate || "-"}</td>
+                            <td className="px-4 py-2.5 text-right font-mono font-black text-emerald-700">
+                              ₹ {(inv.amountDue / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })} Dr
                             </td>
                           </tr>
                         ))
@@ -1546,43 +1671,53 @@ export function ReceiptForm() {
       {/* 3. ACCEPT? YES OR NO CONFIRMATION DIALOG */}
       {/* ========================================================================= */}
       {showAcceptDialog && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-2 border-slate-800 shadow-2xl rounded p-6 w-84 text-center space-y-5 animate-in fade-in zoom-in-95 duration-100">
-            <h3 className="text-lg font-black text-slate-900">Accept?</h3>
-            <p className="text-xs text-slate-600 font-semibold">
-              Post Receipt Voucher No. {voucherNo} for ₹{" "}
-              {parseFloat(voucherAmount || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })}?
-            </p>
-            <div className="flex justify-center gap-4">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-3xl border border-white/80 shadow-[0_25px_60px_rgba(0,0,0,0.18)] rounded-[2rem] p-6 w-96 text-center space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200/60 shadow-xs">
+              <Check className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Accept Voucher?</h3>
+              <p className="text-xs text-slate-500 font-medium">
+                Post Receipt Voucher No. <span className="font-mono font-bold text-slate-800">{voucherNo}</span> for{" "}
+                <span className="font-mono font-black text-blue-600">
+                  ₹ {parseFloat(voucherAmount || "0").toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                </span>
+              </p>
+            </div>
+            <div className="flex justify-center gap-3 pt-2">
               <button
                 type="button"
                 autoFocus={acceptFocusYes}
                 onClick={handlePostVoucher}
                 disabled={saving}
-                className={`px-6 py-2.5 font-black text-xs rounded shadow transition-all focus:outline-none focus:ring-2 focus:ring-blue-600 ${
+                className={`px-6 py-2.5 font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer ${
                   acceptFocusYes
-                    ? "bg-[#244b7a] text-white ring-2 ring-blue-600 scale-[1.03]"
-                    : "bg-[#244b7a] text-white hover:bg-[#1b385c]"
+                    ? "bg-blue-600 text-white ring-4 ring-blue-500/20 scale-[1.03]"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
                 }`}
               >
-                {saving ? "Posting..." : "Yes"}
-                <span className="ml-1.5 text-[10px] font-mono opacity-70">(Y / ↵)</span>
+                <span>{saving ? "Posting..." : "Yes"}</span>
+                <span className="text-[10px] font-mono opacity-80">(Y / ↵)</span>
               </button>
               <button
                 type="button"
                 autoFocus={!acceptFocusYes}
-                onClick={() => setShowAcceptDialog(false)}
-                className={`px-6 py-2.5 font-bold text-xs rounded transition-all focus:outline-none focus:ring-2 focus:ring-slate-600 ${
+                onClick={() => {
+                  setShowAcceptDialog(false);
+                  narrationInputRef.current?.focus();
+                }}
+                className={`px-6 py-2.5 font-bold text-xs rounded-xl transition-all cursor-pointer ${
                   !acceptFocusYes
-                    ? "border-2 border-slate-600 bg-slate-100 text-slate-900 ring-2 ring-slate-600 scale-[1.03]"
-                    : "border-2 border-slate-400 hover:bg-slate-100 text-slate-800"
+                    ? "border-2 border-slate-400 bg-slate-100 text-slate-900 ring-4 ring-slate-300/30 scale-[1.03]"
+                    : "border border-slate-200 hover:bg-slate-100 text-slate-700 bg-white"
                 }`}
               >
-                No
-                <span className="ml-1.5 text-[10px] font-mono opacity-70">(N / Esc)</span>
+                <span>No</span>
+                <span className="text-[10px] font-mono opacity-60 ml-1">(N / Esc)</span>
               </button>
             </div>
-            <p className="text-[10px] text-slate-400 font-mono">← → or Tab to switch · Enter to confirm</p>
+            <p className="text-[10px] text-slate-400 font-mono">← → or Tab to toggle · Enter to confirm</p>
           </div>
         </div>
       )}
@@ -1591,14 +1726,16 @@ export function ReceiptForm() {
       {/* 4. F2 VOUCHER DATE CHANGE MODAL */}
       {/* ========================================================================= */}
       {showF2Modal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white border-2 border-slate-800 shadow-2xl rounded p-5 w-84 space-y-4 animate-in fade-in zoom-in-95 duration-100">
-            <div className="bg-[#244b7a] text-white px-4 py-2 font-black text-xs rounded -mx-5 -mt-5 flex justify-between">
-              <span>Change Voucher Date</span>
-              <span className="font-mono text-amber-300">F2</span>
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-white/95 backdrop-blur-3xl border border-white/80 shadow-[0_25px_60px_rgba(0,0,0,0.18)] rounded-[2rem] p-6 w-96 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
+              <span className="text-sm font-black text-slate-900">Change Voucher Date</span>
+              <span className="font-mono text-xs font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-lg border border-blue-200">
+                F2
+              </span>
             </div>
-            <div className="space-y-1.5 pt-2">
-              <label className="text-xs font-black text-slate-800">Voucher Date</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wider">Voucher Date</label>
               <input
                 type="date"
                 autoFocus
@@ -1613,14 +1750,14 @@ export function ReceiptForm() {
                     setShowF2Modal(false);
                   }
                 }}
-                className="w-full bg-[#f8fafc] border-2 border-slate-400 font-black text-slate-900 px-3.5 py-2 text-sm rounded focus:bg-amber-50 focus:border-blue-600 focus:outline-none"
+                className="w-full bg-slate-50 border-2 border-slate-200 font-mono font-bold text-slate-900 px-4 py-2.5 text-sm rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all"
               />
             </div>
-            <div className="flex justify-end gap-2 pt-3 border-t border-slate-200">
+            <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
                 onClick={() => setShowF2Modal(false)}
-                className="px-4 py-1.5 border border-slate-300 text-xs rounded font-bold"
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 cursor-pointer"
               >
                 Cancel
               </button>
@@ -1630,7 +1767,7 @@ export function ReceiptForm() {
                   setDate(tempDate);
                   setShowF2Modal(false);
                 }}
-                className="px-5 py-1.5 bg-[#244b7a] text-white text-xs font-black rounded shadow"
+                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md cursor-pointer"
               >
                 Apply (Enter)
               </button>
