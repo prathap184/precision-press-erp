@@ -262,11 +262,18 @@ export function WorkflowPipelineVisual({
           const navHref = getNavHref(step);
 
           const printerAcceptedBy = step.role === 'PRINTER' 
-            ? ((step as any).acceptedBy || printWf?.printerAcceptedBy || (order as any)?.printerAcceptedBy)
+            ? ((step as any).acceptedBy || printWf?.printerAcceptedBy || (order as any)?.printerAcceptedBy || (order as any)?.workflow?.assignedTo)
             : null;
           const printerAcceptedByName = step.role === 'PRINTER'
-            ? ((step as any).acceptedByName || printWf?.printerAcceptedByName || (order as any)?.printerAcceptedByName)
+            ? ((step as any).acceptedByName || printWf?.printerAcceptedByName || (order as any)?.printerAcceptedByName || (order as any)?.workflow?.assignedToName)
             : null;
+
+          const rawPrinterName = printerAcceptedByName || (
+            printerAcceptedBy === currentUserId 
+              ? (profile?.name || user?.displayName || user?.email?.split('@')[0] || 'You')
+              : 'Printer'
+          );
+          const cleanPrinterName = rawPrinterName.includes('@') ? rawPrinterName.split('@')[0] : rawPrinterName;
 
           let bgClass = 'bg-slate-100/90 text-slate-500 border-slate-200 shadow-2xs';
           let icon = <Lock size={13} className="text-slate-400 shrink-0" />;
@@ -325,23 +332,27 @@ export function WorkflowPipelineVisual({
                 {step.role === 'PRINTER' && (
                   <div className="w-[98px] flex items-center justify-center min-h-[22px]">
                     {step.isCompleted ? (
-                      printerAcceptedByName ? (
+                      cleanPrinterName ? (
                         <span 
-                          className="mt-1 text-[10px] text-slate-400 font-medium truncate max-w-[98px]"
-                          title={`Printed by ${printerAcceptedByName}`}
+                          className="mt-1 text-[10px] text-slate-500 font-bold truncate max-w-[98px]"
+                          title={`Printed by ${cleanPrinterName}`}
                         >
-                          ✓ {printerAcceptedByName}
+                          ✓ {cleanPrinterName}
                         </span>
                       ) : null
                     ) : step.isCurrent ? (
                       printerAcceptedBy ? (
                         printerAcceptedBy === currentUserId ? (
                           <div 
-                            className="mt-1 flex items-center justify-center gap-1 w-full px-1 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] font-semibold shadow-2xs"
-                            title="You accepted this print job"
+                            className="mt-1 flex items-center justify-between gap-1 w-full px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-900 border border-emerald-300 text-[10px] font-bold shadow-2xs"
+                            title={`Accepted by you (${cleanPrinterName})`}
                           >
-                            <CheckCircle2 size={10} className="text-emerald-600 shrink-0" />
-                            <span className="truncate max-w-[65px]">Accepted</span>
+                            <div className="flex items-center gap-1 min-w-0 flex-1">
+                              <CheckCircle2 size={10} className="text-emerald-600 shrink-0" />
+                              <span className="truncate max-w-[65px] font-bold text-emerald-900" title={cleanPrinterName}>
+                                {cleanPrinterName}
+                              </span>
+                            </div>
                             {(isAdmin || isManager || isPrinterUser) && (
                               <button 
                                 type="button"
@@ -352,7 +363,7 @@ export function WorkflowPipelineVisual({
                                 }}
                                 disabled={isAccepting}
                                 title="Release / Unclaim this job" 
-                                className="text-slate-400 hover:text-red-500 hover:bg-slate-200/60 rounded p-0.5 ml-0.5 cursor-pointer"
+                                className="text-slate-400 hover:text-red-600 hover:bg-slate-200/60 rounded p-0.5 ml-0.5 cursor-pointer shrink-0"
                               >
                                 <X size={10} />
                               </button>
@@ -360,13 +371,15 @@ export function WorkflowPipelineVisual({
                           </div>
                         ) : (
                           <div 
-                            className="mt-1 flex items-center justify-center gap-1 w-full px-1 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-medium shadow-2xs select-none"
-                            title={`Already accepted by ${printerAcceptedByName || 'another printer'}`}
+                            className="mt-1 flex items-center justify-between gap-1 w-full px-1.5 py-0.5 rounded bg-amber-50 text-amber-950 border border-amber-300 text-[10px] font-bold shadow-2xs select-none"
+                            title={`Already accepted by ${cleanPrinterName}`}
                           >
-                            <Lock size={9} className="text-amber-600 shrink-0" />
-                            <span className="truncate max-w-[65px]" title={printerAcceptedByName || 'Printer'}>
-                              {printerAcceptedByName || 'Accepted'}
-                            </span>
+                            <div className="flex items-center gap-1 min-w-0 flex-1">
+                              <Lock size={9} className="text-amber-600 shrink-0" />
+                              <span className="truncate max-w-[65px] font-bold text-amber-950" title={cleanPrinterName}>
+                                {cleanPrinterName}
+                              </span>
+                            </div>
                             {(isAdmin || isManager) && (
                               <button 
                                 type="button"
@@ -377,7 +390,7 @@ export function WorkflowPipelineVisual({
                                 }}
                                 disabled={isAccepting}
                                 title="Manager Override: Release job" 
-                                className="text-slate-400 hover:text-red-500 hover:bg-slate-200/60 rounded p-0.5 ml-0.5 cursor-pointer"
+                                className="text-slate-400 hover:text-red-600 hover:bg-slate-200/60 rounded p-0.5 ml-0.5 cursor-pointer shrink-0"
                               >
                                 <X size={10} />
                               </button>

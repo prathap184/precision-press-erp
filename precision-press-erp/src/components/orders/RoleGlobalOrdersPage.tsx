@@ -866,6 +866,17 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
                         {(order as any).proxyExecutor && (
                           <p className="text-[10px] text-indigo-500 font-medium">Proxy: {(order as any).proxyExecutor?.name || ''}</p>
                         )}
+                        {(() => {
+                          const pw = order.workflow?.printWorkflow || (order as any).printWorkflow;
+                          const pName = pw?.printerAcceptedByName || (order as any).printerAcceptedByName || (order.workflowSnapshot?.steps?.find((s: any) => s.role === 'PRINTER') as any)?.acceptedByName;
+                          if (!pName) return null;
+                          return (
+                            <p className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1 mt-0.5">
+                              <span>Printer:</span>
+                              <span className="font-bold">{pName}</span>
+                            </p>
+                          );
+                        })()}
                         <p className="text-[10px] text-slate-400 truncate max-w-[200px] mt-0.5">{(order as any).items?.[0]?.productName || (order as any).productName || ''}</p>
                       </td>
 

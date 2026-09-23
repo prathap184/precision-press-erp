@@ -1263,6 +1263,16 @@ export function GlobalOrdersPage() {
                                       })()}
                                     </span>
                                   )}
+                                  {(() => {
+                                    const pw = order.workflow?.printWorkflow || order.printWorkflow;
+                                    const pName = pw?.printerAcceptedByName || (order as any).printerAcceptedByName || (order.workflowSnapshot?.steps?.find((s: any) => s.role === 'PRINTER') as any)?.acceptedByName;
+                                    if (!pName) return null;
+                                    return (
+                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.2 rounded bg-emerald-50 border border-emerald-200 text-[12px] font-semibold text-emerald-800">
+                                        Printer: {pName}
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
                                 <div className="mt-0.5">
                                   <span 

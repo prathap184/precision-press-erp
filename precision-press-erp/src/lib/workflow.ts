@@ -2048,6 +2048,7 @@ export async function markTiffOpened(orderId: string) {
 
 export async function acceptPrintJob(orderId: string, notes?: string) {
   const user = await getAuthorizedUser(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'PRINTER']);
+  const operatorName = user.name || (user.profile as any)?.name || (user as any)?.displayName || 'Printer';
   
   const MAX_RETRIES = 3;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -2071,11 +2072,11 @@ export async function acceptPrintJob(orderId: string, notes?: string) {
         event: 'PRINT_ACCEPTED',
         timestamp: new Date().toISOString(),
         user: user.id,
-        notes: notes || `Print job accepted by ${user.name}`
+        notes: notes || `Print job accepted by ${operatorName}`
       };
 
       // 1. Advance step in snapshot
-      await advanceWorkflowSnapshotStep(orderId, 'PRINTER', 'IN_PROGRESS', user, notes || `Accepted by ${user.name}`);
+      await advanceWorkflowSnapshotStep(orderId, 'PRINTER', 'IN_PROGRESS', user, notes || `Accepted by ${operatorName}`);
 
       // 2. Fetch fresh snapshot to ensure step contains acceptedBy metadata
       const freshSnap = await orderRef.get();
@@ -2086,7 +2087,7 @@ export async function acceptPrintJob(orderId: string, notes?: string) {
         if (printerStep) {
           printerStep.status = 'IN_PROGRESS';
           printerStep.acceptedBy = user.id;
-          printerStep.acceptedByName = user.name;
+          printerStep.acceptedByName = operatorName;
           printerStep.acceptedAt = new Date().toISOString();
           printerStep.startedAt = printerStep.startedAt || new Date().toISOString();
         }
@@ -2096,14 +2097,16 @@ export async function acceptPrintJob(orderId: string, notes?: string) {
       const updateData: any = {
         'workflow.printWorkflow.status': 'PRINT_STARTED',
         'workflow.printWorkflow.printerAcceptedBy': user.id,
-        'workflow.printWorkflow.printerAcceptedByName': user.name,
+        'workflow.printWorkflow.printerAcceptedByName': operatorName,
         'workflow.printWorkflow.printerAcceptedAt': admin.firestore.FieldValue.serverTimestamp(),
         'workflow.printWorkflow.timeline': admin.firestore.FieldValue.arrayUnion(timelineEntry),
         'workflow.assignedTo': user.id,
-        'workflow.assignedToName': user.name,
+        'workflow.assignedToName': operatorName,
         'workflow.assignedBy': user.id,
-        'workflow.assignedByName': user.name,
+        'workflow.assignedByName': operatorName,
         'workflow.assignedAt': admin.firestore.FieldValue.serverTimestamp(),
+        printerAcceptedBy: user.id,
+        printerAcceptedByName: operatorName,
         workflowSnapshot: snapshot
       };
 
@@ -2112,7 +2115,7 @@ export async function acceptPrintJob(orderId: string, notes?: string) {
       }
 
       await orderRef.update(updateData);
-      return { success: true, acceptedBy: user.id, acceptedByName: user.name };
+      return { success: true, acceptedBy: user.id, acceptedByName: operatorName };
     } catch (err: any) {
       const isVersionConflict = err?.message?.includes('modified by another user') || err?.message?.includes('version');
       if (isVersionConflict && attempt < MAX_RETRIES) {
