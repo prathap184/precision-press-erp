@@ -1022,6 +1022,31 @@ export function InvoiceFormView() {
   setCustomerSearchRef.current = setCustomerSearch;
   openDrawerRef.current = openDrawer;
 
+  // Focus customer search box immediately when invoice page opens
+  useEffect(() => {
+    const focusCustomer = () => {
+      const custInput = document.getElementById("invoice-customer-search-input") as HTMLInputElement | null;
+      if (custInput) {
+        isCustomerExplicitlyBlurredRef.current = false;
+        custInput.focus();
+        try {
+          custInput.select();
+        } catch {}
+        setCustomerDropdownOpen(true);
+      }
+    };
+
+    focusCustomer();
+    const t1 = setTimeout(focusCustomer, 60);
+    const t2 = setTimeout(focusCustomer, 200);
+    const t3 = setTimeout(focusCustomer, 500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, []);
+
   // Keyboard shortcut: Alt + Q, F2, Ctrl + Enter, Alt + C, Escape & Smart Enter Recovery
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1485,6 +1510,7 @@ export function InvoiceFormView() {
                     />
                     <input
                       id="invoice-customer-search-input"
+                      autoFocus
                       value={
                         customerSearch !== ""
                           ? customerSearch
