@@ -758,29 +758,32 @@ export function ReceiptForm() {
       } else {
         toast.info("No pending invoices found for this customer. Use Advance or New Ref.");
         setActiveRefType("NEW_REF");
-        setCurrentLineRefName(`ADV-${voucherNo}`);
+        setCurrentLineRefName((prev) => (prev && prev !== "On Account" ? prev : `ADV-${voucherNo}`));
         setCurrentLineDueDate(date);
         setTimeout(() => {
-          refNameInputRef.current?.focus();
-          refNameInputRef.current?.select();
-        }, 50);
+          const el = document.getElementById("modal-ref-name-input") as HTMLInputElement;
+          el?.focus();
+          try { el?.select(); } catch {}
+        }, 30);
       }
     } else if (refType === "NEW_REF" || refType === "ADVANCE") {
       setShowPendingBills(false);
-      setCurrentLineRefName(refType === "ADVANCE" ? `ADV-${voucherNo}` : `REF-${voucherNo}`);
-      setCurrentLineDueDate(date);
+      setCurrentLineRefName((prev) => (prev && prev !== "On Account" ? prev : (refType === "ADVANCE" ? `ADV-${voucherNo}` : `REF-${voucherNo}`)));
+      if (!currentLineDueDate) setCurrentLineDueDate(date);
       setTimeout(() => {
-        refNameInputRef.current?.focus();
-        refNameInputRef.current?.select();
-      }, 50);
+        const el = document.getElementById("modal-ref-name-input") as HTMLInputElement;
+        el?.focus();
+        try { el?.select(); } catch {}
+      }, 30);
     } else if (refType === "ON_ACCOUNT") {
       setShowPendingBills(false);
       setCurrentLineRefName("On Account");
-      setCurrentLineDueDate(date);
+      if (!currentLineDueDate) setCurrentLineDueDate(date);
       setTimeout(() => {
-        refNameInputRef.current?.focus();
-        refNameInputRef.current?.select();
-      }, 50);
+        const el = document.getElementById("modal-ref-name-input") as HTMLInputElement;
+        el?.focus();
+        try { el?.select(); } catch {}
+      }, 30);
     }
   };
 
@@ -1048,7 +1051,7 @@ export function ReceiptForm() {
             </div>
 
             {/* Voucher Table (Particulars & Amount) */}
-            <div className="rounded-2xl border border-slate-200/80 bg-white/60 backdrop-blur-md overflow-hidden shadow-xs">
+            <div className="rounded-2xl border border-slate-200/80 bg-white/60 backdrop-blur-md overflow-visible shadow-xs">
               {/* Table Header */}
               <div className="bg-slate-100/70 border-b border-slate-200 px-5 py-3 flex justify-between text-xs font-black uppercase text-slate-400 tracking-widest">
                 <span className="w-2/3">Particulars</span>
@@ -1142,6 +1145,10 @@ export function ReceiptForm() {
                               <div
                                 key={c.id}
                                 id={`cust-opt-${idx}`}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
                                 onClick={() => {
                                   setSelectedCustomerId(c.id);
                                   setCustomerSearch(c.name);
@@ -1195,7 +1202,7 @@ export function ReceiptForm() {
                     {billWiseLines.map((line) => (
                       <div
                         key={line.id}
-                        onClick={openBillWiseDetails}
+                        onClick={() => openBillWiseDetails()}
                         className="flex items-center justify-between text-xs font-mono text-slate-800 bg-blue-50/80 border border-blue-200/80 px-4 py-2 rounded-xl cursor-pointer hover:bg-blue-100/90 transition-all shadow-2xs"
                         title="Click or press Enter on amount to edit bill-wise details"
                       >
@@ -1350,15 +1357,10 @@ export function ReceiptForm() {
                           setShowRefTypeMenu(true);
                           setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === activeRefType));
                         }}
-                        onFocus={() => {
-                          if (!showPendingBills) {
-                            setShowRefTypeMenu(true);
-                            setRefTypeHighlightIndex(REF_TYPE_OPTIONS.findIndex((o) => o.type === activeRefType));
-                          }
-                        }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
+                            e.stopPropagation();
                             if (showRefTypeMenu) {
                               const selected = REF_TYPE_OPTIONS[refTypeHighlightIndex];
                               if (selected) {
@@ -1366,13 +1368,16 @@ export function ReceiptForm() {
                               }
                             } else {
                               setShowPendingBills(false);
-                              refNameInputRef.current?.focus();
+                              setShowRefTypeMenu(false);
+                              const el = document.getElementById("modal-ref-name-input") as HTMLInputElement;
+                              el?.focus();
                               try {
-                                refNameInputRef.current?.select();
+                                el?.select();
                               } catch {}
                             }
                           } else if (e.key === "ArrowDown") {
                             e.preventDefault();
+                            e.stopPropagation();
                             if (!showRefTypeMenu) {
                               setShowRefTypeMenu(true);
                             } else {
@@ -1380,15 +1385,19 @@ export function ReceiptForm() {
                             }
                           } else if (e.key === "ArrowUp") {
                             e.preventDefault();
+                            e.stopPropagation();
                             if (!showRefTypeMenu) {
                               setShowRefTypeMenu(true);
                             } else {
                               setRefTypeHighlightIndex((prev) => (prev - 1 + REF_TYPE_OPTIONS.length) % REF_TYPE_OPTIONS.length);
                             }
                           } else if (e.key === "Escape") {
+                            e.preventDefault();
+                            e.stopPropagation();
                             setShowRefTypeMenu(false);
                           } else if (e.key === "Backspace") {
                             e.preventDefault();
+                            e.stopPropagation();
                             setShowRefTypeMenu(false);
                             setShowPendingBills(false);
                             setShowBillWiseModal(false);
@@ -1424,7 +1433,14 @@ export function ReceiptForm() {
                               <div
                                 key={opt.type}
                                 id={`reftype-opt-${idx}`}
-                                onClick={() => handleSelectRefType(opt.type as RefType)}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSelectRefType(opt.type as RefType);
+                                }}
                                 onMouseEnter={() => setRefTypeHighlightIndex(idx)}
                                 className={`px-3.5 py-2.5 rounded-xl cursor-pointer transition-colors ${
                                   idx === refTypeHighlightIndex
@@ -1620,7 +1636,14 @@ export function ReceiptForm() {
                           <tr
                             key={inv.id}
                             id={`bill-opt-${idx}`}
-                            onClick={() => handleSelectPendingBill(inv)}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectPendingBill(inv);
+                            }}
                             onMouseEnter={() => setPendingBillHighlightIndex(idx)}
                             className={`cursor-pointer transition-colors ${
                               idx === pendingBillHighlightIndex
