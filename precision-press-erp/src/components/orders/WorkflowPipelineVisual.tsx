@@ -1,16 +1,20 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { OrderWorkflowSnapshot, OrderWorkflowStep } from '@/types/workflow';
-import { Check, Play, AlertCircle, Clock, Lock, ChevronRight, ExternalLink } from 'lucide-react';
+import { Check, Play, AlertCircle, Clock, Lock, ChevronRight, ExternalLink, CheckCircle2, Loader2, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { StaffRole } from '@/types/roles';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { acceptPrintJob, releasePrintJob } from '@/lib/workflow';
+import { resolvePrintWorkflow } from '@/lib/tiff-utils';
+import { toast } from 'react-hot-toast';
 
 interface WorkflowPipelineVisualProps {
   snapshot?: OrderWorkflowSnapshot | null;
   orderId?: string;
+  order?: any;
   className?: string;
   detailed?: boolean;
   filterByRoles?: boolean;
@@ -52,6 +56,7 @@ const SHORT_STEP_LABELS: Record<string, string> = {
 export function WorkflowPipelineVisual({
   snapshot,
   orderId,
+  order,
   className = '',
   detailed = false,
   filterByRoles = false,
@@ -61,15 +66,55 @@ export function WorkflowPipelineVisual({
 }: WorkflowPipelineVisualProps): JSX.Element {
   let roles: StaffRole[] = [];
   let role: string | undefined;
+  let user: any = null;
+  let profile: any = null;
   const pathname = usePathname();
 
   try {
     const auth = useAuth();
     roles = auth.roles || [];
     role = auth.role || undefined;
+    user = auth.user;
+    profile = auth.profile;
   } catch {
     // fallback if outside AuthProvider
   }
+
+  const [isAccepting, setIsAccepting] = useState(false);
+
+  const currentUserId = profile?.uid || user?.uid || '';
+  const isAdmin = roles.includes('SUPER_ADMIN' as StaffRole) || roles.includes('ADMIN' as StaffRole);
+  const isPrinterUser = roles.includes('PRINTER' as StaffRole) || role === 'PRINTER';
+  const isManager = roles.includes('MANAGER' as StaffRole) || role === 'MANAGER';
+  const canAccept = isPrinterUser || isAdmin || isManager;
+
+  const handleAcceptPrint = async (oId?: string) => {
+    const targetId = oId || orderId || order?.id;
+    if (!targetId || isAccepting) return;
+    setIsAccepting(true);
+    try {
+      await acceptPrintJob(targetId);
+      toast.success('Print job accepted!');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to accept print job');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const handleReleasePrint = async (oId?: string) => {
+    const targetId = oId || orderId || order?.id;
+    if (!targetId || isAccepting) return;
+    setIsAccepting(true);
+    try {
+      await releasePrintJob(targetId);
+      toast.success('Print job released');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to release print job');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
 
   const defaultAcdemaRoles: StaffRole[] = ['ACCOUNTANT', 'DESIGNER', 'MANAGER'];
   const effectiveRolesSet = new Set<StaffRole>(roles);
@@ -88,7 +133,6 @@ export function WorkflowPipelineVisual({
   }
 
   const isDeliverySkipped = ['pickup', 'counter', 'selfpickup'].includes((deliveryChoice || '').toLowerCase());
-  const isAdmin = roles.includes('SUPER_ADMIN' as StaffRole) || roles.includes('ADMIN' as StaffRole);
 
   let stepsToRender = snapshot.steps.map((step, index) => ({
     ...step,
@@ -147,6 +191,15 @@ export function WorkflowPipelineVisual({
       return true;
     }
 
+    if (step.role === 'PRINTER') {
+      const printWf = resolvePrintWorkflow(order);
+      const printerAcceptedBy = (step as any).acceptedBy || printWf?.printerAcceptedBy || (order as any)?.printerAcceptedBy;
+      // If another printer accepted this job, lock navigation for other printer accounts
+      if (printerAcceptedBy && printerAcceptedBy !== currentUserId && !isAdmin && !isManager) {
+        return false;
+      }
+    }
+
     if (step.isCurrent) {
       return effectiveRoles.includes(step.role);
     }
@@ -199,12 +252,21 @@ export function WorkflowPipelineVisual({
   };
 
   if (detailed) {
+    const printWf = resolvePrintWorkflow(order);
+
     return (
-      <div className={`flex flex-nowrap items-center gap-x-0.5 pb-1 ${className}`}>
+      <div className={`flex flex-nowrap items-start gap-x-0.5 pb-1 ${className}`}>
         {stepsToRender.map((step, index) => {
           const isCurrent = step.isCurrent;
           const isCompleted = step.isCompleted;
           const navHref = getNavHref(step);
+
+          const printerAcceptedBy = step.role === 'PRINTER' 
+            ? ((step as any).acceptedBy || printWf?.printerAcceptedBy || (order as any)?.printerAcceptedBy)
+            : null;
+          const printerAcceptedByName = step.role === 'PRINTER'
+            ? ((step as any).acceptedByName || printWf?.printerAcceptedByName || (order as any)?.printerAcceptedByName)
+            : null;
 
           let bgClass = 'bg-slate-100/90 text-slate-500 border-slate-200 shadow-2xs';
           let icon = <Lock size={13} className="text-slate-400 shrink-0" />;
@@ -238,26 +300,121 @@ export function WorkflowPipelineVisual({
 
           const pillBase = `w-[98px] h-[27px] flex items-center justify-center gap-1.5 px-2 rounded-md border text-[14px] font-normal tracking-normal transition-all duration-200 select-none shadow-2xs ${bgClass}`;
 
+          const pillTooltip = (step.role === 'PRINTER' && printerAcceptedByName && printerAcceptedBy !== currentUserId)
+            ? `Already accepted by ${printerAcceptedByName}`
+            : `${step.label} (${step.role}): ${step.status.replace(/_/g, ' ')}`;
+
           return (
-            <div key={`${step.role}-${index}`} className="flex items-center shrink-0">
-              {navHref ? (
-                <Link
-                  href={navHref}
-                  className={`${pillBase} hover:brightness-95 hover:scale-105 cursor-pointer`}
-                  title={`Open ${step.label} (${step.role})`}
-                >
-                  {pillContent}
-                </Link>
-              ) : (
-                <div className={pillBase} title={`${step.label} (${step.role}): ${step.status.replace(/_/g, ' ')}`}>
-                  {pillContent}
-                </div>
-              )}
+            <div key={`${step.role}-${index}`} className="flex items-start shrink-0">
+              <div className="flex flex-col items-center">
+                {navHref ? (
+                  <Link
+                    href={navHref}
+                    className={`${pillBase} hover:brightness-95 hover:scale-105 cursor-pointer`}
+                    title={`Open ${step.label} (${step.role})`}
+                  >
+                    {pillContent}
+                  </Link>
+                ) : (
+                  <div className={pillBase} title={pillTooltip}>
+                    {pillContent}
+                  </div>
+                )}
+
+                {/* Print stage action button / status indicator */}
+                {step.role === 'PRINTER' && (
+                  <div className="w-[98px] flex items-center justify-center min-h-[22px]">
+                    {step.isCompleted ? (
+                      printerAcceptedByName ? (
+                        <span 
+                          className="mt-1 text-[10px] text-slate-400 font-medium truncate max-w-[98px]"
+                          title={`Printed by ${printerAcceptedByName}`}
+                        >
+                          ✓ {printerAcceptedByName}
+                        </span>
+                      ) : null
+                    ) : step.isCurrent ? (
+                      printerAcceptedBy ? (
+                        printerAcceptedBy === currentUserId ? (
+                          <div 
+                            className="mt-1 flex items-center justify-center gap-1 w-full px-1 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-300 text-[10px] font-semibold shadow-2xs"
+                            title="You accepted this print job"
+                          >
+                            <CheckCircle2 size={10} className="text-emerald-600 shrink-0" />
+                            <span className="truncate max-w-[65px]">Accepted</span>
+                            {(isAdmin || isManager || isPrinterUser) && (
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleReleasePrint(orderId);
+                                }}
+                                disabled={isAccepting}
+                                title="Release / Unclaim this job" 
+                                className="text-slate-400 hover:text-red-500 hover:bg-slate-200/60 rounded p-0.5 ml-0.5 cursor-pointer"
+                              >
+                                <X size={10} />
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <div 
+                            className="mt-1 flex items-center justify-center gap-1 w-full px-1 py-0.5 rounded bg-amber-50 text-amber-900 border border-amber-300 text-[10px] font-medium shadow-2xs select-none"
+                            title={`Already accepted by ${printerAcceptedByName || 'another printer'}`}
+                          >
+                            <Lock size={9} className="text-amber-600 shrink-0" />
+                            <span className="truncate max-w-[65px]" title={printerAcceptedByName || 'Printer'}>
+                              {printerAcceptedByName || 'Accepted'}
+                            </span>
+                            {(isAdmin || isManager) && (
+                              <button 
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleReleasePrint(orderId);
+                                }}
+                                disabled={isAccepting}
+                                title="Manager Override: Release job" 
+                                className="text-slate-400 hover:text-red-500 hover:bg-slate-200/60 rounded p-0.5 ml-0.5 cursor-pointer"
+                              >
+                                <X size={10} />
+                              </button>
+                            )}
+                          </div>
+                        )
+                      ) : canAccept ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleAcceptPrint(orderId);
+                          }}
+                          disabled={isAccepting}
+                          className="mt-1 flex items-center justify-center gap-1 w-full h-[22px] px-2 rounded text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                          title="Accept this print job for your account"
+                        >
+                          {isAccepting ? (
+                            <Loader2 size={10} className="animate-spin shrink-0" />
+                          ) : (
+                            <Check size={11} className="stroke-[3] shrink-0" />
+                          )}
+                          <span>Accept</span>
+                        </button>
+                      ) : (
+                        <span className="mt-1 text-[10px] text-slate-400 font-medium">Unassigned</span>
+                      )
+                    ) : null}
+                  </div>
+                )}
+              </div>
 
               {index < stepsToRender.length - 1 && (
                 <ChevronRight
                   size={10}
-                  className={`mx-0.5 shrink-0 ${chevronClass}`}
+                  className={`mx-0.5 mt-2 shrink-0 ${chevronClass}`}
                 />
               )}
             </div>

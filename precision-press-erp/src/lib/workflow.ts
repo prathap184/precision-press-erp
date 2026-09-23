@@ -2046,6 +2046,128 @@ export async function markTiffOpened(orderId: string) {
   });
 }
 
+export async function acceptPrintJob(orderId: string, notes?: string) {
+  const user = await getAuthorizedUser(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'PRINTER']);
+  
+  const MAX_RETRIES = 3;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const orderRef = adminDb.collection('orders').doc(orderId);
+      const orderSnap = await orderRef.get();
+      if (!orderSnap.exists) throw new Error('Order not found');
+      const orderData = orderSnap.data() as any;
+      checkStageNotCompleted('PRINTER', orderData.workflowSnapshot);
+
+      const printWf = resolvePrintWorkflow(orderData);
+      const existingAcceptedBy = printWf?.printerAcceptedBy || orderData?.workflowSnapshot?.steps?.find((s: any) => s.role === 'PRINTER')?.acceptedBy;
+      const existingAcceptedByName = printWf?.printerAcceptedByName || orderData?.workflowSnapshot?.steps?.find((s: any) => s.role === 'PRINTER')?.acceptedByName;
+
+      // Concurrency check: If already accepted by another user, reject
+      if (existingAcceptedBy && existingAcceptedBy !== user.id) {
+        throw new Error(`This order was already accepted by ${existingAcceptedByName || 'another printer account'}.`);
+      }
+
+      const timelineEntry = {
+        event: 'PRINT_ACCEPTED',
+        timestamp: new Date().toISOString(),
+        user: user.id,
+        notes: notes || `Print job accepted by ${user.name}`
+      };
+
+      // 1. Advance step in snapshot
+      await advanceWorkflowSnapshotStep(orderId, 'PRINTER', 'IN_PROGRESS', user, notes || `Accepted by ${user.name}`);
+
+      // 2. Fetch fresh snapshot to ensure step contains acceptedBy metadata
+      const freshSnap = await orderRef.get();
+      const freshData = freshSnap.data() as any;
+      const snapshot = JSON.parse(JSON.stringify(freshData?.workflowSnapshot || {}));
+      if (snapshot.steps) {
+        const printerStep = snapshot.steps.find((s: any) => s.role === 'PRINTER');
+        if (printerStep) {
+          printerStep.status = 'IN_PROGRESS';
+          printerStep.acceptedBy = user.id;
+          printerStep.acceptedByName = user.name;
+          printerStep.acceptedAt = new Date().toISOString();
+          printerStep.startedAt = printerStep.startedAt || new Date().toISOString();
+        }
+      }
+
+      // 3. Update order fields
+      const updateData: any = {
+        'workflow.printWorkflow.status': 'PRINT_STARTED',
+        'workflow.printWorkflow.printerAcceptedBy': user.id,
+        'workflow.printWorkflow.printerAcceptedByName': user.name,
+        'workflow.printWorkflow.printerAcceptedAt': admin.firestore.FieldValue.serverTimestamp(),
+        'workflow.printWorkflow.timeline': admin.firestore.FieldValue.arrayUnion(timelineEntry),
+        'workflow.assignedTo': user.id,
+        'workflow.assignedToName': user.name,
+        'workflow.assignedBy': user.id,
+        'workflow.assignedByName': user.name,
+        'workflow.assignedAt': admin.firestore.FieldValue.serverTimestamp(),
+        workflowSnapshot: snapshot
+      };
+
+      if (freshData?.status === 'PAYMENT_VERIFIED' || freshData?.status === 'ASSIGNED') {
+        updateData.status = 'IN_PROGRESS';
+      }
+
+      await orderRef.update(updateData);
+      return { success: true, acceptedBy: user.id, acceptedByName: user.name };
+    } catch (err: any) {
+      const isVersionConflict = err?.message?.includes('modified by another user') || err?.message?.includes('version');
+      if (isVersionConflict && attempt < MAX_RETRIES) {
+        await new Promise(res => setTimeout(res, 150 * attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
+export async function releasePrintJob(orderId: string, notes?: string) {
+  const user = await getAuthorizedUser(['ADMIN', 'SUPER_ADMIN', 'MANAGER', 'PRINTER']);
+  const orderRef = adminDb.collection('orders').doc(orderId);
+  const orderSnap = await orderRef.get();
+  if (!orderSnap.exists) throw new Error('Order not found');
+  const orderData = orderSnap.data() as any;
+  const printWf = resolvePrintWorkflow(orderData);
+
+  const isAdminOrManager = ['ADMIN', 'SUPER_ADMIN', 'MANAGER'].some(r => user.roles?.includes(r) || user.role === r);
+  if (!isAdminOrManager && printWf?.printerAcceptedBy !== user.id) {
+    throw new Error('Only the printer who accepted this job or a manager can release it.');
+  }
+
+  const timelineEntry = {
+    event: 'PRINT_RELEASED',
+    timestamp: new Date().toISOString(),
+    user: user.id,
+    notes: notes || `Print job released by ${user.name}`
+  };
+
+  const snapshot = JSON.parse(JSON.stringify(orderData?.workflowSnapshot || {}));
+  if (snapshot.steps) {
+    const printerStep = snapshot.steps.find((s: any) => s.role === 'PRINTER');
+    if (printerStep && printerStep.status !== 'COMPLETED') {
+      printerStep.status = 'PENDING';
+      delete printerStep.acceptedBy;
+      delete printerStep.acceptedByName;
+      delete printerStep.acceptedAt;
+    }
+  }
+
+  await orderRef.update({
+    'workflow.printWorkflow.printerAcceptedBy': null,
+    'workflow.printWorkflow.printerAcceptedByName': null,
+    'workflow.printWorkflow.printerAcceptedAt': null,
+    'workflow.printWorkflow.timeline': admin.firestore.FieldValue.arrayUnion(timelineEntry),
+    'workflow.assignedTo': null,
+    'workflow.assignedToName': null,
+    workflowSnapshot: snapshot
+  });
+
+  return { success: true };
+}
+
 export async function startTiffPrint(orderId: string, notes?: string) {
   const user = await getAuthorizedUser(['ADMIN', 'MANAGER', 'PRINTER']);
   

@@ -412,11 +412,12 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
   const workedByMeOrders = React.useMemo(() => {
     const matched = orders.filter(order => {
       const inSteps = (order.workflowSnapshot?.steps || []).some((s: any) =>
-        s.assignedTo === viewerUid || s.completedBy === viewerUid || (s.history || []).some((h: any) => h.by === viewerUid)
+        s.assignedTo === viewerUid || s.completedBy === viewerUid || s.acceptedBy === viewerUid || (s.history || []).some((h: any) => h.by === viewerUid)
       );
       const isCreator = order.createdBy === viewerUid;
       const custom = (order as any).dispatchCompletedBy === viewerUid || (order.dispatchInfo as any)?.dispatchedBy === viewerUid;
-      return inSteps || isCreator || custom;
+      const isPrinterAccepted = (order.workflow?.printWorkflow as any)?.printerAcceptedBy === viewerUid || (order as any)?.printerAcceptedBy === viewerUid;
+      return inSteps || isCreator || custom || isPrinterAccepted;
     });
     return matched.slice().sort((a, b) => {
       const getTime = (o: Order) => {
@@ -873,6 +874,7 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
                         <WorkflowPipelineVisual
                           snapshot={order.workflowSnapshot}
                           orderId={order.id}
+                          order={order}
                           detailed={true}
                           filterByRoles={false}
                           allowNavigation={true}

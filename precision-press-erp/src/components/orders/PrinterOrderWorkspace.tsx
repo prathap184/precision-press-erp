@@ -13,11 +13,12 @@ import { STATUS_COLORS, STATUS_LABELS } from '@/types/workflow';
 import { OrderThumbnail } from '@/components/orders/OrderThumbnail';
 import { getWorkspaceMode, WorkspaceMode } from '@/lib/workspaceAccess';
 import { WorkflowAttachments } from '@/components/production/WorkflowAttachments';
-import { completeTiffPrint, markTiffOpened, pauseJob, resumeJob, startTiffPrint } from '@/lib/workflow';
+import { acceptPrintJob, completeTiffPrint, markTiffOpened, pauseJob, resumeJob, startTiffPrint } from '@/lib/workflow';
 import { openTiffInSystem, resolvePrintWorkflow, getFileNameFromPath, inspectTiffPath, isValidTiffPath, normalizeTiffPathToFileUrl, sanitizeTiffPath } from '@/lib/tiff-utils';
 import { OrderDetailsPanel } from '@/components/orders/OrderDetailsPanel';
 import { WorkflowTimeline } from '@/components/orders/WorkflowTimeline';
 import { useStageWorkspaceGuard } from '@/lib/useStageWorkspaceGuard';
+import { useAuth } from '@/lib/auth-context';
 
 interface PrinterOrderWorkspaceProps {
   orderId: string;
@@ -157,7 +158,11 @@ export function PrinterOrderWorkspace({
   const currentStep = order?.workflowSnapshot?.steps?.[order.workflowSnapshot?.currentStepIndex ?? -1];
   const mode = getWorkspaceMode('PRINTER', order?.workflowSnapshot);
   const guard = useStageWorkspaceGuard('PRINTER', order, loading);
+  const { user, profile } = useAuth();
   const printWorkflow = useMemo(() => resolvePrintWorkflow(order), [order]);
+  const currentUserId = profile?.uid || user?.uid || '';
+  const isAcceptedByMe = printWorkflow?.printerAcceptedBy === currentUserId;
+  const isAcceptedByOther = Boolean(printWorkflow?.printerAcceptedBy && !isAcceptedByMe);
   const tiffPath = printWorkflow?.tiffPath || '';
   const tiffInfo = tiffPath ? inspectTiffPath(tiffPath) : null;
   const tiffReady = Boolean(tiffPath && isValidTiffPath(tiffPath));
@@ -657,6 +662,31 @@ export function PrinterOrderWorkspace({
                 >
                   <ChevronLeft size={12} /> Back
                 </button>
+                {!printWorkflow?.printerAcceptedBy && mode !== 'READ_ONLY' && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!order || processing) return;
+                      setProcessing(true);
+                      try {
+                        await acceptPrintJob(order.id);
+                        toast.success('Job accepted!');
+                        const directSnap = await getDoc(doc(db, 'orders', order.id));
+                        if (directSnap.exists()) {
+                          setOrder({ id: directSnap.id, ...directSnap.data() } as Order);
+                        }
+                      } catch (err: any) {
+                        toast.error(err?.message || 'Failed to accept job');
+                      } finally {
+                        setProcessing(false);
+                      }
+                    }}
+                    disabled={processing}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-full border border-emerald-500 bg-emerald-600 px-4 h-9 text-[10px] font-black uppercase tracking-widest text-white hover:bg-emerald-700 shadow transition-all duration-200 cursor-pointer disabled:opacity-50"
+                  >
+                    <CheckCircle size={12} /> Accept Job
+                  </button>
+                )}
                 {tiffReady && (
                   <button
                     type="button"
@@ -690,6 +720,27 @@ export function PrinterOrderWorkspace({
               </div>
             </div>
           </section>
+        )}
+
+        {/* Collision Warning Banner */}
+        {isAcceptedByOther && (
+          <div className="w-full rounded-[2rem] border border-amber-300 bg-amber-50/90 backdrop-blur-xl p-4 flex items-center gap-3.5 shadow-2xs">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-200/80 text-amber-800 shrink-0">
+              <Lock size={18} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-amber-800">Collision Warning</span>
+                <span className="text-[10px] font-bold text-amber-500">•</span>
+                <span className="text-xs font-black text-amber-950">
+                  Already accepted by {printWorkflow?.printerAcceptedByName || 'another printer account'}
+                </span>
+              </div>
+              <p className="text-[11px] font-bold text-amber-700 mt-0.5">
+                This job is claimed by another operator. Please do not duplicate print or overwrite without coordinating.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Read Only Mode Banner */}

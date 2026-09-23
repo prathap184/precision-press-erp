@@ -1289,6 +1289,7 @@ export function GlobalOrdersPage() {
                                     return order.workflowSnapshot;
                                   })()}
                                   orderId={order.id}
+                                  order={order}
                                   detailed={true}
                                   filterByRoles={false}
                                   allowNavigation={true}
