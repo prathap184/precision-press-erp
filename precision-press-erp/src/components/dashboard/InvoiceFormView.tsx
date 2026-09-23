@@ -3623,6 +3623,8 @@ export function InvoiceFormView() {
           }
           title="Description for Stock Item"
         />
+      )}
+
       {/* Escape / Back Exit Confirmation Modal */}
       {showExitConfirmModal && (
         <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md animate-in fade-in duration-150">
