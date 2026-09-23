@@ -287,6 +287,24 @@ export function InvoiceFormView() {
       .localeCompare(String(bStr || "").trim(), undefined, { numeric: true, sensitivity: "base" });
   };
 
+  // Immediate preview of next sequential invoice number on mount (< 30ms)
+  useEffect(() => {
+    const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+    const headers: Record<string, string> = {};
+    if (orgId) headers["x-organization-id"] = orgId;
+
+    fetch("/api/v1/invoices?nextNumber=true", { headers, cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.nextNumber) {
+          setInvoiceNumber(data.nextNumber);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not preview next invoice number:", err);
+      });
+  }, []);
+
   // Load Inventory Products, Customers, and Tax Rates
   useEffect(() => {
     const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
@@ -295,10 +313,9 @@ export function InvoiceFormView() {
 
     async function bootstrap() {
       try {
-        const [prodRes, custRes, nextNumRes] = await Promise.all([
+        const [prodRes, custRes] = await Promise.all([
           fetch("/api/v1/inventory?status=active&limit=1000&sortBy=name&sortOrder=asc", { headers }),
           fetch("/api/v1/contacts?type=customer&limit=5000&sortBy=name&sortOrder=asc", { headers }),
-          fetch("/api/v1/invoices?nextNumber=true", { headers }).catch(() => null),
         ]);
 
         if (prodRes.ok) {
@@ -368,13 +385,6 @@ export function InvoiceFormView() {
         if (custRes.ok) {
           const cd = await custRes.json();
           setCustomers(cd.data || []);
-        }
-
-        if (nextNumRes && nextNumRes.ok) {
-          const nd = await nextNumRes.json();
-          if (nd.nextNumber) {
-            setInvoiceNumber(nd.nextNumber);
-          }
         }
       } catch (err) {
         console.error("Failed to bootstrap invoice terminal", err);
