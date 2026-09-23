@@ -102,6 +102,24 @@ const sourceLabels: Record<string, string> = {
 function buildColumns(): Column<CustomerCredit>[] {
   return [
     {
+      key: "voucherNo",
+      header: "Voucher No.",
+      className: "w-36",
+      render: (r) => {
+        const entryNum = r.journalEntry?.entryNumber;
+        if (!entryNum) return <span className="font-mono text-sm text-muted-foreground">-</span>;
+        const strNum = String(entryNum);
+        const voucherDisplay = strNum.startsWith("REC-")
+          ? strNum
+          : `REC-${strNum.padStart(3, "0")}`;
+        return (
+          <span className="font-mono text-sm font-bold text-blue-600 dark:text-blue-400">
+            {voucherDisplay}
+          </span>
+        );
+      },
+    },
+    {
       key: "reference",
       header: "Reference",
       className: "w-32",
@@ -387,10 +405,16 @@ export default function CustomerPrepaymentsPage() {
     if (!debouncedSearch) return credits;
     const q = debouncedSearch.trim();
     return credits.filter(
-      (c) =>
-        fuzzyMatch(c.contact?.name, q) ||
-        fuzzyMatch(c.journalEntry?.reference || c.journalEntry?.entryNumber, q) ||
-        fuzzyMatch(sourceLabels[c.sourceType] || c.sourceType, q)
+      (c) => {
+        const entryNum = c.journalEntry?.entryNumber;
+        const voucherDisplay = entryNum ? `REC-${String(entryNum).padStart(3, "0")}` : "";
+        return (
+          fuzzyMatch(c.contact?.name, q) ||
+          fuzzyMatch(c.journalEntry?.reference || c.journalEntry?.entryNumber, q) ||
+          fuzzyMatch(voucherDisplay, q) ||
+          fuzzyMatch(sourceLabels[c.sourceType] || c.sourceType, q)
+        );
+      }
     );
   }, [credits, debouncedSearch]);
 

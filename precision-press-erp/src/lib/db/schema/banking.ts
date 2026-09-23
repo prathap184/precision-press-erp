@@ -11,7 +11,7 @@ import {
   pgEnum,
   jsonb,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { organization } from "./auth";
 import { chartAccount, journalEntry, taxRate } from "./bookkeeping";
 import { contact } from "./contacts";
@@ -82,7 +82,7 @@ export const bankAccount = pgTable("bank_account", {
   accountType: bankAccountTypeEnum("account_type").notNull().default("checking"),
   color: text("color").notNull().default("#0f766e"),
   chartAccountId: uuid("chart_account_id").references(() => chartAccount.id),
-  balance: integer("balance").notNull().default(0),
+  balance: bigint("balance", { mode: "number" }).notNull().default(sql`0`),
   lowBalanceThreshold: integer("low_balance_threshold"),
   isActive: boolean("is_active").notNull().default(true),
   // Tally Integration Fields
@@ -153,8 +153,8 @@ export const bankTransaction = pgTable("bank_transaction", {
   date: date("date").notNull(),
   description: text("description").notNull(),
   reference: text("reference"),
-  amount: integer("amount").notNull(),
-  balance: integer("balance"),
+  amount: bigint("amount", { mode: "number" }).notNull(),
+  balance: bigint("balance", { mode: "number" }),
   status: bankTransactionStatusEnum("status").notNull().default("unreconciled"),
   reconciliationId: uuid("reconciliation_id").references(() => bankReconciliation.id),
   journalEntryId: uuid("journal_entry_id").references(() => journalEntry.id),
