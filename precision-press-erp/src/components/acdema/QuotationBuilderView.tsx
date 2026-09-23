@@ -2410,7 +2410,11 @@ export function QuotationBuilderView({ vm }: { vm: any }) {
                               <HighlightMatch text={c.gstin || '—'} query={customerSearch} isHighlighted={isHighlighted} />
                             </div>
                             <div className={`w-32 text-right font-bold text-[11px] shrink-0 ${isHighlighted ? 'text-black' : 'text-slate-800'}`}>
-                              {c.credit_balance !== undefined ? `₹${Number(c.credit_balance || 0).toLocaleString()}` : '—'}
+                              {c.owesYou != null && Number(c.owesYou) > 0
+                                ? `₹${(Number(c.owesYou) / 100).toFixed(2)}`
+                                : (c.credit_balance != null && Number(c.credit_balance) > 0
+                                    ? `₹${Number(c.credit_balance).toFixed(2)}`
+                                    : '—')}
                             </div>
                           </div>
                         );

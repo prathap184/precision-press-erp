@@ -25,6 +25,7 @@ import {
   Check,
   Upload,
   Copy,
+  AlertTriangle,
 } from "lucide-react";
 import { RoleGuard } from "@/lib/role-guard";
 import { ItemDescriptionModal } from "@/components/dashboard/ItemDescriptionModal";
@@ -244,6 +245,9 @@ export function InvoiceFormView() {
   const [activeDescRowId, setActiveDescRowId] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [pendingFocusNewRow, setPendingFocusNewRow] = useState(false);
+  const [showExitConfirmModal, setShowExitConfirmModal] = useState(false);
+  const showExitConfirmModalRef = useRef(false);
+  showExitConfirmModalRef.current = showExitConfirmModal;
 
   // Logistics
   const [deliveryType, setDeliveryType] = useState<"selfPickup" | "door" | "courier" | "transport">("selfPickup");
@@ -322,7 +326,7 @@ export function InvoiceFormView() {
             );
 
             const defaultMode: "A" | "B" =
-              row.tally_billing_mode === "A" || meta.billingMode === "A" ? "A" : "B";
+              row.tally_billing_mode === "A" || row.tallyBillingMode === "A" || meta.billingMode === "A" ? "A" : "B";
 
             return {
               ...row,
@@ -335,18 +339,26 @@ export function InvoiceFormView() {
                   ? Number(meta.baseRate)
                   : row.sale_price != null
                   ? Number(row.sale_price) / 100
-                  : row.base_rate || 0,
+                  : row.salePrice != null
+                  ? Number(row.salePrice) / 100
+                  : row.base_rate || row.baseRate || 0,
+              current_stock:
+                row.quantity_on_hand != null
+                  ? Number(row.quantity_on_hand)
+                  : row.quantityOnHand != null
+                  ? Number(row.quantityOnHand)
+                  : undefined,
               hsn_code: row.hsn_code || row.hsnCode || "",
-              gst_rate: row.gst_rate || 18,
-              unit_of_measure: row.unit_of_measure || row.unitOfMeasure || meta.uom || "NOS",
-              tally_uom: row.tally_uom || row.unit_of_measure || row.unitOfMeasure || meta.uom || "NOS",
-              tally_billing_mode: (row.tally_billing_mode as any) || defaultMode,
+              gst_rate: row.gst_rate !== undefined ? row.gst_rate : (row.gstRate !== undefined ? row.gstRate : undefined),
+              unit_of_measure: row.unit_of_measure || row.unitOfMeasure || row.tallyUom || row.tally_uom || meta.uom || "NOS",
+              tally_uom: row.tally_uom || row.tallyUom || row.unit_of_measure || row.unitOfMeasure || meta.uom || "NOS",
+              tally_billing_mode: (row.tally_billing_mode || row.tallyBillingMode as any) || defaultMode,
               has_multiple_sizes: isMultiSize,
               hasMultipleSizes: isMultiSize,
               has_single_default_size: hasSingleDefaultSize,
               hasSingleDefaultSize: hasSingleDefaultSize,
-              default_width: row.default_width != null ? Number(row.default_width) : (meta.defaultWidth != null ? Number(meta.defaultWidth) : (meta.default_width != null ? Number(meta.default_width) : undefined)),
-              default_length: row.default_length != null ? Number(row.default_length) : (meta.defaultLength != null ? Number(meta.defaultLength) : (meta.default_length != null ? Number(meta.default_length) : undefined)),
+              default_width: row.default_width != null ? Number(row.default_width) : (row.defaultWidth != null ? Number(row.defaultWidth) : (meta.defaultWidth != null ? Number(meta.defaultWidth) : (meta.default_width != null ? Number(meta.default_width) : undefined))),
+              default_length: row.default_length != null ? Number(row.default_length) : (row.defaultLength != null ? Number(row.defaultLength) : (meta.defaultLength != null ? Number(meta.defaultLength) : (meta.default_length != null ? Number(meta.default_length) : undefined))),
             };
           });
           setProducts(pList);
@@ -1100,6 +1112,10 @@ export function InvoiceFormView() {
           setLogisticsDropdownOpen(false);
           return;
         }
+
+        e.preventDefault();
+        e.stopPropagation();
+        setShowExitConfirmModal(true);
         return;
       }
 
@@ -1154,6 +1170,26 @@ export function InvoiceFormView() {
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keyboard shortcut listener for Exit Confirmation Modal (Y/Enter = Yes, Go Back; N/Esc/Backspace = Cancel, Stay)
+  useEffect(() => {
+    if (!showExitConfirmModal) return;
+    const handleExitModalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "y" || e.key === "Y" || e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        router.push("/accounting/sales");
+      } else if (e.key === "n" || e.key === "N" || e.key === "Escape" || e.key === "Backspace") {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowExitConfirmModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleExitModalKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleExitModalKeyDown, true);
+    };
+  }, [showExitConfirmModal, router]);
 
 
   const handleSubmit = async () => {
@@ -1279,7 +1315,7 @@ export function InvoiceFormView() {
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => router.push("/accounting/sales")}
+                  onClick={() => setShowExitConfirmModal(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 bg-white/80 hover:bg-white rounded-xl border border-slate-200 transition-all shadow-xs cursor-pointer"
                 >
                   <ArrowLeft size={14} /> Back to Invoices
@@ -3442,12 +3478,15 @@ export function InvoiceFormView() {
                         const currentIndex = runningIdx++;
                         const isHighlighted = currentIndex === highlightProductIndex;
                         const isSelected = p.id === activeRow?.productId;
-                        const uom = (p as any)?.tally_uom || (p as any)?.unit_of_measure || "N";
+                        const uom = (p as any)?.tally_uom || (p as any)?.tallyUom || (p as any)?.unit_of_measure || (p as any)?.unitOfMeasure || "N";
                         const hsn = p.hsn || p.hsn_code || (p as any)?.hsnCode || "—";
-                        const gst = p.gst_rate !== undefined ? p.gst_rate : 18;
-                        const stockQty =
-                          p.current_stock !== undefined ? `${p.current_stock.toLocaleString()} ${uom}` : "—";
-                        const rateStr = p.baseRate !== undefined ? `₹${Number(p.baseRate).toFixed(2)}` : "—";
+                        const gst = p.gst_rate !== undefined ? `${p.gst_rate}%` : ((p as any)?.gstRate !== undefined ? `${(p as any).gstRate}%` : "%");
+                        const rawStock = p.current_stock !== undefined ? p.current_stock : (p as any)?.quantityOnHand;
+                        const stockQty = rawStock !== undefined ? `${Number(rawStock).toLocaleString()} ${uom}` : "—";
+                        const rawRate = p.baseRate !== undefined && Number(p.baseRate) > 0
+                          ? Number(p.baseRate)
+                          : (p.salePrice ? Number(p.salePrice) / 100 : (p.sale_price ? Number(p.sale_price) / 100 : (p.base_rate ? Number(p.base_rate) : 0)));
+                        const rateStr = `₹${rawRate.toFixed(2)}`;
 
                         return (
                           <div
@@ -3584,6 +3623,43 @@ export function InvoiceFormView() {
           }
           title="Description for Stock Item"
         />
+      {/* Escape / Back Exit Confirmation Modal */}
+      {showExitConfirmModal && (
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-slate-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 shrink-0">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Return to Invoices?</h3>
+                <p className="text-xs font-semibold text-slate-500">Unsaved entries will be discarded</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 mb-6 leading-relaxed bg-slate-50 p-3 rounded-2xl border border-slate-100 font-medium">
+              Are you sure you want to exit the Invoice Terminal and go back to Invoices? Any draft items, calculations, and notes will not be saved.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowExitConfirmModal(false)}
+                className="flex-1 py-3 rounded-xl border border-slate-200 bg-slate-100 text-xs font-black uppercase tracking-wider text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Cancel (Stay)</span>
+                <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-white border border-slate-300 rounded shadow-2xs text-slate-600">N / Esc</kbd>
+              </button>
+              <button
+                type="button"
+                autoFocus
+                onClick={() => router.push("/accounting/sales")}
+                className="flex-1 py-3 rounded-xl bg-red-600 text-xs font-black uppercase tracking-wider text-white hover:bg-red-700 shadow-md transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Yes, Go Back</span>
+                <kbd className="px-1.5 py-0.5 text-[10px] font-bold font-mono bg-red-700 border border-red-500 rounded shadow-2xs text-white">Y / ↵</kbd>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </RoleGuard>
   );

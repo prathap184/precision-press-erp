@@ -183,7 +183,35 @@ export function QuotationBuilder() {
 
         const activeProducts = productData.filter((product: Product) => product.status === 'ACTIVE');
         setProducts(activeProducts);
-        setCustomers(customerData);
+
+        let augmentedCustomers = customerData;
+        try {
+          const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+          const headers: Record<string, string> = {};
+          if (orgId) headers["x-organization-id"] = orgId;
+          const contactsRes = await fetch("/api/v1/contacts?type=customer&limit=5000&sortBy=name&sortOrder=asc", { headers });
+          if (contactsRes.ok) {
+            const cd = await contactsRes.json();
+            if (cd.data && cd.data.length > 0) {
+              const balanceMap = new Map<string, number>();
+              cd.data.forEach((item: any) => {
+                if (item.id) balanceMap.set(item.id, item.owesYou);
+              });
+              augmentedCustomers = customerData.map((c: any) => {
+                const owes = balanceMap.get(c.uid || c.id);
+                return {
+                  ...c,
+                  owesYou: owes !== undefined ? owes : (c as any).owesYou,
+                  credit_balance: owes !== undefined ? owes / 100 : c.credit_balance,
+                };
+              });
+            }
+          }
+        } catch (e) {
+          console.warn("Could not fetch contact balances", e);
+        }
+
+        setCustomers(augmentedCustomers);
         setRows([makeRow()]);
         if (nextQuoteId) {
           setOrderNumber(nextQuoteId);
