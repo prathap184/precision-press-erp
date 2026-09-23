@@ -571,8 +571,10 @@ export function ReceiptForm() {
             e.preventDefault();
             setShowRefTypeMenu(false);
             setShowBillWiseModal(false);
-            amountInputRef.current?.focus();
-            amountInputRef.current?.select();
+            customerInputRef.current?.focus();
+            try {
+              customerInputRef.current?.select();
+            } catch {}
             return;
           }
           return;
@@ -678,22 +680,17 @@ export function ReceiptForm() {
     }
     const num = parseFloat(voucherAmount);
     if (isNaN(num) || num <= 0) {
-      toast.error("Please enter a valid receipt amount");
-      amountInputRef.current?.focus();
+      toast.error("Please enter a valid receipt amount in Bill-wise details");
+      openBillWiseDetails();
       return false;
     }
     return true;
   };
 
-  // Open Bill-wise details modal
-  const openBillWiseDetails = () => {
-    const num = parseFloat(voucherAmount);
-    if (isNaN(num) || num <= 0) {
-      toast.error("Please enter receipt amount first");
-      amountInputRef.current?.focus();
-      return;
-    }
-    if (!selectedCustomerId) {
+  // Open Bill-wise details modal (Amount is entered/picked in this small window!)
+  const openBillWiseDetails = (forcedCustomer?: CustomerOption) => {
+    const custId = forcedCustomer?.id || selectedCustomerId;
+    if (!custId) {
       toast.error("Please select a customer first");
       customerInputRef.current?.focus();
       return;
@@ -702,7 +699,7 @@ export function ReceiptForm() {
     if (billWiseLines.length > 0) {
       const prevLine = billWiseLines[0];
       setActiveRefType(prevLine.refType);
-      setCurrentLineAmount(String(prevLine.amount || voucherAmount));
+      setCurrentLineAmount(String(prevLine.amount || voucherAmount || ""));
       setCurrentLineRefName(prevLine.refName || "");
       setCurrentLineDueDate(prevLine.dueDate || date);
       setCurrentLineInvoiceId(prevLine.invoiceId);
@@ -710,7 +707,7 @@ export function ReceiptForm() {
       const defaultRef: RefType = invoices.length > 0 ? "AGST_REF" : "NEW_REF";
       setActiveRefType(defaultRef);
       setRefTypeHighlightIndex(defaultRef === "AGST_REF" ? 1 : 2);
-      setCurrentLineAmount(voucherAmount);
+      setCurrentLineAmount(voucherAmount && parseFloat(voucherAmount) > 0 ? voucherAmount : "");
       setCurrentLineRefName(defaultRef === "NEW_REF" ? `ADV-${voucherNo}` : "");
       setCurrentLineDueDate(date);
       setCurrentLineInvoiceId(undefined);
@@ -726,14 +723,14 @@ export function ReceiptForm() {
     if (billWiseLines.length > 0) {
       const prevLine = billWiseLines[0];
       setActiveRefType(prevLine.refType);
-      setCurrentLineAmount(String(prevLine.amount || voucherAmount));
+      setCurrentLineAmount(String(prevLine.amount || voucherAmount || ""));
       setCurrentLineRefName(prevLine.refName || "");
       setCurrentLineDueDate(prevLine.dueDate || date);
       setCurrentLineInvoiceId(prevLine.invoiceId);
     } else {
       const defaultRef: RefType = invoices.length > 0 ? "AGST_REF" : "NEW_REF";
       setActiveRefType(defaultRef);
-      setCurrentLineAmount(voucherAmount);
+      setCurrentLineAmount(voucherAmount && parseFloat(voucherAmount) > 0 ? voucherAmount : "");
       setCurrentLineRefName(defaultRef === "NEW_REF" ? `ADV-${voucherNo}` : "");
       setCurrentLineDueDate(date);
       setCurrentLineInvoiceId(undefined);
@@ -787,15 +784,13 @@ export function ReceiptForm() {
     }
   };
 
-  // Handle selecting a Pending Bill -> compulsorily moves to NAME first!
+  // Handle selecting a Pending Bill -> auto-fills invoice pending amount!
   const handleSelectPendingBill = (inv: InvoiceOption) => {
     setCurrentLineInvoiceId(inv.id);
     setCurrentLineRefName(inv.invoiceNumber);
     setCurrentLineDueDate(inv.dueDate || inv.issueDate || date);
     const invoiceDueRupees = (inv.amountDue / 100).toFixed(2);
-    const voucherRupees = parseFloat(voucherAmount || "0");
-    const allocated = Math.min(parseFloat(invoiceDueRupees), voucherRupees).toFixed(2);
-    setCurrentLineAmount(allocated);
+    setCurrentLineAmount(invoiceDueRupees);
     setShowPendingBills(false);
     setShowRefTypeMenu(false);
     setTimeout(() => {
@@ -804,13 +799,16 @@ export function ReceiptForm() {
     }, 50);
   };
 
-  // Commit Bill-wise Line & Close Modal
+  // Commit Bill-wise Line & Close Modal -> Auto-syncs main table voucher amount & total!
   const handleConfirmBillWiseLine = () => {
     const numAmt = parseFloat(currentLineAmount);
     if (isNaN(numAmt) || numAmt <= 0) {
-      toast.error("Invalid amount");
+      toast.error("Please enter a valid amount");
+      modalAmountInputRef.current?.focus();
       return;
     }
+
+    setVoucherAmount(numAmt.toFixed(2));
 
     const newLine: BillWiseLine = {
       id: Math.random().toString(36).substring(2, 9),
@@ -1089,14 +1087,14 @@ export function ReceiptForm() {
                           setCustomerHighlightIndex((prev) => Math.max(prev - 1, 0));
                         } else if (e.key === "Enter") {
                           e.preventDefault();
+                          let chosenCust = selectedCustomer;
                           if (showCustomerDropdown && filteredCustomers[customerHighlightIndex]) {
-                            const c = filteredCustomers[customerHighlightIndex];
-                            setSelectedCustomerId(c.id);
-                            setCustomerSearch(c.name);
+                            chosenCust = filteredCustomers[customerHighlightIndex];
+                            setSelectedCustomerId(chosenCust.id);
+                            setCustomerSearch(chosenCust.name);
                           }
                           setShowCustomerDropdown(false);
-                          amountInputRef.current?.focus();
-                          try { amountInputRef.current?.select(); } catch {}
+                          openBillWiseDetails(chosenCust || undefined);
                         } else if (e.key === "Escape") {
                           setShowCustomerDropdown(false);
                         } else if (e.key === "Backspace") {
@@ -1148,8 +1146,7 @@ export function ReceiptForm() {
                                   setSelectedCustomerId(c.id);
                                   setCustomerSearch(c.name);
                                   setShowCustomerDropdown(false);
-                                  amountInputRef.current?.focus();
-                                  try { amountInputRef.current?.select(); } catch {}
+                                  openBillWiseDetails(c);
                                 }}
                                 onMouseEnter={() => setCustomerHighlightIndex(idx)}
                                 className={`px-4 py-3 text-xs flex justify-between items-center cursor-pointer transition-colors ${
@@ -1174,38 +1171,19 @@ export function ReceiptForm() {
                     )}
                   </div>
 
-                  {/* Amount Column */}
+                  {/* Amount Column - Auto-calculated from Bill-Wise details */}
                   <div className="w-1/3 flex items-center justify-end gap-2">
                     <input
                       id="receipt-amount-input"
                       ref={amountInputRef}
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      readOnly
                       placeholder="0.00"
-                      value={voucherAmount}
-                      onChange={(e) => setVoucherAmount(e.target.value)}
-                      onFocus={() => {
-                        try { amountInputRef.current?.select(); } catch {}
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          openBillWiseDetails();
-                        } else if (e.key === "Backspace") {
-                          const len = voucherAmount.length;
-                          const atStartOrSelected =
-                            !voucherAmount ||
-                            voucherAmount === "0.00" ||
-                            (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === 0) ||
-                            (e.currentTarget.selectionStart === 0 && e.currentTarget.selectionEnd === len);
-                          if (atStartOrSelected) {
-                            e.preventDefault();
-                            customerInputRef.current?.focus();
-                            try { customerInputRef.current?.select(); } catch {}
-                          }
-                        }
-                      }}
-                      className="w-full max-w-[220px] text-right bg-slate-50 border-2 border-slate-200 font-mono font-black text-slate-900 px-4 py-2.5 text-base rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
+                      value={voucherAmount ? Number(voucherAmount).toFixed(2) : "0.00"}
+                      onClick={() => openBillWiseDetails()}
+                      onFocus={() => openBillWiseDetails()}
+                      className="w-full max-w-[220px] text-right bg-slate-50/80 border-2 border-slate-200 font-mono font-black text-slate-900 px-4 py-2.5 text-base rounded-xl cursor-pointer hover:bg-slate-100 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
+                      title="Calculated from Bill-wise details. Click or press Enter to edit."
                     />
                     <span className="font-black text-xs text-slate-500">Cr</span>
                   </div>
@@ -1414,9 +1392,9 @@ export function ReceiptForm() {
                             setShowRefTypeMenu(false);
                             setShowPendingBills(false);
                             setShowBillWiseModal(false);
-                            amountInputRef.current?.focus();
+                            customerInputRef.current?.focus();
                             try {
-                              amountInputRef.current?.select();
+                              customerInputRef.current?.select();
                             } catch {}
                           }
                         }}
