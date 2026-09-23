@@ -7,7 +7,7 @@ import { requireRole } from "@/lib/api/require-role";
 import { handleError } from "@/lib/api/response";
 import { notDeleted } from "@/lib/db/soft-delete";
 import { parsePagination, paginatedResponse } from "@/lib/api/pagination";
-import { getNextNumber } from "@/lib/api/numbering";
+import { getNextNumber, peekNextNumber } from "@/lib/api/numbering";
 import { decimalToMinorUnits } from "@/lib/money";
 import { assertNotLocked } from "@/lib/api/period-lock";
 import { logAudit } from "@/lib/api/audit";
@@ -96,6 +96,12 @@ export async function GET(request: Request) {
   try {
     const ctx = await getAuthContext(request);
     const url = new URL(request.url);
+
+    if (url.searchParams.get("nextNumber") === "true") {
+      const nextNumber = await peekNextNumber(ctx.organizationId, "invoice", "INV");
+      return NextResponse.json({ nextNumber });
+    }
+
     const { page, limit, offset } = parsePagination(url);
     const status = url.searchParams.get("status");
     const contactId = url.searchParams.get("contactId");

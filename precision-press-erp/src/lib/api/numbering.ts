@@ -63,6 +63,40 @@ export async function getNextNumber(
   });
 }
 
+/**
+ * Preview the next sequential number without advancing the counter or locking.
+ */
+export async function peekNextNumber(
+  organizationId: string,
+  entityType: string,
+  prefix: string
+): Promise<string> {
+  const result = await db.execute(
+    sql`SELECT last_number FROM number_sequence WHERE organization_id = ${organizationId} AND entity_type = ${entityType} LIMIT 1`
+  );
+  const rows = Array.isArray(result) ? result : (result as { rows?: unknown[] }).rows ?? [];
+  const existing = rows[0] as { last_number: number } | undefined;
+  if (existing) {
+    const next = Number(existing.last_number || 0) + 1;
+    return `${prefix}-${next.toString().padStart(5, "0")}`;
+  }
+
+  const tableName = entityTypeToTable(entityType);
+  const columnName = entityTypeToColumn(entityType);
+  let maxNum = 0;
+  if (tableName && columnName) {
+    const maxResult = await db.execute(
+      sql.raw(
+        `SELECT MAX(CAST(NULLIF(regexp_replace(${columnName}, '^[A-Z]+-', ''), '') AS integer)) as max_num FROM ${tableName} WHERE organization_id = '${organizationId}'`
+      )
+    );
+    const maxRows = Array.isArray(maxResult) ? maxResult : (maxResult as { rows?: unknown[] }).rows ?? [];
+    maxNum = Number(maxRows[0]?.max_num || 0);
+  }
+  const next = maxNum + 1;
+  return `${prefix}-${next.toString().padStart(5, "0")}`;
+}
+
 function entityTypeToTable(entityType: string): string | null {
   const map: Record<string, string> = {
     invoice: "invoice",

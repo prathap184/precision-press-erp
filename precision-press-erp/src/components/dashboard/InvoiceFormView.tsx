@@ -295,9 +295,10 @@ export function InvoiceFormView() {
 
     async function bootstrap() {
       try {
-        const [prodRes, custRes] = await Promise.all([
+        const [prodRes, custRes, nextNumRes] = await Promise.all([
           fetch("/api/v1/inventory?status=active&limit=1000&sortBy=name&sortOrder=asc", { headers }),
           fetch("/api/v1/contacts?type=customer&limit=5000&sortBy=name&sortOrder=asc", { headers }),
+          fetch("/api/v1/invoices?nextNumber=true", { headers }).catch(() => null),
         ]);
 
         if (prodRes.ok) {
@@ -367,6 +368,13 @@ export function InvoiceFormView() {
         if (custRes.ok) {
           const cd = await custRes.json();
           setCustomers(cd.data || []);
+        }
+
+        if (nextNumRes && nextNumRes.ok) {
+          const nd = await nextNumRes.json();
+          if (nd.nextNumber) {
+            setInvoiceNumber(nd.nextNumber);
+          }
         }
       } catch (err) {
         console.error("Failed to bootstrap invoice terminal", err);
@@ -1392,7 +1400,27 @@ export function InvoiceFormView() {
 
               {/* Invoice # & Date Card */}
               <div className="relative z-20 rounded-[2rem] bg-white/50 p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-2xl border border-white/60 flex flex-col justify-center shrink-0">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                  {/* Invoice # (Sequential) */}
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight flex items-center justify-between gap-1">
+                      <span>Invoice #</span>
+                      <span className="text-[9px] font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1 rounded">AUTO</span>
+                    </span>
+                    <input
+                      id="invoice-number-input"
+                      type="text"
+                      readOnly
+                      tabIndex={-1}
+                      value={invoiceNumber || "INV-..."}
+                      placeholder="INV-..."
+                      className="h-10 w-28 md:w-32 bg-slate-100 text-slate-700 font-mono font-black text-xs px-3 rounded-xl border-2 border-slate-200 cursor-not-allowed select-none outline-none shadow-xs"
+                      title="Invoice Number (Auto-assigned sequentially in queue)"
+                    />
+                  </div>
+
+                  <div className="h-9 w-[1px] bg-slate-200 self-end mb-0.5" />
+
                   <div className="flex flex-col">
                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1 leading-tight">
                       Reference / PO #
