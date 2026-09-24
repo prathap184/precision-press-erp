@@ -1370,15 +1370,6 @@ export function GlobalOrdersPage() {
                                     </button>
                                   );
                                 })()}
-                                <button
-                                  disabled={processingOrderId === order.id}
-                                  onClick={() => handleReceipt(order)}
-                                  className="text-center text-[13px] font-normal text-emerald-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg py-1 px-2.5 transition-all whitespace-nowrap disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
-                                  title="Record Customer Prepayment"
-                                >
-                                  {processingOrderId === order.id ? <Loader2 size={11} className="animate-spin" /> : null}
-                                  Receipt
-                                </button>
                                 <Link
                                   href={(() => {
                                     if (pathname?.startsWith('/admin')) return `/admin/orders/${order.id}/ledger`;
