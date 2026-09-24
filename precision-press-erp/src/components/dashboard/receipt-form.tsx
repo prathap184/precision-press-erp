@@ -635,8 +635,18 @@ export function ReceiptForm() {
       // 3. Global hotkeys
       if (e.key === "F2") {
         e.preventDefault();
-        setTempDate(date);
-        setShowF2Modal(true);
+        e.stopPropagation();
+        if (showF2Modal) {
+          setShowF2Modal(false);
+          const targetId = lastFocusedElementIdRef.current;
+          if (targetId) {
+            setTimeout(() => document.getElementById(targetId)?.focus(), 50);
+          }
+        } else {
+          setTempDate(date);
+          setShowF2Modal(true);
+        }
+        return;
       } else if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         if (validateBeforeAccept()) {
@@ -1780,8 +1790,17 @@ export function ReceiptForm() {
       {/* 4. F2 VOUCHER DATE CHANGE MODAL */}
       {/* ========================================================================= */}
       {showF2Modal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-3xl border border-white/80 shadow-[0_25px_60px_rgba(0,0,0,0.18)] rounded-[2rem] p-6 w-96 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowF2Modal(false);
+              const targetId = lastFocusedElementIdRef.current;
+              if (targetId) setTimeout(() => document.getElementById(targetId)?.focus(), 50);
+            }
+          }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-[60] p-4"
+        >
+          <div className="bg-white border border-slate-200 shadow-2xl rounded-2xl p-6 w-96 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-200/80 pb-3">
               <span className="text-sm font-black text-slate-900">Change Voucher Date</span>
               <span className="font-mono text-xs font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-lg border border-blue-200">
@@ -1798,10 +1817,17 @@ export function ReceiptForm() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
+                    e.stopPropagation();
                     setDate(tempDate);
                     setShowF2Modal(false);
-                  } else if (e.key === "Escape") {
+                    const targetId = lastFocusedElementIdRef.current;
+                    if (targetId) setTimeout(() => document.getElementById(targetId)?.focus(), 50);
+                  } else if (e.key === "Escape" || e.key === "F2") {
+                    e.preventDefault();
+                    e.stopPropagation();
                     setShowF2Modal(false);
+                    const targetId = lastFocusedElementIdRef.current;
+                    if (targetId) setTimeout(() => document.getElementById(targetId)?.focus(), 50);
                   }
                 }}
                 className="w-full bg-slate-50 border-2 border-slate-200 font-mono font-bold text-slate-900 px-4 py-2.5 text-sm rounded-xl focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all"
@@ -1810,16 +1836,22 @@ export function ReceiptForm() {
             <div className="flex justify-end gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => setShowF2Modal(false)}
+                onClick={() => {
+                  setShowF2Modal(false);
+                  const targetId = lastFocusedElementIdRef.current;
+                  if (targetId) setTimeout(() => document.getElementById(targetId)?.focus(), 50);
+                }}
                 className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 cursor-pointer"
               >
-                Cancel
+                Cancel (Esc)
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setDate(tempDate);
                   setShowF2Modal(false);
+                  const targetId = lastFocusedElementIdRef.current;
+                  if (targetId) setTimeout(() => document.getElementById(targetId)?.focus(), 50);
                 }}
                 className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl shadow-md cursor-pointer"
               >
