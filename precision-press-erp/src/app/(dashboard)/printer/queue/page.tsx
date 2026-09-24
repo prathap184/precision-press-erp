@@ -52,9 +52,17 @@ export default function PrinterDashboard() {
         ...doc.data()
       })) as Order[];
 
+      const pCategory = (profile?.printerCategories && profile.printerCategories.length > 0)
+        ? profile.printerCategories
+        : profile?.printerCategory;
+      const pSubCategory = (profile?.printerSubCategories && profile.printerSubCategories.length > 0)
+        ? profile.printerSubCategories
+        : profile?.printerSubCategory;
+      const userCtx = { name: profile?.name || user?.displayName, email: profile?.email || user?.email, roles: (profile as any)?.roles || [] };
+
       orders = orders.filter(o => {
         // Must match printer category and subcategory stream (strict check)
-        if (!matchesPrinterStream(o, profile?.printerCategory, profile?.printerSubCategory)) {
+        if (!matchesPrinterStream(o, pCategory, pSubCategory, userCtx)) {
           return false;
         }
         

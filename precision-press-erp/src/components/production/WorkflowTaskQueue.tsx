@@ -11,6 +11,7 @@ import {
 } from '@/lib/supabase-firestore-shim';
 import { Order } from '@/types/models';
 import { startWorkflowStep, fastCompleteProductionStage } from '@/lib/workflow';
+import { useAuth } from '@/lib/auth-context';
 import { matchesPrinterStream } from '@/lib/role-workflow-utils';
 import { 
   Play, 
@@ -61,6 +62,12 @@ export function WorkflowTaskQueue({
   printerCategory,
   printerSubCategory
 }: WorkflowTaskQueueProps) {
+  const { user, profile, roles: authRoles } = useAuth();
+  const userCtx = React.useMemo(() => ({
+    name: profile?.name || user?.displayName,
+    email: profile?.email || user?.email,
+    roles: authRoles || [],
+  }), [profile?.name, user?.displayName, profile?.email, user?.email, authRoles]);
   const [tasks, setTasks] = useState<Order[]>([]);
   const [highlightedOrder, setHighlightedOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
@@ -150,7 +157,7 @@ export function WorkflowTaskQueue({
       const selectedRoles = new Set((Array.isArray(role) ? role : [role]).map((item) => String(item).toUpperCase()));
       const matchingOrders = orders.filter((order) => {
         if (selectedRoles.has('PRINTER')) {
-          if (!matchesPrinterStream(order, printerCategory, printerSubCategory)) {
+          if (!matchesPrinterStream(order, printerCategory, printerSubCategory, userCtx)) {
             return false;
           }
         }

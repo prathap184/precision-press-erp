@@ -158,11 +158,19 @@ export function PrinterOrderWorkspace({
   const currentStep = order?.workflowSnapshot?.steps?.[order.workflowSnapshot?.currentStepIndex ?? -1];
   const mode = getWorkspaceMode('PRINTER', order?.workflowSnapshot);
   const guard = useStageWorkspaceGuard('PRINTER', order, loading);
-  const { user, profile } = useAuth();
+  const { user, profile, roles } = useAuth();
   const printWorkflow = useMemo(() => resolvePrintWorkflow(order), [order]);
   const currentUserId = profile?.uid || user?.uid || '';
   const isAcceptedByMe = printWorkflow?.printerAcceptedBy === currentUserId;
   const isAcceptedByOther = Boolean(printWorkflow?.printerAcceptedBy && !isAcceptedByMe);
+
+  const rawViewerRoles: string[] = [
+    ...(roles || []),
+    ...(profile?.roles || []),
+    profile?.role,
+    (user as any)?.role,
+  ].filter(Boolean) as string[];
+  const isAdmin = rawViewerRoles.includes('ADMIN') || rawViewerRoles.includes('SUPER_ADMIN');
   const tiffPath = printWorkflow?.tiffPath || '';
   const tiffInfo = tiffPath ? inspectTiffPath(tiffPath) : null;
   const tiffReady = Boolean(tiffPath && isValidTiffPath(tiffPath));
@@ -462,6 +470,44 @@ export function PrinterOrderWorkspace({
                 {secondaryLabel}
               </Link>
             )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAcceptedByOther && !isAdmin) {
+    const acceptedByName = printWorkflow?.printerAcceptedByName || (order as any)?.printerAcceptedByName || 'Another Operator';
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4 text-center">
+        <div className="max-w-md w-full bg-white/90 backdrop-blur-xl border border-amber-300 rounded-[2rem] p-8 shadow-xl space-y-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 shadow-inner">
+            <Lock size={32} />
+          </div>
+          <div className="space-y-2">
+            <span className="inline-flex items-center rounded-full bg-amber-100 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-800">
+              Workspace Locked
+            </span>
+            <h1 className="text-xl font-black text-slate-900">
+              Job Claimed by Another Operator
+            </h1>
+            <p className="text-xs text-slate-600 font-medium leading-relaxed">
+              This order was accepted and is being printed by{' '}
+              <span className="font-bold text-amber-950 bg-amber-200/80 px-2 py-0.5 rounded">
+                {acceptedByName}
+              </span>.
+            </p>
+            <p className="text-[11px] text-slate-500 font-medium">
+              Only {acceptedByName} or an Administrator can access this print workspace.
+            </p>
+          </div>
+          <div className="pt-2 flex justify-center">
+            <button
+              onClick={() => router.push(backHref)}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-900 px-6 py-2.5 text-xs font-bold text-white hover:bg-slate-800 shadow transition-all cursor-pointer"
+            >
+              <ChevronLeft size={14} /> {backLabel || 'Back to Orders'}
+            </button>
           </div>
         </div>
       </div>

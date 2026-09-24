@@ -173,6 +173,16 @@ export function WorkflowPipelineVisual({
       return false;
     }
 
+    // PRINTER SPECIFIC COLLISION LOCK:
+    // If another printer accepted this job, lock navigation for other printer accounts (Admin only can override)
+    if (step.role === 'PRINTER') {
+      const printWf = resolvePrintWorkflow(order);
+      const printerAcceptedBy = (step as any).acceptedBy || printWf?.printerAcceptedBy || (order as any)?.printerAcceptedBy;
+      if (printerAcceptedBy && printerAcceptedBy !== currentUserId && !isAdmin) {
+        return false;
+      }
+    }
+
     // If lockedToRoles is provided, ONLY allow clicking steps that match the viewer's role(s)
     if (lockedToRoles && lockedToRoles.length > 0) {
       const allowedSet = new Set<StaffRole>(lockedToRoles);
@@ -189,15 +199,6 @@ export function WorkflowPipelineVisual({
     // ACDEMA has permanent open access to its triad stages (Accounts, Design, Manager)
     if (isAcdemaUser && acdemaManagedRoles.includes(step.role)) {
       return true;
-    }
-
-    if (step.role === 'PRINTER') {
-      const printWf = resolvePrintWorkflow(order);
-      const printerAcceptedBy = (step as any).acceptedBy || printWf?.printerAcceptedBy || (order as any)?.printerAcceptedBy;
-      // If another printer accepted this job, lock navigation for other printer accounts
-      if (printerAcceptedBy && printerAcceptedBy !== currentUserId && !isAdmin && !isManager) {
-        return false;
-      }
     }
 
     if (step.isCurrent) {

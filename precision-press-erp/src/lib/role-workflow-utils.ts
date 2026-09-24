@@ -39,13 +39,43 @@ export function normalizeCategoryString(str?: string | null): string {
     .replace(/[^a-z0-9]/g, ''); // removes spaces, underscores, hyphens
 }
 
+export function isMainPrinterUser(
+  userContext?: { name?: string | null; email?: string | null; roles?: string[] } | null,
+  rawCategories?: string[]
+): boolean {
+  if (rawCategories && rawCategories.length > 0) {
+    const hasMainCat = rawCategories.some(c => {
+      const norm = normalizeCategoryString(c);
+      return norm === 'mainprinter' || norm === 'all' || norm === 'masterprinter';
+    });
+    if (hasMainCat) return true;
+  }
+
+  if (userContext?.roles && userContext.roles.length > 0) {
+    const hasAdminOrMainRole = userContext.roles.some(r => {
+      const norm = normalizeCategoryString(r);
+      return norm === 'mainprinter' || norm === 'admin' || norm === 'superadmin' || norm === 'superprinter';
+    });
+    if (hasAdminOrMainRole) return true;
+  }
+
+  const nameNorm = normalizeCategoryString(userContext?.name);
+  const emailNorm = normalizeCategoryString(userContext?.email);
+  if (nameNorm.includes('mainprinter') || emailNorm.includes('mainprinter')) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Centralized verification: does an order belong to this printer user's machine stream?
  */
 export function matchesPrinterStream(
   order: Order | null,
   printerCategory?: string | string[],
-  printerSubCategory?: string | string[]
+  printerSubCategory?: string | string[],
+  userContext?: { name?: string | null; email?: string | null; roles?: string[] } | null
 ): boolean {
   if (!order) return false;
 
@@ -54,18 +84,30 @@ export function matchesPrinterStream(
     ? printerCategory
     : (printerCategory ? printerCategory.split(',').map(s => s.trim()).filter(Boolean) : []);
 
-  // If no category specified or user has MAIN_PRINTER, supervisor sees everything
-  if (rawCategories.length === 0 || rawCategories.includes('MAIN_PRINTER')) return true;
-
   // Convert subcategories to array
   const rawSubCategories: string[] = Array.isArray(printerSubCategory)
     ? printerSubCategory
     : (printerSubCategory ? printerSubCategory.split(',').map(s => s.trim()).filter(Boolean) : []);
 
+  // Check if Main Printer account -> Main Printer sees ALL printer orders
+  if (isMainPrinterUser(userContext, rawCategories)) {
+    return true;
+  }
+
+  // If NOT Main Printer and NO category assigned (or category deleted/unassigned), do not show
+  if (rawCategories.length === 0) {
+    return false;
+  }
+
+  // Safely extract items (handle stringified JSON in child/proxy orders)
+  const orderItems: any[] = Array.isArray(order.items)
+    ? order.items
+    : (typeof order.items === 'string' ? (() => { try { return JSON.parse(order.items); } catch { return []; } })() : []);
+
   // Extract order category
-  let orderCat = order.printerCategory || (order as any).printing_category_name || '';
-  if (!orderCat && order.items?.length) {
-    const firstItem = order.items[0] as any;
+  let orderCat = order.printerCategory || (order as any).printing_category_name || (order as any).printingCategoryName || '';
+  if (!orderCat && orderItems.length > 0) {
+    const firstItem = orderItems[0] as any;
     orderCat = firstItem.printerCategory || firstItem.printing_category_name || firstItem.printingCategoryName || firstItem.category || '';
     if (!orderCat) {
       const firstItemName = (firstItem.productName || firstItem.name || '').toLowerCase();
@@ -88,7 +130,21 @@ export function matchesPrinterStream(
     if (orderCatNorm === targetNorm) return true;
     const simplifiedTarget = targetNorm.replace('print', '');
     const simplifiedOrder = orderCatNorm.replace('print', '');
-    return simplifiedTarget.length > 0 && simplifiedTarget === simplifiedOrder;
+    if (simplifiedTarget.length > 0 && simplifiedTarget === simplifiedOrder) return true;
+
+    // Check across all items
+    return orderItems.some((item: any) => {
+      const itemCat = item.printerCategory || item.printing_category_name || item.printingCategoryName || item.category || '';
+      const itemCatNorm = normalizeCategoryString(itemCat);
+      if (itemCatNorm && (itemCatNorm === targetNorm || itemCatNorm.replace('print', '') === simplifiedTarget)) {
+        return true;
+      }
+      const pName = (item.productName || item.name || '').toLowerCase();
+      if (targetNorm.includes('ecosolvent') && (pName.includes('eco') || pName.includes('( mu )') || pName.includes('(mu)') || pName.includes('mutoh'))) return true;
+      if (targetNorm.includes('uv') && pName.includes('uv')) return true;
+      if (targetNorm.includes('solvent') && !targetNorm.includes('eco') && (pName.includes('solvent') || pName.includes('star flex') || pName.includes('flex'))) return true;
+      return false;
+    });
   };
 
   // Check if order category matches ANY of the user's assigned categories
@@ -97,13 +153,13 @@ export function matchesPrinterStream(
     return false;
   }
 
-  // If no subcategories assigned to printer, printer handles ALL subcategories
+  // If no subcategories assigned to printer, printer handles ALL subcategories of their matched category
   if (rawSubCategories.length === 0) {
     return true;
   }
 
   // Extract order subcategories
-  const orderSubCat = (order as any).printerSubCategory || (order as any).printing_subcategory_name || '';
+  const orderSubCat = (order as any).printerSubCategory || (order as any).printing_subcategory_name || (order as any).printingSubcategoryName || '';
   const orderSubNorm = normalizeCategoryString(orderSubCat);
 
   const matchSubcategory = (targetSub: string): boolean => {
@@ -111,8 +167,8 @@ export function matchesPrinterStream(
     if (!targetSubNorm) return false;
     if (orderSubNorm && orderSubNorm === targetSubNorm) return true;
 
-    if (order.items?.length) {
-      return order.items.some((item: any) => {
+    if (orderItems.length > 0) {
+      return orderItems.some((item: any) => {
         const itemSub = item.printerSubCategory || item.printing_subcategory_name || item.printingSubcategoryName || '';
         if (itemSub && normalizeCategoryString(itemSub) === targetSubNorm) return true;
 
