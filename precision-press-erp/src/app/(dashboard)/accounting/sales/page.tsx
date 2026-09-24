@@ -31,6 +31,7 @@ import { fuzzyMatch } from "@/lib/search-utils";
 
 interface Invoice {
   id: string;
+  contactId?: string;
   invoiceNumber: string;
   issueDate: string;
   dueDate: string;
@@ -38,7 +39,9 @@ interface Invoice {
   total: number;
   amountDue: number;
   currencyCode: string;
-  contact: { name: string } | null;
+  reference?: string | null;
+  notes?: string | null;
+  contact: { id?: string; name: string } | null;
 }
 
 interface PaymentRecord {
@@ -97,7 +100,8 @@ function getOverdueInfo(dueDate: string, status: string) {
 
 function buildColumns(
   selectedIds: Set<string>,
-  toggleOne: (id: string) => void
+  toggleOne: (id: string) => void,
+  router: ReturnType<typeof useRouter>
 ): Column<Invoice>[] {
   return [
     {
@@ -122,8 +126,17 @@ function buildColumns(
       key: "number",
       header: "Number",
       sortKey: "number",
-      className: "w-32",
-      render: (r) => <span className="font-mono text-sm">{r.invoiceNumber}</span>,
+      className: "w-36",
+      render: (r) => (
+        <div className="flex flex-col">
+          <span className="font-mono text-sm font-semibold text-slate-900">{r.invoiceNumber}</span>
+          {r.reference && (
+            <span className="text-[11px] font-mono text-muted-foreground truncate max-w-[130px]" title={`Order Ref: ${r.reference}`}>
+              Ord: {r.reference}
+            </span>
+          )}
+        </div>
+      ),
     },
     {
       key: "contact",
@@ -188,6 +201,68 @@ function buildColumns(
           <span className={`font-mono text-sm tabular-nums ${color}`}>
             {formatMoney(r.amountDue, r.currencyCode)}
           </span>
+        );
+      },
+    },
+    {
+      key: "receipt",
+      header: "Receipt",
+      className: "w-28 text-center",
+      render: (r) => {
+        if (r.status === "void") {
+          return <span className="text-xs text-muted-foreground">-</span>;
+        }
+
+        const handleReceiptClick = (e: React.MouseEvent) => {
+          e.stopPropagation();
+          const custId = r.contactId || (r.contact as any)?.id || "";
+          const custName = r.contact?.name || "";
+          const bal = (Math.max(0, r.amountDue) / 100).toFixed(2);
+          const totalAmt = (r.total / 100).toFixed(2);
+          const effectiveAmt = Number(bal) > 0 ? bal : totalAmt;
+
+          const params = new URLSearchParams();
+          if (custId) params.set("customerId", custId);
+          if (custName) params.set("customerName", custName);
+          if (effectiveAmt && Number(effectiveAmt) > 0) params.set("amount", effectiveAmt);
+          params.set("invoiceNo", r.invoiceNumber);
+          params.set("invoiceId", r.id);
+          if (r.reference) params.set("orderNo", r.reference);
+          params.set("refType", "AGST_REF");
+          params.set("autoOpen", "true");
+
+          router.push(`/accounting/receipt/new?${params.toString()}`);
+        };
+
+        const isPaid = r.status === "paid" || r.amountDue <= 0;
+
+        return (
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center justify-center"
+          >
+            {isPaid ? (
+              <button
+                type="button"
+                onClick={handleReceiptClick}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors cursor-pointer shadow-2xs"
+                title={`Invoice ${r.invoiceNumber} is Paid. Click to record / view receipt.`}
+              >
+                <CheckCircle2 size={12} className="text-emerald-600" />
+                Receipt
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleReceiptClick}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-emerald-700 bg-white hover:bg-emerald-50 border border-emerald-300 hover:border-emerald-500 rounded-md transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                title={`Record Receipt for ${r.invoiceNumber} (Agst Ref)`}
+              >
+                <Plus size={12} className="text-emerald-600" />
+                Receipt
+              </button>
+            )}
+          </div>
         );
       },
     },
@@ -308,8 +383,8 @@ export default function InvoicesPage() {
   }, []);
 
   const columns = useMemo(
-    () => buildColumns(selectedIds, toggleOne),
-    [selectedIds, toggleOne]
+    () => buildColumns(selectedIds, toggleOne, router),
+    [selectedIds, toggleOne, router]
   );
 
   const buildParams = useCallback((p: number) => {

@@ -240,7 +240,14 @@ export function ReceiptForm() {
         targetId = searchParams.get("customerId") || searchParams.get("contactId") || "";
         targetName = searchParams.get("customerName") || searchParams.get("contactName") || "";
         targetAmount = searchParams.get("amount") || "";
+        const orderNo = searchParams.get("orderNo") || searchParams.get("orderId") || searchParams.get("order") || "";
         targetNotes = searchParams.get("notes") || searchParams.get("narration") || "";
+        if (!targetNotes && (targetInvoiceNo || orderNo)) {
+          const parts: string[] = [];
+          if (targetInvoiceNo) parts.push(`Invoice ${targetInvoiceNo}`);
+          if (orderNo) parts.push(`Order: ${orderNo}`);
+          targetNotes = `Payment against ${parts.join(" - ")}`;
+        }
         targetInvoiceNo = searchParams.get("invoiceNo") || searchParams.get("refNo") || searchParams.get("billNo") || "";
         targetInvoiceId = searchParams.get("invoiceId") || "";
         const requestedRefType = searchParams.get("refType") as RefType;
@@ -904,6 +911,7 @@ export function ReceiptForm() {
             method: "bank_transfer",
             bankAccountId: selectedBankId,
             reference: line.refName,
+            notes: narration || null,
           }),
         });
 

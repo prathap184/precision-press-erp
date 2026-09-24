@@ -18,6 +18,7 @@ const paySchema = z.object({
   method: z.enum(["bank_transfer", "cash", "check", "card", "other"]).default("bank_transfer"),
   reference: z.string().nullable().optional(),
   bankAccountId: z.string().uuid().nullable().optional(),
+  notes: z.string().nullable().optional(),
 });
 
 export async function POST(
@@ -84,6 +85,7 @@ export async function POST(
           amount: parsed.amount,
           method: parsed.method,
           reference: parsed.reference || null,
+          notes: parsed.notes || null,
           bankAccountId: parsed.bankAccountId || null,
           createdBy: ctx.userId,
         })
