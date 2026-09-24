@@ -120,6 +120,11 @@ export function ReceiptForm() {
   // Accept Confirmation Dialog
   const [showAcceptDialog, setShowAcceptDialog] = useState(false);
   const [acceptFocusYes, setAcceptFocusYes] = useState(true);
+
+  // Quit Confirmation Dialog (Tally Esc flow)
+  const [showQuitDialog, setShowQuitDialog] = useState(false);
+  const [quitFocusYes, setQuitFocusYes] = useState(true);
+
   const [saving, setSaving] = useState(false);
 
   // DOM Refs for strict keyboard traversal & outside click
@@ -134,6 +139,7 @@ export function ReceiptForm() {
   const bankDropdownRef = useRef<HTMLDivElement>(null);
   const customerDropdownRef = useRef<HTMLDivElement>(null);
   const lastFocusedElementIdRef = useRef<string | null>(null);
+  const quitDialogOpenedAtRef = useRef<number>(0);
 
   // Keep track of the last focused input/select/button on the page
   useEffect(() => {
@@ -527,9 +533,49 @@ export function ReceiptForm() {
     }
   }, [refTypeHighlightIndex, showRefTypeMenu]);
 
+  const handleQuit = () => {
+    setShowQuitDialog(false);
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push("/accounting/sales");
+    }
+  };
+
   // Global Keyboard Shortcuts (F2 Date, Ctrl+A Save, Escape, Modal Arrow & Enter navigation)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+
+      // 0. Quit Dialog Keyboard Navigation (Tally Esc flow: 1st Esc = blur, 2nd Esc = show modal, Esc/N = stay in screen, Y/Enter = exit)
+      if (showQuitDialog) {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Tab") {
+          e.preventDefault();
+          setQuitFocusYes((prev) => !prev);
+          return;
+        }
+        if (e.key === "Escape" || e.key === "n" || e.key === "N") {
+          e.preventDefault();
+          setShowQuitDialog(false);
+          return;
+        }
+        if (e.key === "y" || e.key === "Y") {
+          e.preventDefault();
+          handleQuit();
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (quitFocusYes) {
+            handleQuit();
+          } else {
+            setShowQuitDialog(false);
+          }
+          return;
+        }
+        return;
+      }
+
       // 1. Accept Dialog Keyboard Navigation
       if (showAcceptDialog) {
         if (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "Tab") {
@@ -653,28 +699,60 @@ export function ReceiptForm() {
           setShowAcceptDialog(true);
         }
       } else if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
         if (showPendingBills) {
-          e.preventDefault();
           setShowPendingBills(false);
-        } else if (showRefTypeMenu) {
-          e.preventDefault();
+          return;
+        }
+        if (showRefTypeMenu) {
           setShowRefTypeMenu(false);
-        } else if (showBillWiseModal) {
-          e.preventDefault();
+          return;
+        }
+        if (showBillWiseModal) {
           setShowBillWiseModal(false);
-          amountInputRef.current?.focus();
-        } else if (showAcceptDialog) {
-          e.preventDefault();
+        }
+        if (showAcceptDialog) {
           setShowAcceptDialog(false);
-        } else if (showF2Modal) {
-          e.preventDefault();
+        }
+        if (showF2Modal) {
           setShowF2Modal(false);
         }
+        if (showBankDropdown) {
+          setShowBankDropdown(false);
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+          lastFocusedElementIdRef.current = null;
+          return;
+        }
+        if (showCustomerDropdown) {
+          setShowCustomerDropdown(false);
+          if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+          lastFocusedElementIdRef.current = null;
+          return;
+        }
+
+        const active = document.activeElement;
+        const isInputField =
+          active instanceof HTMLInputElement ||
+          active instanceof HTMLTextAreaElement ||
+          active instanceof HTMLSelectElement;
+
+        if (isInputField) {
+          // 1st Esc: Un-point / defocus the input field
+          active.blur();
+          lastFocusedElementIdRef.current = null;
+          return;
+        }
+
+        // 2nd Esc: If no field is focused and no modal/dropdown is open, show Quit confirmation
+        quitDialogOpenedAtRef.current = Date.now();
+        setQuitFocusYes(true);
+        setShowQuitDialog(true);
         return;
       }
 
       // Smart Focus Recovery: If user clicks outside and focus lands on body / background,
-      // pressing Enter, Backspace, Arrow keys, or typing instantly restores focus to their last active box!
+      // pressing Enter, Backspace, Arrow keys, or typing restores focus
       const activeEl = document.activeElement;
       const isBodyOrBg =
         !activeEl ||
@@ -684,22 +762,14 @@ export function ReceiptForm() {
         activeEl.id === "__next" ||
         (activeEl.tagName === "DIV" && !activeEl.getAttribute("tabindex"));
 
-      if (isBodyOrBg && !showBillWiseModal && !showAcceptDialog && !showF2Modal) {
-        if (["Control", "Alt", "Shift", "Meta", "F12", "F5"].includes(e.key)) return;
+      if (isBodyOrBg && !showBillWiseModal && !showAcceptDialog && !showQuitDialog && !showF2Modal) {
+        if (["Escape", "Tab", "Control", "Alt", "Shift", "Meta", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12"].includes(e.key)) return;
 
+        // If the user explicitly hit Escape to un-point the field, respect it and don't re-focus
         const targetId = lastFocusedElementIdRef.current;
-        let targetEl = targetId ? document.getElementById(targetId) : null;
+        if (!targetId) return;
 
-        if (!targetEl) {
-          if (!selectedCustomerId) {
-            targetEl = document.getElementById("receipt-customer-input");
-          } else if (!voucherAmount) {
-            targetEl = document.getElementById("receipt-amount-input");
-          } else {
-            targetEl = document.getElementById("receipt-customer-input");
-          }
-        }
-
+        const targetEl = document.getElementById(targetId);
         if (targetEl) {
           targetEl.focus();
           if (targetEl instanceof HTMLInputElement || targetEl instanceof HTMLTextAreaElement) {
@@ -711,21 +781,24 @@ export function ReceiptForm() {
         }
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [
     date,
     showPendingBills,
     showRefTypeMenu,
     showBillWiseModal,
     showAcceptDialog,
+    showQuitDialog,
+    quitFocusYes,
     showF2Modal,
     voucherAmount,
     selectedCustomerId,
     refTypeHighlightIndex,
     pendingBillHighlightIndex,
     acceptFocusYes,
-    invoices
+    invoices,
+    router
   ]);
 
   const validateBeforeAccept = () => {
@@ -1054,7 +1127,13 @@ export function ReceiptForm() {
                       }
                       customerInputRef.current?.focus();
                       try { customerInputRef.current?.select(); } catch {}
-                    } else if (e.key === "Tab" || e.key === "Escape") {
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowBankDropdown(false);
+                      e.currentTarget.blur();
+                      lastFocusedElementIdRef.current = null;
+                    } else if (e.key === "Tab") {
                       setShowBankDropdown(false);
                     }
                   }}
@@ -1159,7 +1238,11 @@ export function ReceiptForm() {
                             openBillWiseDetails(chosenCust || undefined);
                           }, 50);
                         } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setShowCustomerDropdown(false);
+                          e.currentTarget.blur();
+                          lastFocusedElementIdRef.current = null;
                         } else if (e.key === "Backspace") {
                           const len = customerSearch.length;
                           const atStartOrSelected =
@@ -1251,6 +1334,17 @@ export function ReceiptForm() {
                       value={voucherAmount ? Number(voucherAmount).toFixed(2) : "0.00"}
                       onClick={() => openBillWiseDetails()}
                       onFocus={() => openBillWiseDetails()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          openBillWiseDetails();
+                        } else if (e.key === "Escape") {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          e.currentTarget.blur();
+                          lastFocusedElementIdRef.current = null;
+                        }
+                      }}
                       className="w-full max-w-[220px] text-right bg-slate-50/80 border-2 border-slate-200 font-mono font-black text-slate-900 px-4 py-2.5 text-base rounded-xl cursor-pointer hover:bg-slate-100 focus:bg-white focus:border-blue-600 focus:ring-4 focus:ring-blue-500/20 focus:outline-none transition-all shadow-xs"
                       title="Calculated from Bill-wise details. Click or press Enter to edit."
                     />
@@ -1320,6 +1414,11 @@ export function ReceiptForm() {
                       if (validateBeforeAccept()) {
                         setShowAcceptDialog(true);
                       }
+                    } else if (e.key === "Escape") {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.currentTarget.blur();
+                      lastFocusedElementIdRef.current = null;
                     } else if (e.key === "Backspace") {
                       const len = narration.length;
                       const atStartOrSelected =
@@ -1782,6 +1881,61 @@ export function ReceiptForm() {
               </button>
             </div>
             <p className="text-[10px] text-slate-400 font-mono">← → or Tab to toggle · Enter to confirm</p>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3B. QUIT? YES OR NO CONFIRMATION DIALOG (Tally Esc flow) */}
+      {/* ========================================================================= */}
+      {showQuitDialog && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowQuitDialog(false);
+            }
+          }}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-[70] p-4"
+        >
+          <div className="bg-white/95 backdrop-blur-3xl border border-white/80 shadow-[0_25px_60px_rgba(0,0,0,0.18)] rounded-[2rem] p-6 w-96 text-center space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200/60 shadow-xs">
+              <X className="h-6 w-6 stroke-[2.5]" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-black text-slate-900 tracking-tight">Quit Voucher?</h3>
+              <p className="text-xs text-slate-500 font-medium">
+                Do you want to go back without saving?
+              </p>
+            </div>
+            <div className="flex justify-center gap-3 pt-2">
+              <button
+                type="button"
+                autoFocus={quitFocusYes}
+                onClick={handleQuit}
+                className={`px-6 py-2.5 font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer ${
+                  quitFocusYes
+                    ? "bg-rose-600 text-white ring-4 ring-rose-500/20 scale-[1.03]"
+                    : "bg-rose-600 text-white hover:bg-rose-700"
+                }`}
+              >
+                <span>Yes</span>
+                <span className="text-[10px] font-mono opacity-80">(Y / ↵)</span>
+              </button>
+              <button
+                type="button"
+                autoFocus={!quitFocusYes}
+                onClick={() => setShowQuitDialog(false)}
+                className={`px-6 py-2.5 font-bold text-xs rounded-xl transition-all cursor-pointer ${
+                  !quitFocusYes
+                    ? "border-2 border-slate-400 bg-slate-100 text-slate-900 ring-4 ring-slate-300/30 scale-[1.03]"
+                    : "border border-slate-200 hover:bg-slate-100 text-slate-700 bg-white"
+                }`}
+              >
+                <span>No</span>
+                <span className="text-[10px] font-mono opacity-60 ml-1">(N / Esc)</span>
+              </button>
+            </div>
+            <p className="text-[10px] text-slate-400 font-mono">← → or Tab to toggle · Y / Enter to Quit · N / Esc to Stay</p>
           </div>
         </div>
       )}

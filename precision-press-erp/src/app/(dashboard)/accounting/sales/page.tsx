@@ -101,7 +101,9 @@ function getOverdueInfo(dueDate: string, status: string) {
 function buildColumns(
   selectedIds: Set<string>,
   toggleOne: (id: string) => void,
-  router: ReturnType<typeof useRouter>
+  router: ReturnType<typeof useRouter>,
+  loadingReceiptId?: string | null,
+  setLoadingReceiptId?: (id: string | null) => void
 ): Column<Invoice>[] {
   return [
     {
@@ -234,6 +236,36 @@ function buildColumns(
           router.push(`/accounting/receipt/new?${params.toString()}`);
         };
 
+        const handleViewReceipt = async (e: React.MouseEvent) => {
+          e.stopPropagation();
+          setLoadingReceiptId?.(r.id);
+          try {
+            const orgId = typeof window !== "undefined" ? localStorage.getItem("activeOrgId") : null;
+            const res = await fetch(`/api/v1/invoices/${r.id}`, {
+              headers: orgId ? { "x-organization-id": orgId } : {},
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const p = data.payments?.[0];
+              if (p) {
+                if (p.creditId) {
+                  router.push(`/accounting/sales/customer-prepayments/${p.creditId}`);
+                  return;
+                }
+                if (p.id) {
+                  router.push(`/accounting/sales/payments/${p.id}`);
+                  return;
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Failed to load invoice receipt", err);
+          } finally {
+            setLoadingReceiptId?.(null);
+          }
+          router.push(`/accounting/sales/${r.id}`);
+        };
+
         const isPaid = r.status === "paid" || r.amountDue <= 0;
 
         return (
@@ -244,11 +276,16 @@ function buildColumns(
             {isPaid ? (
               <button
                 type="button"
-                onClick={handleReceiptClick}
-                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors cursor-pointer shadow-2xs"
-                title={`Invoice ${r.invoiceNumber} is Paid. Click to record / view receipt.`}
+                disabled={loadingReceiptId === r.id}
+                onClick={handleViewReceipt}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-md transition-colors cursor-pointer shadow-2xs disabled:opacity-60"
+                title={`Invoice ${r.invoiceNumber} is Paid. Click to view its receipt voucher.`}
               >
-                <CheckCircle2 size={12} className="text-emerald-600" />
+                {loadingReceiptId === r.id ? (
+                  <Loader2 size={12} className="animate-spin text-emerald-600" />
+                ) : (
+                  <CheckCircle2 size={12} className="text-emerald-600" />
+                )}
                 Receipt
               </button>
             ) : (
@@ -382,9 +419,11 @@ export default function InvoicesPage() {
     });
   }, []);
 
+  const [loadingReceiptId, setLoadingReceiptId] = useState<string | null>(null);
+
   const columns = useMemo(
-    () => buildColumns(selectedIds, toggleOne, router),
-    [selectedIds, toggleOne, router]
+    () => buildColumns(selectedIds, toggleOne, router, loadingReceiptId, setLoadingReceiptId),
+    [selectedIds, toggleOne, router, loadingReceiptId]
   );
 
   const buildParams = useCallback((p: number) => {

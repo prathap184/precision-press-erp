@@ -167,6 +167,15 @@ export function useGlobalShortcuts() {
           return;
         }
 
+        if (
+          currentPath.startsWith('/accounting/receipt') ||
+          currentPath.startsWith('/accounting/payment') ||
+          currentPath.startsWith('/accounting/contra') ||
+          currentPath.startsWith('/accounting/journal')
+        ) {
+          return;
+        }
+
         if (currentPath !== '/admin/orders') {
           const parent = getParentRoute(currentPath);
           if (parent === '/admin/orders' && process.env.NEXT_PUBLIC_PIXEL_MARKETING_URL) {
