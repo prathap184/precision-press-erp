@@ -942,12 +942,31 @@ export function RoleGlobalOrdersPage({ primaryRole }: RoleGlobalOrdersPageProps)
                             >
                               Invoice
                             </Link>
-                            <Link
-                              href={`/receipt-entry?orderId=${order.id}`}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const custName = (order.customerSnapshot as any)?.companyName || order.customerSnapshot?.displayName || order.customerSnapshot?.name || '';
+                                const custId = (order.customerSnapshot as any)?.id || (order as any).customerId || '';
+                                const amt = (order as any).amounts?.grandTotal ?? (order as any).grandTotal ?? amount;
+                                const invNum = (order as any).invoice_number || (order as any).invoiceNumber || order.id.replace('ORD-', '');
+                                const invId = (order as any).invoice_id || (order as any).invoiceId || '';
+
+                                const params = new URLSearchParams();
+                                if (custId) params.set('customerId', custId);
+                                if (custName) params.set('customerName', custName);
+                                if (amt) params.set('amount', String(amt));
+                                if (invNum) params.set('invoiceNo', invNum);
+                                if (invId) params.set('invoiceId', invId);
+                                params.set('refType', 'AGST_REF');
+                                params.set('autoOpen', 'true');
+
+                                window.location.href = `/accounting/receipt/new?${params.toString()}`;
+                              }}
                               className="text-center text-[12px] font-normal text-emerald-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg py-1 px-2.5 transition-all whitespace-nowrap cursor-pointer inline-flex items-center gap-1 shadow-2xs"
+                              title="Record Receipt (Agst Ref)"
                             >
                               Receipt
-                            </Link>
+                            </button>
                           </div>
                         </td>
                       )}

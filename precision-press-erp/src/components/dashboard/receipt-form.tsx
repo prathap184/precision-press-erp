@@ -230,6 +230,10 @@ export function ReceiptForm() {
       let targetName = "";
       let targetAmount = "";
       let targetNotes = "";
+      let targetInvoiceNo = "";
+      let targetInvoiceId = "";
+      let targetRefType: RefType = "AGST_REF";
+      let autoOpen = false;
 
       if (typeof window !== "undefined") {
         const searchParams = new URLSearchParams(window.location.search);
@@ -237,6 +241,13 @@ export function ReceiptForm() {
         targetName = searchParams.get("customerName") || searchParams.get("contactName") || "";
         targetAmount = searchParams.get("amount") || "";
         targetNotes = searchParams.get("notes") || searchParams.get("narration") || "";
+        targetInvoiceNo = searchParams.get("invoiceNo") || searchParams.get("refNo") || searchParams.get("billNo") || "";
+        targetInvoiceId = searchParams.get("invoiceId") || "";
+        const requestedRefType = searchParams.get("refType") as RefType;
+        if (requestedRefType && REF_TYPE_OPTIONS.some((o) => o.type === requestedRefType)) {
+          targetRefType = requestedRefType;
+        }
+        autoOpen = searchParams.get("autoOpen") === "true" || Boolean(targetInvoiceNo);
       }
 
       if (!targetId && !targetName && !targetAmount) {
@@ -249,6 +260,10 @@ export function ReceiptForm() {
           targetName = data.contactName || data.customerName || "";
           targetAmount = data.amount ? String(data.amount) : "";
           targetNotes = data.notes || data.narration || "";
+          targetInvoiceNo = data.invoiceNo || data.refNo || "";
+          targetInvoiceId = data.invoiceId || "";
+          if (data.refType) targetRefType = data.refType;
+          if (data.autoOpen) autoOpen = true;
         }
       }
 
@@ -263,6 +278,32 @@ export function ReceiptForm() {
       }
       if (targetNotes) {
         setNarration(targetNotes);
+      }
+
+      // If autoOpen is set or invoice details provided, automatically prepare Bill-Wise modal with Agst Ref!
+      if (autoOpen || targetInvoiceNo || targetAmount) {
+        setActiveRefType(targetRefType);
+        const refIdx = REF_TYPE_OPTIONS.findIndex((o) => o.type === targetRefType);
+        setRefTypeHighlightIndex(refIdx >= 0 ? refIdx : 1);
+        setCurrentLineRefName(targetInvoiceNo || "INV-REF");
+        setCurrentLineDueDate(new Date().toISOString().split("T")[0]);
+        setCurrentLineAmount(targetAmount);
+        if (targetInvoiceId) {
+          setCurrentLineInvoiceId(targetInvoiceId);
+        }
+        setShowBillWiseModal(true);
+        setShowPendingBills(false);
+        setShowRefTypeMenu(false);
+
+        // Auto-focus amount input inside the Bill-wise popup so user only needs to hit Enter!
+        setTimeout(() => {
+          if (modalAmountInputRef.current) {
+            modalAmountInputRef.current.focus();
+            try {
+              modalAmountInputRef.current.select();
+            } catch {}
+          }
+        }, 250);
       }
 
       if (targetId || targetName) {

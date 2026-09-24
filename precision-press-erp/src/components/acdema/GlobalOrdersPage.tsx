@@ -1370,6 +1370,32 @@ export function GlobalOrdersPage() {
                                     </button>
                                   );
                                 })()}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const matchedInvoice = getInvoiceForOrder(order);
+                                    const invNum = matchedInvoice?.number || (order as any).invoice_number || (order as any).invoiceNumber || '';
+                                    const invId = matchedInvoice?.id || (order as any).invoice_id || (order as any).invoiceId || '';
+                                    const custName = (order.customerSnapshot as any)?.companyName || order.customerSnapshot?.displayName || order.customerSnapshot?.name || '';
+                                    const custId = (order.customerSnapshot as any)?.id || (order as any).customerId || '';
+                                    const amt = matchedInvoice?.balance ?? matchedInvoice?.total ?? amount;
+
+                                    const params = new URLSearchParams();
+                                    if (custId) params.set('customerId', custId);
+                                    if (custName) params.set('customerName', custName);
+                                    if (amt) params.set('amount', String(amt));
+                                    if (invNum) params.set('invoiceNo', invNum);
+                                    if (invId) params.set('invoiceId', invId);
+                                    params.set('refType', 'AGST_REF');
+                                    params.set('autoOpen', 'true');
+
+                                    window.location.href = `/accounting/receipt/new?${params.toString()}`;
+                                  }}
+                                  className="text-center text-[13px] font-normal text-emerald-700 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg py-1 px-2.5 transition-all whitespace-nowrap cursor-pointer flex items-center justify-center gap-1 shadow-2xs"
+                                  title="Record Receipt (Agst Ref)"
+                                >
+                                  Receipt
+                                </button>
                                 <Link
                                   href={(() => {
                                     if (pathname?.startsWith('/admin')) return `/admin/orders/${order.id}/ledger`;
