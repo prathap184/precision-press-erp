@@ -27,8 +27,6 @@ const nextConfig = {
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),
-      'react': path.resolve(__dirname, 'node_modules/react'),
-      'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
       'firebase/firestore': path.resolve(__dirname, 'src/lib/supabase-firestore-shim.ts'),
     };
     config.resolve.modules = [
