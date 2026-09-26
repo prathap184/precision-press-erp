@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from "@/lib/db";
 import { portalAccessToken, invoice, portalActivityLog } from "@/lib/db/schema";
 import { eq, and, isNull, desc } from "drizzle-orm";

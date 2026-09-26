@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { requireSiteAdmin } from "@/lib/api/require-site-admin";
 import { getAllSiteSettings, setSiteSetting } from "@/lib/site-settings";

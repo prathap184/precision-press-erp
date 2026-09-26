@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { respondToProof, getDesignProofs } from '@/lib/design-workspace-db';
 import { supabaseAdmin } from '@/lib/supabase-admin';

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { invoice, emailConfig, organization, reminderLog } from "@/lib/db/schema";

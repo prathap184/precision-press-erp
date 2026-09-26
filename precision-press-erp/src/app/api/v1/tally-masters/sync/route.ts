@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { previewMasterSync, executeMasterSync, getMasterSummaryCounts, MasterType } from '@/lib/tally/tally-master-service';
 

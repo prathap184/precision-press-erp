@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from "@/lib/db";
 import { payrollRun, approvalChain, approvalRecord, approvalChainStep } from "@/lib/db/schema";
 import { eq, and, asc } from "drizzle-orm";

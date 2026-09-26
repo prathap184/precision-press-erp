@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from "@/lib/db";
 import { invoice, contact, inventoryItem, bankTransaction, bankAccount } from "@/lib/db/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";

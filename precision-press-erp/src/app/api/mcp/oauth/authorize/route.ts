@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from "@/lib/db";
 import { mcpOAuthClient } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";

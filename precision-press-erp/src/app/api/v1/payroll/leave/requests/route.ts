@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from "@/lib/db";
 import { leaveRequest } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";

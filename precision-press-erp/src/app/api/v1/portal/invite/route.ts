@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from "@/lib/db";
 import { portalAccessToken } from "@/lib/db/schema";
 import { getAuthContext } from "@/lib/api/auth-context";

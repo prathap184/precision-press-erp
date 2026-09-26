@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 /**
  * TALLY CONNECTOR API — MASTERS SYNC
  * ────────────────────────────────────

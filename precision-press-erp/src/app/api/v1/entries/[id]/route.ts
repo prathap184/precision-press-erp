@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { journalEntry, journalLine, customerCredit, contact, invoice, bill, payment, creditNote, debitNote, bankTransaction, paymentAllocation } from "@/lib/db/schema";

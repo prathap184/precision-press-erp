@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from "@/lib/db";
 import { compensationReview } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";

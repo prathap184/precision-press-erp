@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from "@/lib/db";
 import { payrollRun, payrollItem, payrollEmployee } from "@/lib/db/schema";
 import { eq, and, gte, lte } from "drizzle-orm";

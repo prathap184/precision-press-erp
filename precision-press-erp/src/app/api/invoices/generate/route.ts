@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateInvoiceFromChildOrders } from '@/lib/actions/documents';
 import { getAuthorizedUser } from '@/lib/actions/accounts';

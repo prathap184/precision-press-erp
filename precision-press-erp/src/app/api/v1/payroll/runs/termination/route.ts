@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // @ts-nocheck
 import { db } from "@/lib/db";
 import {

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { createHash, randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import {

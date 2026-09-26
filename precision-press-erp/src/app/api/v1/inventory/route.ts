@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { inventoryItem, journalEntry, journalLine, hsnMaster, hsnGstRates, warehouse, warehouseStock } from "@/lib/db/schema";

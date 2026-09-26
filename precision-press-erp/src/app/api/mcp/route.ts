@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { resolveToken } from "@/lib/mcp/auth";
 import { createMcpServer } from "@/lib/mcp/server";

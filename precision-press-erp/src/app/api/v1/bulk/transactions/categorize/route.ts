@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { db } from "@/lib/db";
 import { bankTransaction, bankAccount } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";

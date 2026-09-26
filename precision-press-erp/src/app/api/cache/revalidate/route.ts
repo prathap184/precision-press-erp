@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { invalidate, invalidateMultiple } from '@/lib/cache/cache';
 import { CACHE_KEYS } from '@/lib/cache/constants';

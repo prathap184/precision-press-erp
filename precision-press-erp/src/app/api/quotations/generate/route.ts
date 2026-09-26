@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { generateQuotationFromChildOrders } from '@/lib/actions/quotations';
 import { getAuthorizedUser } from '@/lib/actions/accounts';

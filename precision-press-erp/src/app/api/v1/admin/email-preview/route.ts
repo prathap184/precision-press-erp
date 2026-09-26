@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from "next/server";
 import { handleError } from "@/lib/api/response";
 import { requireSiteAdmin } from "@/lib/api/require-site-admin";
