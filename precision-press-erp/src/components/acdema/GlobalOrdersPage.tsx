@@ -1338,9 +1338,9 @@ export function GlobalOrdersPage() {
                                         title={`Invoice #${invNum}`}
                                         onClick={() => {
                                           if (invId) {
-                                            window.location.href = `http://40.81.236.61:3000/sales/${invId}`;
+                                            window.location.href = `/sales/${invId}`;
                                           } else {
-                                            window.location.href = `http://40.81.236.61:3000/accounting/sales`;
+                                            window.location.href = `/accounting/sales`;
                                           }
                                         }}
                                       >
